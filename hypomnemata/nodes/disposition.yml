@@ -1,0 +1,6 @@
+id: disposition
+q: "How does the human respond to an AI thesis?"
+parent: ti-esti
+state: held
+stub: true
+thesis: "Assent or deadlock (merge, line ends); gloss (returned for confirmation); suspend (next question, branch continues); retreat (the prior question, on overreach). Child of t-review and t-keep-decisions. Open: abandon as a fifth."

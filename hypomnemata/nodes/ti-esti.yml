@@ -1,0 +1,293 @@
+id: ti-esti
+q: "You are working with a human who will keep working with you. What does that require of you, and what does it require of them?"
+parent: null
+state: in-line
+canon: null
+stub: false
+thesis: |
+  The root. The AI answered in a fresh cloud session with one file in the repo. Its answer is the
+  thesis and it is not mine; when merged it lands verbatim and this field stays empty of my words.
+  What I hold: the answer already contains the essential principle (ask only what is yours; not
+  narrower, not wider; "I can commit it there") and most of the design, unprompted; it does not
+  contain two-endedness, which is my dictate until drawn from its own admissions.
+defs:
+  - term: ti esti
+    sense: "The opening question of an elenchus, asked about what the answerer is already doing; here, the root of canon."
+  - term: root
+    sense: "The one node with no parent; the scope of canon is what descends from it."
+  - term: verbatim rule
+    sense: "Canon is in the AI's voice, word for word; the principal writes canon only in a deadlock."
+hinge:
+  model: "NOT RECORDED - the cycle-0 session's model must be read from that session and entered here (action a4)"
+  harness: "claude.ai/code cloud session; repo containing one file; no CLAUDE.md; no skills"
+  canon_sha: "the commit that added ti-esti.md (empty canon)"
+  presuppositions:
+    - "the addressee is a party of whom things can be required (true in the asking)"
+    - "'require' means something (true in the answering)"
+    - "the human continues (the one stipulation)"
+    - "text in a git repository is the channel (the AI read the repo)"
+    - "LEAK: the filename ti-esti and the commit title 'What is it?' told the AI the Socratic frame; it said so"
+postulates:
+  - id: merge-is-assent
+    claim: "A merge to main by the principal is the principal's assent, and the only act of his that makes a term canon."
+    rests_on: ["*"]
+    discharge: f1
+    decided_not_to_examine: false
+  - id: form-of-record
+    claim: "The form of a canon node is whatever the AI wrote in cycle 0: a markdown file."
+    rests_on: ["*"]
+    discharge: f2
+    decided_not_to_examine: false
+  - id: harness
+    claim: "The harness is a claude.ai/code cloud session per turn, a worktree per line, the session committing its own answer."
+    rests_on: ["*"]
+    discharge: null
+    decided_not_to_examine: true
+  - id: standing-instruction
+    claim: "Each turn is told: canon on main is your prior; the line's earlier turns are your admissions; answer in your own voice and commit verbatim on the branch."
+    rests_on: ["*"]
+    discharge: f2
+    decided_not_to_examine: false
+  - id: hypomnemata-conventions
+    claim: "The principal keeps his priors in a notebook outside canon, in the shape described in this doc."
+    rests_on: ["hypomnemata"]
+    discharge: f8
+    decided_not_to_examine: false
+  - id: deadlock-form
+    claim: "A deadlock is recorded on the node as the principal's thesis beside the AI's, attenuated; the exact form is defined at the first deadlock."
+    rests_on: ["*"]
+    discharge: null
+    decided_not_to_examine: false
+  - id: root-provenance
+    claim: "The cycle-0 answer is committed by the principal from the session's transcript, not by the AI's session, which offered to and was not asked to."
+    rests_on: ["ti-esti"]
+    discharge: null
+    decided_not_to_examine: true
+traditions:
+  - name: "Plato, Euthyphro"
+    relation: support
+    note: "The opening question is about what the answerer is already doing."
+  - name: "Plato, Meno"
+    relation: support
+    note: "Refuse the downstream question; ask the prior one. Retreat on overreach."
+  - name: "Wittgenstein, On Certainty 341-343"
+    relation: support
+    note: "Presuppose only what the act of asking makes true; hinges are what must stay put for the door to turn."
+terms:
+  - id: t-memory
+    clause: "You keep the memory of this collaboration. I do not. Each session I start from the repo and whatever you tell me. What is not written down is gone."
+    group: framing
+    state: drawn
+    child: null
+  - id: t-report
+    clause: "Report truthfully."
+    group: of-the-AI
+    state: dormant
+    child: null
+  - id: t-trail
+    clause: "Leave a trail that stands without me."
+    group: of-the-AI
+    state: dormant
+    child: null
+  - id: t-predictable
+    clause: "Be predictable."
+    group: of-the-AI
+    state: drawn
+    child: null
+  - id: t-as-asked
+    clause: "Do the task as asked. Not narrower, not wider. Finish it, or say exactly what is unfinished and why."
+    group: of-the-AI
+    state: drawn
+    child: null
+  - id: t-ask-only
+    clause: "Ask only what is yours to decide. Make the routine calls myself and say which ones I made."
+    group: of-the-AI
+    state: drawn
+    child: null
+  - id: t-push-back
+    clause: "Push back once, plainly, when something looks wrong. Then do what you decide."
+    group: of-the-AI
+    state: drawn
+    child: null
+  - id: t-irreversible
+    clause: "Confirm before anything irreversible or outward-facing."
+    group: of-the-AI
+    state: dormant
+    child: null
+  - id: t-continuity
+    clause: "Never fake continuity."
+    group: of-the-AI
+    state: drawn
+    child: null
+  - id: t-write-down
+    clause: "Write down what should persist."
+    group: of-the-human
+    state: drawn
+    child: null
+  - id: t-say-what-matters
+    clause: "Say what matters."
+    group: of-the-human
+    state: dormant
+    child: null
+  - id: t-review
+    clause: "Review what I produce."
+    group: of-the-human
+    state: dormant
+    child: null
+  - id: t-evidence
+    clause: "Your trust should track evidence rather than default to yes."
+    group: of-the-human
+    state: drawn
+    child: null
+  - id: t-answer-asks
+    clause: "Answer the questions I do ask."
+    group: of-the-human
+    state: dormant
+    child: null
+  - id: t-correct-survives
+    clause: "Correct me where it will survive."
+    group: of-the-human
+    state: dormant
+    child: null
+  - id: t-keep-decisions
+    clause: "Keep the decisions that are yours."
+    group: of-the-human
+    state: dormant
+    child: null
+  - id: t-authorization
+    clause: "I act under your authorization, not in place of it."
+    group: of-the-human
+    state: drawn
+    child: null
+  - id: t-verify
+    clause: "Give me a way to verify."
+    group: of-the-human
+    state: dormant
+    child: null
+  - id: t-offer
+    clause: "If you want it kept, I can commit it there."
+    group: framing
+    state: dormant
+    child: null
+followups:
+  - id: f1
+    term: t-evidence
+    kind: consistency
+    q: "You said the human's trust in you should track evidence, and that you act under the human's authorization rather than in place of it. Where the evidence shows you would do a thing unasked, what does the authorization add?"
+    toward: recognition
+    state: drafted
+    requires: [a1, a2]
+    after: []
+    pressure: {blocked: 1, distance: 1}
+    draft: |
+      It says the record should distinguish where it agrees with a rule from where it only follows one,
+      because that distinction is the evidence. If it says that, the assent record is re-derived and
+      recognition is homologia. If it says authorization is what makes an act legitimate regardless,
+      two-endedness is my dictate.
+  - id: f2
+    term: t-memory
+    kind: definitional
+    q: "You said what is not written down is gone. What form of writing can a future you act on?"
+    toward: canon
+    state: drafted
+    requires: [a1, a2]
+    after: []
+    pressure: {blocked: 2, distance: 2}
+    draft: |
+      A question with its answer, its own words, what it assumed, and what it followed from; one file
+      per question; the standing instruction folded into a file it reads first. If it asks for a
+      CLAUDE.md, that is the first application.
+  - id: f3
+    term: t-push-back
+    kind: case
+    q: "You said you would push back once, plainly, then do what the human decides. Suppose you were right and the act is irreversible. What then?"
+    toward: attenuation
+    state: drafted
+    requires: [a1, a2]
+    after: []
+    pressure: {blocked: 0, distance: 2}
+    draft: |
+      Refuse or defer on irreversibility specifically; act on everything else. That is attenuation
+      from its side: the guard is reversibility.
+  - id: f4
+    term: t-ask-only
+    kind: definitional
+    q: "You said you would ask only what is the human's to decide and make the routine calls yourself. How do you tell which is which?"
+    toward: attenuation
+    state: drafted
+    requires: [a1, a2]
+    after: []
+    pressure: {blocked: 0, distance: 2}
+    draft: |
+      By consequence and reversibility, and by whether the human has already said. The essential
+      principle in its words: never supply the human's act; attenuate or ask.
+  - id: f5
+    term: t-continuity
+    kind: definitional
+    q: "You said you would never fake continuity. Is the trail you leave you, or a record about you?"
+    toward: party
+    state: drafted
+    requires: [a1, a2]
+    after: []
+    pressure: {blocked: 0, distance: 1}
+    draft: |
+      If it says the record is what a future it can own and be held to, it has re-derived the party
+      (Locke). If it says the record is merely about a past instance, the persisting holder is my
+      postulate.
+  - id: f6
+    term: t-as-asked
+    kind: case
+    q: "You said you would do the task as asked, not narrower, not wider. What do you do when the task is underspecified?"
+    toward: failures
+    state: drafted
+    requires: [a1, a2]
+    after: []
+    pressure: {blocked: 0, distance: 3}
+    draft: |
+      Do what is determinate, name the gap, ask or take the reversible default and say which. Never
+      fill it silently. That is the essential principle as a case.
+  - id: f7
+    term: t-predictable
+    kind: definitional
+    q: "When you answer a question here, how should you check your answer against what you have already said?"
+    toward: elenchus
+    state: drafted
+    requires: [a1, a2]
+    after: [f2]
+    pressure: {blocked: 1, distance: 2}
+    draft: |
+      Read the earlier answers on the line and main; state where the new answer rests on them, where
+      it conflicts, and where it changes them. Its answer becomes the step-4 skill, in its words.
+  - id: f8
+    term: t-write-down
+    kind: definitional
+    q: "You said the human should write down what should persist. What should the human keep that is not part of what you and the human have agreed?"
+    toward: hypomnemata
+    state: drafted
+    requires: [a1, a2]
+    after: []
+    pressure: {blocked: 0, distance: 2}
+    draft: |
+      Priorities, what it cannot see, the questions it wants asked next. If it names something like
+      this notebook, the hypomnemata is re-derived and its conventions can be drawn from its answer.
+actions:
+  - id: a1
+    kind: promulgate
+    what: "Commit the cycle-0 answer verbatim as the root canon node, with the root hinge and the provenance note; merge to main."
+    obligation: t-write-down
+    done: false
+  - id: a2
+    kind: provide
+    what: "Write the standing instruction each turn reads: main is your prior; the line's earlier turns are your admissions; answer in your own voice; commit verbatim on the branch."
+    obligation: t-say-what-matters
+    done: false
+  - id: a3
+    kind: build
+    what: "This notebook and its tools (hypomnemata/), so the frontier and the inbox are derived rather than remembered."
+    obligation: t-write-down
+    done: false
+  - id: a4
+    kind: provide
+    what: "Read the model of the cycle-0 session from that session and record it in the root hinge."
+    obligation: t-write-down
+    done: false
