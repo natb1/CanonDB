@@ -62,6 +62,18 @@ class RootLayoutTest(unittest.TestCase):
         self.assertIn("| <?claude block m_party?> | Two sides, two debts | case | 9 | "
                       "nothing |", self.text)
 
+    def test_the_inbox_table_is_heaviest_first(self):
+        """The section answers what to do next; a table in file order answers
+        nothing. valid.json happens to be in priority order already, so the
+        sort has to be shown by putting it out of order."""
+        graph = load("valid")
+        graph.get("canon").priority = 1
+        graph.get("party").priority = 99
+        rows = [l for l in render.body(graph, "ti-esti").splitlines()
+                if l.startswith("| <?claude")]
+        self.assertIn("m_party", rows[0])
+        self.assertIn("m_canon", rows[1])
+
     def test_the_inbox_item(self):
         self.assertIn("### promulgate the root answer", self.text)
         self.assertIn("promulgate · put the opening answer where both sides can see it · "
@@ -92,12 +104,16 @@ class DescendantLayoutTest(unittest.TestCase):
         self.text = render.render(self.graph, "attenuation")
         self.lines = [l for l in self.text.splitlines() if l.strip()]
 
-    def test_incoming_anchors_come_first_ordered_by_parent_then_term(self):
+    def test_incoming_anchors_are_a_list_naming_every_parent(self):
+        """A question with several parents lists them all — that is how the
+        graph stays a graph while the tabs are a tree — and each item ends in a
+        chip to the tab whose term section holds it."""
         self.assertEqual(self.lines[1],
-                         "Authority to act on an unassented entry is graded down, never removed.")
+                         "- Authority to act on an unassented entry is graded down, "
+                         "never removed. <?claude block m_canon?>")
         self.assertEqual(self.lines[2],
-                         "the act that would settle it is graded down until the standing "
-                         "side speaks")
+                         "- the act that would settle it is graded down until the "
+                         "standing side speaks <?claude block m_party?>")
 
     def test_the_lineage_line(self):
         self.assertIn("⌂ <?claude block m_ti_esti?> › <?claude block m_canon?> › "
@@ -207,9 +223,12 @@ class LinksTest(unittest.TestCase):
             "m_party": {"type": "mention", "ref": "file/tab-03"},
             "m_plato": {"type": "mention", "ref": "file/tab-05"}})
 
-    def test_an_ancestor_of_the_breadcrumb_carries_a_block(self):
+    def test_the_breadcrumb_and_every_parent_carry_a_block(self):
+        """party is a parent of attenuation but not on its breadcrumb — the
+        tree hangs it under canon. Its chip is in the incoming list, so it
+        needs an entry or the item ends in an unresolved token."""
         self.assertEqual(sorted(render.links(load("valid"), "attenuation")["blocks"]),
-                         ["m_canon", "m_ti_esti"])
+                         ["m_canon", "m_party", "m_ti_esti"])
 
     def test_a_target_outside_the_graph_carries_no_block(self):
         sidecar = render.links(load("invalid-term-target"), "canon")

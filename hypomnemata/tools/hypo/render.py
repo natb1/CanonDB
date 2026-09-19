@@ -186,10 +186,25 @@ def _glossary_blocks(q: Question) -> List[str]:
     return blocks
 
 
+def _inbox_order(graph: Graph, q: Question) -> List[Term]:
+    """The frontier, heaviest first, ties by question id.
+
+    The order is what the section is for: it answers what to do next, and a
+    table in file order answers nothing.
+    """
+    by_id = graph.by_id()
+
+    def weight(term: Term) -> Tuple[int, str]:
+        child = by_id.get(term.to)
+        return (-(child.priority if child else 0), term.to)
+
+    return sorted(q.terms(), key=weight)
+
+
 def _inbox_blocks(graph: Graph, q: Question) -> List[str]:
     by_id = graph.by_id()
     rows = []
-    for term in q.terms():
+    for term in _inbox_order(graph, q):
         child = by_id.get(term.to)
         rows.append("| %s | %s | %s | %s | %s |" % (
             chip(term.to), term.title,
@@ -273,8 +288,13 @@ def body(graph: Graph, qid: str) -> str:
     blocks: List[str] = ["# %s" % q.id]
 
     if not top_level:
-        for _, term in _incoming_terms(graph, qid):
-            blocks.extend(term.anchors)
+        # one item per anchor, each ending in a chip to the tab whose term
+        # section holds it, so a question with several parents names them all
+        # and the reader can get back to any of them
+        blocks.append("\n".join(
+            "- %s %s" % (anchor, chip(src))
+            for src, term in _incoming_terms(graph, qid)
+            for anchor in term.anchors))
 
     blocks.append("*%s*" % q.question)
 
@@ -319,6 +339,8 @@ def mention_targets(graph: Graph, qid: str) -> List[str]:
     if project.parents(graph).get(qid) is not None:
         for ancestor in project.lineage(graph, qid)[:-1]:
             add(ancestor)
+        for src, _ in _incoming_terms(graph, qid):
+            add(src)  # a parent outside the lineage still gets its chip
     for thesis in q.theses:
         for term in thesis.terms:
             add(term.to)
@@ -396,6 +418,13 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
             "anchor": text.plain(definition.word),
             "heading": heading,
             "target": "#%s.%s" % (q.tab, heading),
+        })
+    for term in _inbox_order(graph, q):
+        out.append({
+            "kind": "inbox-term",
+            "term": term.title,
+            "anchor": text.plain(term.title),
+            "target": "#%s.%s" % (q.tab, term_heading(term)),
         })
     titles = _inbox_titles(graph)
     homes = {item.id: home for home in graph.questions for item in home.inbox}
