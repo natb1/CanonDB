@@ -169,17 +169,6 @@ def tradition_isolated(graph: Graph) -> Yield:
             yield q.id, "tradition question is reachable from the root, so it is in the main tree"
 
 
-@check("reachable", "every non-tradition question is reachable from the root by term edges")
-def reachable(graph: Graph) -> Yield:
-    root = project.main_root(graph)
-    if root is None:
-        return
-    seen = project.reachable_from(graph, root)
-    for q in graph.questions:
-        if not q.tradition and q.id not in seen:
-            yield q.id, "no term-edge path from the root %r reaches it" % root
-
-
 @check("acyclic", "the term graph is acyclic")
 def acyclic(graph: Graph) -> Yield:
     out = project.out_edges(graph)

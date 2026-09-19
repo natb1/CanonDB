@@ -6,7 +6,7 @@ import os
 import tempfile
 import unittest
 
-from hypo import model, project
+from hypo import model, project, spec
 
 FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
 
@@ -131,6 +131,32 @@ class OrderTest(unittest.TestCase):
 
 
 class LoadTest(unittest.TestCase):
+    def test_a_tradition_may_carry_a_member(self):
+        """A tradition is the root of a lineage of its own, so questions may
+        hang beneath it. The projection always handled this — it walks from
+        every root — and only the retired `reachable` check said otherwise."""
+        def hang(data):
+            plato = [q for q in data["questions"] if q["id"] == "plato"][0]
+            plato["theses"][0]["terms"] = [{
+                "title": "What the questioned owes", "to": "member",
+                "anchors": ["The one questioned answers in his own voice"]}]
+            data["questions"].append({
+                "id": "member", "tab": "tab-06", "body": "body-06",
+                "question": "What does flattery do to an examination?",
+                "state": "held", "kind": "case", "priority": 0, "requires": [],
+                "theses": [{"title": "Flattery answers to please.",
+                            "assent": "read, not agreed",
+                            "text": "Flattery answers to please.",
+                            "terms": [], "definitions": [], "traditions": []}],
+                "hinge": {"question": "the reading presupposes the text bears on this",
+                          "thesis": "model: none · harness: a reading · canon: empty"}})
+
+        graph = rewrite("valid", hang)
+        self.assertEqual(spec.run(graph), [])
+        self.assertEqual(project.parents(graph)["member"], "plato")
+        self.assertEqual(project.distances(graph)["member"], 1)
+        self.assertEqual(project.load(graph, "plato"), 1)
+
     def test_load_counts_what_the_term_edges_reach(self):
         graph = load("valid")
         self.assertEqual(project.load(graph, "ti-esti"), 3)

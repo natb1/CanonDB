@@ -71,7 +71,8 @@ def roots(graph: Graph) -> List[str]:
 def distances(graph: Graph) -> Dict[str, float]:
     """Shortest distance over term edges from the nearest root. Roots are 0.
 
-    A question no root reaches is INF; ``reachable`` reports it.
+    A question no root reaches is INF, which one-root and acyclic
+    between them make impossible.
     """
     out = out_edges(graph)
     dist: Dict[str, float] = {q.id: INF for q in graph.questions}
@@ -171,7 +172,7 @@ def tree(graph: Graph) -> Dict[Optional[str], List[str]]:
     kids: Dict[Optional[str], List[str]] = {}
     for q in graph.questions:
         if dist.get(q.id, INF) == INF:
-            continue  # no root reaches it; `reachable` reports it
+            continue  # no root reaches it: only possible on a cycle
         kids.setdefault(par.get(q.id), []).append(q.id)
     for key in kids:
         kids[key].sort()

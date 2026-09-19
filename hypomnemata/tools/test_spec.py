@@ -51,9 +51,9 @@ class InvalidGraphTest(unittest.TestCase):
                 self.assertEqual(bool(spec.errors(findings)), c.severity == spec.ERROR)
 
     #: A fixture may fire a second check only where its mutation makes that
-    #: unavoidable. The question `invalid-one-root` adds is a root of its own,
-    #: so no term edge from the main root reaches it either.
-    COLLATERAL = {"one-root": {"reachable"}}
+    #: unavoidable. None does: the one pairing there was, `invalid-one-root`
+    #: also tripping `reachable`, went when `reachable` did.
+    COLLATERAL = {}
 
     def test_no_fixture_fires_a_check_it_does_not_name(self):
         """A fixture that drifts into firing a second check stops isolating
