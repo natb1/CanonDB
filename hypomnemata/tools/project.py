@@ -20,7 +20,7 @@ try:  # a tool piped into head should stop, not traceback
 except (ImportError, AttributeError, ValueError):  # pragma: no cover - not POSIX
     pass
 
-from hypo import model, project  # noqa: E402
+from hypo import model, project, spec  # noqa: E402
 
 
 def main(argv=None) -> int:
@@ -36,6 +36,18 @@ def main(argv=None) -> int:
         for problem in exc.problems:
             print("ERROR shape                 -              %s" % problem,
                   file=sys.stderr)
+        return 1
+
+    # parents() breaks a cycle deterministically so that every projection stays
+    # total on a broken graph, which the checks rely on. That makes it exactly
+    # the wrong thing to send: the tree would look well-formed and the cycle
+    # would survive unseen in the graph file. Refuse, as render.py refuses.
+    blocking = spec.errors(spec.run(graph, only=["acyclic"]))
+    if blocking:
+        print("refusing to project %s: the term graph has a cycle"
+              % os.path.basename(args.graph), file=sys.stderr)
+        for finding in blocking:
+            print(finding.line(), file=sys.stderr)
         return 1
 
     patch = project.tabs_patch(graph)

@@ -60,6 +60,12 @@ class CheckCliTest(unittest.TestCase):
 
 
 class ProjectCliTest(unittest.TestCase):
+    def test_a_cycle_refuses(self):
+        done = run("project.py", fixture("invalid-acyclic"))
+        self.assertEqual(done.returncode, 1)
+        self.assertEqual(done.stdout, "")
+        self.assertIn("cycle", done.stderr)
+
     def test_tree_and_patch(self):
         done = run("project.py", fixture("valid"))
         self.assertEqual(done.returncode, 0, done.stderr)

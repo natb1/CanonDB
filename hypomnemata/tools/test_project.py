@@ -131,11 +131,13 @@ class OrderTest(unittest.TestCase):
 
 
 class LoadTest(unittest.TestCase):
-    def test_load_is_the_subtree_minus_one(self):
+    def test_load_counts_what_the_term_edges_reach(self):
         graph = load("valid")
         self.assertEqual(project.load(graph, "ti-esti"), 3)
         self.assertEqual(project.load(graph, "canon"), 1)
-        self.assertEqual(project.load(graph, "party"), 0)
+        # party is a second parent of attenuation: the tab tree hangs
+        # attenuation under canon, but party still has it beneath
+        self.assertEqual(project.load(graph, "party"), 1)
         self.assertEqual(project.load(graph, "attenuation"), 0)
         self.assertEqual(project.load(graph, "plato"), 0)
 

@@ -201,23 +201,17 @@ def orders(graph: Graph) -> Dict[str, str]:
     return out
 
 
-def subtree(graph: Graph, qid: str) -> List[str]:
-    """``qid`` and every question under it in the projection, lexicographically."""
-    kids = tree(graph)
-    found = [qid]
-    queue = deque([qid])
-    while queue:
-        cur = queue.popleft()
-        for child in kids.get(cur, []):
-            if child not in found:
-                found.append(child)
-                queue.append(child)
-    return found
-
-
 def load(graph: Graph, qid: str) -> int:
-    """The number of questions in ``qid``'s subtree under the projection, minus one."""
-    return len(subtree(graph, qid)) - 1
+    """How many questions lie beneath ``qid``: those its term edges reach.
+
+    Counted over the term graph and not the tab tree, because the graph is a
+    DAG and the tree is only a projection of it: a question with two parents
+    hangs under one of them, so a tree walk credits its weight to that parent
+    alone and reports nothing beneath the other. Reachability credits both,
+    which is what "what lies beneath this question" means. It is also total on
+    a graph with a cycle, which a tree walk was only by accident.
+    """
+    return len(reachable_from(graph, qid)) - 1
 
 
 # -- the patch --------------------------------------------------------------
