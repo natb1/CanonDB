@@ -91,12 +91,6 @@ class DetailTest(unittest.TestCase):
         findings = spec.run(load("invalid-no-restatement"), only=["no-restatement"])
         self.assertEqual(findings[0].question, "canon")
 
-    def test_id_pattern_matches_whole_words_only(self):
-        pattern = spec._id_pattern("ti-esti")
-        self.assertTrue(pattern.search("the ti-esti is asked"))
-        self.assertTrue(pattern.search("TI-ESTI"))
-        self.assertFalse(pattern.search("proto-ti-estian"))
-
     def test_hinge_present_names_the_part_that_is_missing(self):
         graph = load("valid")
         graph.get("canon").hinge.thesis = ""
@@ -115,11 +109,6 @@ class DetailTest(unittest.TestCase):
                             only=["provenance-complete"])
         self.assertEqual(findings[0].question, "attenuation")
         self.assertIn("no canon", findings[0].message)
-
-    def test_a_provenance_key_is_not_an_id_in_prose(self):
-        # `canon: the opening entry` stamps a source; it names no question.
-        self.assertEqual(spec.run(load("valid"), only=["no-ids-in-prose"]), [])
-        self.assertIn("canon:", load("valid").get("canon").hinge.thesis)
 
     def test_definition_once_names_both_places(self):
         findings = spec.run(load("invalid-definition-once"), only=["definition-once"])

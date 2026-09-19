@@ -232,7 +232,7 @@ class RefusalTest(unittest.TestCase):
             render.render(graph, "plato")
 
     def test_a_warning_does_not_refuse(self):
-        graph = load("invalid-no-ids-in-prose")
+        graph = load("invalid-priority-recompute")
         self.assertTrue(spec.run(graph))
         self.assertIn("# canon", render.render(graph, "canon"))
 

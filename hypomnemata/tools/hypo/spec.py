@@ -82,22 +82,6 @@ def _shared_run(anchor: str, target: str, n: int = 8) -> Optional[str]:
     return None
 
 
-def _id_pattern(qid: str) -> "re.Pattern":
-    return re.compile(r"(?<![\w-])" + re.escape(qid) + r"(?![\w-])", re.IGNORECASE)
-
-
-def _without_provenance(text: str) -> str:
-    """A hinge thesis with its provenance keys struck out.
-
-    ``canon: the opening entry`` stamps where the answer was drawn from; it is a
-    labelled field and not prose, so ``no-ids-in-prose`` must not read the key
-    as the naming of a question that happens to share its word.
-    """
-    keys = "|".join(mark[:-1] for mark in PROVENANCE)
-    return re.sub(r"(?<![\w-])(?:%s)\s*:" % keys, " ", text or "",
-                  flags=re.IGNORECASE)
-
-
 def _clip(text: str, width: int = 60) -> str:
     one = re.sub(r"\s+", " ", (text or "").strip())
     return one if len(one) <= width else one[:width - 1] + "…"
@@ -324,29 +308,6 @@ def inbox_placement(graph: Graph) -> Yield:
                 yield q.id, ("inbox item %r belongs on %s, the most descendant "
                              "question that is an ancestor of every question "
                              "requiring it (%s)" % (item.title, home, ", ".join(asked)))
-
-
-@check("no-ids-in-prose",
-       "no question id appears as a whole word in prose", WARN)
-def no_ids_in_prose(graph: Graph) -> Yield:
-    patterns = [(q.id, _id_pattern(q.id)) for q in graph.questions if q.id]
-    for q in graph.questions:
-        places: List[Tuple[str, str]] = []
-        for thesis in q.theses:
-            places.append(("thesis %r text" % _clip(thesis.title, 30), thesis.text))
-            for term in thesis.terms:
-                places.append(("term title", term.title))
-            for definition in thesis.definitions:
-                places.append(("definition %r body" % definition.word, definition.body))
-        if q.hinge:
-            places.append(("hinge question", q.hinge.question))
-            places.append(("hinge thesis", _without_provenance(q.hinge.thesis)))
-        for item in q.inbox:
-            places.append(("inbox item %r what" % item.title, item.what))
-        for where, text in places:
-            for qid, pattern in patterns:
-                if pattern.search(text or ""):
-                    yield q.id, "%s names the question id %r as a whole word" % (where, qid)
 
 
 @check("priority-recompute",
