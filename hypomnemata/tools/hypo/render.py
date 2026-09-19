@@ -17,7 +17,7 @@ from __future__ import annotations
 import re
 from typing import Dict, List, Optional, Tuple
 
-from . import project, spec
+from . import project, spec, text
 from .model import Graph, Question, Term, Thesis
 
 SEPARATOR = "\n\n"
@@ -146,10 +146,19 @@ def _inbox_blocks(graph: Graph, q: Question) -> List[str]:
     return blocks
 
 
+def term_heading(term: Term) -> str:
+    """The part of a term's heading that is stable text a link can name.
+
+    The heading ends in a chip, which is a token before the write and a block
+    id after it, so only this prefix can be searched for on the page.
+    """
+    return "▸ %s" % term.title
+
+
 def _term_blocks(q: Question) -> List[str]:
     blocks: List[str] = []
     for term in q.terms():
-        blocks.append("### ▸ %s → %s" % (term.title, chip(term.to)))
+        blocks.append("### %s → %s" % (term_heading(term), chip(term.to)))
         for anchor in term.anchors:
             blocks.append("*%s*" % anchor)
         if term.deadlock:
@@ -257,10 +266,17 @@ def mention_blocks(graph: Graph, qid: str) -> Dict[str, Dict[str, str]]:
 def links(graph: Graph, qid: str) -> Dict[str, object]:
     """Every link the caller must apply after the write, and the chips' blocks.
 
-    Block ids are unknown until the write returns, so each target carries the
-    term title (or the definition's heading) as the placeholder key. The
-    incoming entries are the anchors this tab opens with: the terms that lead
-    here, made clickable back to the tab they were written on.
+    Block ids are unknown until the write returns, so a target names a tab and
+    a string that stands verbatim in that tab's body — a heading, glyph and
+    all — which the caller resolves to a block id once it has one. The incoming
+    entries are the anchors this tab opens with: the terms that lead here, made
+    clickable back to the term section on the tab they were written on.
+
+    ``anchor`` is the plain form: the page holds characters and applies
+    emphasis beside them, so a search for the marked-up spelling finds nothing.
+    ``occurrence`` numbers the entries that share an anchor, in the order they
+    are emitted, so the caller can tell one from another where the same words
+    stand in more than one place on a tab.
     """
     q = graph.get(qid)
     if q is None:
@@ -274,28 +290,35 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
                 "kind": "incoming",
                 "from": parent_id,
                 "term": term.title,
-                "anchor": anchor,
-                "target": "#%s.%s" % (parent_tab, term.title),
+                "anchor": text.plain(anchor),
+                "target": "#%s.%s" % (parent_tab, term_heading(term)),
             })
     for term in q.terms():
-        target_tab = by_id[term.to].tab if term.to in by_id else term.to
         for anchor in term.anchors:
             out.append({
                 "kind": "term",
                 "term": term.title,
-                "anchor": anchor,
+                "anchor": text.plain(anchor),
                 "to": term.to,
-                "target": "#%s.%s" % (target_tab, term.title),
+                # the term's own section, on this tab: the reader follows a
+                # clause down to the term that carries it, and the chip beside
+                # the anchor is what navigates to the question it raises
+                "target": "#%s.%s" % (q.tab, term_heading(term)),
             })
     for _, definition in q.definitions():
         heading = "≡ %s" % definition.word
         out.append({
             "kind": "definition",
             "word": definition.word,
-            "anchor": definition.word,
+            "anchor": text.plain(definition.word),
             "heading": heading,
             "target": "#%s.%s" % (q.tab, heading),
         })
+    seen: Dict[str, int] = {}
+    for entry in out:
+        anchor = entry["anchor"]
+        seen[anchor] = seen.get(anchor, 0) + 1
+        entry["occurrence"] = seen[anchor]
     return {"question": q.id, "tab": q.tab,
             "blocks": mention_blocks(graph, qid), "links": out}
 

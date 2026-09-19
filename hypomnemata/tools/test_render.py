@@ -167,12 +167,14 @@ class LinksTest(unittest.TestCase):
         self.assertEqual(self.sidecar["question"], "ti-esti")
         self.assertEqual(self.sidecar["tab"], "tab-01")
 
-    def test_one_entry_per_anchor_with_the_term_title_as_placeholder(self):
+    def test_one_entry_per_anchor_pointing_at_its_own_term_section(self):
         terms = [l for l in self.sidecar["links"] if l["kind"] == "term"]
         self.assertEqual(len(terms), 2)
         first = terms[0]
         self.assertEqual(first["to"], "canon")
-        self.assertEqual(first["target"], "#tab-02.The record between them")
+        # tab-01, not canon's tab-02: the term section is written on the tab
+        # whose clause raised the question, and the chip does the navigating
+        self.assertEqual(first["target"], "#tab-01.▸ The record between them")
         self.assertIn(first["anchor"],
                       load("valid").get("ti-esti").theses[0].text)
 
@@ -201,7 +203,7 @@ class LinksTest(unittest.TestCase):
                     if l["kind"] == "incoming"]
         self.assertEqual([l["from"] for l in incoming], ["canon", "party"])
         self.assertEqual(incoming[0]["term"], "Grading of authority")
-        self.assertEqual(incoming[0]["target"], "#tab-02.Grading of authority")
+        self.assertEqual(incoming[0]["target"], "#tab-02.▸ Grading of authority")
         self.assertEqual(incoming[0]["anchor"],
                          "Authority to act on an unassented entry is graded down, "
                          "never removed.")
@@ -212,6 +214,39 @@ class LinksTest(unittest.TestCase):
 
     def test_links_all_covers_every_question(self):
         self.assertEqual(len(render.links_all(load("valid"))), 5)
+
+    def test_every_heading_target_stands_in_the_tab_it_names(self):
+        """A target the caller cannot find is a link that never lands. This
+        caught a term entry naming its heading on the child's tab, where no
+        such heading is written — the term section is on the tab the clause
+        was written on."""
+        graph = load("valid")
+        bodies = {q.tab: render.body(graph, q.id) for q in graph.questions}
+        checked = 0
+        for sidecar in render.links_all(graph):
+            for link in sidecar["links"]:
+                tab, _, heading = link["target"].lstrip("#").partition(".")
+                if not heading:
+                    continue
+                with self.subTest(target=link["target"]):
+                    self.assertIn(tab, bodies)
+                    self.assertIn(heading, bodies[tab])
+                    checked += 1
+        self.assertTrue(checked)
+
+    def test_an_anchor_is_handed_over_in_its_plain_form(self):
+        """The page holds characters and applies emphasis beside them, so a
+        search for the marked-up spelling would find nothing."""
+        graph = load("valid")
+        thesis = graph.get("canon").theses[0]
+        term = thesis.terms[0]
+        marked = "**%s**" % term.anchors[0]
+        thesis.text = thesis.text.replace(term.anchors[0], marked)
+        term.anchors[0] = marked
+        entry = [l for l in render.links(graph, "canon")["links"]
+                 if l["kind"] == "term"][0]
+        self.assertNotIn("**", entry["anchor"])
+        self.assertEqual(entry["occurrence"], 1)
 
 
 class RefusalTest(unittest.TestCase):
