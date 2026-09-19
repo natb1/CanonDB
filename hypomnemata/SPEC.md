@@ -1,87 +1,101 @@
 # Hypomnemata — specification
 
 The hypomnemata is the principal's notebook for CanonDB v1: his priors, in his voice, never canon.
-Canon is the AI's verbatim answers merged by the principal; this holds what the principal thinks before,
-beside and after the elenchus. Nothing here enters an elenchus turn's context (the contamination rule):
-a turn sees main, its line and its question; steering is by selection, case and the prior question,
-never by showing the AI a thesis.
+Two encodings share one graph model. This file is a derived artifact of the notebook itself
+(the `docs-encoding` tab and its seven section tabs); where they disagree, the notebook wins.
 
-Two encodings share one graph model: the graph (below), and the Claude Docs artifact
-(https://claude.ai/code/artifact/47d8730e-0bb8-4995-b3fb-8310665c1528), whose layout is the docs encoding.
-The same model is meant to encode canon; the docs encoding is the hypomnemata's own.
+## Source of truth — read before you write
+
+**The document database is the source of truth.**
+<https://claude.ai/code/artifact/47d8730e-0bb8-4995-b3fb-8310665c1528>
+
+- The principal edits it directly and **asynchronously**, outside any AI session.
+- An AI **reads the database before it writes**, and grounds every author-requested update in what it
+  finds there — never in a local copy, never in what it remembers writing last session.
+- An AI **never reverts or overwrites a prior it did not write**. A block it has not read is a block it
+  does not touch; on a hash or find mismatch the human's words win and the AI says what it kept.
+- An AI **writes only in the encoding specified below**. The encoding constrains what the AI may write;
+  it does not constrain the human, and it is not the interface he uses.
+- **Every file under `hypomnemata/` is a cache**, including `nodes/` and anything a tool renders.
+  No file is ever authoritative over the database.
 
 ## Graph model
 
-Two node types, two edge types, plus two edge types with non-question targets.
-
 | element | from → to | meaning |
 |---|---|---|
-| **question** node | — | the unit of address; one tab. A question with no incoming term edge is a hinge: asked by fiat. |
-| **thesis** node | — | an articulated answer. In canon, the AI's verbatim answer; in the hypomnemata, the principal's prior. |
-| **answer** edge | question → thesis | this thesis answers this question. Canon: exactly one *assented* answer per question, plus at most one **deadlock** answer (the principal's thesis, typed as such, attenuated). Hypomnemata: any number. **Assent lives here**: the merge admits the thesis. |
-| **term** edge | thesis → question | a clause of the thesis (its *anchor* text) raises this question. Several anchors may share one term edge (one question). A clause with no descendant question is a null edge: no section, no metadata; it stays as text. **Deadlock may live here**: the principal dissents from one clause without withholding the merge; the dissent is recorded on the term, with the principal's counter-clause. |
-| **support / divergence** edge | thesis → thesis (a tradition's thesis) | how a tradition bears on this thesis. Traditions are question/thesis nodes with their own roots. |
-| **application** edge | thesis → artifact | a real-world projection derived from the thesis (a file, a tool, a page). Ahead of its landed source it is a postulate. |
+| **question** node | — | the unit of address; one tab. No incoming term edge ⇒ a hinge, asked by fiat. |
+| **thesis** node | — | an articulated answer. Canon: the AI's verbatim words. Notebook: the principal's. |
+| **answer** edge | question → thesis | **assent lives here** — the merge admits one thesis as the answer. Canon: exactly one assented answer, plus at most one deadlocked answer. Notebook: any number. |
+| **term** edge | thesis clause → question | **deadlock lives here** — dissent from one clause without withholding the merge. Several clauses (anchors) of one thesis may share one term: one follow-up is one term. A clause raising no question is a null edge and stays as text. |
+| **support / divergence** | thesis → tradition thesis | how a tradition bears. Traditions are roots of their own. |
+| **application** | thesis → artifact | the only edge leaving the graph. Ahead of its landed source it is a **postulate**, owing a discharge (diff derived against postulated, never assume). |
 
-Question metadata: `state` (held · in line · landed · revised · deadlocked), `kind` (definitional · case · consistency),
-`priority`, `load`, `requires` (inbox items that must be done before the question can be asked), `lineage`.
-Thesis metadata: `assent` (verbatim · merged · none · deadlock), `provenance` (model, harness, canon commit).
-Postulates are theses with load: something already rests on them ahead of the elenchus reaching them.
-Drafts are theses with no assent on questions not yet asked. Definitions are term edges with a null target and a body.
+Question metadata: state (held · in line · landed · revised · deadlocked), kind (definitional · case ·
+consistency), priority, load, requires (inbox items). Thesis metadata: assent, provenance (model, harness,
+canon commit). Pressure originates at leaves; priority sums a question's pressure with every question blocked
+behind it; load sums its follow-ups with its children. An inbox item (promulgate · provide · dispose · build)
+lives on the most descendant tab that is an ancestor of every question it blocks, and instances a clause of
+canon's of-the-human list.
 
-Pressure originates at leaves: blocked application, postulate load (what unravels if the thesis is false),
-target distance, breadth. **priority(q)** = own pressure + priority of every question blocked behind q.
-**load(q)** = pressure of q's follow-ups + load of its children. Step size gates the question; cost sets batch size.
-An inbox item (a human action of kind promulgate · provide · dispose · build) lives on the most descendant tab
-that is an ancestor of every question it blocks. Every inbox item instances a term the AI landed in canon
-(the of-the-human clauses of ti-esti).
+The model is not a file format. Which end of an edge records it is each encoding's business.
 
-## Docs encoding (one tab per question, sub-tabs by term edges; tradition roots at top level)
+## Canon encoding (the v1 repo, branch `main`)
+
+- **Term edges are recorded on the child node.** A question node lists the one or more terms that lead to it.
+  The thesis node carries no terms: drawing a term is the principal's act, never the answering turn's.
+- `/canon:answer <question node id>` — the entry point that answers a question. It (1) runs a script that
+  materialises `CLAUDE.local.md` with the question node and its **entire lineage up to the root**, and
+  (2) leaves the turn to write the thesis node and nothing else.
+- The commit is the AI's; the merge is the principal's, and the merge is his assent.
+
+## Context and loading (the clean-context rule)
+
+An answer is evidence of the AI's own prior only so far as nothing in its context put the answer there.
+
+- **Nothing loads globally.** No canon, no notebook, and no artifact projected from canon is loaded by
+  `CLAUDE.md` or by a rules file.
+- Canon and notebook context are scoped to `.claude/skills` and `.claude/agents` (not yet defined).
+- The principal grants context by the entry point he invokes: **`/principal:*` grants notebook + canon**
+  (selecting, asking, disposing); **`/canon:*` grants canon alone** (answering).
+- `CLAUDE.local.md` is a worktree cache of what an entry point materialised. Never a source.
+- A **mechanical guard** — a check refusing a turn whose context carries the notebook — is an eventuality,
+  recorded so it is not forgotten. Not a blocker; until it exists the rule holds by discipline.
+
+## Docs encoding — tab layout
+
+One tab per question and every thesis answering it. Tabs nest by term edge; a question with several parents
+is placed under one and lists the rest. Traditions are top-level roots. Section order is fixed; empty
+sections are omitted.
 
 ```
-# <short name>                                   title
-*<the question, as it is put to the answerer>*    subtitle
-⌂ <mention parent> › <mention …> › <this>         lineage breadcrumb (root: "⌂ root · a hinge")
-question: <state chip> · <kind> · priority N · load N · requires: <mention/link inbox items>
+# <short name>                                    title = the question's short name = the tab name
+<term text, verbatim, linked to its term section in the parent's thesis tab>   one line per term edge in
+*<the question>*                                  subtitle: ONLY the question, never a restatement of the
+                                                  term (an implied gloss leaks the prior and burdens the
+                                                  answering agent with parsing for it)
+⌂ <mention> › <mention> › <this>                  lineage breadcrumb (root: "⌂ root")
+question: <state> · <kind> · priority N · load N · requires: <linked inbox items>
 
-## Thesis
-### ◆ <title summary of the thesis>
-assent: … · provenance: <link to ⚓ subsection>
-<verbatim thesis; each term's anchor text is an in-page link to its ▸ section, immediately followed by a
- mention block to the question it descends to; glossary words are in-page links to their ≡ subsection>
-Traditions: <mention> support|divergence — one line each      (edges of this thesis; never under Hinge)
-
-## Glossary
-### ≡ <word>            one per definition; may end with a tradition reference
-
-## Inbox
-| question | term | kind | priority | requires |                      (the frontier; questions, by priority)
-### <title summary of the inbox item>                                   one per item living on this tab
-kind · what · obligation (which of-the-human clause) · done?
-
-## Terms
-### ▸ <title summary> → <mention descendant question>
-*<anchor text, verbatim>*  (one subtitle line per anchor that shares this term)
-<deadlock, if any: the principal's counter-clause, attenuated>
-
-## Applications
-### ⚙ <artifact>   what · derived from which thesis · path/link · postulate or derived
-
-## Hinge
-### ⚓ question: what the asking presupposes
-### ⚓ thesis: what the answer was drawn from     model · harness · canon commit (link)
+## Thesis      ### ◆ <title summary>   metadata line first (assent · deadlock · provenance link), then the
+               verbatim text with each clause anchored to its term section and a mention chip to the
+               question it raises, then the tradition edges of THIS thesis, one line.
+## Glossary    ### ≡ <word>            a term edge with no descendant and a body; may cite a tradition.
+## Inbox       frontier table: question | term | kind | priority | requires   (no ready column: requires
+               already shows it), then ### <title summary> per inbox item living on this tab.
+## Terms       ### ▸ <title summary> → <mention>   anchors verbatim in italics, one line each; deadlock here.
+               Flat: terms never nest, they recurse by following their question.
+## Applications ### ⚙ <artifact>       what · source thesis · path · derived or postulate.
+## Hinge       ### ⚓ question: presuppositions and leaks (the principal's reading, notebook only)
+               ### ⚓ thesis: model · harness · canon commit link (factual; canon keeps this)
 ```
 
-Rendering rules: no inline documentation on tabs (it belongs on the hypomnemata tab); no ids in prose
-(a question is named by its tab, an inbox item by its title); metadata of the answer is listed once, on the
-thesis section; metadata of the question once, on the question line; a null-edge clause gets no section.
-In-page links are applied after the write with the substrate's format op (`add: [{type: link, href: "#<block id>"}]`),
-so link-bearing writes stay small.
+Rules across every section: **no identifiers in prose** (a question is named by its tab, an item by its
+title); **no inline documentation** of the encoding on a tab that is not about the encoding; **one home per
+datum**, linked from wherever else it bears. In-page links are applied after the write with the `format` op
+(`add: [{type: "link", href: …}]`); a cross-tab link is
+`https://claude.ai/artifact/<viewer id>#<tab file id>.<block id>`.
 
-## Source of truth and tools (on branch `hypomnemata`, never merged)
+## Cache layout (not authoritative)
 
-`hypomnemata/nodes/<id>.yml` — to be re-cut to this model: `questions/<id>.yml` (q, ask, kind, state, lineage,
-requires, pressure) and `theses/<id>.yml` (answers, assent, provenance, text, terms[{anchors[], to, deadlock?}],
-traditions[{to, relation, note}], definitions[], applications[]). `tools/check.py`, `tools/pressure.py`,
-`tools/render.py` follow the model above; the current implementations target the superseded flat schema
-and are kept until re-implemented. The main thread transcribes `render.py` output to the doc; scripts never write the doc.
+`hypomnemata/nodes/*.yml` and `hypomnemata/tools/{check,pressure,render}.py` target the superseded flat
+schema and are to be re-cut to the model above. Until then they are stale caches; the database is the record.
