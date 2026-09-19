@@ -50,6 +50,21 @@ class InvalidGraphTest(unittest.TestCase):
                 findings = spec.run(load("invalid-%s" % c.id), only=[c.id])
                 self.assertEqual(bool(spec.errors(findings)), c.severity == spec.ERROR)
 
+    #: A fixture may fire a second check only where its mutation makes that
+    #: unavoidable. The question `invalid-one-root` adds is a root of its own,
+    #: so no term edge from the main root reaches it either.
+    COLLATERAL = {"one-root": {"reachable"}}
+
+    def test_no_fixture_fires_a_check_it_does_not_name(self):
+        """A fixture that drifts into firing a second check stops isolating
+        the rule it was written for, and the next mechanical edit across all
+        of them would not be reviewable."""
+        for c in spec.CHECKS:
+            with self.subTest(check=c.id):
+                fired = {f.check for f in spec.run(load("invalid-%s" % c.id))}
+                self.assertEqual(fired - {c.id} - self.COLLATERAL.get(c.id, set()),
+                                 set())
+
 
 class DetailTest(unittest.TestCase):
     def test_only_narrows_the_run(self):

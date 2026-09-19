@@ -353,8 +353,16 @@ class Graph:
 
 
 def load(path: str) -> Graph:
-    """Load a graph file. Raises ShapeError with every shape problem found."""
-    with open(path, "r", encoding="utf-8") as fh:
+    """Load a graph file. Raises ShapeError with every shape problem found.
+
+    A file that cannot be opened is a shape problem like any other, so that
+    every tool reports it the way it reports the rest rather than by traceback.
+    """
+    try:
+        handle = open(path, "r", encoding="utf-8")
+    except OSError as exc:
+        raise ShapeError(["%s: cannot be read (%s)" % (path, exc.strerror or exc)])
+    with handle as fh:
         try:
             data = json.load(fh)
         except ValueError as exc:

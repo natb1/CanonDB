@@ -6,6 +6,8 @@ import subprocess
 import sys
 import unittest
 
+from hypo import spec
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURES = os.path.join(HERE, "fixtures")
 
@@ -47,12 +49,14 @@ class CheckCliTest(unittest.TestCase):
     def test_list_needs_no_graph(self):
         done = run("check.py", "--list")
         self.assertEqual(done.returncode, 0)
-        self.assertEqual(len(done.stdout.strip().splitlines()), 21)
+        self.assertEqual(len(done.stdout.strip().splitlines()), len(spec.CHECKS))
 
     def test_a_missing_file_is_reported_not_raised(self):
         done = run("check.py", fixture("absent"))
         self.assertNotEqual(done.returncode, 0)
-        self.assertNotIn("Traceback", done.stdout)
+        # the traceback goes to stderr, so asserting on stdout alone proves nothing
+        self.assertNotIn("Traceback", done.stdout + done.stderr)
+        self.assertIn("absent.json", done.stdout + done.stderr)
 
 
 class ProjectCliTest(unittest.TestCase):
