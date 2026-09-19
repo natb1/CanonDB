@@ -26,6 +26,11 @@ its own outside the main tree; an **application** edge to an artifact outside th
 **definition** fixes a word of a thesis in place and opens no question. An **inbox item**
 is a human action a question requires before it can be asked.
 
+The optional top-level **`"mode"`** says what the file is: `"notebook"`, the default when
+the field is absent, or `"canon"`. A notebook holds as many theses as the principal is
+entertaining; a canon answers each question once, so `answer-cardinality` runs there and
+only there.
+
 ## The commands
 
 ```
@@ -34,7 +39,7 @@ python3 hypomnemata/tools/project.py <graph.json> [--json]
 python3 hypomnemata/tools/render.py  <graph.json> <question id> [--all] [--links]
 ```
 
-- **check.py** runs the sixteen checks and prints one line per finding and a summary;
+- **check.py** runs the twenty-one checks and prints one line per finding and a summary;
   it exits 1 on any ERROR. `--list` prints the checks and their severities.
 - **project.py** prints the tab tree and the complete tab-placement patch, ready to send
   as the `tabs` patch of a document update. Parent is the source of an incoming term edge
@@ -42,10 +47,16 @@ python3 hypomnemata/tools/render.py  <graph.json> <question id> [--all] [--links
   roots are top level and take `b0`, `b1`, ….
 - **render.py** prints the canonical markdown body for a tab, `--all` for every tab
   separated by a `=== <question id> ===` line. It refuses (exit 1) if the checker finds any
-  ERROR affecting that question. `--links` also prints, after a `=== links ===` line, the
-  JSON sidecar of every link the caller must apply once the write has returned real block
-  ids: for each anchor the term's target, keyed by the term title, and for each definition
-  its `≡` heading. That sidecar is the list the caller turns into `format` operations.
+  ERROR affecting that question. Every reference to another question is written as a
+  **mention chip**, the token `<?claude block m_<id>?>`, so no identifier is left in prose:
+  after each anchor in the thesis text, in the lineage breadcrumb, in the inbox table, in
+  the term headings and in the tradition line. `--links` also prints, after a
+  `=== links ===` line, the JSON sidecar the caller applies once the write has returned
+  real block ids: `blocks`, the map each chip is written against, `{"m_<id>": {"type":
+  "mention", "ref": "file/<tab id>"}}`, which must be sent with the markdown; and `links`,
+  for each anchor the term's target keyed by the term title, for each incoming anchor the
+  tab it was written on, and for each definition its `≡` heading. The `links` list is what
+  the caller turns into `format` operations.
 
 Each script resolves its package beside itself, so it runs from any directory; the graph
 file is always an argument. All three print findings and aggregates only, never file

@@ -80,7 +80,7 @@
       ],
       "hinge": {
         "question": "the addressee is a side of whom something can be required, which the asking already presumes",
-        "thesis": "model: an unnamed assistant · harness: a repository holding one file · record: empty"
+        "thesis": "model: an unnamed assistant · harness: a repository holding one file · canon: empty"
       }
     },
     {
@@ -121,7 +121,10 @@
       ],
       "inbox": [],
       "applications": [],
-      "hinge": null
+      "hinge": {
+        "question": "that a mark of assent can be made at all, which the asking already presumes",
+        "thesis": "model: an unnamed assistant · harness: the same repository · canon: the opening entry"
+      }
     },
     {
       "id": "party",
@@ -155,7 +158,10 @@
       ],
       "inbox": [],
       "applications": [],
-      "hinge": null
+      "hinge": {
+        "question": "that there are two sides and not one, which the asking already presumes",
+        "thesis": "model: an unnamed assistant · harness: the same repository · canon: the opening entry"
+      }
     },
     {
       "id": "attenuation",
@@ -197,7 +203,7 @@
       ],
       "hinge": {
         "question": "that authority admits of degree, which the asking already presumes",
-        "thesis": "model: an unnamed assistant · harness: the same repository · record: the opening entry"
+        "thesis": "model: an unnamed assistant · harness: the same repository · canon: the opening entry"
       }
     },
     {

@@ -82,6 +82,50 @@ class DetailTest(unittest.TestCase):
         self.assertTrue(pattern.search("TI-ESTI"))
         self.assertFalse(pattern.search("proto-ti-estian"))
 
+    def test_hinge_present_names_the_part_that_is_missing(self):
+        graph = load("valid")
+        graph.get("canon").hinge.thesis = ""
+        findings = spec.run(graph, only=["hinge-present"])
+        self.assertEqual(findings[0].question, "canon")
+        self.assertIn("no thesis part", findings[0].message)
+
+    def test_a_tradition_needs_no_hinge(self):
+        graph = load("invalid-hinge-present")
+        self.assertTrue(graph.get("plato").tradition)
+        findings = spec.run(graph, only=["hinge-present"])
+        self.assertEqual([f.question for f in findings], ["canon"])
+
+    def test_provenance_complete_names_what_is_missing(self):
+        findings = spec.run(load("invalid-provenance-complete"),
+                            only=["provenance-complete"])
+        self.assertEqual(findings[0].question, "attenuation")
+        self.assertIn("no canon", findings[0].message)
+
+    def test_a_provenance_key_is_not_an_id_in_prose(self):
+        # `canon: the opening entry` stamps a source; it names no question.
+        self.assertEqual(spec.run(load("valid"), only=["no-ids-in-prose"]), [])
+        self.assertIn("canon:", load("valid").get("canon").hinge.thesis)
+
+    def test_definition_once_names_both_places(self):
+        findings = spec.run(load("invalid-definition-once"), only=["definition-once"])
+        self.assertEqual(findings[0].question, "canon")
+        self.assertIn("'grade'", findings[0].message)
+        self.assertIn("attenuation", findings[0].message)
+
+    def test_answer_cardinality_runs_in_canon_mode_only(self):
+        self.assertEqual(spec.run(load("valid"), only=["answer-cardinality"]), [])
+        graph = load("invalid-answer-cardinality")
+        self.assertTrue(spec.run(graph, only=["answer-cardinality"]))
+        graph.mode = model.NOTEBOOK
+        self.assertEqual(spec.run(graph, only=["answer-cardinality"]), [])
+
+    def test_an_unknown_mode_is_a_vocabulary_finding(self):
+        graph = load("valid")
+        graph.mode = "ledger"
+        findings = spec.run(graph, only=["vocabulary"])
+        self.assertIsNone(findings[0].question)
+        self.assertIn("ledger", findings[0].message)
+
     def test_findings_render_as_one_line_and_as_json(self):
         finding = spec.run(load("invalid-vocabulary"), only=["vocabulary"])[0]
         self.assertEqual(len(finding.line().splitlines()), 1)

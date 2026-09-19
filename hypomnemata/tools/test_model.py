@@ -37,7 +37,16 @@ class LoadTest(unittest.TestCase):
         self.assertIsInstance(root.hinge, model.Hinge)
 
     def test_absent_hinge_is_none(self):
-        self.assertIsNone(self.graph.get("canon").hinge)
+        without = model.load(fixture("invalid-hinge-present"))
+        self.assertIsNone(without.get("canon").hinge)
+        self.assertIsInstance(self.graph.get("canon").hinge, model.Hinge)
+
+    def test_the_mode_defaults_to_notebook(self):
+        self.assertEqual(self.graph.mode, model.NOTEBOOK)
+
+    def test_a_canon_names_its_mode(self):
+        self.assertEqual(model.load(fixture("invalid-answer-cardinality")).mode,
+                         model.CANON)
 
     def test_edges(self):
         self.assertEqual(len(self.graph.term_edges()), 4)

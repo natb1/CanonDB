@@ -47,7 +47,7 @@ class CheckCliTest(unittest.TestCase):
     def test_list_needs_no_graph(self):
         done = run("check.py", "--list")
         self.assertEqual(done.returncode, 0)
-        self.assertEqual(len(done.stdout.strip().splitlines()), 16)
+        self.assertEqual(len(done.stdout.strip().splitlines()), 21)
 
     def test_a_missing_file_is_reported_not_raised(self):
         done = run("check.py", fixture("absent"))

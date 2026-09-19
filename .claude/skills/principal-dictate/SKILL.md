@@ -94,3 +94,15 @@ a procedure rather than a script.
   so it holds by discipline: never invoke a canon entry point from a session that has run this one.
 - **Async edits are preserved.** The read-before-write discipline is not enforceable by a script
   that cannot see the artifact.
+- **The export is faithful.** Every tool works on a graph file you exported by reading the artifact.
+  Nothing compares that file with what is actually there, so a question you mistyped or a thesis you
+  paraphrased passes every check and is then written back over the real one. Export by reading, never
+  from memory, and re-export after writing rather than trusting what you sent.
+- **What was rendered is what was written.** Nothing compares the renderer's output with what reached
+  the artifact. Send it as it came; do not adjust it on the way.
+- **Stored priority is trusted.** `priority-recompute` only checks that the number is a non-negative
+  integer, because the graph carries no question-to-question blocking edge yet — the half of the
+  requires graph that runs from a question to a human action is recorded, the half that runs from
+  question to question is not. Until that edge exists the ordering is the principal's judgement and
+  the number is a note of it. The gap is an inbox item on the `priority` tab, not a licence to invent
+  numbers.

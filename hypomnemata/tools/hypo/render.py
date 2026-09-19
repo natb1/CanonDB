@@ -4,16 +4,36 @@ A layout violation is impossible if the tool is used, so the layout lives here
 and nowhere else. The renderer refuses to print a question the checker reports an
 ERROR against, and emits, alongside the markdown, the links sidecar the caller
 turns into ``format`` operations once the write has returned real block ids.
+
+One tab points at another with a **mention chip**: the token ``<?claude block
+KEY?>`` in the markdown, and an entry under the sidecar's ``blocks`` map naming
+the tab it refers to. Every place the specification calls for a reference to a
+question is written as a chip and never as a bare id, so the rule that no
+identifier appears in prose is kept by construction.
 """
 
 from __future__ import annotations
 
+import re
 from typing import Dict, List, Optional, Tuple
 
 from . import project, spec
 from .model import Graph, Question, Term, Thesis
 
 SEPARATOR = "\n\n"
+
+
+# -- mention chips ----------------------------------------------------------
+
+def chip_key(qid: str) -> str:
+    """The ``blocks`` key for a chip pointing at ``qid``: ``m_<id>`` with every
+    non-alphanumeric character replaced by an underscore."""
+    return "m_" + re.sub(r"[^0-9A-Za-z]", "_", qid)
+
+
+def chip(qid: str) -> str:
+    """The markdown token for a mention chip pointing at ``qid``."""
+    return "<?claude block %s?>" % chip_key(qid)
 
 
 class RefusedError(Exception):
@@ -45,9 +65,37 @@ def _tradition_line(thesis: Thesis) -> Optional[str]:
     parts = []
     for trad in thesis.traditions:
         note = trad.note.strip()
-        parts.append("%s %s — %s." % (trad.to, trad.relation, note) if note
-                     else "%s %s." % (trad.to, trad.relation))
+        parts.append("%s %s — %s." % (chip(trad.to), trad.relation, note) if note
+                     else "%s %s." % (chip(trad.to), trad.relation))
     return "Traditions: " + " ".join(parts)
+
+
+def _anchored_text(thesis: Thesis) -> str:
+    """The thesis text with a chip after every occurrence of every anchor.
+
+    One pass over the original text, occurrences taken left to right, so an
+    inserted token is never itself scanned for an anchor that overlaps it.
+    """
+    cuts: List[Tuple[int, int, str]] = []
+    for order, term in enumerate(thesis.terms):
+        token = " " + chip(term.to)
+        for anchor in term.anchors:
+            if not anchor:
+                continue
+            at = thesis.text.find(anchor)
+            while at != -1:
+                cuts.append((at + len(anchor), order, token))
+                at = thesis.text.find(anchor, at + 1)
+    if not cuts:
+        return thesis.text
+    out: List[str] = []
+    last = 0
+    for at, _, token in sorted(cuts, key=lambda cut: (cut[0], cut[1])):
+        out.append(thesis.text[last:at])
+        out.append(token)
+        last = at
+    out.append(thesis.text[last:])
+    return "".join(out)
 
 
 def _thesis_blocks(thesis: Thesis) -> List[str]:
@@ -57,7 +105,7 @@ def _thesis_blocks(thesis: Thesis) -> List[str]:
         line += " · deadlock: %s" % thesis.deadlock
     line += " · provenance: thesis hinge"
     blocks.append(line)
-    blocks.append(thesis.text)
+    blocks.append(_anchored_text(thesis))
     traditions = _tradition_line(thesis)
     if traditions:
         blocks.append(traditions)
@@ -81,7 +129,7 @@ def _inbox_blocks(graph: Graph, q: Question) -> List[str]:
     for term in q.terms():
         child = by_id.get(term.to)
         rows.append("| %s | %s | %s | %s | %s |" % (
-            term.to, term.title,
+            chip(term.to), term.title,
             child.kind if child else "?",
             child.priority if child else "?",
             _requires(child)))
@@ -101,7 +149,7 @@ def _inbox_blocks(graph: Graph, q: Question) -> List[str]:
 def _term_blocks(q: Question) -> List[str]:
     blocks: List[str] = []
     for term in q.terms():
-        blocks.append("### ▸ %s → %s" % (term.title, term.to))
+        blocks.append("### ▸ %s → %s" % (term.title, chip(term.to)))
         for anchor in term.anchors:
             blocks.append("*%s*" % anchor)
         if term.deadlock:
@@ -150,7 +198,9 @@ def body(graph: Graph, qid: str) -> str:
     if top_level:
         blocks.append("⌂ root")
     else:
-        blocks.append("⌂ " + " › ".join(project.lineage(graph, qid)))
+        line = project.lineage(graph, qid)
+        blocks.append("⌂ " + " › ".join(
+            [chip(ancestor) for ancestor in line[:-1]] + line[-1:]))
 
     blocks.append("question: %s · %s · priority %d · load %d · requires: %s" % (
         q.state, q.kind, q.priority, project.load(graph, qid), _requires(q)))
@@ -171,17 +221,62 @@ def body(graph: Graph, qid: str) -> str:
     return SEPARATOR.join(b.strip("\n") for b in blocks) + "\n"
 
 
+def mention_targets(graph: Graph, qid: str) -> List[str]:
+    """The questions this tab points at with a chip, in order of first use."""
+    q = graph.get(qid)
+    if q is None:
+        raise KeyError("no question %r" % qid)
+    targets: List[str] = []
+
+    def add(target: str) -> None:
+        if target and target not in targets:
+            targets.append(target)
+
+    if project.parents(graph).get(qid) is not None:
+        for ancestor in project.lineage(graph, qid)[:-1]:
+            add(ancestor)
+    for thesis in q.theses:
+        for term in thesis.terms:
+            add(term.to)
+        for trad in thesis.traditions:
+            add(trad.to)
+    return targets
+
+
+def mention_blocks(graph: Graph, qid: str) -> Dict[str, Dict[str, str]]:
+    """The ``blocks`` map the markdown's chips are written against.
+
+    A target no question in the graph answers to carries no tab to refer to, so
+    it is omitted here; ``term-target`` reports it.
+    """
+    by_id = graph.by_id()
+    return {chip_key(target): {"type": "mention", "ref": "file/%s" % by_id[target].tab}
+            for target in mention_targets(graph, qid) if target in by_id}
+
+
 def links(graph: Graph, qid: str) -> Dict[str, object]:
-    """Every link the caller must apply after the write.
+    """Every link the caller must apply after the write, and the chips' blocks.
 
     Block ids are unknown until the write returns, so each target carries the
-    term title (or the definition's heading) as the placeholder key.
+    term title (or the definition's heading) as the placeholder key. The
+    incoming entries are the anchors this tab opens with: the terms that lead
+    here, made clickable back to the tab they were written on.
     """
     q = graph.get(qid)
     if q is None:
         raise KeyError("no question %r" % qid)
     by_id = graph.by_id()
     out: List[Dict[str, str]] = []
+    for parent_id, term in _incoming_terms(graph, qid):
+        parent_tab = by_id[parent_id].tab if parent_id in by_id else parent_id
+        for anchor in term.anchors:
+            out.append({
+                "kind": "incoming",
+                "from": parent_id,
+                "term": term.title,
+                "anchor": anchor,
+                "target": "#%s.%s" % (parent_tab, term.title),
+            })
     for term in q.terms():
         target_tab = by_id[term.to].tab if term.to in by_id else term.to
         for anchor in term.anchors:
@@ -201,7 +296,8 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
             "heading": heading,
             "target": "#%s.%s" % (q.tab, heading),
         })
-    return {"question": q.id, "tab": q.tab, "links": out}
+    return {"question": q.id, "tab": q.tab,
+            "blocks": mention_blocks(graph, qid), "links": out}
 
 
 # -- the refusal ------------------------------------------------------------

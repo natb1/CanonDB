@@ -13,10 +13,14 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple
 
 from . import project
-from .model import (Graph, KINDS, RELATIONS, STANDINGS, STATES)
+from .model import (CANON, Graph, INBOX_KINDS, KINDS, MODES, RELATIONS,
+                    STANDINGS, STATES)
 
 ERROR = "ERROR"
 WARN = "WARN"
+
+#: The three sources a hinge's thesis part must name, as they are written.
+PROVENANCE = ("model:", "harness:", "canon:")
 
 Yield = Iterator[Tuple[Optional[str], str]]
 
@@ -80,6 +84,18 @@ def _shared_run(anchor: str, target: str, n: int = 8) -> Optional[str]:
 
 def _id_pattern(qid: str) -> "re.Pattern":
     return re.compile(r"(?<![\w-])" + re.escape(qid) + r"(?![\w-])", re.IGNORECASE)
+
+
+def _without_provenance(text: str) -> str:
+    """A hinge thesis with its provenance keys struck out.
+
+    ``canon: the opening entry`` stamps where the answer was drawn from; it is a
+    labelled field and not prose, so ``no-ids-in-prose`` must not read the key
+    as the naming of a question that happens to share its word.
+    """
+    keys = "|".join(mark[:-1] for mark in PROVENANCE)
+    return re.sub(r"(?<![\w-])(?:%s)\s*:" % keys, " ", text or "",
+                  flags=re.IGNORECASE)
 
 
 def _clip(text: str, width: int = 60) -> str:
@@ -224,8 +240,10 @@ def no_restatement(graph: Graph) -> Yield:
 
 
 @check("vocabulary",
-       "state, kind, application.standing and tradition.relation are in their vocabularies")
+       "mode, state, kind, application.standing and tradition.relation are in their vocabularies")
 def vocabulary(graph: Graph) -> Yield:
+    if graph.mode not in MODES:
+        yield None, "mode %r is not one of %s" % (graph.mode, ", ".join(MODES))
     for q in graph.questions:
         if q.state not in STATES:
             yield q.id, "state %r is not one of %s" % (q.state, ", ".join(STATES))
@@ -322,7 +340,7 @@ def no_ids_in_prose(graph: Graph) -> Yield:
                 places.append(("definition %r body" % definition.word, definition.body))
         if q.hinge:
             places.append(("hinge question", q.hinge.question))
-            places.append(("hinge thesis", q.hinge.thesis))
+            places.append(("hinge thesis", _without_provenance(q.hinge.thesis)))
         for item in q.inbox:
             places.append(("inbox item %r what" % item.title, item.what))
         for where, text in places:
@@ -345,6 +363,87 @@ def priority_recompute(graph: Graph) -> Yield:
     for q in graph.questions:
         if isinstance(q.priority, bool) or not isinstance(q.priority, int) or q.priority < 0:
             yield q.id, "priority %r is not a non-negative integer" % (q.priority,)
+
+
+@check("hinge-present",
+       "every non-tradition question carries a hinge with both its parts filled")
+def hinge_present(graph: Graph) -> Yield:
+    for q in graph.questions:
+        if q.tradition:
+            continue  # a tradition is read, not asked: it presupposes nothing here
+        if q.hinge is None:
+            yield q.id, ("no hinge: neither what the asking presupposes nor what "
+                         "the answer was drawn from is recorded")
+            continue
+        missing = [name for name, part in (("question", q.hinge.question),
+                                           ("thesis", q.hinge.thesis))
+                   if not part.strip()]
+        if missing:
+            yield q.id, "the hinge records no %s part" % " and no ".join(missing)
+
+
+@check("provenance-complete",
+       "a hinge's thesis part names a model, a harness and a canon reference",
+       WARN)
+def provenance_complete(graph: Graph) -> Yield:
+    for q in graph.questions:
+        if q.hinge is None or not q.hinge.thesis.strip():
+            continue  # `hinge-present` reports the absence itself
+        lowered = q.hinge.thesis.lower()
+        missing = [mark[:-1] for mark in PROVENANCE if mark not in lowered]
+        if missing:
+            yield q.id, "the hinge thesis names no %s" % ", no ".join(missing)
+
+
+@check("inbox-kind", "every inbox item's kind is in its vocabulary")
+def inbox_kind(graph: Graph) -> Yield:
+    for q in graph.questions:
+        for item in q.inbox:
+            if item.kind not in INBOX_KINDS:
+                yield q.id, "inbox item %r: kind %r is not one of %s" % (
+                    item.title, item.kind, ", ".join(INBOX_KINDS))
+
+
+@check("definition-once",
+       "a word defined on a question is not defined again above or below it")
+def definition_once(graph: Graph) -> Yield:
+    """A word is fixed in one place, so a reader has one place to look.
+
+    Only the tab tree is walked: a word defined on two questions neither of
+    which is under the other is two words, and the reader is told which by the
+    tab he is on.
+    """
+    defined: Dict[str, Dict[str, str]] = {}
+    for q in graph.questions:
+        for _, definition in q.definitions():
+            key = definition.word.strip().lower()
+            if key:
+                defined.setdefault(q.id, {}).setdefault(key, definition.word)
+    for q in graph.questions:
+        mine = defined.get(q.id, {})
+        if not mine:
+            continue
+        for below in project.subtree(graph, q.id)[1:]:
+            for key, word in sorted(defined.get(below, {}).items()):
+                if key in mine:
+                    yield q.id, ("%r is defined here and again on %s, which is "
+                                 "under it in the tab tree" % (mine[key], below))
+
+
+@check("answer-cardinality",
+       "in canon mode a question has one thesis without a deadlock and at most one with")
+def answer_cardinality(graph: Graph) -> Yield:
+    """A notebook holds as many theses as the principal is entertaining, so the
+    check does not run there; a canon answers each question once."""
+    if graph.mode != CANON:
+        return
+    for q in graph.questions:
+        settled = [t for t in q.theses if not (t.deadlock or "").strip()]
+        open_ = [t for t in q.theses if (t.deadlock or "").strip()]
+        if len(settled) != 1:
+            yield q.id, "%d theses without a deadlock, expected exactly one" % len(settled)
+        if len(open_) > 1:
+            yield q.id, "%d theses with a deadlock, expected at most one" % len(open_)
 
 
 # -- the runner -------------------------------------------------------------

@@ -46,8 +46,8 @@ class RootLayoutTest(unittest.TestCase):
                       "provenance: thesis hinge", self.text)
 
     def test_traditions_line(self):
-        self.assertIn("Traditions: plato support — the opening move is asked of what "
-                      "the answerer is already doing.", self.text)
+        self.assertIn("Traditions: <?claude block m_plato?> support — the opening move "
+                      "is asked of what the answerer is already doing.", self.text)
 
     def test_glossary_carries_the_tradition_after_the_body(self):
         self.assertIn("### ≡ elenchus", self.text)
@@ -55,9 +55,10 @@ class RootLayoutTest(unittest.TestCase):
 
     def test_the_inbox_table_lists_the_children(self):
         self.assertIn("| question | term | kind | priority | requires |", self.text)
-        self.assertIn("| canon | The record between them | definitional | 12 | nothing |",
-                      self.text)
-        self.assertIn("| party | Two sides, two debts | case | 9 | nothing |", self.text)
+        self.assertIn("| <?claude block m_canon?> | The record between them | "
+                      "definitional | 12 | nothing |", self.text)
+        self.assertIn("| <?claude block m_party?> | Two sides, two debts | case | 9 | "
+                      "nothing |", self.text)
 
     def test_the_inbox_item(self):
         self.assertIn("### promulgate the root answer", self.text)
@@ -65,7 +66,8 @@ class RootLayoutTest(unittest.TestCase):
                       "instances once, before any descendant is asked · not done", self.text)
 
     def test_terms_and_applications_and_hinge(self):
-        self.assertIn("### ▸ The record between them → canon", self.text)
+        self.assertIn("### ▸ The record between them → <?claude block m_canon?>",
+                      self.text)
         self.assertIn("*The record kept between them is the only thing both can point at.*",
                       self.text)
         self.assertIn("### ⚙ the opening entry", self.text)
@@ -93,7 +95,8 @@ class DescendantLayoutTest(unittest.TestCase):
                          "side speaks")
 
     def test_the_lineage_line(self):
-        self.assertIn("⌂ ti-esti › canon › attenuation", self.text)
+        self.assertIn("⌂ <?claude block m_ti_esti?> › <?claude block m_canon?> › "
+                      "attenuation", self.text)
 
     def test_deadlock_on_the_assent_line(self):
         self.assertIn("assent: none · deadlock: whether an unsettled entry may act at all "
@@ -105,7 +108,8 @@ class DescendantLayoutTest(unittest.TestCase):
 
     def test_a_term_deadlock_is_rendered_under_terms(self):
         text = render.render(self.graph, "party")
-        self.assertIn("### ▸ Deadlock waits on standing → attenuation", text)
+        self.assertIn("### ▸ Deadlock waits on standing → <?claude block m_attenuation?>",
+                      text)
         self.assertIn("one side holds that the other may act meanwhile", text)
 
     def test_a_tradition_root_takes_the_root_line(self):
@@ -119,6 +123,40 @@ class RenderAllTest(unittest.TestCase):
         self.assertEqual(marks, ["=== %s ===" % qid for qid in
                                  project.walk(load("valid"))])
         self.assertEqual(len(marks), 5)
+
+
+class ChipTest(unittest.TestCase):
+    """A reference to a question is written as a mention chip, never as an id."""
+
+    def test_the_key_replaces_every_non_alphanumeric_character(self):
+        self.assertEqual(render.chip_key("ti-esti"), "m_ti_esti")
+        self.assertEqual(render.chip_key("docs encoding"), "m_docs_encoding")
+        self.assertEqual(render.chip("canon"), "<?claude block m_canon?>")
+
+    def test_the_thesis_text_carries_a_chip_after_its_anchor(self):
+        self.assertIn("The record kept between them is the only thing both can point "
+                      "at. <?claude block m_canon?>", render.body(load("valid"), "ti-esti"))
+
+    def test_a_chip_follows_every_occurrence_of_a_repeated_anchor(self):
+        thesis = model.Thesis(
+            title="t", text="Here it stands. Here it stands. And then the rest.",
+            terms=[model.Term(title="twice", to="canon", anchors=["Here it stands."])])
+        self.assertEqual(
+            render._anchored_text(thesis),
+            "Here it stands. <?claude block m_canon?> Here it stands. "
+            "<?claude block m_canon?> And then the rest.")
+
+    def test_an_inserted_chip_is_not_itself_scanned(self):
+        thesis = model.Thesis(
+            title="t", text="block m_canon is what it is.",
+            terms=[model.Term(title="short", to="canon", anchors=["block m_canon"])])
+        self.assertEqual(
+            render._anchored_text(thesis).count("<?claude block m_canon?>"), 1)
+
+    def test_no_bare_id_is_left_where_a_chip_belongs(self):
+        text = render.body(load("valid"), "attenuation")
+        self.assertNotIn("› canon", text)
+        self.assertIn("<?claude block m_canon?> › attenuation", text)
 
 
 class LinksTest(unittest.TestCase):
@@ -143,6 +181,34 @@ class LinksTest(unittest.TestCase):
         self.assertEqual(defs[0]["word"], "elenchus")
         self.assertEqual(defs[0]["heading"], "≡ elenchus")
         self.assertEqual(defs[0]["target"], "#tab-01.≡ elenchus")
+
+    def test_the_blocks_map_names_the_tab_of_every_chip(self):
+        self.assertEqual(self.sidecar["blocks"], {
+            "m_canon": {"type": "mention", "ref": "file/tab-02"},
+            "m_party": {"type": "mention", "ref": "file/tab-03"},
+            "m_plato": {"type": "mention", "ref": "file/tab-05"}})
+
+    def test_an_ancestor_of_the_breadcrumb_carries_a_block(self):
+        self.assertEqual(sorted(render.links(load("valid"), "attenuation")["blocks"]),
+                         ["m_canon", "m_ti_esti"])
+
+    def test_a_target_outside_the_graph_carries_no_block(self):
+        sidecar = render.links(load("invalid-term-target"), "canon")
+        self.assertNotIn("m_nowhere", sidecar["blocks"])
+
+    def test_incoming_terms_make_the_lead_in_clickable(self):
+        incoming = [l for l in render.links(load("valid"), "attenuation")["links"]
+                    if l["kind"] == "incoming"]
+        self.assertEqual([l["from"] for l in incoming], ["canon", "party"])
+        self.assertEqual(incoming[0]["term"], "Grading of authority")
+        self.assertEqual(incoming[0]["target"], "#tab-02.Grading of authority")
+        self.assertEqual(incoming[0]["anchor"],
+                         "Authority to act on an unassented entry is graded down, "
+                         "never removed.")
+
+    def test_the_root_has_no_incoming_links(self):
+        self.assertEqual(
+            [l for l in self.sidecar["links"] if l["kind"] == "incoming"], [])
 
     def test_links_all_covers_every_question(self):
         self.assertEqual(len(render.links_all(load("valid"))), 5)

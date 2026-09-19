@@ -15,6 +15,11 @@ STATES = ("held", "in line", "landed", "revised", "deadlocked")
 KINDS = ("definitional", "case", "consistency", "root")
 STANDINGS = ("derived", "postulate")
 RELATIONS = ("support", "divergence")
+INBOX_KINDS = ("promulgate", "provide", "dispose", "build")
+
+NOTEBOOK = "notebook"
+CANON = "canon"
+MODES = (NOTEBOOK, CANON)
 
 
 class ShapeError(Exception):
@@ -303,9 +308,15 @@ class Question:
 
 @dataclass
 class Graph:
-    """The graph file: the artifact it caches, and its questions."""
+    """The graph file: the artifact it caches, its mode, and its questions.
+
+    The mode says what the file is: a ``notebook`` holds as many theses as the
+    principal is entertaining, a ``canon`` at most one settled answer per
+    question. It is absent from a notebook, which is the default.
+    """
 
     artifact: str
+    mode: str = NOTEBOOK
     questions: List[Question] = field(default_factory=list)
     path: Optional[str] = None
 
@@ -335,6 +346,7 @@ class Graph:
         d = r.obj(data, where)
         return Graph(
             artifact=r.text(d, "artifact", where, required=False),
+            mode=r.text(d, "mode", where, required=False, default=NOTEBOOK) or NOTEBOOK,
             questions=[Question.read(r, v, "questions[%d]" % i)
                        for i, v in enumerate(r.seq(d, "questions", where))],
         )
