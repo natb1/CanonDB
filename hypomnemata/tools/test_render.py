@@ -149,6 +149,43 @@ class DescendantLayoutTest(unittest.TestCase):
         self.assertNotIn("## Cited by", render.render(self.graph, "canon"))
 
 
+class MentionTest(unittest.TestCase):
+    """A cross-reference points somewhere without raising it."""
+
+    def setUp(self):
+        self.graph = load("valid")
+        thesis = self.graph.get("canon").theses[0]
+        self.anchor = thesis.text.split(".")[0] + "."
+        thesis.mentions.append(model.Mention(
+            title="Where assent is recorded", to="party", anchors=[self.anchor]))
+
+    def test_it_is_not_an_edge(self):
+        """The failure mode worth a test of its own: a mention that leaked
+        into the term graph would make its target a child, and a clause that
+        leans on a question already asked elsewhere is how a cycle starts."""
+        self.assertNotIn("party", project.out_edges(self.graph)["canon"])
+        self.assertNotIn("canon", project.in_edges(self.graph)["party"])
+        self.assertEqual(project.parents(self.graph)["party"], "ti-esti")
+        self.assertEqual(project.load(self.graph, "canon"), 1)
+        self.assertEqual(spec.run(self.graph), [])
+
+    def test_it_is_listed_apart_from_the_terms(self):
+        text = render.body(self.graph, "canon")
+        self.assertIn("### ↗ Where assent is recorded → <?claude block m_party?>",
+                      text)
+        self.assertIn("*%s*" % self.anchor, text)
+
+    def test_the_thesis_text_carries_its_chip(self):
+        self.assertIn("%s <?claude block m_party?>" % self.anchor,
+                      render.body(self.graph, "canon"))
+
+    def test_a_mention_going_nowhere_is_reported(self):
+        self.graph.get("canon").theses[0].mentions[0].to = "nowhere"
+        findings = spec.run(self.graph, only=["term-target"])
+        self.assertEqual(findings[0].question, "canon")
+        self.assertIn("mention", findings[0].message)
+
+
 class RenderAllTest(unittest.TestCase):
     def test_every_tab_in_projection_order(self):
         text = render.render_all(load("valid"))

@@ -94,7 +94,7 @@ def _clip(text: str, width: int = 60) -> str:
 def anchor_substring(graph: Graph) -> Yield:
     for q in graph.questions:
         for thesis in q.theses:
-            for term in thesis.terms:
+            for term in list(thesis.terms) + list(thesis.mentions):
                 for anchor in term.anchors:
                     if anchor not in thesis.text:
                         yield q.id, ("term %r: anchor is not a verbatim substring "
@@ -116,7 +116,7 @@ def anchor_unique(graph: Graph) -> Yield:
     """
     for q in graph.questions:
         for thesis in q.theses:
-            for term in thesis.terms:
+            for term in list(thesis.terms) + list(thesis.mentions):
                 for anchor in term.anchors:
                     found = thesis.text.count(anchor) if anchor else 0
                     if found > 1:
@@ -125,7 +125,7 @@ def anchor_unique(graph: Graph) -> Yield:
                                      "the chip is undecided" % (term.title, found))
 
 
-@check("term-target", "every term.to names an existing question")
+@check("term-target", "every term and every mention names an existing question")
 def term_target(graph: Graph) -> Yield:
     known = {q.id for q in graph.questions}
     for q in graph.questions:
@@ -133,6 +133,10 @@ def term_target(graph: Graph) -> Yield:
             if term.to not in known:
                 yield q.id, "term %r leads to %r, which is no question" % (
                     term.title, term.to)
+        for mention in q.mentions():
+            if mention.to not in known:
+                yield q.id, "mention %r points at %r, which is no question" % (
+                    mention.title, mention.to)
 
 
 @check("tradition-target", "every tradition edge names a question that is a tradition")

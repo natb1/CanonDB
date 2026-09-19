@@ -193,7 +193,7 @@ def _anchored_text(thesis: Thesis) -> str:
     inserted token is never itself scanned for an anchor that overlaps it.
     """
     cuts: List[Tuple[int, int, str]] = []
-    for order, term in enumerate(thesis.terms):
+    for order, term in enumerate(list(thesis.terms) + list(thesis.mentions)):
         token = " " + chip(term.to)
         for anchor in term.anchors:
             if not anchor:
@@ -291,6 +291,14 @@ def _term_blocks(q: Question) -> List[str]:
             blocks.append("*%s*" % anchor)
         if term.deadlock:
             blocks.append(term.deadlock)
+    for mention in q.mentions():
+        # ↗ and not ▸: a cross-reference is listed with the terms because it is
+        # a clause pointing somewhere, and marked apart from them because it
+        # raised nothing. Without an entry of its own it could not be told from
+        # a term on the page at all, and the next export would read it as one.
+        blocks.append("### ↗ %s → %s" % (mention.title, chip(mention.to)))
+        for anchor in mention.anchors:
+            blocks.append("*%s*" % anchor)
     return blocks
 
 
@@ -394,6 +402,8 @@ def mention_targets(graph: Graph, qid: str) -> List[str]:
     for thesis in q.theses:
         for term in thesis.terms:
             add(term.to)
+        for mention in thesis.mentions:
+            add(mention.to)
         for trad in thesis.traditions:
             # a citation is a breadcrumb, so every step of it carries a chip
             for step in (project.lineage(graph, trad.to)

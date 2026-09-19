@@ -125,6 +125,31 @@ class Term:
 
 
 @dataclass
+class Mention:
+    """A cross-reference: a clause points at a question it does not raise.
+
+    The same shape as a term and deliberately not one. A clause that leans on
+    a question already asked elsewhere should take the reader there, but it did
+    not raise that question and must not become its parent — which is how a
+    graph acquires cycles. It carries no deadlock, because there is no
+    agreement on a pointer to dissent from.
+    """
+
+    title: str
+    to: str
+    anchors: List[str] = field(default_factory=list)
+
+    @staticmethod
+    def read(r: _Reader, data: Any, where: str) -> "Mention":
+        d = r.obj(data, where)
+        return Mention(
+            title=r.text(d, "title", where),
+            to=r.text(d, "to", where),
+            anchors=r.strings(d, "anchors", where),
+        )
+
+
+@dataclass
 class Definition:
     """A word of a thesis fixed in place; it opens no descendant question."""
 
@@ -191,6 +216,7 @@ class Thesis:
     assent: str = ""
     deadlock: Optional[str] = None
     terms: List[Term] = field(default_factory=list)
+    mentions: List[Mention] = field(default_factory=list)
     definitions: List[Definition] = field(default_factory=list)
     traditions: List[TraditionEdge] = field(default_factory=list)
     applications: List[Application] = field(default_factory=list)
@@ -205,6 +231,8 @@ class Thesis:
             deadlock=r.opt_text(d, "deadlock", where),
             terms=[Term.read(r, v, "%s.terms[%d]" % (where, i))
                    for i, v in enumerate(r.seq(d, "terms", where))],
+            mentions=[Mention.read(r, v, "%s.mentions[%d]" % (where, i))
+                      for i, v in enumerate(r.seq(d, "mentions", where))],
             definitions=[Definition.read(r, v, "%s.definitions[%d]" % (where, i))
                          for i, v in enumerate(r.seq(d, "definitions", where))],
             traditions=[TraditionEdge.read(r, v, "%s.traditions[%d]" % (where, i))
@@ -285,6 +313,12 @@ class Question:
         for t in self.theses:
             for term in t.terms:
                 yield term
+
+    def mentions(self) -> Iterator[Mention]:
+        """Every cross-reference on this question. Never a graph edge."""
+        for t in self.theses:
+            for m in t.mentions:
+                yield m
 
     def definitions(self) -> Iterator[Tuple[Thesis, Definition]]:
         for t in self.theses:
