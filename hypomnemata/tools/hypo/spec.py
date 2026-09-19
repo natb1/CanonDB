@@ -327,11 +327,17 @@ def priority_recompute(graph: Graph) -> Yield:
 
 
 @check("hinge-present",
-       "every non-tradition question carries a hinge with both its parts filled")
+       "every question carries a hinge with both its parts filled")
 def hinge_present(graph: Graph) -> Yield:
+    """A tradition was once exempt, on the reading that it is read rather than
+    asked and so presupposes nothing here. But a reading has presuppositions of
+    its own — that the text answers this question at all, and that what it says
+    can be told from what the reader wants it to say — and the reconstruction
+    was produced by some run, which is what the thesis part records. A
+    tradition differs from the rest of the graph in its lineage and in nothing
+    else.
+    """
     for q in graph.questions:
-        if q.tradition:
-            continue  # a tradition is read, not asked: it presupposes nothing here
         if q.hinge is None:
             yield q.id, ("no hinge: neither what the asking presupposes nor what "
                          "the answer was drawn from is recorded")

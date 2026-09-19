@@ -219,7 +219,10 @@
       ],
       "inbox": [],
       "applications": [],
-      "hinge": null
+      "hinge": {
+        "question": "the reading presupposes that the text answers this question at all, and that what it says can be told apart from what the reader wants it to say",
+        "thesis": "model: an unnamed assistant · harness: a reading of the dialogues · canon: empty"
+      }
     }
   ]
 }

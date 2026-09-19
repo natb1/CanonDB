@@ -98,11 +98,16 @@ class DetailTest(unittest.TestCase):
         self.assertEqual(findings[0].question, "canon")
         self.assertIn("no thesis part", findings[0].message)
 
-    def test_a_tradition_needs_no_hinge(self):
-        graph = load("invalid-hinge-present")
-        self.assertTrue(graph.get("plato").tradition)
+    def test_a_tradition_needs_a_hinge_too(self):
+        """It was once exempt, as something read rather than asked. A reading
+        presupposes things of its own, and the reconstruction came from a run."""
+        graph = load("valid")
+        plato = graph.get("plato")
+        self.assertTrue(plato.tradition)
+        self.assertEqual(spec.run(graph, only=["hinge-present"]), [])
+        plato.hinge = None
         findings = spec.run(graph, only=["hinge-present"])
-        self.assertEqual([f.question for f in findings], ["canon"])
+        self.assertEqual([f.question for f in findings], ["plato"])
 
     def test_provenance_complete_names_what_is_missing(self):
         findings = spec.run(load("invalid-provenance-complete"),
