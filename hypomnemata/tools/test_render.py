@@ -170,6 +170,36 @@ class ChipTest(unittest.TestCase):
         self.assertIn("The record kept between them is the only thing both can point "
                       "at. <?claude block m_canon?>", render.body(load("valid"), "ti-esti"))
 
+    def test_a_chip_in_a_list_item_goes_at_the_end_of_the_item(self):
+        """A bulleted clause is read as one thing, so a chip dropped after its
+        first sentence cuts the item in half — which is what the live notebook
+        does on the root answer, eight bullets out of ten."""
+        thesis = model.Thesis(
+            title="t",
+            text=("What it requires of me\n\n"
+                  "- **Be predictable.** Keep the same conventions.\n"
+                  "- **Report truthfully.** Say what you ran.\n\n"
+                  "A closing clause here and then more."),
+            terms=[model.Term(title="predictable", to="canon",
+                              anchors=["**Be predictable.** Keep the same conventions."]),
+                   model.Term(title="closing", to="party",
+                              anchors=["A closing clause here"])])
+        out = render._anchored_text(thesis)
+        self.assertIn("- **Be predictable.** Keep the same conventions. "
+                      "<?claude block m_canon?>\n- **Report truthfully.**", out)
+        self.assertIn("A closing clause here <?claude block m_party?> and then more.",
+                      out)
+
+    def test_placement_is_unchanged_on_a_plain_paragraph(self):
+        """The guard on the block-aware placement: a text with no blank line
+        and no list marker must come out byte for byte as it did before."""
+        thesis = model.Thesis(
+            title="t", text="One sentence. A clause here. And a third.",
+            terms=[model.Term(title="c", to="canon", anchors=["A clause here."])])
+        self.assertEqual(render._anchored_text(thesis),
+                         "One sentence. A clause here. <?claude block m_canon?> "
+                         "And a third.")
+
     def test_a_chip_follows_every_occurrence_of_a_repeated_anchor(self):
         thesis = model.Thesis(
             title="t", text="Here it stands. Here it stands. And then the rest.",

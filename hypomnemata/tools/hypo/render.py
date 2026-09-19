@@ -136,6 +136,56 @@ def _cited_by_blocks(graph: Graph, q: Question) -> List[str]:
     return blocks
 
 
+#: a line that opens a list item, in either spelling markdown allows
+_LIST_ITEM = re.compile(r"^[ \t]*([-*+]|\d+[.)])[ \t]+")
+
+#: what separates one paragraph block from the next
+BLANK_LINE = re.compile(r"\n[ \t]*\n")
+
+
+def _block_spans(body_text: str) -> List[Tuple[int, int]]:
+    """(start, end) of each paragraph block, split on a blank line."""
+    spans: List[Tuple[int, int]] = []
+    start = 0
+    for gap in BLANK_LINE.finditer(body_text):
+        spans.append((start, gap.start()))
+        start = gap.end()
+    spans.append((start, len(body_text)))
+    return spans
+
+
+def _is_list(block: str) -> bool:
+    lines = [line for line in block.splitlines() if line.strip()]
+    return bool(lines) and all(_LIST_ITEM.match(line) for line in lines)
+
+
+def _placement(body_text: str, end: int) -> int:
+    """Where the chip for an anchor ending at ``end`` is written.
+
+    In a paragraph it follows the anchor, which is where the reader meets the
+    clause. In a list item it goes at the end of the item: a bulleted clause is
+    read as one thing, and a chip dropped after its first sentence cuts the
+    item in half — which is exactly what the live notebook does on the root
+    answer, where eight of ten chips sit after the bolded lead of a bullet
+    rather than after the clause they belong to.
+    """
+    for start, stop in _block_spans(body_text):
+        if not start <= end <= stop:
+            continue
+        block = body_text[start:stop]
+        if not _is_list(block):
+            return end
+        offset = start
+        item_end = stop
+        for line in block.splitlines(keepends=True):
+            if _LIST_ITEM.match(line) and offset > start and offset > end:
+                item_end = offset
+                break
+            offset += len(line)
+        return len(body_text[:item_end].rstrip())
+    return end
+
+
 def _anchored_text(thesis: Thesis) -> str:
     """The thesis text with a chip after every occurrence of every anchor.
 
@@ -150,7 +200,7 @@ def _anchored_text(thesis: Thesis) -> str:
                 continue
             at = thesis.text.find(anchor)
             while at != -1:
-                cuts.append((at + len(anchor), order, token))
+                cuts.append((_placement(thesis.text, at + len(anchor)), order, token))
                 at = thesis.text.find(anchor, at + 1)
     if not cuts:
         return thesis.text

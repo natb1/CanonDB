@@ -100,6 +100,29 @@ def anchor_substring(graph: Graph) -> Yield:
                         yield q.id, ("term %r: anchor is not a verbatim substring "
                                      "of the thesis text: %r"
                                      % (term.title, _clip(anchor)))
+                    elif re.search(r"\n[ \t]*\n", anchor):
+                        # the renderer places a chip within one block; an anchor
+                        # crossing a blank line has no one place to put it
+                        yield q.id, ("term %r: anchor runs across a blank line, so "
+                                     "it spans two blocks: %r"
+                                     % (term.title, _clip(anchor)))
+
+
+@check("anchor-unique", "an anchor occurs once in the thesis text it is taken from")
+def anchor_unique(graph: Graph) -> Yield:
+    """Two occurrences give the renderer two places to put one chip, and give
+    the links sidecar two spans to mean by one string. Where a clause really
+    is said twice, the term takes the longer passage that says it once.
+    """
+    for q in graph.questions:
+        for thesis in q.theses:
+            for term in thesis.terms:
+                for anchor in term.anchors:
+                    found = thesis.text.count(anchor) if anchor else 0
+                    if found > 1:
+                        yield q.id, ("term %r: its anchor occurs %d times in the "
+                                     "thesis text, so which occurrence carries "
+                                     "the chip is undecided" % (term.title, found))
 
 
 @check("term-target", "every term.to names an existing question")
