@@ -191,8 +191,16 @@ class Thesis:
 
 @dataclass
 class InboxItem:
-    """A human action a question requires before it can be asked."""
+    """A human action a question requires before it can be asked.
 
+    ``id`` is what a question's ``requires`` names, and ``title`` is what a
+    reader is shown. They are separate because they change for different
+    reasons: the title is a summary and may be reworded at any time, while the
+    id is a handle and may not. Naming items by title is what let a rename
+    strand twenty-four requires entries pointing at nothing.
+    """
+
+    id: str
     title: str
     kind: str
     what: str
@@ -203,6 +211,7 @@ class InboxItem:
     def read(r: _Reader, data: Any, where: str) -> "InboxItem":
         d = r.obj(data, where)
         return InboxItem(
+            id=r.text(d, "id", where),
             title=r.text(d, "title", where),
             kind=r.text(d, "kind", where),
             what=r.text(d, "what", where),

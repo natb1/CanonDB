@@ -121,6 +121,21 @@ class DetailTest(unittest.TestCase):
         self.assertIn("'grade'", findings[0].message)
         self.assertIn("attenuation", findings[0].message)
 
+    def test_renaming_an_inbox_item_leaves_requires_alone(self):
+        """The rename that stranded twenty-four requires entries in the live
+        notebook. Naming the handle rather than the summary makes it a
+        non-event: nothing else in the graph mentions the title."""
+        graph = load("valid")
+        item = graph.get("ti-esti").inbox[0]
+        item.title = "Put the opening answer where both can see it"
+        self.assertEqual(spec.run(graph, only=["requires-exist"]), [])
+
+    def test_requires_names_an_id_and_not_a_title(self):
+        graph = load("valid")
+        graph.get("ti-esti").requires = [graph.get("ti-esti").inbox[0].title]
+        findings = spec.run(graph, only=["requires-exist"])
+        self.assertTrue(findings)
+
     def test_definition_once_reaches_siblings(self):
         """Neither tab is under the other, so the old tab-tree scoping let this
         through — which is how one word came to carry two senses."""

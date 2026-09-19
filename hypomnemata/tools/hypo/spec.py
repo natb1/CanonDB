@@ -209,11 +209,14 @@ def acyclic(graph: Graph) -> Yield:
                 yield cycle[0], "term edges form a cycle: %s" % " -> ".join(cycle)
 
 
-@check("unique-ids", "question ids, tab ids and body ids are each unique")
+@check("unique-ids",
+       "question ids, tab ids, body ids and inbox item ids are each unique")
 def unique_ids(graph: Graph) -> Yield:
+    inbox = [(item.id, q.id) for q in graph.questions for item in q.inbox]
     for label, values in (("question id", [(q.id, q.id) for q in graph.questions]),
                           ("tab id", [(q.tab, q.id) for q in graph.questions]),
-                          ("body id", [(q.body, q.id) for q in graph.questions])):
+                          ("body id", [(q.body, q.id) for q in graph.questions]),
+                          ("inbox item id", inbox)):
         seen: Dict[str, List[str]] = {}
         for value, owner in values:
             seen.setdefault(value, []).append(owner)
@@ -287,9 +290,9 @@ def requires_exist(graph: Graph) -> Yield:
         if not q.requires:
             continue
         scope = {q.id} | project.ancestors(graph, q.id)
-        titles = {item.title for qid in scope if qid in by_id for item in by_id[qid].inbox}
+        known = {item.id for qid in scope if qid in by_id for item in by_id[qid].inbox}
         for want in q.requires:
-            if want not in titles:
+            if want not in known:
                 yield q.id, ("requires %r, which no inbox item on it or on an "
                              "ancestor defines" % want)
 
@@ -305,7 +308,7 @@ def inbox_placement(graph: Graph) -> Yield:
             requirers.setdefault(want, []).append(q.id)
     for q in graph.questions:
         for item in q.inbox:
-            asked = sorted(set(requirers.get(item.title, [])))
+            asked = sorted(set(requirers.get(item.id, [])))
             if not asked:
                 continue
             common: Optional[Set[str]] = None
@@ -315,7 +318,7 @@ def inbox_placement(graph: Graph) -> Yield:
             common = common or set()
             if not common:
                 yield q.id, ("inbox item %r is required by %s, which share no ancestor"
-                             % (item.title, ", ".join(asked)))
+                             % (item.id, ", ".join(asked)))
                 continue
             def depth(i: str) -> float:
                 d = dist.get(i, project.INF)
@@ -325,7 +328,7 @@ def inbox_placement(graph: Graph) -> Yield:
             if home != q.id:
                 yield q.id, ("inbox item %r belongs on %s, the most descendant "
                              "question that is an ancestor of every question "
-                             "requiring it (%s)" % (item.title, home, ", ".join(asked)))
+                             "requiring it (%s)" % (item.id, home, ", ".join(asked)))
 
 
 @check("priority-recompute",

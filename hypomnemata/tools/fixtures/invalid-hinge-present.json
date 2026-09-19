@@ -10,7 +10,7 @@
       "kind": "root",
       "priority": 27,
       "requires": [
-        "promulgate the root answer"
+        "promulgate-the-root-answer"
       ],
       "tradition": false,
       "theses": [
@@ -55,6 +55,7 @@
       ],
       "inbox": [
         {
+          "id": "promulgate-the-root-answer",
           "title": "promulgate the root answer",
           "kind": "promulgate",
           "what": "put the opening answer where both sides can see it",
@@ -161,7 +162,7 @@
       "kind": "consistency",
       "priority": 5,
       "requires": [
-        "promulgate the root answer"
+        "promulgate-the-root-answer"
       ],
       "tradition": false,
       "theses": [

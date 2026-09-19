@@ -47,10 +47,24 @@ class RefusedError(Exception):
 
 # -- pieces -----------------------------------------------------------------
 
-def _requires(q: Optional[Question]) -> str:
+def _inbox_titles(graph: Graph) -> Dict[str, str]:
+    """Every inbox item's id to the title a reader is shown."""
+    return {item.id: item.title for q in graph.questions for item in q.inbox}
+
+
+def _requires(graph: Graph, q: Optional[Question]) -> str:
+    """What a question waits on, named by title and never by handle.
+
+    The title is rendered and the id is stored, so rewording an item carries
+    everywhere it is mentioned without a single edit elsewhere — which is the
+    whole reason the two are separate.
+    """
     if q is None:
         return "?"
-    return ", ".join(q.requires) if q.requires else "nothing"
+    if not q.requires:
+        return "nothing"
+    titles = _inbox_titles(graph)
+    return ", ".join(titles.get(want, want) for want in q.requires)
 
 
 def _incoming_terms(graph: Graph, qid: str) -> List[Tuple[str, Term]]:
@@ -181,7 +195,7 @@ def _inbox_blocks(graph: Graph, q: Question) -> List[str]:
             chip(term.to), term.title,
             child.kind if child else "?",
             child.priority if child else "?",
-            _requires(child)))
+            _requires(graph, child)))
     blocks: List[str] = []
     if rows:
         blocks.append("\n".join(
@@ -189,9 +203,9 @@ def _inbox_blocks(graph: Graph, q: Question) -> List[str]:
              "| --- | --- | --- | --- | --- |"] + rows))
     for item in q.inbox:
         blocks.append("### %s" % item.title)
-        blocks.append("%s · %s · instances %s · %s" % (
+        blocks.append("%s · %s · instances %s · %s · id %s" % (
             item.kind, item.what, item.obligation,
-            "done" if item.done else "not done"))
+            "done" if item.done else "not done", item.id))
     return blocks
 
 
@@ -259,7 +273,8 @@ def body(graph: Graph, qid: str) -> str:
         blocks.append("⌂ " + breadcrumb(graph, qid))
 
     blocks.append("question: %s · %s · priority %d · load %d · requires: %s" % (
-        q.state, q.kind, q.priority, project.load(graph, qid), _requires(q)))
+        q.state, q.kind, q.priority, project.load(graph, qid),
+        _requires(graph, q)))
 
     thesis_blocks: List[str] = []
     for thesis in q.theses:
@@ -370,6 +385,18 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
             "anchor": text.plain(definition.word),
             "heading": heading,
             "target": "#%s.%s" % (q.tab, heading),
+        })
+    titles = _inbox_titles(graph)
+    homes = {item.id: home for home in graph.questions for item in home.inbox}
+    for want in q.requires:
+        home = homes.get(want)
+        if home is None:  # requires-exist reports it; there is nothing to point at
+            continue
+        out.append({
+            "kind": "requires",
+            "item": want,
+            "anchor": text.plain(titles[want]),
+            "target": "#%s.%s" % (home.tab, titles[want]),
         })
     seen: Dict[str, int] = {}
     for entry in out:
