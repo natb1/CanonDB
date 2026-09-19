@@ -365,30 +365,31 @@ def inbox_kind(graph: Graph) -> Yield:
                     item.title, item.kind, ", ".join(INBOX_KINDS))
 
 
-@check("definition-once",
-       "a word defined on a question is not defined again above or below it")
+@check("definition-once", "a word is defined once in the whole graph")
 def definition_once(graph: Graph) -> Yield:
-    """A word is fixed in one place, so a reader has one place to look.
+    """One sense per word, everywhere — the glossary's own presupposition.
 
-    Only the tab tree is walked: a word defined on two questions neither of
-    which is under the other is two words, and the reader is told which by the
-    tab he is on.
+    The rule was once scoped to the tab tree, on the reading that a word
+    defined on two questions neither of which is under the other is two words
+    and the reader is told which by the tab he is on. That reading licenses
+    exactly the drift it was meant to catch: `prior` came to mean what a model
+    produces unprompted on one tab and a thesis the human holds on another,
+    with nothing firing. A word that must carry two senses needs two words.
     """
-    defined: Dict[str, Dict[str, str]] = {}
+    where: Dict[str, List[str]] = {}
+    spelling: Dict[str, str] = {}
     for q in graph.questions:
         for _, definition in q.definitions():
             key = definition.word.strip().lower()
-            if key:
-                defined.setdefault(q.id, {}).setdefault(key, definition.word)
-    for q in graph.questions:
-        mine = defined.get(q.id, {})
-        if not mine:
-            continue
-        for below in project.subtree(graph, q.id)[1:]:
-            for key, word in sorted(defined.get(below, {}).items()):
-                if key in mine:
-                    yield q.id, ("%r is defined here and again on %s, which is "
-                                 "under it in the tab tree" % (mine[key], below))
+            if not key:
+                continue
+            spelling.setdefault(key, definition.word)
+            if q.id not in where.setdefault(key, []):
+                where[key].append(q.id)
+    for key, owners in where.items():
+        if len(owners) > 1:
+            yield owners[0], "%r is defined here and again on %s" % (
+                spelling[key], ", ".join(owners[1:]))
 
 
 @check("answer-cardinality",

@@ -116,6 +116,18 @@ class DetailTest(unittest.TestCase):
         self.assertIn("'grade'", findings[0].message)
         self.assertIn("attenuation", findings[0].message)
 
+    def test_definition_once_reaches_siblings(self):
+        """Neither tab is under the other, so the old tab-tree scoping let this
+        through — which is how one word came to carry two senses."""
+        graph = load("valid")
+        canon, party = graph.get("canon"), graph.get("party")
+        word = canon.theses[0].definitions[0]
+        self.assertEqual(spec.run(graph, only=["definition-once"]), [])
+        party.theses[0].definitions.append(word)
+        findings = spec.run(graph, only=["definition-once"])
+        self.assertEqual(findings[0].question, "canon")
+        self.assertIn("party", findings[0].message)
+
     def test_answer_cardinality_runs_in_canon_mode_only(self):
         self.assertEqual(spec.run(load("valid"), only=["answer-cardinality"]), [])
         graph = load("invalid-answer-cardinality")
