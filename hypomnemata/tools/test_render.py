@@ -45,9 +45,11 @@ class RootLayoutTest(unittest.TestCase):
         self.assertIn("assent: assented at the merge of the opening entry · "
                       "provenance: thesis hinge", self.text)
 
-    def test_traditions_line(self):
-        self.assertIn("Traditions: <?claude block m_plato?> support — the opening move "
-                      "is asked of what the answerer is already doing.", self.text)
+    def test_traditions_are_a_list_per_relation(self):
+        self.assertIn("**Support**\n\n- the opening move is asked of what the "
+                      "answerer is already doing. <?claude block m_plato?>",
+                      self.text)
+        self.assertNotIn("**Divergence**", self.text)
 
     def test_glossary_carries_the_tradition_after_the_body(self):
         self.assertIn("### ≡ elenchus", self.text)
@@ -114,6 +116,18 @@ class DescendantLayoutTest(unittest.TestCase):
 
     def test_a_tradition_root_takes_the_root_line(self):
         self.assertIn("⌂ root", render.render(self.graph, "plato"))
+
+    def test_a_tradition_says_who_cites_it(self):
+        """Its lineage is not this graph's, so nothing leads to it in the tab
+        tree and its masthead carries no terms. Without the mirror, a tradition
+        tab does not say what it is doing here."""
+        text = render.render(self.graph, "plato")
+        self.assertIn("## Cited by", text)
+        self.assertIn("**Support**\n\n- <?claude block m_ti_esti?>", text)
+        self.assertLess(text.index("## Cited by"), text.index("## Hinge"))
+
+    def test_only_a_cited_question_gets_the_mirror(self):
+        self.assertNotIn("## Cited by", render.render(self.graph, "canon"))
 
 
 class RenderAllTest(unittest.TestCase):

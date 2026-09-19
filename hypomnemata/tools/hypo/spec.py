@@ -112,6 +112,24 @@ def term_target(graph: Graph) -> Yield:
                     term.title, term.to)
 
 
+@check("tradition-target", "every tradition edge names a question that is a tradition")
+def tradition_target(graph: Graph) -> Yield:
+    """Nothing validated these at all, so a citation could name a tradition
+    that was never written and the renderer would drop the chip in silence —
+    which is how the live notebook came to cite a Foucault it does not hold.
+    """
+    known = {q.id for q in graph.questions}
+    traditions = set(graph.tradition_ids())
+    for q in graph.questions:
+        for thesis in q.theses:
+            for trad in thesis.traditions:
+                if trad.to not in known:
+                    yield q.id, "tradition edge leads to %r, which is no question" % trad.to
+                elif trad.to not in traditions:
+                    yield q.id, ("tradition edge leads to %r, which is a question "
+                                 "of this graph and not a tradition" % trad.to)
+
+
 @check("term-total", "every term has at least one anchor and a target")
 def term_total(graph: Graph) -> Yield:
     for q in graph.questions:

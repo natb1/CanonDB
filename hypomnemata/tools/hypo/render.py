@@ -59,15 +59,67 @@ def _incoming_terms(graph: Graph, qid: str) -> List[Tuple[str, Term]]:
                   key=lambda pair: (pair[0], pair[1].title))
 
 
-def _tradition_line(thesis: Thesis) -> Optional[str]:
-    if not thesis.traditions:
-        return None
-    parts = []
-    for trad in thesis.traditions:
-        note = trad.note.strip()
-        parts.append("%s %s — %s." % (chip(trad.to), trad.relation, note) if note
-                     else "%s %s." % (chip(trad.to), trad.relation))
-    return "Traditions: " + " ".join(parts)
+def breadcrumb(graph: Graph, qid: str, plain_last: bool = True) -> str:
+    """The lineage as chips, ` › ` between them.
+
+    ``plain_last`` leaves the final element as text, which is right where the
+    breadcrumb says where the reader already is. Pointing at another tab it
+    must be a chip, or the last step of the path is the one that does not lead
+    anywhere.
+    """
+    line = project.lineage(graph, qid)
+    if plain_last:
+        return " › ".join([chip(a) for a in line[:-1]] + line[-1:])
+    return " › ".join(chip(a) for a in line)
+
+
+def _citation_item(graph: Graph, target: str, note: str) -> str:
+    crumb = breadcrumb(graph, target, plain_last=False) if graph.get(target) \
+        else chip(target)
+    note = note.strip()
+    if not note:
+        return "- %s" % crumb
+    return "- %s %s" % (note if note.endswith(".") else note + ".", crumb)
+
+
+def _tradition_blocks(graph: Graph, thesis: Thesis) -> List[str]:
+    """Support and divergence, one bullet list each.
+
+    Two lists and not one line, because the two relations are read differently:
+    what a tradition supports can be leaned on, and where it diverges is where
+    this graph is on its own and owes an argument.
+    """
+    blocks: List[str] = []
+    for relation, heading in (("support", "Support"), ("divergence", "Divergence")):
+        items = [_citation_item(graph, t.to, t.note)
+                 for t in thesis.traditions if t.relation == relation]
+        if items:
+            blocks.append("**%s**" % heading)
+            blocks.append("\n".join(items))
+    return blocks
+
+
+def _cited_by_blocks(graph: Graph, q: Question) -> List[str]:
+    """The mirror: the theses that reach this question by a tradition edge.
+
+    A tradition's lineage is not this graph's, so nothing leads to it in the
+    tab tree and its masthead carries no terms. This is the list that would
+    otherwise be missing — what a tradition is doing here at all.
+    """
+    rows: List[Tuple[str, str]] = []
+    for src in graph.questions:
+        for thesis in src.theses:
+            for trad in thesis.traditions:
+                if trad.to == q.id:
+                    rows.append((trad.relation, src.id))
+    blocks: List[str] = []
+    for relation, heading in (("support", "Support"), ("divergence", "Divergence")):
+        items = ["- %s" % breadcrumb(graph, src, plain_last=False)
+                 for rel, src in rows if rel == relation]
+        if items:
+            blocks.append("**%s**" % heading)
+            blocks.append("\n".join(items))
+    return blocks
 
 
 def _anchored_text(thesis: Thesis) -> str:
@@ -98,7 +150,7 @@ def _anchored_text(thesis: Thesis) -> str:
     return "".join(out)
 
 
-def _thesis_blocks(thesis: Thesis) -> List[str]:
+def _thesis_blocks(graph: Graph, thesis: Thesis) -> List[str]:
     blocks = ["### ◆ %s" % thesis.title]
     line = "assent: %s" % thesis.assent
     if thesis.deadlock:
@@ -106,9 +158,6 @@ def _thesis_blocks(thesis: Thesis) -> List[str]:
     line += " · provenance: thesis hinge"
     blocks.append(line)
     blocks.append(_anchored_text(thesis))
-    traditions = _tradition_line(thesis)
-    if traditions:
-        blocks.append(traditions)
     return blocks
 
 
@@ -207,21 +256,21 @@ def body(graph: Graph, qid: str) -> str:
     if top_level:
         blocks.append("⌂ root")
     else:
-        line = project.lineage(graph, qid)
-        blocks.append("⌂ " + " › ".join(
-            [chip(ancestor) for ancestor in line[:-1]] + line[-1:]))
+        blocks.append("⌂ " + breadcrumb(graph, qid))
 
     blocks.append("question: %s · %s · priority %d · load %d · requires: %s" % (
         q.state, q.kind, q.priority, project.load(graph, qid), _requires(q)))
 
     thesis_blocks: List[str] = []
     for thesis in q.theses:
-        thesis_blocks.extend(_thesis_blocks(thesis))
+        thesis_blocks.extend(_thesis_blocks(graph, thesis))
+        thesis_blocks.extend(_tradition_blocks(graph, thesis))
     for heading, section in (("## Thesis", thesis_blocks),
                              ("## Glossary", _glossary_blocks(q)),
                              ("## Inbox", _inbox_blocks(graph, q)),
                              ("## Terms", _term_blocks(q)),
                              ("## Applications", _application_blocks(q)),
+                             ("## Cited by", _cited_by_blocks(graph, q)),
                              ("## Hinge", _hinge_blocks(q))):
         if section:
             blocks.append(heading)
@@ -248,7 +297,15 @@ def mention_targets(graph: Graph, qid: str) -> List[str]:
         for term in thesis.terms:
             add(term.to)
         for trad in thesis.traditions:
-            add(trad.to)
+            # a citation is a breadcrumb, so every step of it carries a chip
+            for step in (project.lineage(graph, trad.to)
+                         if graph.get(trad.to) else [trad.to]):
+                add(step)
+    for src in graph.questions:  # the mirror, on a tab something cites
+        if any(trad.to == qid for thesis in src.theses
+               for trad in thesis.traditions):
+            for step in project.lineage(graph, src.id):
+                add(step)
     return targets
 
 
