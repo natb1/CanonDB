@@ -50,6 +50,14 @@
               "relation": "support",
               "note": "the opening move is asked of what the answerer is already doing"
             }
+          ],
+          "applications": [
+            {
+              "name": "the opening entry",
+              "what": "the first file both sides pointed at",
+              "link": "entries/opening.md",
+              "standing": "postulate"
+            }
           ]
         }
       ],
@@ -61,14 +69,6 @@
           "what": "put the opening answer where both sides can see it",
           "obligation": "once, before any descendant is asked",
           "done": false
-        }
-      ],
-      "applications": [
-        {
-          "name": "the opening entry",
-          "what": "the first file both sides pointed at",
-          "link": "entries/opening.md",
-          "standing": "postulate"
         }
       ],
       "hinge": {
@@ -113,7 +113,6 @@
         }
       ],
       "inbox": [],
-      "applications": [],
       "hinge": {
         "question": "that a mark of assent can be made at all, which the asking already presumes",
         "thesis": "model: an unnamed assistant · harness: the same repository · canon: the opening entry"
@@ -148,7 +147,6 @@
         }
       ],
       "inbox": [],
-      "applications": [],
       "hinge": {
         "question": "that there are two sides and not one, which the asking already presumes",
         "thesis": "model: an unnamed assistant · harness: the same repository · canon: the opening entry"
@@ -180,18 +178,18 @@
               "tradition": null
             }
           ],
-          "traditions": []
+          "traditions": [],
+          "applications": [
+            {
+              "name": "the shape gate",
+              "what": "the one synchronous check every write passes",
+              "link": "tools/check.py",
+              "standing": "postulate"
+            }
+          ]
         }
       ],
       "inbox": [],
-      "applications": [
-        {
-          "name": "the shape gate",
-          "what": "the one synchronous check every write passes",
-          "link": "tools/check.py",
-          "standing": "derived"
-        }
-      ],
       "hinge": {
         "question": "that authority admits of degree, which the asking already presumes",
         "thesis": "model: an unnamed assistant · harness: the same repository · canon: the opening entry"
@@ -219,7 +217,6 @@
         }
       ],
       "inbox": [],
-      "applications": [],
       "hinge": {
         "question": "the reading presupposes that the text answers this question at all, and that what it says can be told apart from what the reader wants it to say",
         "thesis": "model: an unnamed assistant · harness: a reading of the dialogues · canon: empty"

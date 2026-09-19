@@ -161,6 +161,28 @@ class TraditionEdge:
 
 
 @dataclass
+class Application:
+    """An artifact outside the graph that a thesis reaches."""
+
+    name: str
+    what: str
+    link: str = ""
+    standing: str = ""
+    note: str = ""
+
+    @staticmethod
+    def read(r: _Reader, data: Any, where: str) -> "Application":
+        d = r.obj(data, where)
+        return Application(
+            name=r.text(d, "name", where),
+            what=r.text(d, "what", where),
+            link=r.text(d, "link", where, required=False),
+            standing=r.text(d, "standing", where),
+            note=r.text(d, "note", where, required=False),
+        )
+
+
+@dataclass
 class Thesis:
     """An articulated answer to exactly one question."""
 
@@ -171,6 +193,7 @@ class Thesis:
     terms: List[Term] = field(default_factory=list)
     definitions: List[Definition] = field(default_factory=list)
     traditions: List[TraditionEdge] = field(default_factory=list)
+    applications: List[Application] = field(default_factory=list)
 
     @staticmethod
     def read(r: _Reader, data: Any, where: str) -> "Thesis":
@@ -186,6 +209,8 @@ class Thesis:
                          for i, v in enumerate(r.seq(d, "definitions", where))],
             traditions=[TraditionEdge.read(r, v, "%s.traditions[%d]" % (where, i))
                         for i, v in enumerate(r.seq(d, "traditions", where))],
+            applications=[Application.read(r, v, "%s.applications[%d]" % (where, i))
+                          for i, v in enumerate(r.seq(d, "applications", where))],
         )
 
 
@@ -217,26 +242,6 @@ class InboxItem:
             what=r.text(d, "what", where),
             obligation=r.text(d, "obligation", where, required=False),
             done=r.flag(d, "done", where),
-        )
-
-
-@dataclass
-class Application:
-    """An artifact outside the graph that a thesis reaches."""
-
-    name: str
-    what: str
-    link: str = ""
-    standing: str = ""
-
-    @staticmethod
-    def read(r: _Reader, data: Any, where: str) -> "Application":
-        d = r.obj(data, where)
-        return Application(
-            name=r.text(d, "name", where),
-            what=r.text(d, "what", where),
-            link=r.text(d, "link", where, required=False),
-            standing=r.text(d, "standing", where),
         )
 
 
@@ -274,7 +279,6 @@ class Question:
     tradition: bool = False
     theses: List[Thesis] = field(default_factory=list)
     inbox: List[InboxItem] = field(default_factory=list)
-    applications: List[Application] = field(default_factory=list)
     hinge: Optional[Hinge] = None
 
     def terms(self) -> Iterator[Term]:
@@ -286,6 +290,12 @@ class Question:
         for t in self.theses:
             for d in t.definitions:
                 yield t, d
+
+    def applications(self) -> Iterator[Tuple[Thesis, Application]]:
+        """Every application on this question, with the thesis it derives from."""
+        for t in self.theses:
+            for a in t.applications:
+                yield t, a
 
     @staticmethod
     def read(r: _Reader, data: Any, where: str) -> "Question":
@@ -309,8 +319,6 @@ class Question:
                     for i, v in enumerate(r.seq(d, "theses", here))],
             inbox=[InboxItem.read(r, v, "%s.inbox[%d]" % (here, i))
                    for i, v in enumerate(r.seq(d, "inbox", here))],
-            applications=[Application.read(r, v, "%s.applications[%d]" % (here, i))
-                          for i, v in enumerate(r.seq(d, "applications", here))],
             hinge=hinge,
         )
 

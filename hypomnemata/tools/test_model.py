@@ -33,7 +33,7 @@ class LoadTest(unittest.TestCase):
         self.assertIsInstance(root.theses[0].definitions[0], model.Definition)
         self.assertIsInstance(root.theses[0].traditions[0], model.TraditionEdge)
         self.assertIsInstance(root.inbox[0], model.InboxItem)
-        self.assertIsInstance(root.applications[0], model.Application)
+        self.assertIsInstance(list(root.applications())[0][1], model.Application)
         self.assertIsInstance(root.hinge, model.Hinge)
 
     def test_absent_hinge_is_none(self):
@@ -90,7 +90,8 @@ class ShapeTest(unittest.TestCase):
             {"id": "a", "tab": "t", "body": "b", "question": "?",
              "state": "held", "kind": "case", "priority": 0}]})
         q = graph.get("a")
-        self.assertEqual((q.requires, q.theses, q.inbox, q.applications), ([], [], [], []))
+        self.assertEqual((q.requires, q.theses, q.inbox), ([], [], []))
+        self.assertEqual(list(q.applications()), [])
         self.assertFalse(q.tradition)
         self.assertIsNone(q.hinge)
 

@@ -230,10 +230,21 @@ def _term_blocks(q: Question) -> List[str]:
 
 
 def _application_blocks(q: Question) -> List[str]:
+    """One subsection per artifact, saying which thesis it comes from.
+
+    The thesis is named and not merely implied: a question may carry several
+    answers, and an artifact built from one of them is not built from the
+    others. It also has to be legible on the page — an application that did not
+    say whose it was could not be read back off the render at all.
+    """
     blocks: List[str] = []
-    for app in q.applications:
+    for thesis, app in q.applications():
         blocks.append("### ⚙ %s" % app.name)
-        blocks.append("%s · %s · %s" % (app.what, app.link, app.standing))
+        line = "%s · ◆ %s · %s · %s" % (app.what, thesis.title, app.link,
+                                        app.standing)
+        if app.note.strip():
+            line += " · %s" % app.note.strip()
+        blocks.append(line)
     return blocks
 
 

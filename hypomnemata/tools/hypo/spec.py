@@ -243,7 +243,7 @@ def vocabulary(graph: Graph) -> Yield:
             yield q.id, "state %r is not one of %s" % (q.state, ", ".join(STATES))
         if q.kind not in KINDS:
             yield q.id, "kind %r is not one of %s" % (q.kind, ", ".join(KINDS))
-        for app in q.applications:
+        for _, app in q.applications():
             if app.standing not in STANDINGS:
                 yield q.id, "application %r: standing %r is not one of %s" % (
                     app.name, app.standing, ", ".join(STANDINGS))
@@ -406,6 +406,24 @@ def definition_once(graph: Graph) -> Yield:
         if len(owners) > 1:
             yield owners[0], "%r is defined here and again on %s" % (
                 spelling[key], ", ".join(owners[1:]))
+
+
+@check("standing-honest",
+       "an application is derived only where the question it comes from has landed")
+def standing_honest(graph: Graph) -> Yield:
+    """An artifact built ahead of the answer that would justify it is the
+    ordinary way work gets done and the ordinary way a graph rots. Calling it
+    a postulate is what keeps the debt visible, and whether it may be called
+    derived instead is not a matter of judgement: the source question has
+    landed or it has not.
+    """
+    for q in graph.questions:
+        if q.state == "landed":
+            continue
+        for _, app in q.applications():
+            if app.standing == "derived":
+                yield q.id, ("application %r stands as derived, but the question "
+                             "it comes from is %r and not landed" % (app.name, q.state))
 
 
 @check("answer-cardinality",

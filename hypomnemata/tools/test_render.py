@@ -73,8 +73,11 @@ class RootLayoutTest(unittest.TestCase):
         self.assertIn("*The record kept between them is the only thing both can point at.*",
                       self.text)
         self.assertIn("### ⚙ the opening entry", self.text)
-        self.assertIn("the first file both sides pointed at · entries/opening.md · postulate",
-                      self.text)
+        # the thesis it comes from is named, so which answer it rests on is
+        # on the page and not merely in the graph file
+        self.assertIn("the first file both sides pointed at · ◆ Each side owes "
+                      "the other what only it can give. · entries/opening.md · "
+                      "postulate", self.text)
         self.assertIn("### ⚓ question: what the asking presupposes", self.text)
         self.assertIn("### ⚓ thesis: what the answer was drawn from", self.text)
 
