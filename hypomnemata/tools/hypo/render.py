@@ -226,13 +226,23 @@ def _thesis_blocks(graph: Graph, thesis: Thesis) -> List[str]:
 
 
 def _glossary_blocks(q: Question) -> List[str]:
+    """A definition, and where a borrowed sense was borrowed from.
+
+    The borrowing closes the subsection as its own block, ending in the chip,
+    so that a reader who wants the lineage has somewhere to click and a parser
+    can tell the borrowing from the body it follows. Appended to the body's
+    own paragraph neither would be true.
+    """
     blocks: List[str] = []
     for _, definition in q.definitions():
         blocks.append("### ≡ %s" % definition.word)
-        body = definition.body
+        blocks.append(definition.body)
         if definition.tradition:
-            body = "%s %s." % (body, definition.tradition)
-        blocks.append(body)
+            note = definition.tradition.note.strip()
+            line = chip(definition.tradition.to)
+            if note:
+                line = "%s %s" % (note if note.endswith(".") else note + ".", line)
+            blocks.append(line)
     return blocks
 
 
@@ -445,6 +455,11 @@ def mention_targets(graph: Graph, qid: str) -> List[str]:
             for step in (project.lineage(graph, trad.to)
                          if graph.get(trad.to) else [trad.to]):
                 add(step)
+        for definition in thesis.definitions:
+            # a borrowing is one chip and not a breadcrumb: it closes a
+            # sentence rather than standing on a line of its own
+            if definition.tradition:
+                add(definition.tradition.to)
     for src in graph.questions:  # the mirror, on a tab something cites
         if any(trad.to == qid for thesis in src.theses
                for trad in thesis.traditions):

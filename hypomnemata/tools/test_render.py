@@ -51,9 +51,20 @@ class RootLayoutTest(unittest.TestCase):
                       self.text)
         self.assertNotIn("**Divergence**", self.text)
 
-    def test_glossary_carries_the_tradition_after_the_body(self):
-        self.assertIn("### ≡ elenchus", self.text)
-        self.assertIn("already grants. Plato.", self.text)
+    def test_glossary_closes_a_borrowed_sense_with_a_chip(self):
+        """A borrowed sense ends with the tradition it was borrowed from, and
+        the tradition is a chip: hand-applied was the only way to get one until
+        the borrowing became an edge."""
+        self.assertIn("### ≡ elenchus\n\nThe examination by which a claim is "
+                      "tested against what its holder already grants."
+                      "\n\n<?claude block m_plato?>", self.text)
+
+    def test_a_borrowing_note_precedes_its_chip(self):
+        graph = load("valid")
+        graph.get("ti-esti").theses[0].definitions[0].tradition.note = \
+            "the sense the dialogues put it to"
+        self.assertIn("\n\nthe sense the dialogues put it to. "
+                      "<?claude block m_plato?>", render.body(graph, "ti-esti"))
 
     def test_the_inbox_table_lists_the_children(self):
         self.assertIn("| question | term | kind | priority | requires |", self.text)

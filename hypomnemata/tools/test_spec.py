@@ -109,6 +109,21 @@ class DetailTest(unittest.TestCase):
         findings = spec.run(graph, only=["hinge-present"])
         self.assertEqual([f.question for f in findings], ["plato"])
 
+    def test_tradition_target_covers_a_definition_borrowing(self):
+        """A borrowed sense names a tradition the same way a citation does, so
+        a dangling one is caught by the same rule and not by a second."""
+        graph = load("valid")
+        borrowing = graph.get("ti-esti").theses[0].definitions[0].tradition
+        self.assertEqual(borrowing.to, "plato")
+        self.assertEqual(spec.run(graph, only=["tradition-target"]), [])
+        borrowing.to = "socrates"
+        findings = spec.run(graph, only=["tradition-target"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        self.assertIn("definition 'elenchus' borrows from", findings[0].message)
+        borrowing.to = "canon"
+        findings = spec.run(graph, only=["tradition-target"])
+        self.assertIn("not a tradition", findings[0].message)
+
     def test_provenance_complete_names_what_is_missing(self):
         findings = spec.run(load("invalid-provenance-complete"),
                             only=["provenance-complete"])

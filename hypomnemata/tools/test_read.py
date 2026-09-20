@@ -17,6 +17,15 @@ def chip_ids(graph):
     return {render.chip_key(q.id): q.id for q in graph.questions}
 
 
+#: what the document holds and the markdown does not, per class. A question's
+#: ``tradition`` is derived from the tab order; a definition's is on the page,
+#: as the chip that closes it, so it is compared like everything else.
+UNCARRIED = {
+    "Question": ("tab", "body", "tradition", "requires"),
+    "Graph": ("path", "questions", "artifact", "mode", "state_enum"),
+}
+
+
 def shed(value):
     """A model object as plain data, dropping what the markdown never carries."""
     if isinstance(value, list):
@@ -24,8 +33,7 @@ def shed(value):
     if hasattr(value, "__dataclass_fields__"):
         out = {}
         for name in value.__dataclass_fields__:
-            if name in ("tab", "body", "tradition", "requires", "path",
-                        "questions", "artifact", "mode", "state_enum"):
+            if name in UNCARRIED.get(type(value).__name__, ()):
                 continue
             field = shed(getattr(value, name))
             if field in ([], "", None, False):

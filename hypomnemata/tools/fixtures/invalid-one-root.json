@@ -41,7 +41,10 @@
             {
               "word": "elenchus",
               "body": "The examination by which a claim is tested against what its holder already grants.",
-              "tradition": "Plato"
+              "tradition": {
+                "to": "plato",
+                "note": ""
+              }
             }
           ],
           "traditions": [

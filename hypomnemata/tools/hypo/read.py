@@ -223,9 +223,17 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
                 "anchors": [b.strip("*") for b in body if b.startswith("*")]})
 
     for word, body in _subsections(named.get("glossary", []), "≡"):
-        if theses:
-            theses[0]["definitions"].append(
-                {"word": word, "body": SEPARATOR.join(body)})
+        if not theses:
+            continue
+        definition = {"word": word}
+        # the renderer closes a borrowed sense with its own block, ending in
+        # the chip; nothing else under a definition carries one
+        if body and _chips(body[-1]):
+            borrowing, body = body[-1], body[:-1]
+            definition["tradition"] = {"to": target(_chips(borrowing)[-1]),
+                                       "note": _strip_chips(borrowing).rstrip(".")}
+        definition["body"] = SEPARATOR.join(body)
+        theses[0]["definitions"].append(definition)
 
     for name, body in _subsections(named.get("applications", []), "⚙"):
         line = APPLICATION_LINE.match(body[0]) if body else None

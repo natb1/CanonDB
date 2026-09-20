@@ -154,20 +154,52 @@ class Mention:
 
 
 @dataclass
+class Borrowing:
+    """Where a definition takes its sense from: definition -> a tradition.
+
+    A ``TraditionEdge`` without the relation, because there is nothing for a
+    borrowed sense to diverge from: a definition that departed from the sense
+    it cites would not be citing it. It is an edge and not the free text it
+    used to be so that the renderer can make the chip the layout asks for, and
+    so that ``tradition-target`` catches a borrowing from a tradition the
+    graph does not hold.
+    """
+
+    to: str
+    note: str = ""
+
+    @staticmethod
+    def read(r: _Reader, data: Any, where: str) -> "Borrowing":
+        d = r.obj(data, where)
+        return Borrowing(
+            to=r.text(d, "to", where),
+            note=r.text(d, "note", where, required=False),
+        )
+
+
+@dataclass
 class Definition:
     """A word of a thesis fixed in place; it opens no descendant question."""
 
     word: str
     body: str
-    tradition: Optional[str] = None
+    tradition: Optional[Borrowing] = None
 
     @staticmethod
     def read(r: _Reader, data: Any, where: str) -> "Definition":
         d = r.obj(data, where)
+        raw = d.get("tradition")
+        if raw is None:
+            tradition = None
+        elif isinstance(raw, dict):
+            tradition = Borrowing.read(r, raw, where + ".tradition")
+        else:
+            r.fail(where + ".tradition", "expected an object or null")
+            tradition = None
         return Definition(
             word=r.text(d, "word", where),
             body=r.text(d, "body", where),
-            tradition=r.opt_text(d, "tradition", where),
+            tradition=tradition,
         )
 
 
