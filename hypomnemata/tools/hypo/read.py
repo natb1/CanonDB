@@ -77,7 +77,14 @@ def _chips(line: str) -> List[str]:
 
 
 def _strip_chips(line: str) -> str:
-    return EXPORTED_CHIP.sub(r"\1", CHIP.sub("", line)).strip()
+    """The line without its chips, in either spelling.
+
+    A chip goes entirely, label and all. It is a token the renderer put there
+    for the edge it stands on, and the edge is read from `_chips`; keeping the
+    label put the tradition's name inside the note that cites it — `…already
+    prosecuting for impiety. Plato`.
+    """
+    return PLACED_CHIP.sub("", line).strip()
 
 
 def _blocks(markdown: str) -> List[str]:

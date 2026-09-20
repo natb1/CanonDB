@@ -195,6 +195,21 @@ class DetailTest(unittest.TestCase):
         self.assertEqual(parsed["hinge"]["thesis"],
                          "harness: session_01JjvCcM5QM8JTTCsN2PEKCD")
 
+    def test_an_exported_chip_leaves_no_label_in_a_citation(self):
+        """A chip carries an edge, not a word. Flattened to `[Plato](file/…)`
+        on export and read back as its label, the tradition's name ended up
+        inside the note that cites it."""
+        body = render.body(self.graph, "ti-esti")
+        exported = body.replace("<?claude block m_plato?>",
+                                "[Plato](file/0c4d2d88-79ab)")
+        parsed = read.parse_tab(exported, self.ids)
+        thesis = parsed["theses"][0]
+        self.assertEqual(thesis["definitions"][0]["tradition"],
+                         {"to": "plato", "note": ""})
+        self.assertEqual([t["note"] for t in thesis["traditions"]],
+                         ["the opening move is asked of what the answerer "
+                          "is already doing"])
+
     def test_a_link_out_of_the_document_is_content(self):
         """A hinge names the commit it was answered against; that link is the
         principal's own words and is read back with them."""
