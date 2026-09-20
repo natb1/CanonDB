@@ -36,6 +36,12 @@ EXPORTED_CHIP = re.compile(r"\[([^\]]*)\]\(file/([^)]*)\)")
 IN_PAGE_LINK = re.compile(
     r"\[([^\]]*)\]\((?:https?://[^)#]*/artifact/[^)#]*)?#[^)]*\)")
 
+#: A backslash the export put in front of punctuation the markdown would
+#: otherwise read as a marker — `session\_01Jjv…` for a word with an
+#: underscore in it. It is the exporter's and not the page's, so it comes off;
+#: this is the ordinary markdown reading of a backslash escape.
+ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
+
 QUESTION_LINE = re.compile(
     r"^question: (?P<state>.+?) · (?P<kind>[^·]+?) · priority (?P<priority>-?\d+)"
     r" · load \d+ · requires: (?P<requires>.*)$")
@@ -188,7 +194,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     # every export carries them and no graph file ever did. They come off here,
     # before the grammar is read, or they would land inside a thesis text and
     # break the one line whose shape is fixed — `· provenance: thesis hinge`.
-    markdown = IN_PAGE_LINK.sub(r"\1", markdown)
+    markdown = ESCAPE.sub(r"\1", IN_PAGE_LINK.sub(r"\1", markdown))
 
     def target(key: str) -> str:
         # a key with no question behind it names something the graph does not

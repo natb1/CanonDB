@@ -183,6 +183,18 @@ class DetailTest(unittest.TestCase):
         self.assertIn({"section": "terms", "body": "Ask Plato about this one."},
                       parsed["notes"])
 
+    def test_the_export_s_backslashes_come_off(self):
+        """The document escapes what markdown would otherwise read as a
+        marker, so a session id comes back `session\\_01Jjv…`. The backslash is
+        the exporter's, not the page's."""
+        graph = load("valid")
+        graph.get("canon").hinge.thesis = "harness: session_01JjvCcM5QM8JTTCsN2PEKCD"
+        exported = render.body(graph, "canon").replace(
+            "session_01Jjv", "session\\_01Jjv")
+        parsed = read.parse_tab(exported, self.ids)
+        self.assertEqual(parsed["hinge"]["thesis"],
+                         "harness: session_01JjvCcM5QM8JTTCsN2PEKCD")
+
     def test_a_link_out_of_the_document_is_content(self):
         """A hinge names the commit it was answered against; that link is the
         principal's own words and is read back with them."""
