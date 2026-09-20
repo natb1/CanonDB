@@ -14,7 +14,7 @@ from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tupl
 
 from . import project
 from .model import (CANON, Graph, INBOX_KINDS, KINDS, MODES, RELATIONS,
-                    STANDINGS, STATES)
+                    SECTIONS, STANDINGS, STATES)
 
 ERROR = "ERROR"
 WARN = "WARN"
@@ -276,6 +276,11 @@ def vocabulary(graph: Graph) -> Yield:
             yield q.id, "state %r is not one of %s" % (q.state, ", ".join(STATES))
         if q.kind not in KINDS:
             yield q.id, "kind %r is not one of %s" % (q.kind, ", ".join(KINDS))
+        for note in q.notes:
+            if note.section.strip().lower() not in SECTIONS:
+                yield q.id, ("a note names the section %r, which is none of %s; "
+                             "it would be written to a heading that never "
+                             "renders" % (note.section, ", ".join(SECTIONS)))
         for _, app in q.applications():
             if app.standing not in STANDINGS:
                 yield q.id, "application %r: standing %r is not one of %s" % (

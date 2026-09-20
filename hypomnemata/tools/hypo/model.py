@@ -17,6 +17,10 @@ STANDINGS = ("derived", "postulate")
 RELATIONS = ("support", "divergence")
 INBOX_KINDS = ("promulgate", "provide", "dispose", "build")
 
+#: The section a note may be attached to, as the renderer names them.
+SECTIONS = ("thesis", "glossary", "inbox", "terms", "applications",
+            "cited by", "hinge")
+
 NOTEBOOK = "notebook"
 CANON = "canon"
 MODES = (NOTEBOOK, CANON)
@@ -274,6 +278,28 @@ class InboxItem:
 
 
 @dataclass
+class Note:
+    """Something a human wrote on a tab for their own use.
+
+    The renderer replaces a whole tab body, so anything on the page the model
+    does not hold is destroyed the next time the tab is written. A note is how
+    the model holds it: attached to a section, rendered as a blockquote, and
+    carried back out on the next export.
+    """
+
+    section: str
+    body: str
+
+    @staticmethod
+    def read(r: _Reader, data: Any, where: str) -> "Note":
+        d = r.obj(data, where)
+        return Note(
+            section=r.text(d, "section", where),
+            body=r.text(d, "body", where),
+        )
+
+
+@dataclass
 class Hinge:
     """What the asking presupposes, and what the answer was drawn from."""
 
@@ -307,6 +333,7 @@ class Question:
     tradition: bool = False
     theses: List[Thesis] = field(default_factory=list)
     inbox: List[InboxItem] = field(default_factory=list)
+    notes: List[Note] = field(default_factory=list)
     hinge: Optional[Hinge] = None
 
     def terms(self) -> Iterator[Term]:
@@ -353,6 +380,8 @@ class Question:
                     for i, v in enumerate(r.seq(d, "theses", here))],
             inbox=[InboxItem.read(r, v, "%s.inbox[%d]" % (here, i))
                    for i, v in enumerate(r.seq(d, "inbox", here))],
+            notes=[Note.read(r, v, "%s.notes[%d]" % (here, i))
+                   for i, v in enumerate(r.seq(d, "notes", here))],
             hinge=hinge,
         )
 
@@ -368,6 +397,7 @@ class Graph:
 
     artifact: str
     mode: str = NOTEBOOK
+    state_enum: Optional[str] = None
     questions: List[Question] = field(default_factory=list)
     path: Optional[str] = None
 
@@ -398,6 +428,7 @@ class Graph:
         return Graph(
             artifact=r.text(d, "artifact", where, required=False),
             mode=r.text(d, "mode", where, required=False, default=NOTEBOOK) or NOTEBOOK,
+            state_enum=r.opt_text(d, "state_enum", where),
             questions=[Question.read(r, v, "questions[%d]" % i)
                        for i, v in enumerate(r.seq(d, "questions", where))],
         )

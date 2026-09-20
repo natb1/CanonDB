@@ -186,6 +186,44 @@ class MentionTest(unittest.TestCase):
         self.assertIn("mention", findings[0].message)
 
 
+class SurvivesReRenderTest(unittest.TestCase):
+    """The renderer replaces a whole tab body, so anything on the page the
+    model does not hold is destroyed the next time the tab is written."""
+
+    def setUp(self):
+        self.graph = load("valid")
+
+    def test_a_note_is_kept_as_a_blockquote(self):
+        self.graph.get("canon").notes.append(model.Note(
+            section="thesis", body="Consider asking this one next."))
+        text = render.body(self.graph, "canon")
+        self.assertIn("> Consider asking this one next.", text)
+        self.assertEqual(spec.run(self.graph), [])
+
+    def test_a_note_opens_a_section_that_is_otherwise_empty(self):
+        """Or it is written to a heading that never renders, and is lost."""
+        self.assertNotIn("## Cited by", render.body(self.graph, "canon"))
+        self.graph.get("canon").notes.append(model.Note(
+            section="cited by", body="Nothing cites this yet."))
+        text = render.body(self.graph, "canon")
+        self.assertIn("## Cited by", text)
+        self.assertIn("> Nothing cites this yet.", text)
+
+    def test_a_note_on_an_unknown_section_is_reported(self):
+        self.graph.get("canon").notes.append(model.Note(
+            section="preamble", body="x"))
+        findings = spec.run(self.graph, only=["vocabulary"])
+        self.assertIn("never", findings[0].message)
+
+    def test_the_state_renders_as_a_dropdown_where_the_doc_has_one(self):
+        self.assertIn("question: landed ·", render.body(self.graph, "ti-esti"))
+        self.graph.state_enum = "000e742f-9e41"
+        self.assertIn("question: <?claude block state?> ·",
+                      render.body(self.graph, "ti-esti"))
+        self.assertEqual(render.links(self.graph, "ti-esti")["blocks"]["state"],
+                         {"type": "dropdown", "enum": "000e742f-9e41", "index": 2})
+
+
 class RenderAllTest(unittest.TestCase):
     def test_every_tab_in_projection_order(self):
         text = render.render_all(load("valid"))

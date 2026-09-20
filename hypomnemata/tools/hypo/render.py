@@ -18,7 +18,7 @@ import re
 from typing import Dict, List, Optional, Tuple
 
 from . import project, spec, text
-from .model import Graph, Question, Term, Thesis
+from .model import STATES, Graph, Question, Term, Thesis
 
 SEPARATOR = "\n\n"
 
@@ -321,6 +321,38 @@ def _application_blocks(q: Question) -> List[str]:
     return blocks
 
 
+#: the blocks key for the state dropdown, one per tab
+STATE_KEY = "state"
+
+
+def _state(graph: Graph, q: Question) -> str:
+    """The state as the page holds it: a dropdown where the doc has an enum.
+
+    Rendered as plain text when the graph file names no enum, so a fresh graph
+    still writes a readable tab rather than a chip against an enum that does
+    not exist.
+    """
+    if graph.state_enum and q.state in STATES:
+        return "<?claude block %s?>" % STATE_KEY
+    return q.state
+
+
+def _note_blocks(q: Question, section: str) -> List[str]:
+    """A human's own notes on a section, as a blockquote.
+
+    Marked, because the export has to be able to tell them from the prose the
+    renderer wrote — otherwise the round trip reads a note as content and the
+    next render writes it back as content.
+    """
+    out: List[str] = []
+    for note in q.notes:
+        if note.section.strip().lower() != section:
+            continue
+        out.append("\n".join("> %s" % line if line.strip() else ">"
+                              for line in note.body.splitlines()))
+    return out
+
+
 def _hinge_blocks(q: Question) -> List[str]:
     if q.hinge is None or q.hinge.empty():
         return []
@@ -362,23 +394,27 @@ def body(graph: Graph, qid: str) -> str:
         blocks.append("⌂ " + breadcrumb(graph, qid))
 
     blocks.append("question: %s · %s · priority %d · load %d · requires: %s" % (
-        q.state, q.kind, q.priority, project.load(graph, qid),
+        _state(graph, q), q.kind, q.priority, project.load(graph, qid),
         _requires(graph, q)))
 
     thesis_blocks: List[str] = []
     for thesis in q.theses:
         thesis_blocks.extend(_thesis_blocks(graph, thesis))
         thesis_blocks.extend(_tradition_blocks(graph, thesis))
-    for heading, section in (("## Thesis", thesis_blocks),
-                             ("## Glossary", _glossary_blocks(q)),
-                             ("## Inbox", _inbox_blocks(graph, q)),
-                             ("## Terms", _term_blocks(q)),
-                             ("## Applications", _application_blocks(q)),
-                             ("## Cited by", _cited_by_blocks(graph, q)),
-                             ("## Hinge", _hinge_blocks(q))):
-        if section:
-            blocks.append(heading)
+    for name, section in (("thesis", thesis_blocks),
+                          ("glossary", _glossary_blocks(q)),
+                          ("inbox", _inbox_blocks(graph, q)),
+                          ("terms", _term_blocks(q)),
+                          ("applications", _application_blocks(q)),
+                          ("cited by", _cited_by_blocks(graph, q)),
+                          ("hinge", _hinge_blocks(q))):
+        notes = _note_blocks(q, name)
+        # a note opens its section even when the section is otherwise empty,
+        # or it is written to a heading that is never rendered and is lost
+        if section or notes:
+            blocks.append("## %s" % name.title().replace(" By", " by"))
             blocks.extend(section)
+            blocks.extend(notes)
 
     return SEPARATOR.join(b.strip("\n") for b in blocks) + "\n"
 
@@ -424,8 +460,13 @@ def mention_blocks(graph: Graph, qid: str) -> Dict[str, Dict[str, str]]:
     it is omitted here; ``term-target`` reports it.
     """
     by_id = graph.by_id()
-    return {chip_key(target): {"type": "mention", "ref": "file/%s" % by_id[target].tab}
-            for target in mention_targets(graph, qid) if target in by_id}
+    blocks = {chip_key(target): {"type": "mention", "ref": "file/%s" % by_id[target].tab}
+              for target in mention_targets(graph, qid) if target in by_id}
+    q = graph.get(qid)
+    if graph.state_enum and q is not None and q.state in STATES:
+        blocks[STATE_KEY] = {"type": "dropdown", "enum": graph.state_enum,
+                             "index": STATES.index(q.state)}
+    return blocks
 
 
 def links(graph: Graph, qid: str) -> Dict[str, object]:
