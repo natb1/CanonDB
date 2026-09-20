@@ -148,6 +148,33 @@ class DetailTest(unittest.TestCase):
         self.assertEqual(findings[0].question, "canon")
         self.assertIn("party", findings[0].message)
 
+    def test_a_title_may_be_a_phrase_and_may_carry_a_link(self):
+        """The narrowing that replaces no-ids-in-prose: a title summarises and
+        need not be a sentence, and may well be the handle a link points at.
+        Only an opaque handle or a bare question id is wrong."""
+        graph = load("valid")
+        term = graph.get("ti-esti").theses[0].terms[0]
+        for allowed in ("The record between them", "Memory is the repo",
+                        "≡ ti esti", "GPT is not a handle"):
+            term.title = allowed
+            self.assertEqual(spec.run(graph, only=["title-not-identifier"]), [],
+                             allowed)
+        for refused in ("term-001", "node_3"):
+            term.title = refused
+            self.assertTrue(spec.run(graph, only=["title-not-identifier"]), refused)
+
+    def test_a_deadlock_sentinel_is_a_vocabulary_finding(self):
+        """assent is required, so `none` is a real value there. A deadlock is
+        optional, so a word standing in for its absence is pure noise — which
+        the live root answer writes and every other tab omits."""
+        graph = load("valid")
+        thesis = graph.get("canon").theses[0]
+        self.assertEqual(spec.run(graph, only=["vocabulary"]), [])
+        thesis.deadlock = "none"
+        findings = spec.run(graph, only=["vocabulary"])
+        self.assertEqual(findings[0].question, "canon")
+        self.assertIn("leave it out", findings[0].message)
+
     def test_answer_cardinality_runs_in_canon_mode_only(self):
         self.assertEqual(spec.run(load("valid"), only=["answer-cardinality"]), [])
         graph = load("invalid-answer-cardinality")

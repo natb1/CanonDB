@@ -22,6 +22,12 @@ WARN = "WARN"
 #: The three sources a hinge's thesis part must name, as they are written.
 PROVENANCE = ("model:", "harness:", "canon:")
 
+#: A title that is a machine's handle rather than a reader's: `term-001`.
+HANDLE = re.compile(r"[A-Za-z]\w*[-_]\d+")
+
+#: Words that stand in for an absent optional field instead of leaving it out.
+SENTINELS = ("none", "n/a", "na", "-", "\u2014", "nil", "null")
+
 Yield = Iterator[Tuple[Optional[str], str]]
 
 
@@ -275,10 +281,43 @@ def vocabulary(graph: Graph) -> Yield:
                 yield q.id, "application %r: standing %r is not one of %s" % (
                     app.name, app.standing, ", ".join(STANDINGS))
         for thesis in q.theses:
+            # assent is required, so "none" is a real value there; a deadlock is
+            # optional, so a word standing in for its absence is pure noise
+            for where, value in ([("thesis %r" % _clip(thesis.title, 30), thesis.deadlock)]
+                                 + [("term %r" % t.title, t.deadlock)
+                                    for t in thesis.terms]):
+                if value is not None and value.strip().lower() in SENTINELS:
+                    yield q.id, ("%s: deadlock reads %r; leave it out instead"
+                                 % (where, value.strip()))
             for trad in thesis.traditions:
                 if trad.relation not in RELATIONS:
                     yield q.id, "tradition %r: relation %r is not one of %s" % (
                         trad.to, trad.relation, ", ".join(RELATIONS))
+
+
+@check("title-not-identifier",
+       "a title names its content rather than standing in as a handle", WARN)
+def title_not_identifier(graph: Graph) -> Yield:
+    """What survives of the retired no-ids-in-prose, narrowed to the thing it
+    was really after. A title summarises; it need not be a sentence, and it may
+    well be what a link points at. What it may not be is opaque — `term-001`
+    tells a reader nothing — or a bare question id, which names a tab and not
+    this thing.
+    """
+    ids = {q.id for q in graph.questions}
+    for q in graph.questions:
+        titled = [("thesis", t.title) for t in q.theses]
+        titled += [("term", t.title) for t in q.terms()]
+        titled += [("mention", m.title) for m in q.mentions()]
+        titled += [("inbox item", i.title) for i in q.inbox]
+        titled += [("application", a.name) for _, a in q.applications()]
+        for what, title in titled:
+            bare = (title or "").strip()
+            if bare in ids:
+                yield q.id, ("%s title %r is a question id, which names a tab "
+                             "and not this" % (what, bare))
+            elif HANDLE.fullmatch(bare):
+                yield q.id, "%s title %r is a handle and not a name" % (what, bare)
 
 
 @check("assent-present", "every thesis has a non-empty assent")
