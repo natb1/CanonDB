@@ -87,6 +87,12 @@ a procedure rather than a script.
   `title-not-identifier` catches the two shapes a script can decide: an opaque handle like
   `term-001`, and a bare question id, which names a tab and not the thing it sits on. What is left
   to read is whether the title actually says what the thing says, rather than merely pointing at it.
+- **No identifiers in prose.** A question is named by its tab and an item by its title.
+  `title-not-identifier` catches the two shapes a script can decide in a *heading*; in prose
+  nothing can, because most question ids here are ordinary words — `canon`, `context`, `party`,
+  `priority`. Read every thesis for a bare id standing in for a name. Naming a file that
+  happens to share an id is not one: the root's hinge records that the filename leaked the
+  frame, and it can only do that by naming the file.
 - **A null edge really raises no question.** Leaving a clause without a term is a judgement that
   nothing follows from it. The checker cannot tell a deliberate null edge from a missed term.
 - **Tradition relations are marked honestly.** Support and divergence are read, not derived.
@@ -94,6 +100,16 @@ a procedure rather than a script.
   principal's judgement; nothing computes them.
 - **No inline documentation.** A tab carries its content; what its shape means belongs on the
   encoding tabs. The checker cannot see the difference.
+- **Every datum has one home.** A question's metadata on its question line, an answer's on its
+  own section, a term's on its term section — stated once and linked from wherever else it
+  bears. No script can tell a second statement of one datum from two data, and the second one
+  is usually added in good faith: an inbox item for debt an application already carries as a
+  postulate, a note restating a field. Read for it whenever a field, a note or an item is added.
+- **Discharge is an act, not a state.** `standing-honest` refuses `derived` where the source
+  question has not landed. It cannot tell whether the artifact exists, and it cannot tell
+  whether anyone diffed it against the landed answer. A landed source is necessary and not
+  sufficient: an application stays `postulate` until that diff is done, however green the
+  check, and saying so is the writer's judgement.
 - **The clean-context rule.** Nothing of the notebook may reach a turn that answers a canon
   question. There is no guard for this yet — it is recorded as an eventuality on the `context` tab —
   so it holds by discipline: never invoke a canon entry point from a session that has run this one.
