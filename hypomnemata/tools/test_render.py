@@ -49,8 +49,13 @@ class RootLayoutTest(unittest.TestCase):
     def test_the_question_line(self):
         self.assertEqual(
             self.lines[3],
-            "question: landed · root · priority 27 · load 3 · "
-            "requires: promulgate the root answer")
+            "question: landed · root · priority 27 · load 3 · requires: nothing")
+
+    def test_a_question_line_names_what_it_waits_on(self):
+        """The root waits on nothing: its own promulgation follows its answer
+        rather than preceding it, and blocks only the questions above it."""
+        self.assertIn("requires: promulgate the root answer",
+                      render.body(load("valid"), "canon"))
 
     def test_section_order(self):
         self.assertEqual(sections(self.text),
@@ -85,9 +90,23 @@ class RootLayoutTest(unittest.TestCase):
     def test_the_inbox_table_lists_the_children(self):
         self.assertIn("| question | term | kind | priority | requires |", self.text)
         self.assertIn("| <?claude block m_canon?> | The record between them | "
-                      "definitional | 12 | nothing |", self.text)
+                      "definitional | 12 | promulgate the root answer |", self.text)
         self.assertIn("| <?claude block m_party?> | Two sides, two debts | case | 9 | "
-                      "nothing |", self.text)
+                      "promulgate the root answer |", self.text)
+
+    def test_cited_by_does_not_depend_on_the_graph_order(self):
+        """The rows are gathered by walking the graph, whose order is whatever
+        the document's tab order happened to be. Every other projection here is
+        total and deterministic; this one was not, so the same graph read from a
+        differently ordered document rendered a differently ordered list."""
+        graph = load("valid")
+        graph.get("canon").theses[0].traditions.append(
+            model.TraditionEdge(to="plato", relation="support",
+                                note="the same method, put to a second use"))
+        first = render.body(graph, "plato")
+        self.assertIn("**Support**", first)
+        graph.questions.reverse()
+        self.assertEqual(render.body(graph, "plato"), first)
 
     def test_the_inbox_table_is_heaviest_first(self):
         """The section answers what to do next; a table in file order answers

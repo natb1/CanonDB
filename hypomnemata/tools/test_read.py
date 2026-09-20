@@ -94,7 +94,7 @@ class DetailTest(unittest.TestCase):
     def test_requires_comes_back_as_the_rendered_title(self):
         """The page shows titles; ids are resolved against the inbox items of
         every tab, which is why assembling a graph needs all of them."""
-        self.assertEqual(self.parse("ti-esti")["requires"],
+        self.assertEqual(self.parse("canon")["requires"],
                          ["promulgate the root answer"])
 
     def test_a_tab_that_is_not_a_tab_is_refused(self):

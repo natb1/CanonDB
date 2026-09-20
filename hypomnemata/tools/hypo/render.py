@@ -125,6 +125,12 @@ def _cited_by_blocks(graph: Graph, q: Question) -> List[str]:
     A tradition's lineage is not this graph's, so nothing leads to it in the
     tab tree and its masthead carries no terms. This is the list that would
     otherwise be missing — what a tradition is doing here at all.
+
+    Sorted by source, because the rows are gathered by walking the graph and
+    the graph's own order is whatever the document's tab order happened to be.
+    Every other projection here is total and deterministic; this one was not,
+    so the same graph read from a differently ordered document rendered a
+    differently ordered list.
     """
     rows: List[Tuple[str, str]] = []
     for src in graph.questions:
@@ -135,7 +141,7 @@ def _cited_by_blocks(graph: Graph, q: Question) -> List[str]:
     blocks: List[str] = []
     for relation, heading in (("support", "Support"), ("divergence", "Divergence")):
         items = ["- %s" % breadcrumb(graph, src, plain_last=False)
-                 for rel, src in rows if rel == relation]
+                 for rel, src in sorted(rows) if rel == relation]
         if items:
             blocks.append("**%s**" % heading)
             blocks.append("\n".join(items))

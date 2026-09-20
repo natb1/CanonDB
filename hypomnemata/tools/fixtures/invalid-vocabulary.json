@@ -9,9 +9,7 @@
       "state": "landed",
       "kind": "root",
       "priority": 27,
-      "requires": [
-        "promulgate-the-root-answer"
-      ],
+      "requires": [],
       "tradition": false,
       "theses": [
         {
@@ -87,7 +85,9 @@
       "state": "pending",
       "kind": "definitional",
       "priority": 12,
-      "requires": [],
+      "requires": [
+        "promulgate-the-root-answer"
+      ],
       "tradition": false,
       "theses": [
         {
@@ -129,7 +129,9 @@
       "state": "held",
       "kind": "case",
       "priority": 9,
-      "requires": [],
+      "requires": [
+        "promulgate-the-root-answer"
+      ],
       "tradition": false,
       "theses": [
         {

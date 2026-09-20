@@ -204,6 +204,31 @@ class DetailTest(unittest.TestCase):
         self.assertIsNone(findings[0].question)
         self.assertIn("ledger", findings[0].message)
 
+    def test_a_landed_question_waits_on_nothing_that_is_not_done(self):
+        """`requires` names what must be done before a question can be asked,
+        so a question that has landed was asked. The live root waited on its
+        own promulgation, which is the act that follows an answer."""
+        graph = load("valid")
+        self.assertEqual(spec.run(graph, only=["requires-discharged"]), [])
+        graph.get("ti-esti").requires = ["promulgate-the-root-answer"]
+        findings = spec.run(graph, only=["requires-discharged"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        self.assertIn("has landed but still waits on", findings[0].message)
+        graph.get("ti-esti").inbox[0].done = True
+        self.assertEqual(spec.run(graph, only=["requires-discharged"]), [])
+
+    def test_an_undone_item_nothing_requires_is_reported(self):
+        """An action exists only as something a question requires. A done item
+        is exempt: its requirers drop the entry when it is discharged."""
+        graph = load("valid")
+        self.assertEqual(spec.run(graph, only=["inbox-required"]), [])
+        for q in graph.questions:
+            q.requires = []
+        findings = spec.run(graph, only=["inbox-required"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        graph.get("ti-esti").inbox[0].done = True
+        self.assertEqual(spec.run(graph, only=["inbox-required"]), [])
+
     def test_findings_render_as_one_line_and_as_json(self):
         finding = spec.run(load("invalid-vocabulary"), only=["vocabulary"])[0]
         self.assertEqual(len(finding.line().splitlines()), 1)

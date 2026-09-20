@@ -9,9 +9,7 @@
       "state": "landed",
       "kind": "root",
       "priority": 27,
-      "requires": [
-        "promulgate-the-root-answer"
-      ],
+      "requires": [],
       "tradition": false,
       "theses": [
         {
@@ -64,16 +62,7 @@
           ]
         }
       ],
-      "inbox": [
-        {
-          "id": "promulgate-the-root-answer",
-          "title": "promulgate the root answer",
-          "kind": "promulgate",
-          "what": "put the opening answer where both sides can see it",
-          "obligation": "once, before any descendant is asked",
-          "done": false
-        }
-      ],
+      "inbox": [],
       "hinge": {
         "question": "the addressee is a side of whom something can be required, which the asking already presumes",
         "thesis": "model: an unnamed assistant · harness: a repository holding one file · canon: empty"
@@ -165,9 +154,7 @@
       "state": "held",
       "kind": "consistency",
       "priority": 5,
-      "requires": [
-        "promulgate-the-root-answer"
-      ],
+      "requires": [],
       "tradition": false,
       "theses": [
         {

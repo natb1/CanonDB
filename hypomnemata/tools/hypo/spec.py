@@ -371,6 +371,27 @@ def requires_exist(graph: Graph) -> Yield:
                              "ancestor defines" % want)
 
 
+@check("requires-discharged", "a landed question waits on nothing that is not done")
+def requires_discharged(graph: Graph) -> Yield:
+    """``requires`` names what must be done before a question can be asked, so a
+    question that has landed was asked, and everything it waited on was done.
+
+    The root carried its own promulgation, which is the act that follows its
+    answer rather than one that precedes it — it blocks every question above
+    and never blocked the root. An entry naming no item at all is
+    `requires-exist`'s to report, not this one's.
+    """
+    done = {item.id: item.done for q in graph.questions for item in q.inbox}
+    for q in graph.questions:
+        if q.state != "landed":
+            continue
+        pending = sorted(w for w in q.requires if w in done and not done[w])
+        if pending:
+            yield q.id, ("has landed but still waits on %s, which %s not done"
+                         % (", ".join(repr(p) for p in pending),
+                            "is" if len(pending) == 1 else "are"))
+
+
 @check("inbox-placement",
        "an inbox item sits on the most descendant common ancestor of its requirers",
        WARN)
@@ -403,6 +424,29 @@ def inbox_placement(graph: Graph) -> Yield:
                 yield q.id, ("inbox item %r belongs on %s, the most descendant "
                              "question that is an ancestor of every question "
                              "requiring it (%s)" % (item.id, home, ", ".join(asked)))
+
+
+@check("inbox-required",
+       "an inbox item that is not done is required by at least one question")
+def inbox_required(graph: Graph) -> Yield:
+    """An action exists only as something a question requires, and a question is
+    scheduled only by what it requires. An item nothing waits on is either debt
+    with no bearing on any question, or the same debt written twice — once on an
+    application as a postulate, and again here.
+
+    A done item is exempt: a requirer drops the entry when the item is
+    discharged, so the discharged item is left with no requirers by design.
+    `inbox-placement` asks a different question of the same field and skips this
+    case, which is why it is a rule of its own.
+    """
+    wanted: Set[str] = set()
+    for q in graph.questions:
+        wanted.update(q.requires)
+    for q in graph.questions:
+        for item in q.inbox:
+            if not item.done and item.id not in wanted:
+                yield q.id, ("inbox item %r is not done and no question requires "
+                             "it, so nothing waits on it" % item.id)
 
 
 @check("priority-recompute",
@@ -473,9 +517,12 @@ def definition_once(graph: Graph) -> Yield:
     The rule was once scoped to the tab tree, on the reading that a word
     defined on two questions neither of which is under the other is two words
     and the reader is told which by the tab he is on. That reading licenses
-    exactly the drift it was meant to catch: `prior` came to mean what a model
-    produces unprompted on one tab and a thesis the human holds on another,
-    with nothing firing. A word that must carry two senses needs two words.
+    exactly the drift it was meant to catch: `prior` stood defined twice, on
+    `alignment` and on `hypomnemata`, with nothing firing — and a reader who
+    met the word on a third tab had no way to tell which entry he was reading.
+    The defect was the second entry, not the sense: a word may well have one
+    sense and two bearers, as `prior` does. A word that must carry two senses
+    needs two words; a word with one needs one entry.
     """
     where: Dict[str, List[str]] = {}
     spelling: Dict[str, str] = {}
