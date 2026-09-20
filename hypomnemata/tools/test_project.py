@@ -64,7 +64,7 @@ class DistanceTest(unittest.TestCase):
             for a, b in (("x-one", "x-two"), ("x-two", "x-one")):
                 data["questions"].append({
                     "id": a, "tab": "tab-" + a, "body": "body-" + a,
-                    "question": "?", "state": "held", "kind": "case", "priority": 0,
+                    "question": "?", "state": "held", "kind": "case", "pressure": 0,
                     "theses": [{"title": "t", "assent": "none", "text": "t",
                                 "terms": [{"title": "to " + b, "to": b,
                                            "anchors": ["t"]}]}]})
@@ -123,7 +123,8 @@ class OrderTest(unittest.TestCase):
     def test_several_tradition_roots_run_b0_b1(self):
         def add_tradition(data):
             second = copy.deepcopy(data["questions"][-1])
-            second.update({"id": "aristotle", "tab": "tab-06", "body": "body-06"})
+            second.update({"id": "aristotle", "tab": "tab-06", "body": "body-06",
+                           "party": "aristotle"})
             data["questions"].append(second)
         orders = project.orders(rewrite("valid", add_tradition))
         self.assertEqual(orders["aristotle"], "b0")
@@ -132,9 +133,10 @@ class OrderTest(unittest.TestCase):
 
 class LoadTest(unittest.TestCase):
     def test_a_tradition_may_carry_a_member(self):
-        """A tradition is the root of a lineage of its own, so questions may
-        hang beneath it. The projection always handled this — it walks from
-        every root — and only the retired `reachable` check said otherwise."""
+        """A tradition is another party's notebook, so it may raise its own
+        questions and answer them; the member belongs to that party too. Being
+        a tradition is not the same as being the root of one — the root is the
+        one nothing in its own party reaches."""
         def hang(data):
             plato = [q for q in data["questions"] if q["id"] == "plato"][0]
             plato["theses"][0]["terms"] = [{
@@ -143,7 +145,8 @@ class LoadTest(unittest.TestCase):
             data["questions"].append({
                 "id": "member", "tab": "tab-06", "body": "body-06",
                 "question": "What does flattery do to an examination?",
-                "state": "held", "kind": "case", "priority": 0, "requires": [],
+                "state": "held", "kind": "case", "pressure": 0, "requires": [],
+                "party": "plato",
                 "theses": [{"title": "Flattery answers to please.",
                             "assent": "read, not agreed",
                             "text": "Flattery answers to please.",
@@ -156,6 +159,25 @@ class LoadTest(unittest.TestCase):
         self.assertEqual(project.parents(graph)["member"], "plato")
         self.assertEqual(project.distances(graph)["member"], 1)
         self.assertEqual(project.load(graph, "plato"), 1)
+        self.assertEqual(project.tradition_roots(graph), ["plato"])
+
+    def test_priority_sums_pressure_along_the_term_edges(self):
+        """Pressure originates at a leaf; priority is its transitive sum, which
+        is what answers what to do next. The blocking relation is read off the
+        term graph because a turn carries canon above its question, so nothing
+        below a question can be put until it has landed."""
+        graph = load("valid")
+        self.assertEqual(project.priority(graph, "canon"), 17)
+        self.assertEqual(project.priority(graph, "party"), 14)
+        self.assertEqual(project.priority(graph, "ti-esti"),
+                         graph.get("ti-esti").pressure + 17 + 14)
+
+    def test_priority_is_total_on_a_cycle(self):
+        """Every projection here is total on a graph the checker rejects, so a
+        question already being summed contributes nothing to itself."""
+        graph = load("invalid-acyclic")
+        for q in graph.questions:
+            self.assertIsInstance(project.priority(graph, q.id), int)
 
     def test_load_counts_what_the_term_edges_reach(self):
         graph = load("valid")

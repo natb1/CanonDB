@@ -20,7 +20,7 @@ import re
 from typing import Dict, List, Optional, Tuple
 
 from .model import SECTIONS
-from .render import SEPARATOR, chip_key
+from .render import INSTEAD, SEPARATOR, chip_key
 
 #: ``<?claude block m_canon?>`` as the renderer writes it.
 CHIP = re.compile(r"<\?claude block ([0-9A-Za-z_]+)\?>")
@@ -42,12 +42,18 @@ IN_PAGE_LINK = re.compile(
 #: this is the ordinary markdown reading of a backslash escape.
 ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
 
+#: Only pressure is read back. Priority and load are projections of the graph,
+#: and reading them would store a second copy of something already derivable.
 QUESTION_LINE = re.compile(
-    r"^question: (?P<state>.+?) · (?P<kind>[^·]+?) · priority (?P<priority>-?\d+)"
+    r"^question: (?P<state>.+?) · (?P<kind>[^·]+?)"
+    r"(?: · (?P<standing>canon|postulate))?"
+    r" · pressure (?P<pressure>-?\d+) · priority -?\d+"
     r" · load \d+ · requires: (?P<requires>.*)$")
 ASSENT_LINE = re.compile(
-    r"^assent: (?P<assent>.*?)(?: · deadlock: (?P<deadlock>.*?))?"
+    r"^assent: (?P<assent>.*?)(?: · (?P<standing>canon|postulate))?"
     r" · provenance: thesis hinge$")
+DEADLOCK_LINE = re.compile(r"^deadlock: (?P<counter>.*)$", re.S)
+ATTENUATION_LINE = re.compile(r"^attenuation: (?P<attenuation>.*)$", re.S)
 INBOX_LINE = re.compile(
     r"^(?P<kind>[^·]+?) · (?P<what>.*) · instances (?P<obligation>.*)"
     r" · (?P<done>done|not done) · id (?P<id>\S+)$")
@@ -64,6 +70,10 @@ CITATION_HEADINGS = ("**Support**", "**Divergence**")
 #: text as it was written rather than a gap where a token used to stand
 PLACED_CHIP = re.compile(r" ?(?:<\?claude block [0-9A-Za-z_]+\?>"
                          r"|\[[^\]]*\]\(file/[^)]*\))")
+
+#: what a breadcrumb leaves behind once its chips are gone: the separators that
+#: stood between them, and the full stop that closed the note before it
+CRUMB_TAIL = re.compile(r"[\s›.]+$")
 
 
 class ParseError(Exception):
@@ -174,9 +184,14 @@ def _edge(heading: str) -> Tuple[str, str]:
     return title.strip(), keys[0]
 
 
-def _citations(blocks: List[str]) -> List[Tuple[str, str, str]]:
-    """(relation, note, last chip key) from the Support/Divergence lists."""
-    out: List[Tuple[str, str, str]] = []
+def _citations(blocks: List[str]) -> List[Tuple[str, str, str, str]]:
+    """(relation, note, counter, last chip key) from the Support/Divergence lists.
+
+    A divergence is a deadlock with another party, so it says what is held
+    instead; the counter-clause rides in the item after its marker, which is
+    what lets it come back off the page into a field of its own.
+    """
+    out: List[Tuple[str, str, str, str]] = []
     relation = ""
     for block in blocks:
         if block.startswith("**") and block.endswith("**"):
@@ -184,8 +199,15 @@ def _citations(blocks: List[str]) -> List[Tuple[str, str, str]]:
         elif block.startswith("- "):
             for line in block.splitlines():
                 keys = _chips(line)
-                if keys:
-                    out.append((relation, _strip_chips(line[2:]).rstrip("."), keys[-1]))
+                if not keys:
+                    continue
+                # the crumb is a breadcrumb, so taking its chips out leaves the
+                # separators that stood between them; they belong to the path
+                # and not to the note that precedes it
+                text = CRUMB_TAIL.sub("", _strip_chips(line[2:]))
+                note, _, counter = text.partition(INSTEAD)
+                out.append((relation, note.strip().rstrip("."),
+                            CRUMB_TAIL.sub("", counter).strip(), keys[-1]))
     return out
 
 
@@ -210,11 +232,16 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
         return ids.get(key) or (key[2:] if key.startswith("m_") else key)
 
     blocks = _blocks(markdown)
-    if not blocks or not blocks[0].startswith("# "):
-        raise ParseError("a tab opens with its question id")
-    q: dict = {"id": blocks[0][2:].strip()}
+    # the breadcrumb stands above the title, so the title is the first heading
+    # rather than the first block; anything before it is the lineage, which is
+    # projected and never stored
+    titles = [i for i, b in enumerate(blocks) if b.startswith("# ")]
+    if not titles or any(not b.startswith("⌂") for b in blocks[:titles[0]]):
+        raise ParseError("a tab opens with its lineage and then its question id")
+    at = titles[0]
+    q: dict = {"id": blocks[at][2:].strip()}
 
-    head, named = _sections(blocks[1:])
+    head, named = _sections(blocks[at + 1:])
     incoming: List[Tuple[str, str]] = []
     for block in head:
         if block.startswith("- "):
@@ -234,7 +261,9 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
                 raise ParseError("the question line is malformed: %r" % block)
             q["state"] = _strip_chips(line.group("state"))
             q["kind"] = line.group("kind")
-            q["priority"] = int(line.group("priority"))
+            if line.group("standing"):
+                q["standing"] = line.group("standing")
+            q["pressure"] = int(line.group("pressure"))
             q["requires"] = ([] if line.group("requires") == "nothing"
                              else [w.strip() for w in line.group("requires").split(",")])
     q["incoming"] = incoming
@@ -257,24 +286,31 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
             line = ASSENT_LINE.match(block)
             if line and "assent" not in thesis:
                 thesis["assent"] = line.group("assent")
-                if line.group("deadlock"):
-                    thesis["deadlock"] = line.group("deadlock")
+                if line.group("standing"):
+                    thesis["standing"] = line.group("standing")
             elif not block.startswith(">"):
                 rest.append(("text", block))
         text = SEPARATOR.join(b for kind, b in rest if kind == "text")
         thesis["text"] = PLACED_CHIP.sub("", text)
-        for relation, note, key in _citations(cited):
+        for relation, note, counter, key in _citations(cited):
             thesis["traditions"].append({"to": target(key), "relation": relation,
-                                         "note": note})
+                                         "note": note, "counter": counter})
         theses.append(thesis)
 
     for heading, body in _subsections(named.get("terms", []), "▸"):
         title, key = _edge(heading)
         anchors = [_unwrap(b) for b in body if b.startswith("*")]
         term = {"title": title, "to": target(key), "anchors": anchors}
-        deadlock = [b for b in body if not b.startswith("*")]
+        deadlock: dict = {}
+        for block in body:
+            counter = DEADLOCK_LINE.match(block)
+            attenuation = ATTENUATION_LINE.match(block)
+            if counter:
+                deadlock["counter"] = counter.group("counter")
+            elif attenuation:
+                deadlock["attenuation"] = attenuation.group("attenuation")
         if deadlock:
-            term["deadlock"] = SEPARATOR.join(deadlock)
+            term["deadlock"] = deadlock
         if theses:
             theses[0]["terms"].append(term)
     for heading, body in _subsections(named.get("terms", []), "↗"):

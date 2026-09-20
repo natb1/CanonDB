@@ -181,11 +181,11 @@ class DetailTest(unittest.TestCase):
     def test_a_deadlock_sentinel_is_a_vocabulary_finding(self):
         """assent is required, so `none` is a real value there. A deadlock is
         optional, so a word standing in for its absence is pure noise — which
-        the live root answer writes and every other tab omits."""
+        the live root answer wrote and every other tab omitted."""
         graph = load("valid")
-        thesis = graph.get("canon").theses[0]
+        term = graph.get("canon").theses[0].terms[0]
         self.assertEqual(spec.run(graph, only=["vocabulary"]), [])
-        thesis.deadlock = "none"
+        term.deadlock = model.Deadlock(counter="none", attenuation="none")
         findings = spec.run(graph, only=["vocabulary"])
         self.assertEqual(findings[0].question, "canon")
         self.assertIn("leave it out", findings[0].message)
@@ -228,6 +228,81 @@ class DetailTest(unittest.TestCase):
         self.assertEqual([f.question for f in findings], ["ti-esti"])
         graph.get("ti-esti").inbox[0].done = True
         self.assertEqual(spec.run(graph, only=["inbox-required"]), [])
+
+    def test_a_deadlock_carries_both_its_parts(self):
+        """Dissent without a grading is half a record: what the principal holds
+        instead, and what the clause may still license."""
+        graph = load("valid")
+        self.assertEqual(spec.run(graph, only=["deadlock-complete"]), [])
+        term = [t for q in graph.questions for th in q.theses for t in th.terms
+                if t.deadlock][0]
+        term.deadlock.attenuation = ""
+        findings = spec.run(graph, only=["deadlock-complete"])
+        self.assertIn("no attenuation", findings[0].message)
+        term.deadlock.counter = ""
+        self.assertEqual(len(spec.run(graph, only=["deadlock-complete"])), 2)
+
+    def test_a_divergence_says_what_is_held_instead(self):
+        """A tradition edge is the canon between two parties: support is assent
+        and divergence is deadlock, so a divergence carries a counter-clause.
+        It carries no attenuation — a tradition licenses no action here."""
+        graph = load("valid")
+        edge = graph.get("ti-esti").theses[0].traditions[0]
+        self.assertEqual(spec.run(graph, only=["divergence-counter"]), [])
+        edge.relation = "divergence"
+        self.assertIn("nothing of what is held instead",
+                      spec.run(graph, only=["divergence-counter"])[0].message)
+        edge.counter = "the opening move may be asked of anything at all"
+        self.assertEqual(spec.run(graph, only=["divergence-counter"]), [])
+        edge.relation = "support"
+        self.assertIn("makes it a divergence",
+                      spec.run(graph, only=["divergence-counter"])[0].message)
+
+    def test_a_thesis_is_canon_only_where_its_question_landed(self):
+        """A postulate is anything the notebook supports and canon does not,
+        whether it is a thesis or an artifact built from one, so the two are
+        graded by one rule in two steps."""
+        graph = load("valid")
+        self.assertEqual(spec.run(graph, only=["standing-honest"]), [])
+        held = graph.get("attenuation")
+        self.assertNotEqual(held.state, "landed")
+        held.theses[0].standing = "canon"
+        self.assertIn("not landed",
+                      spec.run(graph, only=["standing-honest"])[0].message)
+
+    def test_an_application_is_derived_only_from_a_canon_thesis(self):
+        graph = load("valid")
+        thesis, app = list(graph.get("ti-esti").applications())[0]
+        app.standing = "derived"
+        self.assertIn("comes from stands as 'unset'",
+                      spec.run(graph, only=["standing-honest"])[0].message)
+        thesis.standing = "canon"
+        self.assertEqual(spec.run(graph, only=["standing-honest"]), [])
+
+    def test_pressure_is_the_one_number_set_by_hand(self):
+        graph = load("valid")
+        self.assertEqual(spec.run(graph, only=["pressure-shape"]), [])
+        graph.get("canon").pressure = -1
+        self.assertTrue(spec.run(graph, only=["pressure-shape"]))
+
+    def test_a_tradition_may_be_reached_from_its_own_party(self):
+        """A reconstruction may raise its own questions and answer them. What
+        it may not have is a term edge from the principal's own lineage."""
+        graph = load("valid")
+        member = load("valid").get("canon")
+        member.id, member.tab, member.body = "member", "tab-09", "body-09"
+        member.party = "plato"
+        member.theses[0].terms = []
+        member.inbox = []
+        member.requires = []
+        graph.questions.append(member)
+        graph.get("plato").theses[0].terms.append(model.Term(
+            title="What the questioned owes", to="member",
+            anchors=["The one questioned answers in his own voice"]))
+        self.assertEqual(spec.run(graph, only=["tradition-isolated"]), [])
+        member.party = "author"
+        self.assertIn("a term edge runs inside one party's lineage",
+                      spec.run(graph, only=["tradition-isolated"])[0].message)
 
     def test_findings_render_as_one_line_and_as_json(self):
         finding = spec.run(load("invalid-vocabulary"), only=["vocabulary"])[0]

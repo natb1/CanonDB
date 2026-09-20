@@ -13,8 +13,8 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple
 
 from . import project
-from .model import (CANON, Graph, INBOX_KINDS, KINDS, MODES, RELATIONS,
-                    SECTIONS, STANDINGS, STATES)
+from .model import (CANON, Graph, INBOX_KINDS, KINDS, MODES, NODE_STANDINGS,
+                    RELATIONS, SECTIONS, STANDINGS, STATES)
 
 ERROR = "ERROR"
 WARN = "WARN"
@@ -193,18 +193,27 @@ def one_root(graph: Graph) -> Yield:
 
 
 @check("tradition-isolated",
-       "a tradition question has no incoming term edges and is not in the main tree")
+       "a tradition is reached only from its own party, and never from the main tree")
 def tradition_isolated(graph: Graph) -> Yield:
-    ins = project.in_edges(graph)
+    """A tradition is another party's notebook, joined to this one by tradition
+    edges and by nothing else.
+
+    Within that party's own lineage a term edge is ordinary: the reconstruction
+    may raise its own questions and answer them, which is what makes it a
+    notebook rather than a stub. What it may not have is a term edge from
+    somewhere in the principal's lineage, which would put another party's
+    answer under his own question.
+    """
+    by_id = graph.by_id()
     main = project.reachable_from(graph, project.main_root(graph))
+    for src, term in graph.term_edges():
+        target = by_id.get(term.to)
+        if target is not None and target.party != src.party:
+            yield src.id, ("term %r raises a question whose party is %r; a term edge "
+                           "runs inside one party's lineage, and a tradition edge is "
+                           "the only thing that crosses" % (term.title, target.party))
     for q in graph.questions:
-        if not q.tradition:
-            continue
-        sources = ins.get(q.id, [])
-        if sources:
-            yield q.id, "tradition question has incoming term edges from: %s" % (
-                ", ".join(sorted(sources)))
-        if q.id in main:
+        if q.tradition and q.id in main:
             yield q.id, "tradition question is reachable from the root, so it is in the main tree"
 
 
@@ -281,7 +290,7 @@ def no_restatement(graph: Graph) -> Yield:
 
 
 @check("vocabulary",
-       "mode, state, kind, application.standing and tradition.relation are in their vocabularies")
+       "mode, state, kind, party, standing and tradition.relation are in their vocabularies")
 def vocabulary(graph: Graph) -> Yield:
     if graph.mode not in MODES:
         yield None, "mode %r is not one of %s" % (graph.mode, ", ".join(MODES))
@@ -290,6 +299,11 @@ def vocabulary(graph: Graph) -> Yield:
             yield q.id, "state %r is not one of %s" % (q.state, ", ".join(STATES))
         if q.kind not in KINDS:
             yield q.id, "kind %r is not one of %s" % (q.kind, ", ".join(KINDS))
+        if not q.party.strip():
+            yield q.id, "party is empty; every question belongs to one"
+        if q.standing and q.standing not in NODE_STANDINGS:
+            yield q.id, "standing %r is not one of %s" % (
+                q.standing, ", ".join(NODE_STANDINGS))
         for note in q.notes:
             if note.section.strip().lower() not in SECTIONS:
                 yield q.id, ("a note names the section %r, which is none of %s; "
@@ -300,14 +314,15 @@ def vocabulary(graph: Graph) -> Yield:
                 yield q.id, "application %r: standing %r is not one of %s" % (
                     app.name, app.standing, ", ".join(STANDINGS))
         for thesis in q.theses:
+            if thesis.standing and thesis.standing not in NODE_STANDINGS:
+                yield q.id, "thesis %r: standing %r is not one of %s" % (
+                    _clip(thesis.title, 30), thesis.standing, ", ".join(NODE_STANDINGS))
             # assent is required, so "none" is a real value there; a deadlock is
             # optional, so a word standing in for its absence is pure noise
-            for where, value in ([("thesis %r" % _clip(thesis.title, 30), thesis.deadlock)]
-                                 + [("term %r" % t.title, t.deadlock)
-                                    for t in thesis.terms]):
-                if value is not None and value.strip().lower() in SENTINELS:
-                    yield q.id, ("%s: deadlock reads %r; leave it out instead"
-                                 % (where, value.strip()))
+            for term in thesis.terms:
+                if term.deadlock and term.deadlock.counter.strip().lower() in SENTINELS:
+                    yield q.id, ("term %r: deadlock reads %r; leave it out instead"
+                                 % (term.title, term.deadlock.counter.strip()))
             for trad in thesis.traditions:
                 if trad.relation not in RELATIONS:
                     yield q.id, "tradition %r: relation %r is not one of %s" % (
@@ -449,20 +464,19 @@ def inbox_required(graph: Graph) -> Yield:
                              "it, so nothing waits on it" % item.id)
 
 
-@check("priority-recompute",
-       "priority agrees with its recomputation, or is at least a non-negative integer",
-       WARN)
-def priority_recompute(graph: Graph) -> Yield:
-    """priority(q) = own pressure + the priority of every question blocked behind q.
+@check("pressure-shape", "every question's pressure is a non-negative integer")
+def pressure_shape(graph: Graph) -> Yield:
+    """Pressure is the one scheduling number the principal sets by hand.
 
-    The graph file carries no question-to-question requires graph (``requires``
-    names inbox items, and no own-pressure term is recorded), so there is nothing
-    to recompute from: the stored priority is authoritative and only its shape is
-    checked, as the specification directs for that case.
+    Priority used to be stored and taken on trust, because nothing recorded
+    what was blocked behind what. It is now computed — pressure summed along
+    the term edges, since a question cannot be put until the questions above
+    it have landed — so the only thing left to check is the shape of the
+    number the sum runs over.
     """
     for q in graph.questions:
-        if isinstance(q.priority, bool) or not isinstance(q.priority, int) or q.priority < 0:
-            yield q.id, "priority %r is not a non-negative integer" % (q.priority,)
+        if isinstance(q.pressure, bool) or not isinstance(q.pressure, int) or q.pressure < 0:
+            yield q.id, "pressure %r is not a non-negative integer" % (q.pressure,)
 
 
 @check("hinge-present",
@@ -523,6 +537,14 @@ def definition_once(graph: Graph) -> Yield:
     The defect was the second entry, not the sense: a word may well have one
     sense and two bearers, as `prior` does. A word that must carry two senses
     needs two words; a word with one needs one entry.
+
+    What the entry must be reachable from is the users of the word, and the
+    reader reaches it over the graph's ancestors rather than over the
+    breadcrumb: a question may be raised by several clauses, so the tab tree
+    is one path through a DAG and not the whole of what stands above. A word
+    no user can reach that way is either a definition on the wrong question or
+    a line missing an edge, and neither is decidable here — which is why this
+    check counts entries and the reachability is read rather than run.
     """
     where: Dict[str, List[str]] = {}
     spelling: Dict[str, str] = {}
@@ -541,37 +563,91 @@ def definition_once(graph: Graph) -> Yield:
 
 
 @check("standing-honest",
-       "an application is derived only where the question it comes from has landed")
+       "a thesis is canon only where its question landed, and an application is "
+       "derived only from a canon thesis")
 def standing_honest(graph: Graph) -> Yield:
     """An artifact built ahead of the answer that would justify it is the
     ordinary way work gets done and the ordinary way a graph rots. Calling it
-    a postulate is what keeps the debt visible, and whether it may be called
-    derived instead is not a matter of judgement: the source question has
-    landed or it has not.
+    a postulate is what keeps the debt visible.
+
+    A postulate is anything the notebook supports and canon does not, whether
+    it is a thesis or an artifact built from one, so the two are graded by one
+    rule in two steps: a thesis is canon only where its question has landed,
+    and an artifact is derived only from a thesis that is canon.
+
+    Both are necessary and neither is sufficient. A landed question may hold a
+    thesis the principal has not yet promulgated, and a canon thesis may have
+    an artifact nobody has diffed against it. That judgement is the writer's
+    and is named in the attenuation list; what is checked here is the part
+    that is not a judgement at all.
     """
     for q in graph.questions:
-        if q.state == "landed":
-            continue
-        for _, app in q.applications():
-            if app.standing == "derived":
-                yield q.id, ("application %r stands as derived, but the question "
-                             "it comes from is %r and not landed" % (app.name, q.state))
+        for thesis in q.theses:
+            if thesis.standing == "canon" and q.state != "landed":
+                yield q.id, ("thesis %r stands as canon, but the question is %r "
+                             "and not landed" % (_clip(thesis.title, 30), q.state))
+        for thesis, app in q.applications():
+            if app.standing != "derived":
+                continue
+            if thesis.standing != "canon":
+                yield q.id, ("application %r stands as derived, but the thesis it "
+                             "comes from stands as %r" % (app.name,
+                                                          thesis.standing or "unset"))
 
 
-@check("answer-cardinality",
-       "in canon mode a question has one thesis without a deadlock and at most one with")
+@check("deadlock-complete",
+       "a deadlock carries both a counter-clause and the attenuation it earns")
+def deadlock_complete(graph: Graph) -> Yield:
+    """Dissent without a grading is half a record. The counter-clause says what
+    the principal holds instead; the attenuation says what the clause may still
+    license, which is the whole use of recording the dissent rather than simply
+    withholding the merge.
+    """
+    for q in graph.questions:
+        for thesis in q.theses:
+            for term in thesis.terms:
+                if term.deadlock is None:
+                    continue
+                if not term.deadlock.counter.strip():
+                    yield q.id, "term %r: deadlock has no counter-clause" % term.title
+                if not term.deadlock.attenuation.strip():
+                    yield q.id, ("term %r: deadlock has no attenuation, so what the "
+                                 "clause may still license is unrecorded" % term.title)
+
+
+@check("divergence-counter",
+       "a divergence from a tradition says what is held instead")
+def divergence_counter(graph: Graph) -> Yield:
+    """A tradition edge is the canon between two parties: support is assent and
+    divergence is deadlock. A deadlock carries a counter-clause, so a divergence
+    does too — it carries no attenuation, because a tradition licenses no action
+    here and there is no authority to grade.
+    """
+    for q in graph.questions:
+        for thesis in q.theses:
+            for trad in thesis.traditions:
+                if trad.relation == "divergence" and not trad.counter.strip():
+                    yield q.id, ("divergence from %r says nothing of what is held "
+                                 "instead" % trad.to)
+                if trad.relation == "support" and trad.counter.strip():
+                    yield q.id, ("support for %r carries a counter-clause; a "
+                                 "counter-clause is what makes it a divergence" % trad.to)
+
+
+@check("answer-cardinality", "in canon mode a question has exactly one thesis")
 def answer_cardinality(graph: Graph) -> Yield:
     """A notebook holds as many theses as the principal is entertaining, so the
-    check does not run there; a canon answers each question once."""
+    check does not run there; a canon answers each question once.
+
+    There is no deadlocked twin. A deadlock falls on the clause it is dissent
+    from, not on the answer that clause sits in, which is what lets the answer
+    be merged whole while the dissent is still recorded.
+    """
     if graph.mode != CANON:
         return
     for q in graph.questions:
-        settled = [t for t in q.theses if not (t.deadlock or "").strip()]
-        open_ = [t for t in q.theses if (t.deadlock or "").strip()]
-        if len(settled) != 1:
-            yield q.id, "%d theses without a deadlock, expected exactly one" % len(settled)
-        if len(open_) > 1:
-            yield q.id, "%d theses with a deadlock, expected at most one" % len(open_)
+        if len(q.theses) != 1:
+            yield q.id, "%d theses, expected exactly one" % len(q.theses)
 
 
 # -- the runner -------------------------------------------------------------

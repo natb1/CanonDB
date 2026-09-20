@@ -37,19 +37,26 @@ class RootLayoutTest(unittest.TestCase):
         self.text = render.render(load("valid"), "ti-esti")
         self.lines = [l for l in self.text.splitlines() if l.strip()]
 
-    def test_opens_with_the_id(self):
-        self.assertEqual(self.lines[0], "# ti-esti")
+    def test_opens_with_the_lineage_then_the_id(self):
+        """The breadcrumb says where the reader is arriving from and the title
+        says where he has arrived, so the path stands above the title and does
+        not repeat the question's own name at its end."""
+        self.assertEqual(self.lines[0], "⌂ root")
+        self.assertEqual(self.lines[1], "# ti-esti")
 
-    def test_the_root_carries_no_incoming_anchors_and_the_root_line(self):
-        self.assertEqual(self.lines[1],
+    def test_the_root_carries_no_incoming_anchors(self):
+        self.assertEqual(self.lines[2],
                          "*What does a working relationship that continues require of each side?*")
-        self.assertEqual(self.lines[2], "⌂ root")
         self.assertNotIn("›", self.text)
 
-    def test_the_question_line(self):
+    def test_the_question_line_carries_pressure_and_its_two_projections(self):
+        """Pressure is stored and priority is summed from it along the term
+        edges, so both stand on the page: the one the principal set, and what
+        it comes to once everything blocked behind this question is counted."""
         self.assertEqual(
             self.lines[3],
-            "question: landed · root · priority 27 · load 3 · requires: nothing")
+            "question: landed · root · pressure 27 · priority 58 · load 3 · "
+            "requires: nothing")
 
     def test_a_question_line_names_what_it_waits_on(self):
         """The root waits on nothing: its own promulgation follows its answer
@@ -90,9 +97,21 @@ class RootLayoutTest(unittest.TestCase):
     def test_the_inbox_table_lists_the_children(self):
         self.assertIn("| question | term | kind | priority | requires |", self.text)
         self.assertIn("| <?claude block m_canon?> | The record between them | "
-                      "definitional | 12 | promulgate the root answer |", self.text)
-        self.assertIn("| <?claude block m_party?> | Two sides, two debts | case | 9 | "
+                      "definitional | 17 | promulgate the root answer |", self.text)
+        self.assertIn("| <?claude block m_party?> | Two sides, two debts | case | 14 | "
                       "promulgate the root answer |", self.text)
+
+    def test_cited_by_lists_a_party_cited_only_through_a_borrowed_sense(self):
+        """A borrowed sense names a party as surely as a thesis does. Read from
+        the thesis edges alone this list was short by exactly the tabs whose
+        only citation was a definition."""
+        graph = load("valid")
+        graph.get("ti-esti").theses[0].traditions = []
+        self.assertEqual(
+            graph.get("ti-esti").theses[0].definitions[0].tradition.to, "plato")
+        text = render.body(graph, "plato")
+        self.assertIn("**Support**", text)
+        self.assertIn("<?claude block m_ti_esti?>", text)
 
     def test_cited_by_does_not_depend_on_the_graph_order(self):
         """The rows are gathered by walking the graph, whose order is whatever
@@ -113,8 +132,8 @@ class RootLayoutTest(unittest.TestCase):
         nothing. valid.json happens to be in priority order already, so the
         sort has to be shown by putting it out of order."""
         graph = load("valid")
-        graph.get("canon").priority = 1
-        graph.get("party").priority = 99
+        graph.get("canon").pressure = 1
+        graph.get("party").pressure = 99
         rows = [l for l in render.body(graph, "ti-esti").splitlines()
                 if l.startswith("| <?claude")]
         self.assertIn("m_party", rows[0])
@@ -154,20 +173,29 @@ class DescendantLayoutTest(unittest.TestCase):
         """A question with several parents lists them all — that is how the
         graph stays a graph while the tabs are a tree — and each item ends in a
         chip to the tab whose term section holds it."""
-        self.assertEqual(self.lines[1],
+        self.assertEqual(self.lines[2],
                          "- Authority to act on an unassented entry is graded down, "
                          "never removed. <?claude block m_canon?>")
-        self.assertEqual(self.lines[2],
+        self.assertEqual(self.lines[3],
                          "- the act that would settle it is graded down until the "
                          "standing side speaks <?claude block m_party?>")
 
-    def test_the_lineage_line(self):
-        self.assertIn("⌂ <?claude block m_ti_esti?> › <?claude block m_canon?> › "
-                      "attenuation", self.text)
+    def test_the_lineage_line_is_the_lineage_alone(self):
+        self.assertEqual(self.lines[0],
+                         "⌂ <?claude block m_ti_esti?> › <?claude block m_canon?>")
+        self.assertNotIn("› attenuation", self.text)
 
-    def test_deadlock_on_the_assent_line(self):
-        self.assertIn("assent: none · deadlock: whether an unsettled entry may act at all "
-                      "is not settled · provenance: thesis hinge", self.text)
+    def test_a_deadlock_is_two_labelled_blocks_under_its_term(self):
+        """Dissent falls on the clause it is dissent from, not on the answer
+        that clause sits in, and it carries the grading it earns beside it:
+        what the principal holds instead, and what the clause may still
+        license."""
+        text = render.body(self.graph, "party")
+        self.assertIn("deadlock: one side holds that the other may act meanwhile; "
+                      "the other holds that it may not", text)
+        self.assertIn("attenuation: the clause licenses reversible acts only, and "
+                      "nothing that cannot be undone", text)
+        self.assertNotIn("· deadlock:", text)
 
     def test_empty_sections_are_omitted(self):
         self.assertEqual(sections(self.text),
@@ -340,7 +368,7 @@ class ChipTest(unittest.TestCase):
     def test_no_bare_id_is_left_where_a_chip_belongs(self):
         text = render.body(load("valid"), "attenuation")
         self.assertNotIn("› canon", text)
-        self.assertIn("<?claude block m_canon?> › attenuation", text)
+        self.assertIn("› <?claude block m_canon?>", text)
 
 
 class LinksTest(unittest.TestCase):
@@ -454,7 +482,7 @@ class RefusalTest(unittest.TestCase):
             render.render(graph, "plato")
 
     def test_a_warning_does_not_refuse(self):
-        graph = load("invalid-priority-recompute")
+        graph = load("invalid-title-not-identifier")
         self.assertTrue(spec.run(graph))
         self.assertIn("# canon", render.render(graph, "canon"))
 

@@ -14,6 +14,7 @@ import argparse
 import json
 import os
 import sys
+from typing import Dict, Optional, Set
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -34,6 +35,24 @@ def assemble(manifest: dict, bodies: dict) -> dict:
     names = {tab_id: meta.get("name", tab_id) for tab_id, meta in tabs.items()}
     ids = {render.chip_key(name): name for name in names.values()}
 
+    # A question belongs to a party. The author's are the main tree; another
+    # party's is that party's own notebook, placed at top level in the b
+    # series, and anything nested under it is theirs too — a reconstruction
+    # may raise its own questions and answer them.
+    party_of: Dict[str, str] = {}
+    for tab_id, meta in tabs.items():
+        if not meta.get("subtabOf") and str(meta.get("order", "")).startswith("b"):
+            party_of[tab_id] = str(meta.get("name", tab_id)).lower()
+
+    def party(tab_id: str, seen: Optional[Set[str]] = None) -> str:
+        seen = seen or set()
+        if tab_id in party_of:
+            return party_of[tab_id]
+        parent = tabs.get(tab_id, {}).get("subtabOf")
+        if not parent or parent in seen:
+            return model.AUTHOR
+        return party(parent, seen | {tab_id})
+
     questions = []
     for tab_id, meta in sorted(tabs.items(), key=lambda kv: (kv[1].get("order", ""),
                                                              kv[1].get("name", ""))):
@@ -44,9 +63,7 @@ def assemble(manifest: dict, bodies: dict) -> dict:
         q.pop("incoming", None)  # projected from the parents' terms, never stored
         q["tab"] = tab_id
         q["body"] = files.get(tab_id, {}).get("content", {}).get("id", "")
-        # a tradition is a root of its own lineage: top level, in the b series
-        if not meta.get("subtabOf") and str(meta.get("order", "")).startswith("b"):
-            q["tradition"] = True
+        q["party"] = party(tab_id)
         questions.append(q)
 
     # requires is rendered as the title a reader sees; the id it names is found

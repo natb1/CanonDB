@@ -52,8 +52,14 @@ def main_root(graph: Graph) -> Optional[str]:
 
 
 def tradition_roots(graph: Graph) -> List[str]:
-    """The tradition questions, lexicographically. Each is a root of its own."""
-    return sorted(q.id for q in graph.questions if q.tradition)
+    """The head of each tradition, lexicographically.
+
+    A tradition is another party's notebook and may raise its own questions, so
+    being a tradition is not the same as being a root of one: the root is the
+    tradition question nothing in its own party reaches.
+    """
+    ins = in_edges(graph)
+    return sorted(q.id for q in graph.questions if q.tradition and not ins.get(q.id))
 
 
 def roots(graph: Graph) -> List[str]:
@@ -213,6 +219,44 @@ def load(graph: Graph, qid: str) -> int:
     a graph with a cycle, which a tree walk was only by accident.
     """
     return len(reachable_from(graph, qid)) - 1
+
+
+def priority(graph: Graph, qid: str) -> int:
+    """A question's own pressure plus the priority of everything blocked behind it.
+
+    Pressure originates at a leaf, where work is actually waiting. Priority is
+    its transitive sum, and it answers what to do next: a question that
+    unblocks many is heavy even when little lies beneath it.
+
+    The blocking relation is not stored. It is read off the term graph,
+    because a turn answering a question carries canon above that question, so
+    a question cannot be put until every question above it has landed. That
+    makes the questions blocked behind ``qid`` exactly the ones its term edges
+    reach, and it is what makes priority computable at all. Once a
+    question-to-question blocking edge exists in its own right the two will
+    part company, and this is the half that will have to move.
+
+    Summed over children rather than over the reachable set, so a question
+    under two parents counts under both, as ``load`` does. Total on a cycle:
+    a question already being summed contributes nothing to itself.
+    """
+    out = out_edges(graph)
+    by_id = {q.id: q for q in graph.questions}
+    memo: Dict[str, int] = {}
+
+    def sum_from(cur: str, open_: Set[str]) -> int:
+        if cur in memo:
+            return memo[cur]
+        if cur in open_ or cur not in by_id:
+            return 0  # a cycle: it is already being counted further up
+        total = by_id[cur].pressure
+        for nxt in out.get(cur, []):
+            total += sum_from(nxt, open_ | {cur})
+        if not (open_ & set(out.get(cur, []))):
+            memo[cur] = total
+        return total
+
+    return sum_from(qid, set())
 
 
 # -- the patch --------------------------------------------------------------

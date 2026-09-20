@@ -18,10 +18,10 @@ def chip_ids(graph):
 
 
 #: what the document holds and the markdown does not, per class. A question's
-#: ``tradition`` is derived from the tab order; a definition's is on the page,
+#: ``party`` is derived from the tab order; a definition's tradition is on the page,
 #: as the chip that closes it, so it is compared like everything else.
 UNCARRIED = {
-    "Question": ("tab", "body", "tradition", "requires"),
+    "Question": ("tab", "body", "party", "requires"),
     "Graph": ("path", "questions", "artifact", "mode", "state_enum"),
 }
 
@@ -182,6 +182,29 @@ class DetailTest(unittest.TestCase):
                          [None] * len(parsed["theses"][0]["terms"]))
         self.assertIn({"section": "terms", "body": "Ask Plato about this one."},
                       parsed["notes"])
+
+    def test_a_deadlock_comes_back_in_both_its_parts(self):
+        graph = load("valid")
+        term = graph.get("canon").theses[0].terms[0]
+        term.deadlock = model.Deadlock(
+            counter="the record is the transcript and not a projection of it",
+            attenuation="nothing is written from this clause without asking")
+        parsed = read.parse_tab(render.body(graph, "canon"), self.ids)
+        self.assertEqual(parsed["theses"][0]["terms"][0]["deadlock"],
+                         {"counter": term.deadlock.counter,
+                          "attenuation": term.deadlock.attenuation})
+
+    def test_a_divergence_keeps_its_counter_clause_apart_from_its_note(self):
+        """The counter-clause rides in the citation item after its marker, so
+        the two come back as the two fields they were written as."""
+        graph = load("valid")
+        edge = graph.get("ti-esti").theses[0].traditions[0]
+        edge.relation = "divergence"
+        edge.counter = "the opening move may be asked of anything at all"
+        parsed = read.parse_tab(render.body(graph, "ti-esti"), self.ids)
+        self.assertEqual(parsed["theses"][0]["traditions"][0],
+                         {"to": "plato", "relation": "divergence",
+                          "note": edge.note, "counter": edge.counter})
 
     def test_the_export_s_backslashes_come_off(self):
         """The document escapes what markdown would otherwise read as a

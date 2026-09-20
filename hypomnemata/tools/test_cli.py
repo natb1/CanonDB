@@ -36,7 +36,7 @@ class CheckCliTest(unittest.TestCase):
         self.assertIn("acyclic", done.stdout)
 
     def test_a_warning_fixture_exits_zero(self):
-        done = run("check.py", fixture("invalid-priority-recompute"))
+        done = run("check.py", fixture("invalid-title-not-identifier"))
         self.assertEqual(done.returncode, 0)
         self.assertIn("WARN", done.stdout)
 
@@ -86,7 +86,9 @@ class RenderCliTest(unittest.TestCase):
     def test_one_tab(self):
         done = run("render.py", fixture("valid"), "canon")
         self.assertEqual(done.returncode, 0, done.stderr)
-        self.assertTrue(done.stdout.startswith("# canon\n"))
+        # the lineage stands above the title
+        self.assertTrue(done.stdout.startswith("⌂ "))
+        self.assertIn("\n# canon\n", done.stdout)
 
     def test_all_tabs(self):
         done = run("render.py", fixture("valid"), "--all")

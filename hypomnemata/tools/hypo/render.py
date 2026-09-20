@@ -93,13 +93,23 @@ def breadcrumb(graph: Graph, qid: str, plain_last: bool = True) -> str:
     return " › ".join(chip(a) for a in line)
 
 
-def _citation_item(graph: Graph, target: str, note: str) -> str:
+#: What opens a divergence's counter-clause inside its citation item. A
+#: divergence is a deadlock with another party, so it says what is held
+#: instead; the marker is what lets an export be read back into the field.
+INSTEAD = "Instead: "
+
+
+def _citation_item(graph: Graph, target: str, note: str, counter: str = "") -> str:
     crumb = breadcrumb(graph, target, plain_last=False) if graph.get(target) \
         else chip(target)
-    note = note.strip()
-    if not note:
-        return "- %s" % crumb
-    return "- %s %s" % (note if note.endswith(".") else note + ".", crumb)
+    parts = []
+    note, counter = note.strip(), counter.strip()
+    if note:
+        parts.append(note if note.endswith(".") else note + ".")
+    if counter:
+        parts.append(INSTEAD + (counter if counter.endswith(".") else counter + "."))
+    parts.append(crumb)
+    return "- " + " ".join(parts)
 
 
 def _tradition_blocks(graph: Graph, thesis: Thesis) -> List[str]:
@@ -111,7 +121,7 @@ def _tradition_blocks(graph: Graph, thesis: Thesis) -> List[str]:
     """
     blocks: List[str] = []
     for relation, heading in (("support", "Support"), ("divergence", "Divergence")):
-        items = [_citation_item(graph, t.to, t.note)
+        items = [_citation_item(graph, t.to, t.note, t.counter)
                  for t in thesis.traditions if t.relation == relation]
         if items:
             blocks.append("**%s**" % heading)
@@ -138,6 +148,15 @@ def _cited_by_blocks(graph: Graph, q: Question) -> List[str]:
             for trad in thesis.traditions:
                 if trad.to == q.id:
                     rows.append((trad.relation, src.id))
+            # a borrowed sense cites the party it was borrowed from as surely
+            # as a thesis does, and read only the thesis edges this list could
+            # be empty on a tradition the graph does cite. A borrowing never
+            # diverges — a definition that departed from the sense it names
+            # would not be naming it — so it is listed as support.
+            for definition in thesis.definitions:
+                if definition.tradition and definition.tradition.to == q.id:
+                    rows.append(("support", src.id))
+    rows = sorted(set(rows))
     blocks: List[str] = []
     for relation, heading in (("support", "Support"), ("divergence", "Divergence")):
         items = ["- %s" % breadcrumb(graph, src, plain_last=False)
@@ -229,8 +248,8 @@ def _anchored_text(thesis: Thesis) -> str:
 def _thesis_blocks(graph: Graph, thesis: Thesis) -> List[str]:
     blocks = ["### ◆ %s" % thesis.title]
     line = "assent: %s" % thesis.assent
-    if thesis.deadlock:
-        line += " · deadlock: %s" % thesis.deadlock
+    if thesis.standing:
+        line += " · %s" % thesis.standing
     line += " · provenance: thesis hinge"
     blocks.append(line)
     blocks.append(_anchored_text(thesis))
@@ -268,7 +287,7 @@ def _inbox_order(graph: Graph, q: Question) -> List[Term]:
 
     def weight(term: Term) -> Tuple[int, str]:
         child = by_id.get(term.to)
-        return (-(child.priority if child else 0), term.to)
+        return (-(project.priority(graph, term.to) if child else 0), term.to)
 
     return sorted(q.terms(), key=weight)
 
@@ -281,7 +300,7 @@ def _inbox_blocks(graph: Graph, q: Question) -> List[str]:
         rows.append("| %s | %s | %s | %s | %s |" % (
             chip(term.to), term.title,
             child.kind if child else "?",
-            child.priority if child else "?",
+            project.priority(graph, term.to) if child else "?",
             _requires(graph, child)))
     blocks: List[str] = []
     if rows:
@@ -312,7 +331,13 @@ def _term_blocks(q: Question) -> List[str]:
         for anchor in term.anchors:
             blocks.append("*%s*" % anchor)
         if term.deadlock:
-            blocks.append(term.deadlock)
+            # two labelled blocks and not one: the dissent and the grading it
+            # earns are separate data, and a reader looking for what a
+            # deadlocked clause may still license should not have to find it
+            # inside a sentence about something else.
+            blocks.append("deadlock: %s" % term.deadlock.counter)
+            if term.deadlock.attenuation:
+                blocks.append("attenuation: %s" % term.deadlock.attenuation)
     for mention in q.mentions():
         # ↗ and not ▸: a cross-reference is listed with the terms because it is
         # a clause pointing somewhere, and marked apart from them because it
@@ -397,7 +422,15 @@ def body(graph: Graph, qid: str) -> str:
         raise KeyError("no question %r" % qid)
     top_level = project.parents(graph).get(qid) is None
 
-    blocks: List[str] = ["# %s" % q.id]
+    # the breadcrumb stands above the title and carries the lineage alone: it
+    # says where the reader is arriving from, and the title says where he has
+    # arrived, so repeating the question's own name at the end of the path
+    # only asserts it twice. A root has no path and says so.
+    ancestry = project.lineage(graph, qid)[:-1]
+    blocks: List[str] = ["⌂ " + " › ".join(chip(a) for a in ancestry)
+                         if ancestry else "⌂ root"]
+
+    blocks.append("# %s" % q.id)
 
     if not top_level:
         # one item per anchor, each ending in a chip to the tab whose term
@@ -410,14 +443,13 @@ def body(graph: Graph, qid: str) -> str:
 
     blocks.append("*%s*" % q.question)
 
-    if top_level:
-        blocks.append("⌂ root")
-    else:
-        blocks.append("⌂ " + breadcrumb(graph, qid))
-
-    blocks.append("question: %s · %s · priority %d · load %d · requires: %s" % (
-        _state(graph, q), q.kind, q.priority, project.load(graph, qid),
-        _requires(graph, q)))
+    meta = "question: %s · %s" % (_state(graph, q), q.kind)
+    if q.standing:
+        meta += " · %s" % q.standing
+    meta += " · pressure %d · priority %d · load %d · requires: %s" % (
+        q.pressure, project.priority(graph, qid), project.load(graph, qid),
+        _requires(graph, q))
+    blocks.append(meta)
 
     thesis_blocks: List[str] = []
     for thesis in q.theses:
@@ -571,6 +603,12 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
         anchor = entry["anchor"]
         seen[anchor] = seen.get(anchor, 0) + 1
         entry["occurrence"] = seen[anchor]
+        # a one-word anchor is a substring of longer words — `merge` of
+        # `merged`, `prior` of `priority` — and a caller counting occurrences
+        # by substring would link the wrong run of characters. Counting them
+        # here cannot help: the page is what the caller searches, not the
+        # graph. So the entry says which kind of match it meant.
+        entry["whole_word"] = len(anchor.split()) == 1
     return {"question": q.id, "tab": q.tab,
             "blocks": mention_blocks(graph, qid), "links": out}
 

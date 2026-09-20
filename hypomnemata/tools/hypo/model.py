@@ -11,11 +11,25 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
-STATES = ("held", "in line", "landed", "revised", "deadlocked")
+STATES = ("held", "in line", "landed")
 KINDS = ("definitional", "case", "consistency", "root")
+
+#: An application's standing: the artifact exists and its landed source has
+#: been diffed against it, or it was built ahead of that and owes the diff.
 STANDINGS = ("derived", "postulate")
+
+#: A question's or a thesis's standing: supported by canon, or supported by
+#: the notebook only and so assumed ahead of the elenchus reaching it.
+NODE_STANDINGS = ("canon", "postulate")
+
 RELATIONS = ("support", "divergence")
 INBOX_KINDS = ("promulgate", "provide", "dispose", "build")
+
+#: The party whose notebook a question belongs to, where none is named. A
+#: question whose party is someone else is a tradition: a root of its own,
+#: outside this graph's lineage. The principal is the party with recognition
+#: of the term at deadlock, which is a role in a bond and not a field here.
+AUTHOR = "author"
 
 #: The section a note may be attached to, as the renderer names them.
 SECTIONS = ("thesis", "glossary", "inbox", "terms", "applications",
@@ -109,22 +123,58 @@ class _Reader:
 
 
 @dataclass
+class Deadlock:
+    """The principal's dissent from a clause, and what it costs the clause.
+
+    Two parts and not one string. The counter-clause is what he holds instead;
+    the attenuation is the authority the clause keeps, which is less than an
+    answer both parties would reach independently and never enough for
+    anything irreversible. Recording only the dissent leaves the grading to be
+    remembered, and the grading is the whole use of a deadlock.
+    """
+
+    counter: str
+    attenuation: str = ""
+
+    @staticmethod
+    def read(r: _Reader, data: Any, where: str) -> "Deadlock":
+        d = r.obj(data, where)
+        return Deadlock(
+            counter=r.text(d, "counter", where),
+            attenuation=r.text(d, "attenuation", where, required=False),
+        )
+
+
+@dataclass
 class Term:
-    """A term edge: thesis -> question, carrying verbatim anchors."""
+    """A term edge: thesis -> question, carrying verbatim anchors.
+
+    A deadlock lives here and nowhere else. Dissent falls on the clause it is
+    dissent from, so that it need not withhold the merge of the answer the
+    clause sits in.
+    """
 
     title: str
     to: str
     anchors: List[str] = field(default_factory=list)
-    deadlock: Optional[str] = None
+    deadlock: Optional[Deadlock] = None
 
     @staticmethod
     def read(r: _Reader, data: Any, where: str) -> "Term":
         d = r.obj(data, where)
+        raw = d.get("deadlock")
+        if raw is None:
+            deadlock = None
+        elif isinstance(raw, dict):
+            deadlock = Deadlock.read(r, raw, where + ".deadlock")
+        else:
+            r.fail(where + ".deadlock", "expected an object or null")
+            deadlock = None
         return Term(
             title=r.text(d, "title", where),
             to=r.text(d, "to", where),
             anchors=r.strings(d, "anchors", where),
-            deadlock=r.opt_text(d, "deadlock", where),
+            deadlock=deadlock,
         )
 
 
@@ -205,11 +255,21 @@ class Definition:
 
 @dataclass
 class TraditionEdge:
-    """A tradition edge: thesis -> a tradition question."""
+    """A tradition edge: thesis -> a question whose party is someone else.
+
+    This is the canon between two parties, and it is encoded as canon is.
+    Support is assent; divergence is deadlock, so a divergence carries the
+    counter-clause a deadlock carries. It carries no attenuation, because a
+    tradition licenses no action here and there is no authority to grade.
+
+    It is not THE canon of the repository, which is the agreement between the
+    principal and the AI over the questions in his own lineage.
+    """
 
     to: str
     relation: str
     note: str = ""
+    counter: str = ""
 
     @staticmethod
     def read(r: _Reader, data: Any, where: str) -> "TraditionEdge":
@@ -218,6 +278,7 @@ class TraditionEdge:
             to=r.text(d, "to", where),
             relation=r.text(d, "relation", where),
             note=r.text(d, "note", where, required=False),
+            counter=r.text(d, "counter", where, required=False),
         )
 
 
@@ -250,7 +311,7 @@ class Thesis:
     title: str
     text: str
     assent: str = ""
-    deadlock: Optional[str] = None
+    standing: str = ""
     terms: List[Term] = field(default_factory=list)
     mentions: List[Mention] = field(default_factory=list)
     definitions: List[Definition] = field(default_factory=list)
@@ -264,7 +325,7 @@ class Thesis:
             title=r.text(d, "title", where),
             text=r.text(d, "text", where),
             assent=r.text(d, "assent", where, required=False),
-            deadlock=r.opt_text(d, "deadlock", where),
+            standing=r.text(d, "standing", where, required=False),
             terms=[Term.read(r, v, "%s.terms[%d]" % (where, i))
                    for i, v in enumerate(r.seq(d, "terms", where))],
             mentions=[Mention.read(r, v, "%s.mentions[%d]" % (where, i))
@@ -360,13 +421,24 @@ class Question:
     question: str
     state: str
     kind: str
-    priority: int
+    pressure: int
     requires: List[str] = field(default_factory=list)
-    tradition: bool = False
+    party: str = AUTHOR
+    standing: str = ""
     theses: List[Thesis] = field(default_factory=list)
     inbox: List[InboxItem] = field(default_factory=list)
     notes: List[Note] = field(default_factory=list)
     hinge: Optional[Hinge] = None
+
+    @property
+    def tradition(self) -> bool:
+        """Whether this question is a root of its own lineage.
+
+        Derived and not stored: a question belongs to a party, and a question
+        whose party is not the author is that party's, joined to this graph by
+        tradition edges rather than by a term edge.
+        """
+        return self.party != AUTHOR
 
     def terms(self) -> Iterator[Term]:
         for t in self.theses:
@@ -405,9 +477,10 @@ class Question:
             question=r.text(d, "question", here),
             state=r.text(d, "state", here),
             kind=r.text(d, "kind", here),
-            priority=r.number(d, "priority", here),
+            pressure=r.number(d, "pressure", here),
             requires=r.strings(d, "requires", here),
-            tradition=r.flag(d, "tradition", here),
+            party=r.text(d, "party", here, required=False, default=AUTHOR) or AUTHOR,
+            standing=r.text(d, "standing", here, required=False),
             theses=[Thesis.read(r, v, "%s.theses[%d]" % (here, i))
                     for i, v in enumerate(r.seq(d, "theses", here))],
             inbox=[InboxItem.read(r, v, "%s.inbox[%d]" % (here, i))

@@ -75,20 +75,20 @@ class ShapeTest(unittest.TestCase):
         with self.assertRaises(model.ShapeError) as caught:
             self._load({"artifact": "x", "questions": [{"id": "a"}]})
         problems = " ".join(caught.exception.problems)
-        for key in ("'tab'", "'body'", "'question'", "'state'", "'kind'", "'priority'"):
+        for key in ("'tab'", "'body'", "'question'", "'state'", "'kind'", "'pressure'"):
             self.assertIn(key, problems)
 
     def test_wrong_types_are_reported(self):
         with self.assertRaises(model.ShapeError) as caught:
             self._load({"questions": [
                 {"id": "a", "tab": "t", "body": "b", "question": "?",
-                 "state": "held", "kind": "case", "priority": "high"}]})
+                 "state": "held", "kind": "case", "pressure": "high"}]})
         self.assertIn("must be an integer", " ".join(caught.exception.problems))
 
     def test_defaults(self):
         graph = self._load({"questions": [
             {"id": "a", "tab": "t", "body": "b", "question": "?",
-             "state": "held", "kind": "case", "priority": 0}]})
+             "state": "held", "kind": "case", "pressure": 0}]})
         q = graph.get("a")
         self.assertEqual((q.requires, q.theses, q.inbox), ([], [], []))
         self.assertEqual(list(q.applications()), [])
