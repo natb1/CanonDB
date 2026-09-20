@@ -236,27 +236,17 @@ def priority(graph: Graph, qid: str) -> int:
     question-to-question blocking edge exists in its own right the two will
     part company, and this is the half that will have to move.
 
-    Summed over children rather than over the reachable set, so a question
-    under two parents counts under both, as ``load`` does. Total on a cycle:
-    a question already being summed contributes nothing to itself.
+    Summed over the reachable set and not down the children, for the reason
+    ``load`` counts a set: the graph is a DAG, so a question with two parents
+    is reached twice, and adding up the branches would count the work waiting
+    at it once per path to it. What is blocked behind a question is a set of
+    questions, each of them blocked once.
+
+    Total on a cycle, since a set has no depth to run away down.
     """
-    out = out_edges(graph)
     by_id = {q.id: q for q in graph.questions}
-    memo: Dict[str, int] = {}
-
-    def sum_from(cur: str, open_: Set[str]) -> int:
-        if cur in memo:
-            return memo[cur]
-        if cur in open_ or cur not in by_id:
-            return 0  # a cycle: it is already being counted further up
-        total = by_id[cur].pressure
-        for nxt in out.get(cur, []):
-            total += sum_from(nxt, open_ | {cur})
-        if not (open_ & set(out.get(cur, []))):
-            memo[cur] = total
-        return total
-
-    return sum_from(qid, set())
+    return sum(by_id[reached].pressure
+               for reached in reachable_from(graph, qid) if reached in by_id)
 
 
 # -- the patch --------------------------------------------------------------

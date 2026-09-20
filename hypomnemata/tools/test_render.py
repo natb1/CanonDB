@@ -55,7 +55,7 @@ class RootLayoutTest(unittest.TestCase):
         it comes to once everything blocked behind this question is counted."""
         self.assertEqual(
             self.lines[3],
-            "question: landed · root · pressure 27 · priority 58 · load 3 · "
+            "question: landed · root · pressure 27 · priority 53 · load 3 · "
             "requires: nothing")
 
     def test_a_question_line_names_what_it_waits_on(self):

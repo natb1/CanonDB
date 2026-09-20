@@ -161,16 +161,32 @@ class LoadTest(unittest.TestCase):
         self.assertEqual(project.load(graph, "plato"), 1)
         self.assertEqual(project.tradition_roots(graph), ["plato"])
 
-    def test_priority_sums_pressure_along_the_term_edges(self):
-        """Pressure originates at a leaf; priority is its transitive sum, which
-        is what answers what to do next. The blocking relation is read off the
-        term graph because a turn carries canon above its question, so nothing
-        below a question can be put until it has landed."""
+    def test_priority_is_the_pressure_of_everything_blocked_behind(self):
+        """Pressure originates at a leaf; priority is its total over what the
+        question's term edges reach, which is what answers what to do next.
+        The blocking relation is read off the term graph because a turn carries
+        canon above its question, so nothing below a question can be put until
+        it has landed."""
         graph = load("valid")
         self.assertEqual(project.priority(graph, "canon"), 17)
         self.assertEqual(project.priority(graph, "party"), 14)
-        self.assertEqual(project.priority(graph, "ti-esti"),
-                         graph.get("ti-esti").pressure + 17 + 14)
+        self.assertEqual(
+            project.priority(graph, "ti-esti"),
+            sum(graph.get(q).pressure
+                for q in project.reachable_from(graph, "ti-esti")))
+
+    def test_a_question_under_two_parents_is_counted_once(self):
+        """The graph is a DAG, so adding up the branches would count the work
+        waiting at a shared question once per path to it. What is blocked
+        behind a question is a set, each of them blocked once."""
+        graph = load("valid")
+        shared = set(project.reachable_from(graph, "canon")) & \
+            set(project.reachable_from(graph, "party"))
+        self.assertTrue(shared)
+        self.assertLess(project.priority(graph, "ti-esti"),
+                        graph.get("ti-esti").pressure
+                        + project.priority(graph, "canon")
+                        + project.priority(graph, "party"))
 
     def test_priority_is_total_on_a_cycle(self):
         """Every projection here is total on a graph the checker rejects, so a
