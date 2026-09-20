@@ -235,7 +235,13 @@ def acyclic(graph: Graph) -> Yield:
        "question ids, tab ids, body ids and inbox item ids are each unique")
 def unique_ids(graph: Graph) -> Yield:
     inbox = [(item.id, q.id) for q in graph.questions for item in q.inbox]
+    # the chip key drops every character an id may carry and a key may not, so
+    # two ids can collide on one key — and a chip is how a rendered tab names
+    # another, so the reader could not tell which of them was meant
+    chips = [("m_" + re.sub(r"[^0-9A-Za-z]", "_", q.id), q.id)
+             for q in graph.questions]
     for label, values in (("question id", [(q.id, q.id) for q in graph.questions]),
+                          ("chip key", chips),
                           ("tab id", [(q.tab, q.id) for q in graph.questions]),
                           ("body id", [(q.body, q.id) for q in graph.questions]),
                           ("inbox item id", inbox)):
