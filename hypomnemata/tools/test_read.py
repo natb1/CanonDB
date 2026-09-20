@@ -126,6 +126,63 @@ class DetailTest(unittest.TestCase):
         self.assertEqual(read.parse_tab(applied, self.ids),
                          read.parse_tab(body, self.ids))
 
+    def test_a_bulleted_thesis_keeps_its_bullets_and_its_citations(self):
+        """Citations were told from prose by shape — a block opening `**` or
+        `- ` — which swallowed every bolded lead and every list a thesis
+        writes. On the root answer that is most of the answer. They close the
+        subsection, so the split is positional."""
+        graph = load("valid")
+        thesis = graph.get("ti-esti").theses[0]
+        thesis.text = ("**What it requires of me**\n\n"
+                       "- **Report truthfully.** Say what I ran.\n"
+                       "- The record kept between them is the only thing both "
+                       "can point at.")
+        parsed = read.parse_tab(render.body(graph, "ti-esti"), self.ids)
+        self.assertEqual(parsed["theses"][0]["text"], thesis.text)
+        self.assertEqual([t["to"] for t in parsed["theses"][0]["traditions"]],
+                         ["plato"])
+
+    def test_an_anchor_keeps_the_emphasis_that_makes_it_verbatim(self):
+        """The anchor line is the anchor in italics, so exactly one layer comes
+        off. `strip("*")` took the anchor's own bold with it, and an anchor
+        without it is no longer a substring of the thesis."""
+        graph = load("valid")
+        thesis = graph.get("ti-esti").theses[0]
+        anchor = "**Be predictable.** Keep the same conventions."
+        thesis.text = "A relationship. " + anchor
+        thesis.terms[0].anchors = [anchor]
+        parsed = read.parse_tab(render.body(graph, "ti-esti"), self.ids)
+        self.assertEqual(parsed["theses"][0]["terms"][0]["anchors"], [anchor])
+
+    def test_a_mention_does_not_become_an_anchor_of_the_last_term(self):
+        """`↗` follows `▸` in the same section. A subsection that ran to the
+        next heading of its own marker read every mention's anchor back as one
+        more anchor of the last term — a term edge the graph never had, and on
+        a mention put there to break a cycle, the cycle back."""
+        graph = load("valid")
+        thesis = graph.get("ti-esti").theses[0]
+        thesis.mentions.append(model.Mention(
+            title="Where assent is recorded", to="party",
+            anchors=["Authority to act is graded by how settled the question is"]))
+        parsed = read.parse_tab(render.body(graph, "ti-esti"), self.ids)
+        self.assertEqual(parsed["theses"][0]["terms"][-1]["anchors"],
+                         thesis.terms[-1].anchors)
+        self.assertEqual([m["anchors"] for m in parsed["theses"][0]["mentions"]],
+                         [thesis.mentions[0].anchors])
+
+    def test_a_note_is_not_read_as_a_deadlock(self):
+        """A note closes its section, so it lands after the last subsection.
+        Taken into that subsection it becomes the human's dissent from a clause
+        he never dissented from."""
+        graph = load("valid")
+        graph.get("ti-esti").notes.append(
+            model.Note(section="terms", body="Ask Plato about this one."))
+        parsed = read.parse_tab(render.body(graph, "ti-esti"), self.ids)
+        self.assertEqual([t.get("deadlock") for t in parsed["theses"][0]["terms"]],
+                         [None] * len(parsed["theses"][0]["terms"]))
+        self.assertIn({"section": "terms", "body": "Ask Plato about this one."},
+                      parsed["notes"])
+
     def test_a_link_out_of_the_document_is_content(self):
         """A hinge names the commit it was answered against; that link is the
         principal's own words and is read back with them."""

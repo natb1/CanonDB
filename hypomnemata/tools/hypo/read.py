@@ -50,6 +50,10 @@ APPLICATION_LINE = re.compile(
     r"(?P<standing>[^·]+?)(?: · (?P<note>.*))?$")
 ITEM = re.compile(r"^- (?P<text>.*?)(?: (?P<chip><\?claude block [0-9A-Za-z_]+\?>))?$")
 
+#: what opens the tradition edges at the foot of a thesis subsection. Nothing
+#: the renderer writes follows them, which is what makes the split positional.
+CITATION_HEADINGS = ("**Support**", "**Divergence**")
+
 #: a chip with the space the renderer put before it, so removing one leaves the
 #: text as it was written rather than a gap where a token used to stand
 PLACED_CHIP = re.compile(r" ?(?:<\?claude block [0-9A-Za-z_]+\?>"
@@ -91,13 +95,26 @@ def _sections(blocks: List[str]) -> Tuple[List[str], Dict[str, List[str]]]:
 
 
 def _subsections(blocks: List[str], marker: str) -> List[Tuple[str, List[str]]]:
-    """(heading text after the marker, following blocks) per ``### <marker>``."""
+    """(heading text after the marker, following blocks) per ``### <marker>``.
+
+    A subsection ends at the next ``### `` of any marker, not only at the next
+    one of this marker. The terms section holds ``▸`` and then ``↗``, so a run
+    that did not stop would read every mention's anchor back as one more anchor
+    of the last term — which is a term edge the graph never had.
+
+    A blockquote is never part of a subsection: it is somebody's note, and
+    ``_notes`` collects it from the section itself.
+    """
     out: List[Tuple[str, List[str]]] = []
+    current: Optional[List[str]] = None
     for block in blocks:
-        if block.startswith("### " + marker):
-            out.append((block[4 + len(marker):].strip(), []))
-        elif out:
-            out[-1][1].append(block)
+        if block.startswith("### "):
+            current = None
+            if block.startswith("### " + marker):
+                out.append((block[4 + len(marker):].strip(), []))
+                current = out[-1][1]
+        elif current is not None and not block.startswith(">"):
+            current.append(block)
     return out
 
 
@@ -107,9 +124,22 @@ def _named_subsections(blocks: List[str]) -> List[Tuple[str, List[str]]]:
     for block in blocks:
         if block.startswith("### "):
             out.append((block[4:].strip(), []))
-        elif out:
+        elif out and not block.startswith(">"):
             out[-1][1].append(block)
     return out
+
+
+def _unwrap(block: str) -> str:
+    """An anchor line back to the anchor: one layer of italics off, no more.
+
+    ``strip("*")`` would take the anchor's own emphasis with it —
+    ``***Be predictable.** …*`` is the italicised form of an anchor that opens
+    in bold, and the bold is part of what makes the anchor a verbatim substring
+    of the thesis.
+    """
+    if len(block) > 1 and block.startswith("*") and block.endswith("*"):
+        return block[1:-1]
+    return block
 
 
 def _notes(blocks: List[str], section: str) -> List[dict]:
@@ -200,28 +230,34 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     for title, body in _subsections(named.get("thesis", []), "◆"):
         thesis: dict = {"title": title, "terms": [], "mentions": [],
                         "definitions": [], "traditions": [], "applications": []}
+        # The citations close the subsection — the renderer appends them after
+        # the text and nothing follows them — so the split is positional and
+        # not by shape. Reading it by shape swallowed every bolded lead and
+        # every bullet list a thesis writes, which on the root answer is most
+        # of the answer.
+        opened = [i for i, block in enumerate(body)
+                  if block.strip() in CITATION_HEADINGS]
+        cut = opened[0] if opened else len(body)
+        prose, cited = body[:cut], body[cut:]
         rest = []
-        for block in body:
+        for block in prose:
             line = ASSENT_LINE.match(block)
             if line and "assent" not in thesis:
                 thesis["assent"] = line.group("assent")
                 if line.group("deadlock"):
                     thesis["deadlock"] = line.group("deadlock")
-            elif block.startswith("**") or block.startswith("- "):
-                rest.append(("citation", block))
             elif not block.startswith(">"):
                 rest.append(("text", block))
         text = SEPARATOR.join(b for kind, b in rest if kind == "text")
         thesis["text"] = PLACED_CHIP.sub("", text)
-        for relation, note, key in _citations([b for kind, b in rest
-                                               if kind == "citation"]):
+        for relation, note, key in _citations(cited):
             thesis["traditions"].append({"to": target(key), "relation": relation,
                                          "note": note})
         theses.append(thesis)
 
     for heading, body in _subsections(named.get("terms", []), "▸"):
         title, key = _edge(heading)
-        anchors = [b.strip("*") for b in body if b.startswith("*")]
+        anchors = [_unwrap(b) for b in body if b.startswith("*")]
         term = {"title": title, "to": target(key), "anchors": anchors}
         deadlock = [b for b in body if not b.startswith("*")]
         if deadlock:
@@ -233,7 +269,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
         if theses:
             theses[0]["mentions"].append({
                 "title": title, "to": target(key),
-                "anchors": [b.strip("*") for b in body if b.startswith("*")]})
+                "anchors": [_unwrap(b) for b in body if b.startswith("*")]})
 
     for word, body in _subsections(named.get("glossary", []), "≡"):
         if not theses:
