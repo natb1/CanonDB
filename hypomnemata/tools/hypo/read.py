@@ -28,6 +28,14 @@ CHIP = re.compile(r"<\?claude block ([0-9A-Za-z_]+)\?>")
 #: what a chip becomes once the document has exported it as markdown.
 EXPORTED_CHIP = re.compile(r"\[([^\]]*)\]\(file/([^)]*)\)")
 
+#: A link the caller applied from the sidecar after the write: a bare fragment,
+#: or this artifact's own URL with one. The graph never held it — it is
+#: computed from the edges at every render — so the inverse keeps the words and
+#: drops the target. A link to anywhere else is content and stays: a hinge's
+#: commit reference is part of what the principal wrote.
+IN_PAGE_LINK = re.compile(
+    r"\[([^\]]*)\]\((?:https?://[^)#]*/artifact/[^)#]*)?#[^)]*\)")
+
 QUESTION_LINE = re.compile(
     r"^question: (?P<state>.+?) · (?P<kind>[^·]+?) · priority (?P<priority>-?\d+)"
     r" · load \d+ · requires: (?P<requires>.*)$")
@@ -146,6 +154,11 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     its own; the document's file list supplies the map.
     """
     ids = ids or {}
+    # the sidecar's links are applied to the page after the body is written, so
+    # every export carries them and no graph file ever did. They come off here,
+    # before the grammar is read, or they would land inside a thesis text and
+    # break the one line whose shape is fixed — `· provenance: thesis hinge`.
+    markdown = IN_PAGE_LINK.sub(r"\1", markdown)
 
     def target(key: str) -> str:
         # a key with no question behind it names something the graph does not

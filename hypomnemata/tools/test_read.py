@@ -108,6 +108,33 @@ class DetailTest(unittest.TestCase):
         self.assertEqual(read.parse_tab(exported, self.ids),
                          read.parse_tab(body, self.ids))
 
+    def test_the_sidecar_links_come_back_off(self):
+        """A link is applied to the page after the body is written, so every
+        export carries links no graph file ever held. Left in, the one on
+        `provenance: thesis hinge` would take the assent line out of its own
+        grammar and the assent with it."""
+        body = render.body(self.graph, "ti-esti")
+        applied = body
+        for words, href in (
+                ("assent: assented at the merge of the opening entry",
+                 "#mg8.1"),  # the same paragraph as the provenance link
+                ("The record kept between them is the only thing both can point at.",
+                 "https://claude.ai/artifact/9sZhZQn34X8FRkU2U8i51Z#tab-01.mg8.44"),
+                ("elenchus", "#tab-01.mg8.90")):
+            applied = applied.replace(words, "[%s](%s)" % (words, href), 1)
+        self.assertNotEqual(applied, body)
+        self.assertEqual(read.parse_tab(applied, self.ids),
+                         read.parse_tab(body, self.ids))
+
+    def test_a_link_out_of_the_document_is_content(self):
+        """A hinge names the commit it was answered against; that link is the
+        principal's own words and is read back with them."""
+        graph = load("valid")
+        commit = "[dba4d22](https://github.com/natb1/CanonDB/commit/dba4d22)"
+        graph.get("canon").hinge.thesis += " · canon: " + commit
+        parsed = read.parse_tab(render.body(graph, "canon"), self.ids)
+        self.assertIn(commit, parsed["hinge"]["thesis"])
+
 
 if __name__ == "__main__":
     unittest.main()
