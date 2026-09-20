@@ -16,6 +16,22 @@ def sections(text):
     return [line[3:] for line in text.splitlines() if line.startswith("## ")]
 
 
+class ChipKeyTest(unittest.TestCase):
+    """The document takes a blocks key of ``[a-z0-9_-]`` and nothing else, so a
+    tradition named for its author cannot be its own key."""
+
+    def test_a_capitalised_id_makes_a_legal_key(self):
+        self.assertEqual(render.chip_key("Aquinas"), "m_aquinas")
+        self.assertEqual(render.chip_key("docs-encoding"), "m_docs_encoding")
+        self.assertRegex(render.chip_key("Wittgenstein"), r"^[a-z0-9_-]{1,32}$")
+
+    def test_two_ids_that_differ_only_in_case_are_reported(self):
+        graph = load("valid")
+        graph.get("plato").id = "Canon"
+        findings = spec.run(graph, only=["unique-ids"])
+        self.assertTrue(any("chip key" in f.message for f in findings))
+
+
 class RootLayoutTest(unittest.TestCase):
     def setUp(self):
         self.text = render.render(load("valid"), "ti-esti")

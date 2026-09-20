@@ -243,9 +243,11 @@ def unique_ids(graph: Graph) -> Yield:
     inbox = [(item.id, q.id) for q in graph.questions for item in q.inbox]
     # the chip key drops every character an id may carry and a key may not, so
     # two ids can collide on one key — and a chip is how a rendered tab names
-    # another, so the reader could not tell which of them was meant
-    chips = [("m_" + re.sub(r"[^0-9A-Za-z]", "_", q.id), q.id)
-             for q in graph.questions]
+    # another, so the reader could not tell which of them was meant. Asked of
+    # the renderer rather than spelled again here: a second copy of the rule is
+    # a second rule, and this one was already a case behind.
+    from .render import chip_key  # here, because render imports this module
+    chips = [(chip_key(q.id), q.id) for q in graph.questions]
     for label, values in (("question id", [(q.id, q.id) for q in graph.questions]),
                           ("chip key", chips),
                           ("tab id", [(q.tab, q.id) for q in graph.questions]),

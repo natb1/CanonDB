@@ -26,9 +26,15 @@ SEPARATOR = "\n\n"
 # -- mention chips ----------------------------------------------------------
 
 def chip_key(qid: str) -> str:
-    """The ``blocks`` key for a chip pointing at ``qid``: ``m_<id>`` with every
-    non-alphanumeric character replaced by an underscore."""
-    return "m_" + re.sub(r"[^0-9A-Za-z]", "_", qid)
+    """The ``blocks`` key for a chip pointing at ``qid``: ``m_<id>``, lowered,
+    with every non-alphanumeric character replaced by an underscore.
+
+    The document takes a key of ``[a-z0-9_-]`` and nothing else, so a tradition
+    named for its author — ``Plato``, ``Aquinas`` — cannot be its own key. Two
+    ids that differ only in case would therefore share one chip; ``unique-ids``
+    reports that rather than letting one tab's chip point at the other's tab.
+    """
+    return "m_" + re.sub(r"[^0-9a-z]", "_", qid.lower())
 
 
 def chip(qid: str) -> str:
