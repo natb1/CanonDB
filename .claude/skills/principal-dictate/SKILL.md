@@ -27,8 +27,10 @@ correction, an addition, or a change to the specification the notebook is writte
 
 ## Procedure
 
-**1 — Read.** Read the artifact's tab list, then every tab the dictation could touch. Export what you
-read to a graph file in the scratch directory (`$SCRATCH/graph.json`, schema in `tools/hypo/model.py`).
+**1 — Read.** Read the artifact's tab list, then export every tab as markdown and build the graph
+file with `tools/read.py <document read> <directory of exports>` (`$SCRATCH/graph.json`, schema in
+`tools/hypo/model.py`). Read the tabs the dictation could touch yourself as well: the reader tells
+you what the page holds, not what it means.
 
 **2 — Plan.** Enter plan mode and write the plan before any write. The plan is a table, one row per
 edit:
@@ -61,8 +63,10 @@ this order:
 `tools/project.py $SCRATCH/graph.json` for the tab-placement patch, and send it. The tab tree is
 computed, never chosen.
 
-**5 — Re-check.** Re-export from the artifact and run `tools/check.py` again. The run is not done
-while any ERROR stands. Report WARN findings rather than fixing them silently.
+**5 — Re-check.** Export every tab you touched as markdown, rebuild the graph file with
+`tools/read.py`, and run `tools/check.py` on it. The run is not done while any ERROR stands, and the
+rebuilt file must match the one you sent — that diff is the only thing that compares what you
+rendered with what reached the page. Report WARN findings rather than fixing them silently.
 
 **6 — Commit** the tooling and skill changes on the `hypomnemata` branch. Nothing is committed for
 the notebook's content: it lives in the artifact.
@@ -78,13 +82,14 @@ a procedure rather than a script.
   tells the answerer what was meant.
 - **A thesis in canon is verbatim.** No tool can compare a thesis against the session that produced
   it. Where you did not witness the answer, do not edit its text.
-- **Title summaries summarise.** A heading that names rather than says is legal to the checker and
-  wrong: `▸ The memory clause` is an identifier, `▸ Memory is the repo` is a summary.
+- **A title names its content.** It summarises what the section says. It need not be a sentence, and
+  it may well be the handle a link points at — neither of those makes it wrong.
+  `title-not-identifier` catches the two shapes a script can decide: an opaque handle like
+  `term-001`, and a bare question id, which names a tab and not the thing it sits on. What is left
+  to read is whether the title actually says what the thing says, rather than merely pointing at it.
 - **A null edge really raises no question.** Leaving a clause without a term is a judgement that
   nothing follows from it. The checker cannot tell a deliberate null edge from a missed term.
 - **Tradition relations are marked honestly.** Support and divergence are read, not derived.
-- **An application's standing is honest.** `postulate` where it was built ahead of its source
-  thesis, `derived` only where that thesis has landed.
 - **Hinges are complete.** What the asking presupposes, and what leaked into the wording, are the
   principal's judgement; nothing computes them.
 - **No inline documentation.** A tab carries its content; what its shape means belongs on the
@@ -94,12 +99,12 @@ a procedure rather than a script.
   so it holds by discipline: never invoke a canon entry point from a session that has run this one.
 - **Async edits are preserved.** The read-before-write discipline is not enforceable by a script
   that cannot see the artifact.
-- **The export is faithful.** Every tool works on a graph file you exported by reading the artifact.
-  Nothing compares that file with what is actually there, so a question you mistyped or a thesis you
-  paraphrased passes every check and is then written back over the real one. Export by reading, never
-  from memory, and re-export after writing rather than trusting what you sent.
-- **What was rendered is what was written.** Nothing compares the renderer's output with what reached
-  the artifact. Send it as it came; do not adjust it on the way.
+- **The enum options are in the model's order.** A state renders as a dropdown by index, so the
+  document's enum must list its options exactly as `STATES` does. Nothing can check the document's
+  enum from the graph file. Read it once, and again after anyone edits the enum.
+- **A note is somebody's and stays theirs.** The renderer round-trips a note as a blockquote, so it
+  survives a re-render. What it cannot tell you is that a blockquote someone wrote on the page has
+  not yet been taken into the graph file: export before you write, always, or you will replace it.
 - **Stored priority is trusted.** `priority-recompute` only checks that the number is a non-negative
   integer, because the graph carries no question-to-question blocking edge yet — the half of the
   requires graph that runs from a question to a human action is recorded, the half that runs from
