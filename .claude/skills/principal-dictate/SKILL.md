@@ -101,17 +101,18 @@ a procedure rather than a script.
   tells the answerer what was meant.
 - **A thesis in canon is verbatim.** No tool can compare a thesis against the session that produced
   it. Where you did not witness the answer, do not edit its text.
-- **A title names its content.** It summarises what the section says. It need not be a sentence, and
-  it may well be the handle a link points at — neither of those makes it wrong.
-  `title-not-identifier` catches the two shapes a script can decide: an opaque handle like
+- **A headline names its content.** It summarises what the section says. It need not be a sentence,
+  and it may well be the handle a link points at — neither of those makes it wrong.
+  `headline-not-identifier` catches the two shapes a script can decide: an opaque handle like
   `term-001`, and a bare question id, which names a tab and not the thing it sits on. What is left
-  to read is whether the title actually says what the thing says, rather than merely pointing at it.
-- **An identifier on the page must be earned.** Titles are what a reader is given; an id is a
+  to read is whether the headline actually says what the thing says, rather than merely pointing
+  at it.
+- **An identifier on the page must be earned.** Headlines are what a reader is given; an id is a
   handle for a machine. An id earns its place either by having a machine that needs it — an
   inbox item's, which a question's `requires` names, so the item may be reworded without
   anything following — or by a named exception. There is one: a tab's top heading is the
   question id, and so is its name in the navigation, because the two must agree and a tab is
-  addressed by it. Everywhere else the title stands. `title-not-identifier` catches the two
+  addressed by it. Everywhere else the headline stands. `headline-not-identifier` catches the two
   shapes a script can decide in a *heading*; in prose nothing can, because most question ids
   here are ordinary words — `canon`, `context`, `party`, `priority`. Read every thesis for a
   bare id standing in for a name. Naming a file that happens to share an id is not one: the
@@ -131,20 +132,22 @@ a procedure rather than a script.
   is usually added in good faith: an inbox item for debt an application already carries as a
   postulate, a note restating a field. Read for it whenever a field, a note or an item is added.
 - **Discharge is an act, not a state.** A postulate is anything the notebook supports and canon
-  does not, whether it is a thesis or an artifact built from one, and `standing-honest` grades
-  both in two steps: a thesis is `canon` only where its question landed, and an artifact is
-  `derived` only from a thesis that is `canon`. Both are necessary and neither is sufficient.
-  A question lands by the merge, and the merge is promulgation, so a landed question's merged
-  answer is canon. The check cannot tell which of a landed question's theses is the merged
-  one, whether the artifact exists, or whether anyone diffed it against what the landed answer
-  would have produced. A thesis stays `postulate` until it is merged, and an application stays
-  `postulate` until that diff is done, however green the check. Saying so is the writer's
-  judgement.
+  does not, whether it is an answer or an artifact built from one, and the two are graded in two
+  steps. An answer is `canon` once it has itself landed — merged, which is promulgation — and
+  that is read off its own state, so the step cannot be wrong. An artifact is `derived` only from
+  an answer that is `canon`, which `standing-honest` checks; that is necessary and not
+  sufficient. The check cannot tell whether the artifact exists, or whether anyone diffed it
+  against what the landed answer would have produced. An application stays `postulate` until
+  that diff is done, however green the check. Saying so is the writer's judgement.
 - **Assent in the notebook is not assent to canon.** The principal may note his assent on an
-  open thread so that the next question can be drafted from it. The question stays in thread:
-  nothing is merged, and nothing is canon, until the merge, which is promulgation. No check can
-  tell a noted assent from a merged one, so read the assent line. Only a merged answer says
-  merged, and only a landed question holds one.
+  open thread so that the next question can be drafted from it. The answer stays in thread:
+  nothing is merged, and nothing is canon, until the merge, which is promulgation, and the
+  answer's own state says which it is — a question and its answers each carry one, and a question
+  can land before its answer does. While the thread is open he may also suspend his acceptance of
+  one clause, saying what it waits on, or record a deadlock on it. A suspension is settled before
+  the merge, and a deadlock's attenuation is owed at the merge. `state-order` and
+  `suspension-open` hold that shape. What no check reads is the assent line itself — a noted
+  assent, a gloss confirmed, acceptance withheld from the whole answer — so read it.
 - **Who answers is the principal's call.** `answerer` is stored, and `answerer-set` checks that
   every author question names one. Which one is right — a question he answers from his own
   priors, or one to put to the AI — no script decides. `requires` only blocks: an empty one
@@ -152,6 +155,12 @@ a procedure rather than a script.
 - **A defined word is used only in its defined sense.** `definition-once` finds the word, not
   the sense. The notebook once used "line" for a run of the elenchus and for a line of text in
   the same breath. Where the ordinary sense of a defined word is wanted, use another word.
+- **A defined word yields to canon's words.** The AI's words in an answer in thread or landed
+  cannot change, so a word the notebook defines must not be one of them. `priority` and `title`
+  gave way to `backlog` and `headline` when the root's answer turned out to say "priorities" and
+  "titled". `verbatim-collision` finds a defined word in such an answer and reports it where the
+  word is defined, since that is the word that can change. It finds the word and not the sense,
+  so a text the principal wrote using a defined word in another sense is still found by reading.
 - **A shadow only where reach needs it.** A definition may stand for a word that has earned a
   question of its own (`term-target` keeps it off that question's own tab) only when some user
   of the word cannot reach the question over its ancestors. It gives the sense in a sentence
@@ -178,9 +187,10 @@ a procedure rather than a script.
   naming blocks that write retired. `verify` cannot see it either, because an href resolves to
   a block and the page only shows which tab it is on. So read an outline in the call before the
   one that spends it, and never carry a file of them between runs.
-- **The enum holds the model's states and nothing else.** A state renders as a dropdown by
-  index, so the enum the graph file names must list exactly `STATES` — `held · in thread ·
-  landed` — in that order. A document enum only grows: an option can be appended, never
+- **The enum holds the model's states and nothing else.** A state — the question's, and each
+  answer's on its own metadata line — renders as a dropdown by index against the one enum the
+  graph file names, so it must list exactly `STATES` — `held · in thread · landed` — in that
+  order. A document enum only grows: an option can be appended, never
   renamed, reordered or removed. So when the states change, create a new enum holding exactly
   `STATES`, set `state_enum` to it, and re-render every tab so that no dropdown still points at
   the old one. A stale option left where a reader can pick it is a state the model will not
@@ -189,11 +199,11 @@ a procedure rather than a script.
 - **A note is somebody's and stays theirs.** The renderer round-trips a note as a blockquote, so it
   survives a re-render. What it cannot tell you is that a blockquote someone wrote on the page has
   not yet been taken into the graph file: export before you write, always, or you will replace it.
-- **Pressure is the principal's, priority is the tooling's.** Pressure is the one scheduling
+- **Pressure is the principal's, backlog is the tooling's.** Pressure is the one scheduling
   number set by hand — what work is actually waiting at this question — and it is his judgement,
-  never invented to make a sum come out. Priority is computed from it along the term edges, on
+  never invented to make a sum come out. The backlog is computed from it along the term edges, on
   the reading that a turn carries canon above its question and so nothing below a question can
-  be put until that question has landed. That reading makes blocking and lineage the same
+  be put until that question's answer has landed. That reading makes blocking and lineage the same
   relation today; they are not the same relation, and when a question-to-question blocking edge
   is recorded in its own right the two will part company and this sum will have to move. The
   debt is that edge, not wherever it happens to be written down.
