@@ -191,21 +191,31 @@ def orders(graph: Graph) -> Dict[str, str]:
     Siblings take a0, a1, a2, … lexicographically by id. The main root is top
     level with order a0; the tradition roots are top level, lexicographically,
     with b0, b1, ….
+
+    The document's tray sorts orders as strings, so an index is padded to the
+    width the largest in its group needs: an eleventh tradition ordered b10
+    would otherwise stand between b1 and b2. A group of ten or fewer needs no
+    padding and keeps the orders it had.
     """
     kids = tree(graph)
     out: Dict[str, str] = {}
     root = main_root(graph)
     if root is not None:
         out[root] = "a0"
-    for i, tid in enumerate(tradition_roots(graph)):
-        if tid != root:
-            out[tid] = "b%d" % i
+    heads = [tid for tid in tradition_roots(graph) if tid != root]
+    for i, tid in enumerate(heads):
+        out[tid] = "b" + _index(i, len(heads))
     for parent, children in kids.items():
         if parent is None:
             continue
         for i, child in enumerate(children):
-            out[child] = "a%d" % i
+            out[child] = "a" + _index(i, len(children))
     return out
+
+
+def _index(i: int, count: int) -> str:
+    """``i`` padded to the width of the largest index in a group of ``count``."""
+    return str(i).zfill(len(str(max(count - 1, 0))))
 
 
 def load(graph: Graph, qid: str) -> int:

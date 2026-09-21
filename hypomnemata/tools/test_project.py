@@ -91,6 +91,27 @@ class ParentTest(unittest.TestCase):
         self.assertEqual(project.parents(rewrite("valid", add_term))["attenuation"],
                          "ti-esti")
 
+    def test_orders_sort_as_strings_the_way_they_do_as_numbers(self):
+        """The document's tray sorts orders as strings, so an eleventh
+        tradition ordered b10 would stand between b1 and b2. An index is
+        padded to the width its group needs, and a group of ten or fewer keeps
+        the orders it had."""
+        def many(data):
+            for n in range(10):
+                data["questions"].append({
+                    "id": "party-%02d" % n, "tab": "tab-p%02d" % n,
+                    "body": "body-p%02d" % n, "question": "?", "state": "held",
+                    "kind": "definitional", "pressure": 0, "requires": [],
+                    "party": "party-%02d" % n, "theses": []})
+        graph = rewrite("valid", many)
+        orders = project.orders(graph)
+        heads = project.tradition_roots(graph)
+        self.assertEqual(len(heads), 11)
+        self.assertEqual(sorted(heads, key=lambda h: orders[h]), heads)
+        self.assertEqual((orders[heads[0]], orders[heads[-1]]), ("b00", "b10"))
+        self.assertEqual(orders["ti-esti"], "a0")
+        self.assertEqual(project.orders(load("valid"))["plato"], "b0")
+
     def test_top_level_questions_have_no_parent(self):
         parents = project.parents(load("valid"))
         self.assertIsNone(parents["ti-esti"])
