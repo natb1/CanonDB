@@ -159,6 +159,8 @@ def headings(graph: Graph, tab: str, outline: List[Block]) -> Dict[str, str]:
         return {}
     full = rendered_headings(render.body(graph, qid))
     seen = [block for block in outline if block.heading]
+    if len(full) != len(seen):
+        return {}  # a heading more or fewer, and the pairing means nothing
     out: Dict[str, str] = {}
     for words, block in zip(full, seen):
         shown = block.text.rstrip(_ELIDED)
