@@ -1,8 +1,8 @@
-"""The plain form of a marked-up anchor: characters kept, markers dropped."""
+"""The plain form of a marked-up anchor, and where it stands on the page."""
 
 import unittest
 
-from hypo.text import plain
+from hypo.text import occurrences, plain
 
 
 class PlainTest(unittest.TestCase):
@@ -37,6 +37,42 @@ class PlainTest(unittest.TestCase):
     def test_empty_and_none_are_empty(self):
         self.assertEqual(plain(""), "")
         self.assertEqual(plain(None), "")
+
+
+class OccurrencesTest(unittest.TestCase):
+    """Which run of characters a search means.
+
+    The document counts every literal match, so a whole-word answer is a
+    position in that counting and not a counting of its own.
+    """
+
+    def test_merge_is_not_found_inside_merged(self):
+        page = "a merged branch, then merge it"
+        self.assertEqual(occurrences(page, "merge", True), [2])
+        self.assertEqual(occurrences(page, "merge"), [1, 2])
+
+    def test_prior_is_not_found_inside_priority(self):
+        self.assertEqual(
+            occurrences("priority is high, the prior is low", "prior", True), [2])
+
+    def test_a_possessive_still_holds_the_word(self):
+        """An apostrophe is not a letter, and `party's` is where a reader meets
+        the word."""
+        self.assertEqual(occurrences("the party's end", "party", True), [1])
+
+    def test_a_word_that_only_hides_is_never_found(self):
+        self.assertEqual(occurrences("priority only", "prior", True), [])
+
+    def test_a_phrase_is_counted_as_it_stands(self):
+        page = "one two three, and one two three again"
+        self.assertEqual(occurrences(page, "one two three"), [1, 2])
+
+    def test_overlapping_runs_are_all_counted(self):
+        self.assertEqual(occurrences("aaaa", "aa"), [1, 2, 3])
+
+    def test_nothing_to_find_is_no_occurrence(self):
+        self.assertEqual(occurrences("abc", ""), [])
+        self.assertEqual(occurrences("", "abc"), [])
 
 
 if __name__ == "__main__":

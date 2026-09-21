@@ -9,11 +9,16 @@ clause; ``plain`` is how they are handed to anything that searches the page.
 It is also what comparison wants: whether a question restates an anchor, or
 whether a defined word occurs in its thesis, is a question about words and not
 about how they are drawn.
+
+``occurrences`` is the other half of that: once the anchor is plain, where on
+the page does it stand? A link is applied by searching, so the search has to
+name which run of characters it meant.
 """
 
 from __future__ import annotations
 
 import re
+from typing import List
 
 #: ``[text](url)`` keeps its text and drops its target.
 _LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
@@ -41,3 +46,39 @@ def plain(markdown: str) -> str:
             break
         out = unwrapped
     return out
+
+
+#: what counts as being inside a word, for ``whole_word``. An apostrophe is not
+#: one of these, so ``party`` is found in ``party's``, which is where a reader
+#: meets the word; ``prior`` is not found in ``priority``, which is the case
+#: this exists for.
+_WORD = re.compile(r"[0-9A-Za-z_]")
+
+
+def occurrences(hay: str, needle: str, whole_word: bool = False) -> List[int]:
+    """Which *literal* occurrences of ``needle`` in ``hay`` qualify, 1-based.
+
+    The page is searched by text, so a link names the nth run of characters
+    that reads as ``needle`` — nth counting every literal match, including the
+    ones inside longer words. When ``whole_word``, those are skipped in the
+    result but still counted in the numbering, because the document counts
+    them: the first standalone ``merge`` in a page that says ``merged`` first
+    is occurrence 2, and asking for occurrence 1 links the wrong characters.
+    """
+    if not needle:
+        return []
+    out: List[int] = []
+    n = 0
+    start = 0
+    while True:
+        at = hay.find(needle, start)
+        if at < 0:
+            return out
+        n += 1
+        start = at + 1
+        if whole_word:
+            before = hay[at - 1] if at else ""
+            after = hay[at + len(needle):at + len(needle) + 1]
+            if _WORD.match(before) or _WORD.match(after):
+                continue
+        out.append(n)

@@ -539,9 +539,13 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
 
     ``anchor`` is the plain form: the page holds characters and applies
     emphasis beside them, so a search for the marked-up spelling finds nothing.
-    ``occurrence`` numbers the entries that share an anchor, in the order they
-    are emitted, so the caller can tell one from another where the same words
-    stand in more than one place on a tab.
+    ``find`` is that anchor as a target the document can take — the text and
+    the ``nth`` literal occurrence of it on this tab — resolved here rather
+    than left to the caller, because most anchors repeat and a one-word anchor
+    repeats inside longer words. A defined word is linked on its first whole
+    occurrence; two entries sharing an anchor take successive ones. ``find`` is
+    null where the page holds no qualifying occurrence at all, which
+    ``definition-anchorable`` and ``anchor-substring`` between them prevent.
     """
     q = graph.get(qid)
     if q is None:
@@ -598,17 +602,21 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
             "anchor": text.plain(titles[want]),
             "target": "#%s.%s" % (home.tab, titles[want]),
         })
-    seen: Dict[str, int] = {}
+    page = text.plain(body(graph, qid))
+    taken: Dict[str, int] = {}
     for entry in out:
         anchor = entry["anchor"]
-        seen[anchor] = seen.get(anchor, 0) + 1
-        entry["occurrence"] = seen[anchor]
         # a one-word anchor is a substring of longer words — `merge` of
-        # `merged`, `prior` of `priority` — and a caller counting occurrences
-        # by substring would link the wrong run of characters. Counting them
-        # here cannot help: the page is what the caller searches, not the
-        # graph. So the entry says which kind of match it meant.
-        entry["whole_word"] = len(anchor.split()) == 1
+        # `merged`, `prior` of `priority` — so which run of characters is
+        # meant has to be decided here, against the page, and handed over as
+        # a number the document can count to.
+        whole = len(anchor.split()) == 1
+        entry["whole_word"] = whole
+        where = text.occurrences(page, anchor, whole)
+        used = taken.get(anchor, 0)
+        entry["find"] = ({"text": anchor, "nth": where[used]}
+                         if used < len(where) else None)
+        taken[anchor] = used + 1
     return {"question": q.id, "tab": q.tab,
             "blocks": mention_blocks(graph, qid), "links": out}
 

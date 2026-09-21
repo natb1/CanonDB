@@ -1,9 +1,10 @@
 """The renderer produces the one sanctioned layout, and refuses on an ERROR."""
 
 import os
+import re
 import unittest
 
-from hypo import model, project, render, spec
+from hypo import model, project, render, spec, text
 
 FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
 
@@ -461,7 +462,58 @@ class LinksTest(unittest.TestCase):
         entry = [l for l in render.links(graph, "canon")["links"]
                  if l["kind"] == "term"][0]
         self.assertNotIn("**", entry["anchor"])
-        self.assertEqual(entry["occurrence"], 1)
+        # and the target the document is handed searches for that plain form,
+        # which is the only spelling the page holds
+        self.assertEqual(entry["find"]["text"], entry["anchor"])
+        self.assertIn(entry["anchor"], text.plain(render.body(graph, "canon")))
+
+
+class FindTest(unittest.TestCase):
+    """Which run of characters a link is meant to land on.
+
+    The sidecar used to number the entries that shared an anchor in the order
+    it emitted them, which says nothing about the page: a caller that read it
+    as a page position linked the wrong words, and on a one-word anchor it
+    linked the middle of a longer one.
+    """
+
+    def entry(self, graph, qid, anchor):
+        return [l for l in render.links(graph, qid)["links"]
+                if l["anchor"] == anchor][0]
+
+    def test_a_one_word_anchor_skips_the_longer_words_it_hides_in(self):
+        graph = load("valid")
+        thesis = graph.get("canon").theses[0]
+        word = thesis.definitions[0].word
+        thesis.text = "The %sd record, and then the %s itself. %s" % (
+            word, word, thesis.text)
+        find = self.entry(graph, "canon", word)["find"]
+        page = text.plain(render.body(graph, "canon"))
+        hits = [m.start() for m in re.finditer(re.escape(word), page)]
+        chosen = hits[find["nth"] - 1]
+        # the run it names stands on its own: the `<word>d` planted above is
+        # counted past rather than linked
+        after = page[chosen + len(word):chosen + len(word) + 1]
+        self.assertFalse(after.isalnum(), "linked inside %r" % (word + after))
+        self.assertEqual(find["nth"], text.occurrences(page, word, True)[0])
+
+    def test_two_entries_sharing_an_anchor_take_successive_occurrences(self):
+        graph = load("valid")
+        shared = [entry for entry in render.links(graph, "ti-esti")["links"]
+                  if entry["anchor"] == graph.get("ti-esti").theses[0].terms[0].anchors[0]]
+        self.assertEqual([e["find"]["nth"] for e in shared],
+                         list(range(1, len(shared) + 1)))
+
+    def test_every_find_target_stands_where_it_says(self):
+        """A target the document cannot count to is a link that never lands."""
+        graph = load("valid")
+        for q in graph.questions:
+            page = text.plain(render.body(graph, q.id))
+            for entry in render.links(graph, q.id)["links"]:
+                with self.subTest(question=q.id, anchor=entry["anchor"][:40]):
+                    self.assertIsNotNone(entry["find"])
+                    found = text.occurrences(page, entry["find"]["text"])
+                    self.assertIn(entry["find"]["nth"], found)
 
 
 class RefusalTest(unittest.TestCase):
