@@ -260,9 +260,9 @@ def unlink_ops(graph: Graph, qid: str, page: str) -> List[dict]:
     The page is the argument rather than the outlines, because what is being
     removed is on the page and nowhere else: a graph file never held a link.
     """
-    plain, _, _, extra = verify.account(graph, qid, page)
+    plain, _, _, _, extra = verify.account(graph, qid, page)
     ops: List[dict] = []
-    for start, end in extra:
+    for start, end, _href in extra:
         words = plain[start:end]
         hit = next((run for run in text.occurrences(plain, words)
                     if run.at == start), None)

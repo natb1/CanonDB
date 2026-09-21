@@ -6,6 +6,7 @@ is the only place two kinds of defect can show:
     text      a body that is not what the renderer would produce
     missing   a link the sidecar names that the page does not carry
     misplaced a link standing where the encoding does not put that kind
+    astray    a link leading to a tab other than the one its target names
     extra     a link the page carries that the sidecar does not name
 
 The middle one is why this exists. An in-page link needs a block id, so it is
@@ -31,11 +32,18 @@ later run of the word it spells one too high. Asking again whether the run
 the link sits on is one the encoding allows is the only question that does
 not go through the tool's own answer.
 
-What it does not check is where a link goes. An href names a block id, which
-this cannot resolve without the outlines ``apply`` takes; so a clause whose own
-link was skipped because a longer one already covers those words reads as
-carried — which is what a reader meets — and the sidecar's ``covered_by`` is
-what says whose destination it actually has.
+Where a link **goes** is asked only as far as the page can answer. An href
+carries a tab and a block, and a target names the tab it should lead to, so
+the tab is checked. The block is not: resolving an id needs the outlines
+``apply`` takes, which would make this gate take a second input, for a case
+``apply.headings`` already refuses on wherever the page has drifted. What is
+left is an outline reused across a body write, whose ids that write retired —
+a rule about the input, held by reading rather than by this.
+
+A clause whose own link was skipped because a longer one already covers those
+words reads as carried, which is what a reader meets; the sidecar's
+``covered_by`` says whose destination it actually has, and such an entry is
+left out of the destination check for that reason.
 """
 
 from __future__ import annotations
@@ -65,6 +73,13 @@ _STATE = re.compile(r"^(question:)[^·]*·", re.M)
 _STATE_WORD = re.compile(r"^(question: )[^·\n]*(· )", re.M)
 
 
+#: ``read.IN_PAGE_LINK``, keeping the target as well as the words: the
+#: reader drops an href and this has to read one. The two patterns describe
+#: the same links and are checked against each other by test.
+_HREF = re.compile(
+    r"\[([^\]]*)\]\(((?:https?://[^)#]*/artifact/[^)#]*)?#[^)]*)\)")
+
+
 def bare(words: str) -> str:
     return _MARKERS.sub("", words or "").strip().lower()
 
@@ -78,9 +93,12 @@ class Report(NamedTuple):
     covered: Dict[str, str] = {}
     #: anchors whose link stands on a run the encoding does not allow
     misplaced: List[str] = []
+    #: anchors whose link leads to a tab other than the one it names
+    astray: List[str] = []
 
     def ok(self) -> bool:
-        return not (self.diff or self.missing or self.extra or self.misplaced)
+        return not (self.diff or self.missing or self.extra
+                    or self.misplaced or self.astray)
 
     def lines(self) -> List[str]:
         out = ["=== %s" % self.question]
@@ -92,6 +110,9 @@ class Report(NamedTuple):
         for anchor in self.misplaced:
             out.append("   LINK OUT OF PLACE on %r — the run it names is not "
                        "one the encoding allows" % anchor)
+        for anchor in self.astray:
+            out.append("   LINK LEADS ASTRAY on %r — the tab it goes to is "
+                       "not the one its target names" % anchor)
         for anchor in self.extra:
             out.append("   LINK NOT IN THE SIDECAR on %r" % anchor)
         return out
@@ -111,7 +132,14 @@ def applied(page: str) -> Counter:
     return Counter(bare(m.group(1)) for m in read.IN_PAGE_LINK.finditer(page or ""))
 
 
-def linked_spans(page: str) -> Tuple[str, List[Tuple[int, int]]]:
+class Link(NamedTuple):
+    """A run of the page a link stands on, and where it leads."""
+    at: int
+    end: int
+    href: str
+
+
+def linked_spans(page: str) -> Tuple[str, List[Link]]:
     """The page as plain characters, and which of them a link stands on.
 
     Compared by span rather than by label, because a link does not survive as
@@ -124,25 +152,25 @@ def linked_spans(page: str) -> Tuple[str, List[Tuple[int, int]]]:
     """
     page = _STATE_WORD.sub(r"\1\2", page or "")
     out: List[str] = []
-    spans: List[Tuple[int, int]] = []
+    spans: List[Link] = []
     where = 0
 
-    def take(raw: str, linked: bool) -> None:
+    def take(raw: str, href) -> None:
         """One run of the page, and where it lands once the markup is off."""
         nonlocal where
         words = plainly(raw)
-        if linked and words.strip():
-            spans.append((where + len(words) - len(words.lstrip()),
-                          where + len(words.rstrip())))
+        if href is not None and words.strip():
+            spans.append(Link(where + len(words) - len(words.lstrip()),
+                              where + len(words.rstrip()), href))
         out.append(words)
         where += len(words)
 
     at = 0
-    for m in read.IN_PAGE_LINK.finditer(page or ""):
-        take((page or "")[at:m.start()], False)
-        take(m.group(1), True)
+    for m in _HREF.finditer(page):
+        take(page[at:m.start()], None)
+        take(m.group(1), m.group(2))
         at = m.end()
-    take((page or "")[at:], False)
+    take(page[at:], None)
     return "".join(out), spans
 
 
@@ -159,8 +187,20 @@ def plainly(markdown: str) -> str:
     return _MARKERS.sub("", text.plain(out))
 
 
+def _leads_to(href: str, tab: str, own: str) -> bool:
+    """Whether an href leads to ``tab``.
+
+    A bare fragment leads to the tab it stands on and nowhere else, so it is
+    right only where that is the tab wanted; anything else names its tab in
+    front of the block.
+    """
+    if href.startswith("#"):
+        return tab == own
+    return href.partition("#")[2].partition(".")[0] == tab
+
+
 def account(graph: Graph, qid: str, page: str) -> Tuple[
-        str, List[str], List[str], List[Tuple[int, int]]]:
+        str, List[str], List[str], List[str], List[Link]]:
     """The page as plain characters, what it does not carry, what it carries
     in the wrong place, and what it carries that nothing asked for.
 
@@ -175,12 +215,18 @@ def account(graph: Graph, qid: str, page: str) -> Tuple[
     agree. Resolving the number here the way the document does and then
     asking the encoding whether that run is allowed is what makes the answer
     a fact about the page rather than a restatement of the tool.
+
+    Where a link leads is asked of the tab alone, and only of an entry the
+    page can carry: one covered by a longer link has the outer one's
+    destination by design, and reporting it would be reporting the design.
     """
     entries = render.links(graph, qid)["links"]
     plain, spans = linked_spans(page)
+    own = graph.get(qid).tab if graph.get(qid) is not None else ""
     missing: List[str] = []
     misplaced: List[str] = []
-    accounted: List[Tuple[int, int]] = []
+    astray: List[str] = []
+    accounted: List[Link] = []
     for entry in entries:
         find = entry.get("find")
         want = _where(plain, find)
@@ -197,8 +243,12 @@ def account(graph: Graph, qid: str, page: str) -> Tuple[
             accounted.extend(under)
         else:
             missing.append(bare(entry["anchor"]))
+        tab = entry["target"].lstrip("#").partition(".")[0]
+        if under and not entry.get("covered_by") and not any(
+                _leads_to(link.href, tab, own) for link in under):
+            astray.append(bare(entry["anchor"]))
     extra = [span for span in spans if span not in accounted]
-    return plain, sorted(missing), sorted(misplaced), extra
+    return plain, sorted(missing), sorted(misplaced), sorted(astray), extra
 
 
 def verify(graph: Graph, qid: str, page: str) -> Report:
@@ -206,15 +256,15 @@ def verify(graph: Graph, qid: str, page: str) -> Report:
     diff = list(difflib.unified_diff(
         normalise(page), normalise(render.body(graph, qid)),
         "page", "render", lineterm="", n=0))[2:]
-    plain, missing, misplaced, extra = account(graph, qid, page)
+    plain, missing, misplaced, astray, extra = account(graph, qid, page)
     # a link the page cannot carry because another already covers those words
     covered = {bare(entry["anchor"]): entry["covered_by"]
                for entry in render.links(graph, qid)["links"]
                if entry.get("covered_by")}
     return Report(question=qid, diff=diff, missing=missing,
                   extra=sorted(plain[start:end].strip().lower()
-                               for start, end in extra),
-                  covered=covered, misplaced=misplaced)
+                               for start, end, _ in extra),
+                  covered=covered, misplaced=misplaced, astray=astray)
 
 
 def _where(plain: str, find) -> Optional[Tuple[int, int]]:
@@ -243,7 +293,7 @@ def _whole(plain: str, want: Tuple[int, int],
     without it, and the gap is the space, not a hole in the link.
     """
     at = want[0]
-    for start, end in sorted(under):
+    for start, end, _href in sorted(under):
         while at < start and plain[at].isspace():
             at += 1
         if start > at:

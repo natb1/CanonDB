@@ -4,12 +4,28 @@ import re
 import unittest
 
 import test_render  # the fixture loader and its graphs
-from hypo import model, render, verify
+from hypo import model, read, render, verify
 
 load = test_render.load
 
 #: a link as the document exports one it was given: the words, and a fragment.
 LINK = "[%s](#%s.%d)"
+
+#: what the graph names when a fixture does not carry one of its own.
+ARTIFACT = "https://claude.ai/code/artifact/abc-123"
+
+
+def href_of(graph, qid, entry, session, n):
+    """The target as the caller resolves it.
+
+    A bare fragment leads to the tab it stands on, so it is what a same-tab
+    link takes; anywhere else the href names the artifact and the tab in
+    front of the block, or the reader lands on the wrong page.
+    """
+    tab = entry["target"].lstrip("#").partition(".")[0]
+    if tab == graph.get(qid).tab:
+        return "#%s.%d" % (session, n)
+    return "%s#%s.%s.%d" % (graph.artifact or ARTIFACT, tab, session, n)
 
 
 def _loose(anchor):
@@ -37,9 +53,9 @@ def page_of(graph, qid, applied=(), session="mq2x81a0kfd"):
         if len(found) < nth:
             continue
         at = found[nth - 1]
-        out = "%s%s%s" % (out[:at.start()],
-                          LINK % (at.group(0), session, n),
-                          out[at.end():])
+        out = "%s[%s](%s)%s" % (out[:at.start()], at.group(0),
+                                href_of(graph, qid, entry, session, n),
+                                out[at.end():])
     return out
 
 
@@ -132,11 +148,12 @@ class WholeTabTest(unittest.TestCase):
         whole = entries[0]
         page = page_of(self.graph, qid, entries)
         anchor = whole["anchor"]
+        outer = href_of(self.graph, qid, whole, "mq2x81a0kfd", 0)
+        inner = href_of(self.graph, qid, whole, "mq2x81a0kfd", 9)
         cut = len(anchor) // 2
         page = page.replace(
-            LINK % (anchor, "mq2x81a0kfd", 0),
-            (LINK % (anchor[:cut], "mq2x81a0kfd", 0)
-             + LINK % (anchor[cut:], "mq2x81a0kfd", 9)), 1)
+            "[%s](%s)" % (anchor, outer),
+            "[%s](%s)[%s](%s)" % (anchor[:cut], outer, anchor[cut:], inner), 1)
         report = verify.verify(self.graph, qid, page)
         self.assertNotIn(verify.bare(anchor), report.missing)
         self.assertEqual(report.extra, [])
@@ -195,6 +212,54 @@ class MisplacedTest(unittest.TestCase):
         report = verify.verify(graph, q.id, page)
         self.assertEqual(report.misplaced, [])
         self.assertEqual(report.missing, [])
+
+
+class AstrayTest(unittest.TestCase):
+    """Where a link leads, as far as the page can say.
+
+    An href carries a tab and a block. The block cannot be resolved without
+    the outlines `apply` takes, and that would make the closing check take a
+    second input; the tab is on the page already, and the target names which
+    tab it should be.
+    """
+
+    def setUp(self):
+        self.graph = load("valid")
+
+    def links(self, qid):
+        return render.links(self.graph, qid)["links"]
+
+    def test_a_tab_written_properly_leads_nowhere_astray(self):
+        for q in self.graph.questions:
+            with self.subTest(question=q.id):
+                page = page_of(self.graph, q.id, self.links(q.id))
+                self.assertEqual(verify.verify(self.graph, q.id, page).astray, [])
+
+    def test_a_link_to_another_tab_that_names_this_one_is_reported(self):
+        """A bare fragment leads to the tab it stands on. On an anchor whose
+        question is elsewhere that is the wrong page, and the words give no
+        sign of it."""
+        qid = "attenuation"
+        entries = self.links(qid)
+        away = next(e for e in entries
+                    if e["target"].lstrip("#").partition(".")[0]
+                    != self.graph.get(qid).tab)
+        page = page_of(self.graph, qid, entries)
+        page = page.replace("](%s)" % href_of(self.graph, qid, away,
+                                              "mq2x81a0kfd", entries.index(away)),
+                            "](#mq2x81a0kfd.1)", 1)
+        report = verify.verify(self.graph, qid, page)
+        self.assertEqual(report.astray, [verify.bare(away["anchor"])])
+        self.assertEqual(report.missing, [])
+        self.assertFalse(report.ok())
+
+    def test_the_reader_and_the_checker_describe_the_same_links(self):
+        """One drops an href and the other reads it; a link only one of them
+        sees is a link the round trip and the gate disagree about."""
+        page = ("[a](#mg8.1) [b](https://claude.ai/code/artifact/x#t.mg8.2) "
+                "[c](https://example.com/out) [d](file/0c4d2d88-79ab)")
+        self.assertEqual([m.group(0) for m in read.IN_PAGE_LINK.finditer(page)],
+                         [m.group(0) for m in verify._HREF.finditer(page)])
 
 
 class NormaliseTest(unittest.TestCase):
