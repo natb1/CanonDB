@@ -57,16 +57,31 @@ this order:
 - **Bring the whole notebook up to it.** Not only the tab the dictation named. Run
   `tools/check.py` over the whole graph and fix every finding the new rule produces.
 
-**4 — Apply.** For each tab: `tools/render.py $SCRATCH/graph.json <question>` for the body and
-`--links` for the anchors, write the body through the docs `update` tool, then apply the links as
-`format` operations against the block ids the write returned. Then
-`tools/project.py $SCRATCH/graph.json` for the tab-placement patch, and send it. The tab tree is
-computed, never chosen.
+**4 — Apply.** Writing a tab is **two calls**, and the second is not optional: an in-page link
+needs a block id, only the document mints one, and a body write mints new ones. Both payloads
+come from the tooling, so neither is composed by hand.
 
-**5 — Re-check.** Export every tab you touched as markdown, rebuild the graph file with
-`tools/read.py`, and run `tools/check.py` on it. The run is not done while any ERROR stands, and the
-rebuilt file must match the one you sent — that diff is the only thing that compares what you
-rendered with what reached the page. Report WARN findings rather than fixing them silently.
+For each tab, with its outline in `$SCRATCH/outlines/<question>.xml` — the `xml` of a write's
+ack, or a read with `projection: outline`:
+
+1. `tools/apply.py $SCRATCH/graph.json <question> --outlines $SCRATCH/outlines --body` → send it,
+   and save the ack's outline over the old one, because the ids have changed.
+2. `tools/apply.py … --links` → send it. `--wanted` lists the tabs whose outlines it needs
+   first; it refuses rather than emitting an operation that would do nothing.
+
+Then `tools/project.py $SCRATCH/graph.json` for the tab-placement patch, and send it. The tab
+tree is computed, never chosen.
+
+**5 — Re-check.** Export every tab you touched as markdown, then run both:
+
+- `tools/read.py` to rebuild the graph file and `tools/check.py` on it — no ERROR may stand, and
+  the rebuilt file must match the one you sent;
+- `tools/verify.py $SCRATCH/graph.json <tabs dir>` — the page against the renderer, links
+  included.
+
+The second is not a repetition of the first. A graph file never held a link, so the rebuild is
+blind to every one of them: it passed green over a page that had lost all 192. Report WARN
+findings rather than fixing them silently.
 
 **6 — Commit** the tooling and skill changes on the `hypomnemata` branch. Nothing is committed for
 the notebook's content: it lives in the artifact.
@@ -122,6 +137,15 @@ a procedure rather than a script.
 - **The clean-context rule.** Nothing of the notebook may reach a turn that answers a canon
   question. There is no guard for this yet — it is recorded as an eventuality on the `context` tab —
   so it holds by discipline: never invoke a canon entry point from a session that has run this one.
+- **The page is a second artifact.** A tab reaches the document in two calls, because a link
+  needs a block id the document mints and a body write mints new ones. Nothing in the graph
+  file records a link, so nothing that reads the graph can tell whether the second call was
+  made: the rebuild, the checks and the tab patch all passed green over a page that had lost
+  every one of its 192 links. What sees it is `verify.py`, which reads the page back — the
+  body against the renderer, the links the sidecar names against the links the page carries,
+  and the links the page carries that the sidecar does not name. Run it at the end of every
+  write, and read what it says about that third class: a link applied by hand, or left behind
+  by a definition that has moved, is invisible to everything else.
 - **Async edits are preserved.** The read-before-write discipline is not enforceable by a script
   that cannot see the artifact.
 - **The enum options are in the model's order.** A state renders as a dropdown by index, so the
