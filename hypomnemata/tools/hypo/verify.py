@@ -52,6 +52,8 @@ class Report(NamedTuple):
     diff: List[str]
     missing: List[str]
     extra: List[str]
+    #: missing anchor -> the anchor whose link already covers those words
+    covered: Dict[str, str] = {}
 
     def ok(self) -> bool:
         return not (self.diff or self.missing or self.extra)
@@ -60,7 +62,9 @@ class Report(NamedTuple):
         out = ["=== %s" % self.question]
         out += ["   " + line for line in self.diff]
         for anchor in self.missing:
-            out.append("   MISSING LINK on %r" % anchor)
+            under = self.covered.get(anchor)
+            out.append("   MISSING LINK on %r%s"
+                       % (anchor, " — covered by %r" % under[:48] if under else ""))
         for anchor in self.extra:
             out.append("   LINK NOT IN THE SIDECAR on %r" % anchor)
         return out
@@ -85,12 +89,16 @@ def verify(graph: Graph, qid: str, page: str) -> Report:
     diff = list(difflib.unified_diff(
         normalise(page), normalise(render.body(graph, qid)),
         "page", "render", lineterm="", n=0))[2:]
-    wanted = Counter(bare(entry["anchor"])
-                     for entry in render.links(graph, qid)["links"])
+    entries = render.links(graph, qid)["links"]
+    wanted = Counter(bare(entry["anchor"]) for entry in entries)
     have = applied(page)
+    # a link the page cannot carry because another already covers those words
+    covered = {bare(entry["anchor"]): entry["covered_by"]
+               for entry in entries if entry.get("covered_by")}
     return Report(question=qid, diff=diff,
                   missing=sorted((wanted - have).elements()),
-                  extra=sorted((have - wanted).elements()))
+                  extra=sorted((have - wanted).elements()),
+                  covered=covered)
 
 
 def verify_all(graph: Graph, pages: Dict[str, str]) -> List[Report]:

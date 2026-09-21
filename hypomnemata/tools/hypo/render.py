@@ -604,6 +604,7 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
         })
     page = text.plain(body(graph, qid))
     taken: Dict[str, int] = {}
+    spans: List[Optional[Tuple[int, int]]] = []
     for entry in out:
         anchor = entry["anchor"]
         # a one-word anchor is a substring of longer words — `merge` of
@@ -617,8 +618,36 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
         entry["find"] = ({"text": anchor, "nth": where[used]}
                          if used < len(where) else None)
         taken[anchor] = used + 1
+        spans.append(_span(page, anchor, entry["find"]))
+    # a clause may be anchored whole and one of its sentences anchored again:
+    # two links over one another. The document takes the outer and skips the
+    # inner — silently, as a no-op rather than a refusal — so the entry is
+    # marked rather than dropped. It is still sent, because which overlaps
+    # actually land is the document's call and not this one's: a link that
+    # begins where the outer one begins is skipped, one that starts inside it
+    # is not. What this field is for is explaining a link that never arrives.
+    for entry, mine in zip(out, spans):
+        entry["covered_by"] = next(
+            (other["anchor"] for other, theirs in zip(out, spans)
+             if other is not entry and mine and theirs
+             and theirs[0] <= mine[0] and mine[1] <= theirs[1]
+             and theirs[1] - theirs[0] > mine[1] - mine[0]),
+            None)
     return {"question": q.id, "tab": q.tab,
             "blocks": mention_blocks(graph, qid), "links": out}
+
+
+def _span(page: str, anchor: str, find: Optional[Dict[str, object]]
+          ) -> Optional[Tuple[int, int]]:
+    """Where on the page the run a link is meant for begins and ends."""
+    if not find:
+        return None
+    at = -1
+    for _ in range(int(find["nth"])):
+        at = page.find(anchor, at + 1)
+        if at < 0:
+            return None
+    return (at, at + len(anchor))
 
 
 # -- the refusal ------------------------------------------------------------

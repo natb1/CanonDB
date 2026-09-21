@@ -101,6 +101,25 @@ class WholeTabTest(unittest.TestCase):
         self.assertEqual(report.missing, [])
         self.assertIn("a file in the repository", report.extra)
 
+    def test_a_link_the_page_cannot_carry_says_what_covers_it(self):
+        """Two links over one another: the document takes the outer and skips
+        the inner. The report says which, so it does not read as an omission."""
+        qid = "canon"
+        thesis = self.graph.get(qid).theses[0]
+        outer = thesis.terms[0].anchors[0]
+        inner = outer.split(".")[0] if "." in outer else outer[: len(outer) // 2]
+        thesis.definitions.append(model.Definition(word=inner, body="A part."))
+        entries = self.links(qid)
+        covered = [e for e in entries if e["covered_by"]]
+        self.assertTrue(covered, "the inner anchor should be covered")
+        page = page_of(self.graph, qid,
+                       [e for e in entries if not e["covered_by"]])
+        report = verify.verify(self.graph, qid, page)
+        anchor = verify.bare(covered[0]["anchor"])
+        self.assertIn(anchor, report.missing)
+        self.assertIn(anchor, report.covered)
+        self.assertTrue(any("covered by" in line for line in report.lines()))
+
     def test_a_body_that_is_not_what_the_renderer_makes_is_reported(self):
         page = page_of(self.graph, "canon", self.links("canon"))
         report = verify.verify(self.graph, "canon", page + "\n\nA line nobody rendered.")
