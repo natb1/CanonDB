@@ -65,7 +65,8 @@ class DistanceTest(unittest.TestCase):
                 data["questions"].append({
                     "id": a, "tab": "tab-" + a, "body": "body-" + a,
                     "question": "?", "state": "held", "kind": "case", "pressure": 0,
-                    "theses": [{"title": "t", "assent": "none", "text": "t",
+                    "theses": [{"title": "t", "assent": "none", "state": "held",
+                                "text": "t",
                                 "terms": [{"title": "to " + b, "to": b,
                                            "anchors": ["t"]}]}]})
         d = project.distances(rewrite("valid", add_island))
@@ -148,7 +149,7 @@ class LoadTest(unittest.TestCase):
                 "state": "held", "kind": "case", "pressure": 0, "requires": [],
                 "party": "plato",
                 "theses": [{"title": "Flattery answers to please.",
-                            "assent": "read, not agreed",
+                            "assent": "read, not agreed", "state": "held",
                             "text": "Flattery answers to please.",
                             "terms": [], "definitions": [], "traditions": []}],
                 "hinge": {"question": "the reading presupposes the text bears on this",

@@ -11,12 +11,16 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
-#: How far a question has got. It is held while drafted and not yet put; in
-#: thread while it is put on an elenchus branch and not yet merged, however
-#: many turns the thread has taken; landed once merged, which is when it is
-#: canon. The principal may note his assent on an open thread to draft the
-#: next question from it, and the question is still in thread: only the
-#: merge records assent to canon, and the merge is promulgation.
+#: How far a question or an answer has got, each on its own. Held: in the
+#: notebook only — a question drafted and not yet put, an answer the principal
+#: holds himself. In thread: on an elenchus branch whose thread is still open,
+#: however many turns it has taken. Landed: merged to main, which is when it
+#: is canon. A question lands when it reaches main and an answer when it is
+#: merged, and the two need not land together: the root landed as the seed it
+#: was asked from, and its answer is still in thread. The principal may note
+#: his assent on an open thread to draft the next question from it, and the
+#: answer is still in thread: only the merge records assent to canon, and the
+#: merge is promulgation.
 STATES = ("held", "in thread", "landed")
 KINDS = ("definitional", "case", "consistency", "root")
 
@@ -24,9 +28,16 @@ KINDS = ("definitional", "case", "consistency", "root")
 #: been diffed against it, or it was built ahead of that and owes the diff.
 STANDINGS = ("derived", "postulate")
 
-#: A question's or a thesis's standing: supported by canon, or supported by
-#: the notebook only and so assumed ahead of the elenchus reaching it.
+#: A question's or an answer's standing: supported by canon, or supported by
+#: the notebook only and so assumed ahead of the elenchus reaching it. It is
+#: read off the state — canon once landed, a postulate until then — and never
+#: stored, since storing it beside the state would give one datum two homes.
 NODE_STANDINGS = ("canon", "postulate")
+
+
+def standing_of(state: str) -> str:
+    """Canon once landed, a postulate until then."""
+    return NODE_STANDINGS[0] if state == STATES[-1] else NODE_STANDINGS[1]
 
 RELATIONS = ("support", "divergence")
 
@@ -144,7 +155,9 @@ class Deadlock:
     the attenuation is the authority the clause keeps, which is less than an
     answer both parties would reach independently and never enough for
     anything irreversible. Recording only the dissent leaves the grading to be
-    remembered, and the grading is the whole use of a deadlock.
+    remembered, and the grading is the whole use of a deadlock. The grading
+    may wait for the merge: on an open thread the clause licenses nothing yet,
+    and the dissent is worth recording before what it will cost is settled.
     """
 
     counter: str
@@ -163,15 +176,19 @@ class Deadlock:
 class Term:
     """A term edge: thesis -> question, carrying verbatim anchors.
 
-    A deadlock lives here and nowhere else. Dissent falls on the clause it is
-    dissent from, so that it need not withhold the merge of the answer the
-    clause sits in.
+    The principal's response to one clause lives here and nowhere else, and
+    only where it is not plain acceptance. A deadlock is dissent: it falls on
+    the clause it is dissent from, so that it need not withhold the merge of
+    the answer the clause sits in. A suspension is acceptance withheld while
+    the thread is open, saying what the clause waits on; the merge settles it
+    one way or the other, so a landed answer carries none.
     """
 
     title: str
     to: str
     anchors: List[str] = field(default_factory=list)
     deadlock: Optional[Deadlock] = None
+    suspended: str = ""
 
     @staticmethod
     def read(r: _Reader, data: Any, where: str) -> "Term":
@@ -189,6 +206,7 @@ class Term:
             to=r.text(d, "to", where),
             anchors=r.strings(d, "anchors", where),
             deadlock=deadlock,
+            suspended=r.text(d, "suspended", where, required=False),
         )
 
 
@@ -325,17 +343,28 @@ class Application:
 
 @dataclass
 class Thesis:
-    """An articulated answer to exactly one question."""
+    """An articulated answer to exactly one question.
+
+    It has a state of its own, apart from its question's: a question may hold
+    several answers, and they do not land together — the principal's own
+    priors stay held while the AI's answer is in thread or has landed.
+    """
 
     title: str
     text: str
     assent: str = ""
-    standing: str = ""
+    #: required in the graph file; the default is for code that builds one
+    state: str = "held"
     terms: List[Term] = field(default_factory=list)
     mentions: List[Mention] = field(default_factory=list)
     definitions: List[Definition] = field(default_factory=list)
     traditions: List[TraditionEdge] = field(default_factory=list)
     applications: List[Application] = field(default_factory=list)
+
+    @property
+    def standing(self) -> str:
+        """Read off the state, never stored."""
+        return standing_of(self.state)
 
     @staticmethod
     def read(r: _Reader, data: Any, where: str) -> "Thesis":
@@ -344,7 +373,7 @@ class Thesis:
             title=r.text(d, "title", where),
             text=r.text(d, "text", where),
             assent=r.text(d, "assent", where, required=False),
-            standing=r.text(d, "standing", where, required=False),
+            state=r.text(d, "state", where),
             terms=[Term.read(r, v, "%s.terms[%d]" % (where, i))
                    for i, v in enumerate(r.seq(d, "terms", where))],
             mentions=[Mention.read(r, v, "%s.mentions[%d]" % (where, i))
@@ -443,7 +472,6 @@ class Question:
     pressure: int
     requires: List[str] = field(default_factory=list)
     party: str = AUTHOR
-    standing: str = ""
     answerer: str = ""
     theses: List[Thesis] = field(default_factory=list)
     inbox: List[InboxItem] = field(default_factory=list)
@@ -459,6 +487,11 @@ class Question:
         tradition edges rather than by a term edge.
         """
         return self.party != AUTHOR
+
+    @property
+    def standing(self) -> str:
+        """Read off the state, never stored: a question on main is canon."""
+        return standing_of(self.state)
 
     def terms(self) -> Iterator[Term]:
         for t in self.theses:
@@ -500,7 +533,6 @@ class Question:
             pressure=r.number(d, "pressure", here),
             requires=r.strings(d, "requires", here),
             party=r.text(d, "party", here, required=False, default=AUTHOR) or AUTHOR,
-            standing=r.text(d, "standing", here, required=False),
             answerer=r.text(d, "answerer", here, required=False),
             theses=[Thesis.read(r, v, "%s.theses[%d]" % (here, i))
                     for i, v in enumerate(r.seq(d, "theses", here))],

@@ -72,7 +72,7 @@ class RootLayoutTest(unittest.TestCase):
     def test_thesis_heading_and_provenance(self):
         self.assertIn("### ◆ Each side owes the other what only it can give.", self.text)
         self.assertIn("assent: assented at the merge of the opening entry · "
-                      "postulate · provenance: thesis hinge", self.text)
+                      "in thread · provenance: thesis hinge", self.text)
 
     def test_traditions_are_a_list_per_relation(self):
         self.assertIn("**Support**\n\n- the opening move is asked of what the "
@@ -312,6 +312,37 @@ class SurvivesReRenderTest(unittest.TestCase):
                       render.body(self.graph, "ti-esti"))
         self.assertEqual(render.links(self.graph, "ti-esti")["blocks"]["state"],
                          {"type": "dropdown", "enum": "000e742f-9e41", "index": 2})
+
+    def test_an_answer_s_state_is_a_dropdown_of_its_own(self):
+        """A question may hold several answers and they do not land together,
+        so each carries its own state, against the same enum, and none of them
+        is the question's."""
+        body = render.body(self.graph, "ti-esti")
+        self.assertIn("· in thread · provenance: thesis hinge", body)
+        self.assertIn("question: landed ·", body)
+        self.graph.state_enum = "000e742f-9e41"
+        body = render.body(self.graph, "ti-esti")
+        self.assertIn("· <?claude block state_1?> · provenance: thesis hinge", body)
+        blocks = render.links(self.graph, "ti-esti")["blocks"]
+        self.assertEqual(blocks["state_1"],
+                         {"type": "dropdown", "enum": "000e742f-9e41", "index": 1})
+        self.assertEqual(blocks["state"]["index"], 2)
+
+    def test_no_standing_is_written_beside_a_state(self):
+        """Standing is read off the state, so writing both would state one
+        datum twice."""
+        for q in self.graph.questions:
+            body = render.body(self.graph, q.id)
+            with self.subTest(question=q.id):
+                self.assertNotIn(" · canon ·", body)
+                self.assertNotRegex(body, r"(?m)^assent: .* · postulate · provenance")
+
+    def test_a_suspended_clause_says_what_it_waits_on(self):
+        term = self.graph.get("ti-esti").theses[0].terms[0]
+        term.suspended = "whether the other side would say it unprompted"
+        body = render.body(self.graph, "ti-esti")
+        self.assertIn("suspended: whether the other side would say it unprompted",
+                      body)
 
 
 class RenderAllTest(unittest.TestCase):
@@ -599,7 +630,8 @@ class FindTest(unittest.TestCase):
                     blocks = set(render.links(graph, q.id)["blocks"])
                     known = {render.chip_key(x.id) for x in graph.questions}
                     self.assertEqual({k for k in keys - blocks
-                                      if k in known or k == render.STATE_KEY
+                                      if k in known
+                                      or re.fullmatch(render.STATE_KEY + r"(_\d+)?", k)
                                       and graph.state_enum}, set())
 
     def test_a_tradition_cited_only_by_a_borrowing_carries_the_citer_s_chips(self):

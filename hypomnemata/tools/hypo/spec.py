@@ -14,7 +14,7 @@ from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tupl
 
 from . import project, text
 from .model import (ANSWERERS, CANON, Graph, INBOX_KINDS, KINDS, MODES,
-                    NODE_STANDINGS, RELATIONS, SECTIONS, STANDINGS, STATES)
+                    RELATIONS, SECTIONS, STANDINGS, STATES)
 
 ERROR = "ERROR"
 WARN = "WARN"
@@ -304,7 +304,8 @@ def no_restatement(graph: Graph) -> Yield:
 
 
 @check("vocabulary",
-       "mode, state, kind, party, standing and tradition.relation are in their vocabularies")
+       "mode, state, kind, party, application standing and tradition.relation are "
+       "in their vocabularies")
 def vocabulary(graph: Graph) -> Yield:
     if graph.mode not in MODES:
         yield None, "mode %r is not one of %s" % (graph.mode, ", ".join(MODES))
@@ -315,9 +316,6 @@ def vocabulary(graph: Graph) -> Yield:
             yield q.id, "kind %r is not one of %s" % (q.kind, ", ".join(KINDS))
         if not q.party.strip():
             yield q.id, "party is empty; every question belongs to one"
-        if q.standing and q.standing not in NODE_STANDINGS:
-            yield q.id, "standing %r is not one of %s" % (
-                q.standing, ", ".join(NODE_STANDINGS))
         for note in q.notes:
             if note.section.strip().lower() not in SECTIONS:
                 yield q.id, ("a note names the section %r, which is none of %s; "
@@ -328,9 +326,9 @@ def vocabulary(graph: Graph) -> Yield:
                 yield q.id, "application %r: standing %r is not one of %s" % (
                     app.name, app.standing, ", ".join(STANDINGS))
         for thesis in q.theses:
-            if thesis.standing and thesis.standing not in NODE_STANDINGS:
-                yield q.id, "thesis %r: standing %r is not one of %s" % (
-                    _clip(thesis.title, 30), thesis.standing, ", ".join(NODE_STANDINGS))
+            if thesis.state not in STATES:
+                yield q.id, "thesis %r: state %r is not one of %s" % (
+                    _clip(thesis.title, 30), thesis.state, ", ".join(STATES))
             # assent is required, so "none" is a real value there; a deadlock is
             # optional, so a word standing in for its absence is pure noise
             for term in thesis.terms:
@@ -412,25 +410,36 @@ def requires_exist(graph: Graph) -> Yield:
                              "ancestor defines" % want)
 
 
-@check("requires-discharged", "a landed question waits on nothing that is not done")
+@check("requires-discharged",
+       "a question that has been put waits on nothing that is not done")
 def requires_discharged(graph: Graph) -> Yield:
-    """``requires`` names what must be done before a question can be asked, so a
-    question that has landed was asked, and everything it waited on was done.
+    """``requires`` names what must be done before a question can be put, so a
+    question that has been put waited on nothing still undone.
 
-    The root carried its own promulgation, which is the act that follows its
-    answer rather than one that precedes it — it blocks every question above
-    and never blocked the root. An entry naming no item at all is
+    A question has been put when a thread is open on it, or when an answer to
+    it stands in one or has landed. Landing alone does not say so: a question
+    lands when it reaches main, and the root reached main as the seed it was
+    asked from, before anyone had put it. The root once carried its own
+    promulgation here, which is the act that follows its answer rather than
+    one that precedes it. An entry naming no item at all is
     `requires-exist`'s to report, not this one's.
     """
     done = {item.id: item.done for q in graph.questions for item in q.inbox}
     for q in graph.questions:
-        if q.state != "landed":
+        if not _put(q):
             continue
         pending = sorted(w for w in q.requires if w in done and not done[w])
         if pending:
-            yield q.id, ("has landed but still waits on %s, which %s not done"
+            yield q.id, ("has been put but still waits on %s, which %s not done"
                          % (", ".join(repr(p) for p in pending),
                             "is" if len(pending) == 1 else "are"))
+
+
+def _put(q) -> bool:
+    """Whether a question has been put: a thread is open on it, or an answer
+    to it is in one or has landed."""
+    return (q.state == STATES[1]
+            or any(thesis.state in STATES[1:] for thesis in q.theses))
 
 
 @check("inbox-placement",
@@ -590,46 +599,58 @@ def definition_once(graph: Graph) -> Yield:
 
 
 @check("standing-honest",
-       "a thesis is canon only where its question landed, and an application is "
-       "derived only from a canon thesis")
+       "an application is derived only from an answer that has landed")
 def standing_honest(graph: Graph) -> Yield:
     """An artifact built ahead of the answer that would justify it is the
     ordinary way work gets done and the ordinary way a graph rots. Calling it
     a postulate is what keeps the debt visible.
 
     A postulate is anything the notebook supports and canon does not, whether
-    it is a thesis or an artifact built from one, so the two are graded by one
-    rule in two steps: a thesis is canon only where its question has landed,
-    and an artifact is derived only from a thesis that is canon.
-
-    Both are necessary and neither is sufficient. A landed question may hold
-    theses beside the one that was merged, the principal's own priors among
-    them, and those stay postulates; a canon thesis may have an artifact nobody
-    has diffed against it. That judgement is the writer's
-    and is named in the attenuation list; what is checked here is the part
-    that is not a judgement at all.
+    it is an answer or an artifact built from one, and the two are graded in
+    two steps. An answer is canon once it has itself landed, which is read off
+    its state and so cannot be wrong. An artifact is derived only from an
+    answer that is canon, which is necessary and not sufficient: a canon
+    answer may have an artifact nobody has diffed against it. That judgement
+    is the writer's and is named in the attenuation list; what is checked here
+    is the part that is not a judgement at all.
     """
     for q in graph.questions:
-        for thesis in q.theses:
-            if thesis.standing == "canon" and q.state != "landed":
-                yield q.id, ("thesis %r stands as canon, but the question is %r "
-                             "and not landed" % (_clip(thesis.title, 30), q.state))
         for thesis, app in q.applications():
-            if app.standing != "derived":
-                continue
-            if thesis.standing != "canon":
-                yield q.id, ("application %r stands as derived, but the thesis it "
-                             "comes from stands as %r" % (app.name,
-                                                          thesis.standing or "unset"))
+            if app.standing == "derived" and thesis.state != STATES[-1]:
+                yield q.id, ("application %r stands as derived, but the answer it "
+                             "comes from is %r and not landed"
+                             % (app.name, thesis.state))
+
+
+@check("state-order", "no answer has got further than its question")
+def state_order(graph: Graph) -> Yield:
+    """An answer is given to a question that has been put, and merged with it
+    or after it. So an answer in thread stands under a question at least in
+    thread, and a landed answer under a landed question. The question may be
+    ahead — the root landed as a seed before it was answered — but never
+    behind."""
+    rank = {state: i for i, state in enumerate(STATES)}
+    for q in graph.questions:
+        if q.state not in rank:
+            continue  # vocabulary's to report
+        for thesis in q.theses:
+            if rank.get(thesis.state, -1) > rank[q.state]:
+                yield q.id, ("thesis %r is %r, further than its question, which "
+                             "is %r" % (_clip(thesis.title, 30), thesis.state, q.state))
 
 
 @check("deadlock-complete",
-       "a deadlock carries both a counter-clause and the attenuation it earns")
+       "a deadlock carries a counter-clause, and once its answer has landed the "
+       "attenuation it earns")
 def deadlock_complete(graph: Graph) -> Yield:
     """Dissent without a grading is half a record. The counter-clause says what
     the principal holds instead; the attenuation says what the clause may still
     license, which is the whole use of recording the dissent rather than simply
     withholding the merge.
+
+    The grading is owed at the merge and not before. On an open thread the
+    clause licenses nothing yet, and a dissent is worth recording while the
+    thread runs, before what it will cost is settled.
     """
     for q in graph.questions:
         for thesis in q.theses:
@@ -638,9 +659,33 @@ def deadlock_complete(graph: Graph) -> Yield:
                     continue
                 if not term.deadlock.counter.strip():
                     yield q.id, "term %r: deadlock has no counter-clause" % term.title
-                if not term.deadlock.attenuation.strip():
+                if (thesis.state == STATES[-1]
+                        and not term.deadlock.attenuation.strip()):
                     yield q.id, ("term %r: deadlock has no attenuation, so what the "
-                                 "clause may still license is unrecorded" % term.title)
+                                 "landed clause may still license is unrecorded"
+                                 % term.title)
+
+
+@check("suspension-open",
+       "a clause's acceptance is suspended only while its answer is in thread, "
+       "and never beside a deadlock")
+def suspension_open(graph: Graph) -> Yield:
+    """A suspension is acceptance withheld while the thread runs. The merge
+    that ends the thread settles every clause, assented or deadlocked, so a
+    landed answer carries none; and an answer that was never put has no
+    thread to suspend in. A clause cannot be both suspended and deadlocked:
+    one withholds acceptance, the other has refused it."""
+    for q in graph.questions:
+        for thesis in q.theses:
+            for term in thesis.terms:
+                if not term.suspended.strip():
+                    continue
+                if thesis.state != STATES[1]:
+                    yield q.id, ("term %r is suspended, but its answer is %r and "
+                                 "not in thread" % (term.title, thesis.state))
+                if term.deadlock is not None:
+                    yield q.id, ("term %r is both suspended and deadlocked"
+                                 % term.title)
 
 
 @check("divergence-counter",
@@ -732,22 +777,6 @@ def anchor_grain(graph: Graph) -> Yield:
                     if outer != inner and small != big and small in big:
                         yield q.id, ("term %r has an anchor containing the anchor "
                                      "of term %r" % (outer, inner))
-
-
-@check("standing-required",
-       "a thesis that an application rests on carries a standing")
-def standing_required(graph: Graph) -> Yield:
-    """A thesis that something rests on is either canon or a postulate, and
-    which one is the point: it is the debt an artifact carries. Leaving it
-    unset says nothing either way, which is how five of them came to carry
-    none."""
-    for q in graph.questions:
-        flagged: Set[int] = set()
-        for thesis, app in q.applications():
-            if not thesis.standing and id(thesis) not in flagged:
-                flagged.add(id(thesis))
-                yield q.id, ("thesis %r has an application resting on it (%r) "
-                             "and no standing" % (_clip(thesis.title, 30), app.name))
 
 
 @check("inbox-history",

@@ -14,7 +14,7 @@
         {
           "title": "Each side owes the other what only it can give.",
           "assent": "assented at the merge of the opening entry",
-          "standing": "postulate",
+          "state": "in thread",
           "text": "A relationship that continues is not a series of errands. The one who asks holds the questions and the standing to settle them; the other holds the work and the memory of it. The record kept between them is the only thing both can point at. Authority to act is graded by how settled the question is, and nothing irreversible is done under a grade that low. The word elenchus names the examination by which either side tests what the other has said.",
           "terms": [
             {
@@ -80,7 +80,7 @@
       "tab": "tab-02",
       "body": "body-02",
       "question": "What kind of thing is an entry, and what makes one binding?",
-      "state": "in thread",
+      "state": "held",
       "kind": "definitional",
       "answerer": "ai",
       "requires": [
@@ -90,6 +90,7 @@
         {
           "title": "An entry binds when the one with standing has marked it.",
           "assent": "",
+          "state": "held",
           "text": "An entry is a file in the repository, not a message in a thread. It binds when the one with standing has marked assent to it, and not before. Authority to act on an unassented entry is graded down, never removed.",
           "terms": [
             {
@@ -132,6 +133,7 @@
         {
           "title": "The two sides are asymmetric and neither substitutes for the other.",
           "assent": "none",
+          "state": "held",
           "text": "One side persists across sessions and carries the standing; the other persists across files and carries the memory. Neither can do the other's work. Where the two disagree, the disagreement is recorded rather than resolved by force, and the act that would settle it is graded down until the standing side speaks.",
           "terms": [
             {
@@ -172,7 +174,7 @@
         {
           "title": "Authority to act is graded by how settled the question is.",
           "assent": "none",
-          "standing": "postulate",
+          "state": "held",
           "text": "A settled entry acts silently. An unsettled one may act only if it says so, and never irreversibly. The grade is read off the state of the entry and is not stored twice.",
           "terms": [],
           "definitions": [
@@ -212,6 +214,7 @@
         {
           "title": "The one questioned must say what he believes.",
           "assent": "recorded as read, not as agreed",
+          "state": "held",
           "text": "The one questioned answers in his own voice and is held to what he grants.",
           "terms": [],
           "definitions": [],

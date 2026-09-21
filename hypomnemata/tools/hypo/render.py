@@ -266,13 +266,12 @@ def _anchored_text(thesis: Thesis) -> str:
     return "".join(out)
 
 
-def _thesis_blocks(graph: Graph, thesis: Thesis) -> List[str]:
+def _thesis_blocks(graph: Graph, thesis: Thesis, index: int) -> List[str]:
     blocks = ["### ◆ %s" % thesis.title]
-    line = "assent: %s" % thesis.assent
-    if thesis.standing:
-        line += " · %s" % thesis.standing
-    line += " · provenance: thesis hinge"
-    blocks.append(line)
+    # the answer's own state, and no standing beside it: the standing is read
+    # off the state, so writing both would state one datum twice
+    blocks.append("assent: %s · %s · provenance: thesis hinge"
+                  % (thesis.assent, _answer_state(graph, thesis, index)))
     blocks.append(_anchored_text(thesis))
     return blocks
 
@@ -356,6 +355,10 @@ def _term_blocks(graph: Graph, q: Question) -> List[str]:
         blocks.append("### %s → %s" % (term_heading(term), chip(term.to)))
         for anchor in term.anchors:
             blocks.append("*%s*" % anchor)
+        if term.suspended:
+            # acceptance withheld while the thread is open, and what it waits
+            # on; a paragraph of its own for the reason a deadlock has two
+            blocks.append("suspended: %s" % term.suspended)
         if term.deadlock:
             # two labelled blocks and not one: the dissent and the grading it
             # earns are separate data, and a reader looking for what a
@@ -402,8 +405,22 @@ HINGE_THESIS = "⚓ thesis: what the answer was drawn from"
 #: the words on an answer's metadata line that carry its provenance link
 PROVENANCE_ANCHOR = "thesis hinge"
 
-#: the blocks key for the state dropdown, one per tab
+#: the blocks key for the question's state dropdown, one per tab
 STATE_KEY = "state"
+
+
+def answer_state_key(index: int) -> str:
+    """The blocks key for an answer's state dropdown: one per answer, counted
+    from one in the order the answers stand on the tab."""
+    return "%s_%d" % (STATE_KEY, index + 1)
+
+
+def _answer_state(graph: Graph, thesis: Thesis, index: int) -> str:
+    """An answer's state as the page holds it, on the same terms as the
+    question's: a dropdown against the same enum where the doc has one."""
+    if graph.state_enum and thesis.state in STATES:
+        return "<?claude block %s?>" % answer_state_key(index)
+    return thesis.state
 
 
 def _state(graph: Graph, q: Question) -> str:
@@ -477,9 +494,9 @@ def body(graph: Graph, qid: str) -> str:
 
     blocks.append("*%s*" % q.question)
 
+    # no standing here: it is read off the state, and a question's answers
+    # carry states of their own on their own sections
     meta = "question: %s · %s" % (_state(graph, q), q.kind)
-    if q.standing:
-        meta += " · %s" % q.standing
     if q.answerer:
         meta += " · answerer: %s" % q.answerer
     meta += " · pressure %d · priority %d · load %d · requires: %s" % (
@@ -488,8 +505,8 @@ def body(graph: Graph, qid: str) -> str:
     blocks.append(meta)
 
     thesis_blocks: List[str] = []
-    for thesis in q.theses:
-        thesis_blocks.extend(_thesis_blocks(graph, thesis))
+    for index, thesis in enumerate(q.theses):
+        thesis_blocks.extend(_thesis_blocks(graph, thesis, index))
         thesis_blocks.extend(_tradition_blocks(graph, thesis))
     for name, section in (("thesis", thesis_blocks),
                           ("glossary", _glossary_blocks(q)),
@@ -561,6 +578,12 @@ def mention_blocks(graph: Graph, qid: str) -> Dict[str, Dict[str, str]]:
     if graph.state_enum and q is not None and q.state in STATES:
         blocks[STATE_KEY] = {"type": "dropdown", "enum": graph.state_enum,
                              "index": STATES.index(q.state)}
+    if graph.state_enum and q is not None:
+        for index, thesis in enumerate(q.theses):
+            if thesis.state in STATES:
+                blocks[answer_state_key(index)] = {
+                    "type": "dropdown", "enum": graph.state_enum,
+                    "index": STATES.index(thesis.state)}
     return blocks
 
 

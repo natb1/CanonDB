@@ -42,18 +42,20 @@ IN_PAGE_LINK = re.compile(
 #: this is the ordinary markdown reading of a backslash escape.
 ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
 
-#: Only pressure is read back. Priority and load are projections of the graph,
-#: and reading them would store a second copy of something already derivable.
+#: Only pressure is read back. Priority and load are projections of the graph
+#: and standing is read off the state, so reading any of them would store a
+#: second copy of something already derivable.
 QUESTION_LINE = re.compile(
     r"^question: (?P<state>.+?) · (?P<kind>[^·]+?)"
-    r"(?: · (?P<standing>canon|postulate))?"
     r"(?: · answerer: (?P<answerer>[^·]+?))?"
     r" · pressure (?P<pressure>-?\d+) · priority -?\d+"
     r" · load \d+ · requires: (?P<requires>.*)$")
+#: An answer's metadata: its assent, its own state, and its provenance.
 ASSENT_LINE = re.compile(
-    r"^assent: (?P<assent>.*?)(?: · (?P<standing>canon|postulate))?"
+    r"^assent: (?P<assent>.*?) · (?P<state>[^·]+?)"
     r" · provenance: thesis hinge$")
 DEADLOCK_LINE = re.compile(r"^deadlock: (?P<counter>.*)$", re.S)
+SUSPENDED_LINE = re.compile(r"^suspended: (?P<suspended>.*)$", re.S)
 ATTENUATION_LINE = re.compile(r"^attenuation: (?P<attenuation>.*)$", re.S)
 INBOX_LINE = re.compile(
     r"^(?P<kind>[^·]+?) · (?P<what>.*) · instances (?P<obligation>.*)"
@@ -262,8 +264,6 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
                 raise ParseError("the question line is malformed: %r" % block)
             q["state"] = _strip_chips(line.group("state"))
             q["kind"] = line.group("kind")
-            if line.group("standing"):
-                q["standing"] = line.group("standing")
             if line.group("answerer"):
                 q["answerer"] = line.group("answerer").strip()
             q["pressure"] = int(line.group("pressure"))
@@ -289,8 +289,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
             line = ASSENT_LINE.match(block)
             if line and "assent" not in thesis:
                 thesis["assent"] = line.group("assent")
-                if line.group("standing"):
-                    thesis["standing"] = line.group("standing")
+                thesis["state"] = _strip_chips(line.group("state")).strip()
             elif not block.startswith(">"):
                 rest.append(("text", block))
         text = SEPARATOR.join(b for kind, b in rest if kind == "text")
@@ -308,10 +307,13 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
         for block in body:
             counter = DEADLOCK_LINE.match(block)
             attenuation = ATTENUATION_LINE.match(block)
+            suspended = SUSPENDED_LINE.match(block)
             if counter:
                 deadlock["counter"] = counter.group("counter")
             elif attenuation:
                 deadlock["attenuation"] = attenuation.group("attenuation")
+            elif suspended:
+                term["suspended"] = suspended.group("suspended")
         if deadlock:
             term["deadlock"] = deadlock
         if theses:

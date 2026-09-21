@@ -66,11 +66,17 @@ _MARKERS = re.compile(r"[*_`]")
 #: itself in what the document exports.
 _STATE = re.compile(r"^(question:)[^·]*·", re.M)
 
-#: the same field, taken off rather than named. The document holds the state
+#: an answer's state, on its metadata line, on the same terms. It stands last
+#: before the provenance, so it is found from that end: an assent may carry a
+#: separator of its own, and the provenance may carry the link applied to it.
+_ANSWER_STATE = re.compile(r"^(assent: .*·)[^·\n]*(· provenance: )", re.M)
+
+#: the same fields, taken off rather than named. The document holds a state
 #: as a dropdown — an atom, like a chip — and the export prints the word it
 #: shows. Counting that word counts characters the document's own find cannot
 #: reach, and every run of them after it comes out one too high.
 _STATE_WORD = re.compile(r"^(question: )[^·\n]*(· )", re.M)
+_ANSWER_STATE_WORD = re.compile(r"^(assent: .*· )[^·\n]*(· provenance: )", re.M)
 
 
 #: ``read.IN_PAGE_LINK``, keeping the target as well as the words: the
@@ -124,6 +130,7 @@ def normalise(markdown: str) -> List[str]:
     out = read.PLACED_CHIP.sub("", out)
     out = read.ESCAPE.sub(r"\1", out)
     out = _STATE.sub(r"\1 STATE ·", out)
+    out = _ANSWER_STATE.sub(r"\1 STATE \2", out)
     return [line.rstrip() for line in out.strip().splitlines() if line.strip()]
 
 
@@ -151,6 +158,7 @@ def linked_spans(page: str) -> Tuple[str, List[Link]]:
     call the whole clause missing and the two halves unaccounted for.
     """
     page = _STATE_WORD.sub(r"\1\2", page or "")
+    page = _ANSWER_STATE_WORD.sub(r"\1\2", page)
     out: List[str] = []
     spans: List[Link] = []
     where = 0

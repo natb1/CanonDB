@@ -214,6 +214,32 @@ class MisplacedTest(unittest.TestCase):
         self.assertEqual(report.missing, [])
 
 
+class AnswerStateTest(unittest.TestCase):
+    """An answer's state is a dropdown too, and the same fault waits for it.
+
+    The export prints the word the dropdown shows; the document's own find
+    does not see it. "in thread" holds "thread", so a page that counted it
+    would put every later run of that word one further along.
+    """
+
+    def test_the_answer_s_state_word_is_not_counted(self):
+        graph = load("valid")
+        graph.state_enum = "cc6462ad-8c3e"
+        thesis = graph.get("ti-esti").theses[0]
+        thesis.text += " The answer waits in a thread until the merge."
+        thesis.definitions.append(model.Definition(
+            word="thread", body="An open line of questions."))
+        entries = render.links(graph, "ti-esti")["links"]
+        self.assertIn("thread", [e["anchor"] for e in entries])
+        page = (page_of(graph, "ti-esti", entries)
+                .replace("<?claude block state?>", "landed", 1)
+                .replace("<?claude block state_1?>", "in thread", 1))
+        self.assertIn("· in thread · provenance: ", page)
+        report = verify.verify(graph, "ti-esti", page)
+        self.assertEqual((report.diff, report.missing, report.misplaced,
+                          report.extra), ([], [], [], []))
+
+
 class AstrayTest(unittest.TestCase):
     """Where a link leads, as far as the page can say.
 
@@ -269,6 +295,15 @@ class NormaliseTest(unittest.TestCase):
         graph = load("valid")
         body = render.body(graph, "ti-esti")
         exported = body.replace("<?claude block m_canon?>", "[canon](file/tab-02)")
+        self.assertEqual(verify.normalise(exported), verify.normalise(body))
+
+    def test_an_answer_s_state_is_a_chip_on_one_side_and_a_word_on_the_other(self):
+        graph = load("valid")
+        graph.state_enum = "cc6462ad-8c3e"
+        body = render.body(graph, "ti-esti")
+        self.assertIn("<?claude block state_1?>", body)
+        exported = (body.replace("<?claude block state?>", "landed")
+                        .replace("<?claude block state_1?>", "in thread"))
         self.assertEqual(verify.normalise(exported), verify.normalise(body))
 
     def test_the_state_is_a_chip_on_one_side_and_a_word_on_the_other(self):

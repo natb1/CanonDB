@@ -170,6 +170,23 @@ class DetailTest(unittest.TestCase):
         self.assertEqual([m["anchors"] for m in parsed["theses"][0]["mentions"]],
                          [thesis.mentions[0].anchors])
 
+    def test_a_suspended_clause_comes_back_with_what_it_waits_on(self):
+        graph = load("valid")
+        term = graph.get("ti-esti").theses[0].terms[0]
+        term.suspended = "whether the other side would say it unprompted"
+        parsed = read.parse_tab(render.body(graph, "ti-esti"), self.ids)
+        self.assertEqual(parsed["theses"][0]["terms"][0]["suspended"],
+                         "whether the other side would say it unprompted")
+
+    def test_an_answer_s_state_comes_back_off_its_own_line(self):
+        """Its own, and not the question's: the root is landed and its answer
+        is in thread."""
+        parsed = self.parse("ti-esti")
+        self.assertEqual((parsed["state"], parsed["theses"][0]["state"]),
+                         ("landed", "in thread"))
+        self.assertNotIn("standing", parsed)
+        self.assertNotIn("standing", parsed["theses"][0])
+
     def test_a_note_is_not_read_as_a_deadlock(self):
         """A note closes its section, so it lands after the last subsection.
         Taken into that subsection it becomes the human's dissent from a clause

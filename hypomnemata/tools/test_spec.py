@@ -204,18 +204,32 @@ class DetailTest(unittest.TestCase):
         self.assertIsNone(findings[0].question)
         self.assertIn("ledger", findings[0].message)
 
-    def test_a_landed_question_waits_on_nothing_that_is_not_done(self):
-        """`requires` names what must be done before a question can be asked,
-        so a question that has landed was asked. The live root waited on its
-        own promulgation, which is the act that follows an answer."""
+    def test_a_question_that_has_been_put_waits_on_nothing_undone(self):
+        """`requires` names what must be done before a question can be put.
+        The root's answer is in thread, so the root has been put, and it may
+        not still wait on its own promulgation, which is the act that follows
+        an answer."""
         graph = load("valid")
         self.assertEqual(spec.run(graph, only=["requires-discharged"]), [])
         graph.get("ti-esti").requires = ["promulgate-the-root-answer"]
         findings = spec.run(graph, only=["requires-discharged"])
         self.assertEqual([f.question for f in findings], ["ti-esti"])
-        self.assertIn("has landed but still waits on", findings[0].message)
+        self.assertIn("has been put but still waits on", findings[0].message)
         graph.get("ti-esti").inbox[0].done = True
         self.assertEqual(spec.run(graph, only=["requires-discharged"]), [])
+
+    def test_landing_alone_is_not_being_put(self):
+        """A question lands when it reaches main, and the root reached main as
+        the seed it was asked from, before anyone put it. Until a thread is
+        open on it, what it waits on may still be undone."""
+        graph = load("valid")
+        root = graph.get("ti-esti")
+        root.requires = ["promulgate-the-root-answer"]
+        root.theses[0].state = "held"
+        self.assertEqual(root.state, "landed")
+        self.assertEqual(spec.run(graph, only=["requires-discharged"]), [])
+        root.state = "in thread"
+        self.assertTrue(spec.run(graph, only=["requires-discharged"]))
 
     def test_an_undone_item_nothing_requires_is_reported(self):
         """An action exists only as something a question requires. A done item
@@ -231,14 +245,18 @@ class DetailTest(unittest.TestCase):
         graph.get("ti-esti").inbox[0].done = True
         self.assertEqual(spec.run(graph, only=["inbox-required"]), [])
 
-    def test_a_deadlock_carries_both_its_parts(self):
+    def test_a_deadlock_carries_its_counter_and_once_landed_its_grading(self):
         """Dissent without a grading is half a record: what the principal holds
-        instead, and what the clause may still license."""
+        instead, and what the clause may still license. The grading is owed at
+        the merge: on an open thread the clause licenses nothing yet."""
         graph = load("valid")
         self.assertEqual(spec.run(graph, only=["deadlock-complete"]), [])
-        term = [t for q in graph.questions for th in q.theses for t in th.terms
-                if t.deadlock][0]
+        thesis, term = [(th, t) for q in graph.questions for th in q.theses
+                        for t in th.terms if t.deadlock][0]
+        self.assertNotEqual(thesis.state, "landed")
         term.deadlock.attenuation = ""
+        self.assertEqual(spec.run(graph, only=["deadlock-complete"]), [])
+        thesis.state = "landed"
         findings = spec.run(graph, only=["deadlock-complete"])
         self.assertIn("no attenuation", findings[0].message)
         term.deadlock.counter = ""
@@ -260,25 +278,34 @@ class DetailTest(unittest.TestCase):
         self.assertIn("makes it a divergence",
                       spec.run(graph, only=["divergence-counter"])[0].message)
 
-    def test_a_thesis_is_canon_only_where_its_question_landed(self):
-        """A postulate is anything the notebook supports and canon does not,
-        whether it is a thesis or an artifact built from one, so the two are
-        graded by one rule in two steps."""
+    def test_no_answer_gets_further_than_its_question(self):
+        """An answer is given to a question that has been put, and merged with
+        it or after it. The question may be ahead — the root landed as a seed
+        before it was answered — and never behind."""
         graph = load("valid")
-        self.assertEqual(spec.run(graph, only=["standing-honest"]), [])
-        held = graph.get("attenuation")
-        self.assertNotEqual(held.state, "landed")
-        held.theses[0].standing = "canon"
-        self.assertIn("not landed",
-                      spec.run(graph, only=["standing-honest"])[0].message)
+        self.assertEqual(spec.run(graph, only=["state-order"]), [])
+        root = graph.get("ti-esti")
+        self.assertEqual((root.state, root.theses[0].state), ("landed", "in thread"))
+        root.state = "held"
+        findings = spec.run(graph, only=["state-order"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        self.assertIn("further than its question", findings[0].message)
 
-    def test_an_application_is_derived_only_from_a_canon_thesis(self):
+    def test_standing_is_read_off_the_state(self):
+        """Canon once landed, a postulate until then: one datum, one home."""
+        root = load("valid").get("ti-esti")
+        self.assertEqual((root.standing, root.theses[0].standing),
+                         ("canon", "postulate"))
+        root.theses[0].state = "landed"
+        self.assertEqual(root.theses[0].standing, "canon")
+
+    def test_an_application_is_derived_only_from_a_landed_answer(self):
         graph = load("valid")
         thesis, app = list(graph.get("ti-esti").applications())[0]
         app.standing = "derived"
-        self.assertIn("comes from stands as 'postulate'",
+        self.assertIn("comes from is 'in thread' and not landed",
                       spec.run(graph, only=["standing-honest"])[0].message)
-        thesis.standing = "canon"
+        thesis.state = "landed"
         self.assertEqual(spec.run(graph, only=["standing-honest"]), [])
 
     def test_pressure_is_the_one_number_set_by_hand(self):
@@ -346,12 +373,23 @@ class DetailTest(unittest.TestCase):
         self.assertEqual([f.question for f in findings], ["ti-esti"])
         self.assertIn("'Two sides, two debts'", findings[0].message)
 
-    def test_a_thesis_an_application_rests_on_carries_a_standing(self):
+    def test_a_clause_is_suspended_only_on_an_open_thread(self):
+        """Acceptance withheld while the thread runs. The merge settles every
+        clause, so a landed answer carries no suspension, and an answer never
+        put has no thread to suspend in."""
         graph = load("valid")
-        self.assertEqual(spec.run(graph, only=["standing-required"]), [])
-        graph.get("ti-esti").theses[0].standing = ""
-        self.assertEqual([f.question for f in spec.run(graph, only=["standing-required"])],
-                         ["ti-esti"])
+        root = graph.get("ti-esti")
+        term = root.theses[0].terms[0]
+        term.suspended = "whether the other side would say it unprompted"
+        self.assertEqual(root.theses[0].state, "in thread")
+        self.assertEqual(spec.run(graph, only=["suspension-open"]), [])
+        root.theses[0].state = "landed"
+        self.assertIn("not in thread",
+                      spec.run(graph, only=["suspension-open"])[0].message)
+        root.theses[0].state = "in thread"
+        term.deadlock = model.Deadlock(counter="the principal holds otherwise")
+        self.assertIn("both suspended and deadlocked",
+                      spec.run(graph, only=["suspension-open"])[0].message)
 
     def test_a_done_item_is_history_once_nothing_names_it(self):
         graph = load("valid")
