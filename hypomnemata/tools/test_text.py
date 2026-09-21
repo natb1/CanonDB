@@ -42,37 +42,60 @@ class PlainTest(unittest.TestCase):
 class OccurrencesTest(unittest.TestCase):
     """Which run of characters a search means.
 
-    The document counts every literal match, so a whole-word answer is a
-    position in that counting and not a counting of its own.
+    The document counts every literal match and folds case while it counts, so
+    a qualifying answer is a position in that counting and not a counting of
+    its own.
     """
+
+    def nths(self, *args, **kw):
+        return [run.nth for run in occurrences(*args, **kw)]
 
     def test_merge_is_not_found_inside_merged(self):
         page = "a merged branch, then merge it"
-        self.assertEqual(occurrences(page, "merge", True), [2])
-        self.assertEqual(occurrences(page, "merge"), [1, 2])
+        self.assertEqual(self.nths(page, "merge", True), [2])
+        self.assertEqual(self.nths(page, "merge"), [1, 2])
 
     def test_prior_is_not_found_inside_priority(self):
         self.assertEqual(
-            occurrences("priority is high, the prior is low", "prior", True), [2])
+            self.nths("priority is high, the prior is low", "prior", True), [2])
 
     def test_a_possessive_still_holds_the_word(self):
         """An apostrophe is not a letter, and `party's` is where a reader meets
         the word."""
-        self.assertEqual(occurrences("the party's end", "party", True), [1])
+        self.assertEqual(self.nths("the party's end", "party", True), [1])
 
     def test_a_word_that_only_hides_is_never_found(self):
-        self.assertEqual(occurrences("priority only", "prior", True), [])
+        self.assertEqual(self.nths("priority only", "prior", True), [])
 
     def test_a_phrase_is_counted_as_it_stands(self):
         page = "one two three, and one two three again"
-        self.assertEqual(occurrences(page, "one two three"), [1, 2])
+        self.assertEqual(self.nths(page, "one two three"), [1, 2])
 
     def test_overlapping_runs_are_all_counted(self):
-        self.assertEqual(occurrences("aaaa", "aa"), [1, 2, 3])
+        self.assertEqual(self.nths("aaaa", "aa"), [1, 2, 3])
 
     def test_nothing_to_find_is_no_occurrence(self):
         self.assertEqual(occurrences("abc", ""), [])
         self.assertEqual(occurrences("", "abc"), [])
+
+    def test_a_capital_counts_and_is_found(self):
+        """The document's find folds case, so an earlier run that differs only
+        in case is still the run its numbering reaches first. Counting these
+        out cost the notebook twenty-four links: every `nth` named a run
+        earlier than the one meant, and that run already carried a link."""
+        page = "## Thesis\n\na thesis answers a question"
+        self.assertEqual(self.nths(page, "thesis", True), [1, 2])
+        self.assertEqual(occurrences(page, "thesis", True)[0].at, page.index("Thesis"))
+
+    def test_a_run_says_where_it_begins(self):
+        page = "a merged branch, then merge it"
+        self.assertEqual(occurrences(page, "merge", True)[0].at, page.index("merge it"))
+
+    def test_an_offset_is_an_offset_into_what_was_given(self):
+        """Folding is one character in and one out, or an offset would name
+        characters that moved while the case came off."""
+        page = "\u0130stanbul and the merge"
+        self.assertEqual(occurrences(page, "merge")[0].at, page.index("merge"))
 
 
 if __name__ == "__main__":

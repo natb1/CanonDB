@@ -18,7 +18,7 @@ name which run of characters it meant.
 from __future__ import annotations
 
 import re
-from typing import List
+from typing import List, NamedTuple
 
 #: ``[text](url)`` keeps its text and drops its target.
 _LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
@@ -55,19 +55,47 @@ def plain(markdown: str) -> str:
 _WORD = re.compile(r"[0-9A-Za-z_]")
 
 
-def occurrences(hay: str, needle: str, whole_word: bool = False) -> List[int]:
-    """Which *literal* occurrences of ``needle`` in ``hay`` qualify, 1-based.
+#: A run of the page that reads as the needle: where it begins, and the number
+#: the document has to count to in order to reach it.
+class Run(NamedTuple):
+    nth: int
+    at: int
+
+
+def fold(words: str) -> str:
+    """Lower case, one character in and one out.
+
+    ``str.lower`` is not length-preserving for every character — ``\u0130``
+    becomes two — and an offset into the folded string has to be an offset into
+    the original, so a character that will not fold in place is left alone.
+    """
+    return "".join(c.lower() if len(c.lower()) == 1 else c for c in words or "")
+
+
+def occurrences(hay: str, needle: str, whole_word: bool = False) -> List[Run]:
+    """Which runs of ``hay`` read as ``needle``, and what to count to reach each.
 
     The page is searched by text, so a link names the nth run of characters
-    that reads as ``needle`` — nth counting every literal match, including the
-    ones inside longer words. When ``whole_word``, those are skipped in the
-    result but still counted in the numbering, because the document counts
-    them: the first standalone ``merge`` in a page that says ``merged`` first
-    is occurrence 2, and asking for occurrence 1 links the wrong characters.
+    that reads as ``needle``. Two things decide that number and both are the
+    document's rules rather than this module's.
+
+    Every literal match counts, including the ones inside longer words: the
+    first standalone ``merge`` in a page that says ``merged`` first is
+    occurrence 2, and asking for occurrence 1 links the wrong characters.
+
+    And **case does not count**, because the document's find folds it. A page
+    whose ``## Thesis`` heading stands before the word ``thesis`` reaches the
+    word at occurrence 2, not 1. Counting here with regard to case is what cost
+    the notebook twenty-four links: each ``nth`` named an earlier run that
+    already carried a link, so the operation came back a silent no-op and
+    nothing downstream could see that the link had not landed.
+
+    ``whole_word`` decides which runs qualify. It never decides the numbering.
     """
     if not needle:
         return []
-    out: List[int] = []
+    hay, needle = fold(hay), fold(needle)
+    out: List[Run] = []
     n = 0
     start = 0
     while True:
@@ -81,4 +109,4 @@ def occurrences(hay: str, needle: str, whole_word: bool = False) -> List[int]:
             after = hay[at + len(needle):at + len(needle) + 1]
             if _WORD.match(before) or _WORD.match(after):
                 continue
-        out.append(n)
+        out.append(Run(nth=n, at=at))

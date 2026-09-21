@@ -168,15 +168,20 @@ def verify(graph: Graph, qid: str, page: str) -> Report:
 
 
 def _where(plain: str, find) -> Optional[Tuple[int, int]]:
-    """Where on the page the run a link was meant for stands."""
+    """Where on the page the run a link was meant for stands.
+
+    Counted by the same rule that chose it, so that a disagreement between
+    this and the page is a fact about the page. Resolving the ``nth`` here with
+    regard to case, while the document resolves it without, would make this
+    agree with the tool instead — which is how twenty-four links that never
+    landed read as landed.
+    """
     if not find:
         return None
-    at = -1
-    for _ in range(int(find["nth"])):
-        at = plain.find(plainly(find["text"]), at + 1)
-        if at < 0:
-            return None
-    return (at, at + len(plainly(find["text"])))
+    words = plainly(find["text"])
+    hit = next((run for run in text.occurrences(plain, words)
+                if run.nth == int(find["nth"])), None)
+    return None if hit is None else (hit.at, hit.at + len(words))
 
 
 def _whole(plain: str, want: Tuple[int, int],

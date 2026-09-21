@@ -540,12 +540,22 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
     ``anchor`` is the plain form: the page holds characters and applies
     emphasis beside them, so a search for the marked-up spelling finds nothing.
     ``find`` is that anchor as a target the document can take — the text and
-    the ``nth`` literal occurrence of it on this tab — resolved here rather
-    than left to the caller, because most anchors repeat and a one-word anchor
-    repeats inside longer words. A defined word is linked on its first whole
-    occurrence; two entries sharing an anchor take successive ones. ``find`` is
-    null where the page holds no qualifying occurrence at all, which
-    ``definition-anchorable`` and ``anchor-substring`` between them prevent.
+    the ``nth`` occurrence of it on this tab, counted the way the document
+    counts — resolved here rather than left to the caller, because most
+    anchors repeat and a one-word anchor repeats inside longer words.
+
+    Which run is meant is decided by where the link lives. An entry is
+    eligible only for a run inside its own section (``_HOME``) and never for
+    one inside a heading, and two entries sharing an anchor within a section
+    take successive runs. Without the first of those, an inbox row whose title
+    also opens a clause of the thesis linked the clause instead — the same
+    words, saying something else.
+
+    ``find`` is null where no run qualifies. ``anchor-substring`` prevents
+    that for an anchor; for a defined word it is *not* prevented, because
+    ``definition-anchorable`` asks only that the word occur in the thesis as a
+    substring, and a thesis that says ``grants`` but never ``grant`` has no
+    whole run for the renderer to put the link on.
     """
     q = graph.get(qid)
     if q is None:
@@ -603,7 +613,9 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
             "target": "#%s.%s" % (home.tab, titles[want]),
         })
     page = text.plain(body(graph, qid))
-    taken: Dict[str, int] = {}
+    headings = _heading_spans(page)
+    sections = _section_spans(page)
+    taken: Dict[Tuple[str, Optional[str]], int] = {}
     spans: List[Optional[Tuple[int, int]]] = []
     for entry in out:
         anchor = entry["anchor"]
@@ -613,12 +625,21 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
         # a number the document can count to.
         whole = len(anchor.split()) == 1
         entry["whole_word"] = whole
-        where = text.occurrences(page, anchor, whole)
-        used = taken.get(anchor, 0)
-        entry["find"] = ({"text": anchor, "nth": where[used]}
-                         if used < len(where) else None)
-        taken[anchor] = used + 1
-        spans.append(_span(page, anchor, entry["find"]))
+        home = sections.get(_HOME[entry["kind"]])
+        runs = [run for run in text.occurrences(page, anchor, whole)
+                if not any(at <= run.at < end for at, end in headings)
+                and (home is None or home[0] <= run.at < home[1])]
+        # successive runs are handed out per anchor within one section. The
+        # key folds case for the same reason the counting does — a clause and
+        # the title of the term it raises are often the same words — and it
+        # carries the section because the two draw from different pools: a
+        # thesis clause and an inbox row are each the first run of their own.
+        key = (text.fold(anchor), _HOME[entry["kind"]])
+        used = taken.get(key, 0)
+        run = runs[used] if used < len(runs) else None
+        entry["find"] = {"text": anchor, "nth": run.nth} if run else None
+        taken[key] = used + 1
+        spans.append((run.at, run.at + len(anchor)) if run else None)
     # a clause may be anchored whole and one of its sentences anchored again:
     # two links over one another. The document takes the outer and skips the
     # inner — silently, as a no-op rather than a refusal — so the entry is
@@ -637,17 +658,53 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
             "blocks": mention_blocks(graph, qid), "links": out}
 
 
-def _span(page: str, anchor: str, find: Optional[Dict[str, object]]
-          ) -> Optional[Tuple[int, int]]:
-    """Where on the page the run a link is meant for begins and ends."""
-    if not find:
-        return None
-    at = -1
-    for _ in range(int(find["nth"])):
-        at = page.find(anchor, at + 1)
-        if at < 0:
-            return None
-    return (at, at + len(anchor))
+#: which section of the page each kind of link is a link *in*. Every one of
+#: these is the encoding's own statement: a clause of the thesis is anchor
+#: text linked to its term section, the defined word is anchor text in the
+#: thesis text, the inbox table's term column is linked to the term section,
+#: and the incoming anchors and the requires list stand above the first
+#: heading. A link put anywhere else is a link on words that mean the same and
+#: say something else.
+_HOME = {"incoming": None, "requires": None,   # None: above the first section
+         "term": "Thesis", "definition": "Thesis", "inbox-term": "Inbox"}
+
+
+def _section_spans(page: str) -> Dict[Optional[str], Tuple[int, int]]:
+    """Where each `## ` section of the page begins and ends.
+
+    ``None`` is the masthead: everything above the first section.
+    """
+    marks: List[Tuple[Optional[str], int]] = [(None, 0)]
+    at = 0
+    for line in (page or "").splitlines(keepends=True):
+        if line.startswith("## ") and not line.startswith("###"):
+            marks.append((line[3:].strip(), at))
+        at += len(line)
+    out: Dict[Optional[str], Tuple[int, int]] = {}
+    for i, (name, start) in enumerate(marks):
+        end = marks[i + 1][1] if i + 1 < len(marks) else len(page or "")
+        out.setdefault(name, (start, end))
+    return out
+
+
+def _heading_spans(page: str) -> List[Tuple[int, int]]:
+    """Where the page's headings stand.
+
+    A heading is a link's destination and never its source. A definition's
+    target is the glossary heading that spells the word, so the word's first
+    standalone run on the page is that heading unless it is ruled out here —
+    which is how `\u2261 grant` came to link to itself while the clause that
+    uses the word went unlinked. The same rule keeps a link off a section
+    heading that happens to spell the word, which is where the one meant for
+    *thesis* in the prose landed.
+    """
+    out: List[Tuple[int, int]] = []
+    at = 0
+    for line in (page or "").splitlines(keepends=True):
+        if line.lstrip().startswith("#"):
+            out.append((at, at + len(line)))
+        at += len(line)
+    return out
 
 
 # -- the refusal ------------------------------------------------------------
