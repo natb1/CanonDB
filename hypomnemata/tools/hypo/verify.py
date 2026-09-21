@@ -19,7 +19,14 @@ one left behind by a definition that has since moved to another tab, is
 invisible to everything else; ten of them had accumulated.
 
 Counting, not presence: an anchor may stand twice on a tab and be linked once,
-which a set comparison calls correct.
+which a set comparison calls correct. And by span rather than by label, since a
+nested link cuts the outer one into pieces and no piece is the anchor.
+
+What it does not check is where a link goes. An href names a block id, which
+this cannot resolve without the outlines ``apply`` takes; so a clause whose own
+link was skipped because a longer one already covers those words reads as
+carried — which is what a reader meets — and the sidecar's ``covered_by`` is
+what says whose destination it actually has.
 """
 
 from __future__ import annotations
@@ -27,9 +34,9 @@ from __future__ import annotations
 import difflib
 import re
 from collections import Counter
-from typing import Dict, List, NamedTuple
+from typing import Dict, List, NamedTuple, Optional, Tuple
 
-from . import read, render
+from . import read, render, text
 from .model import Graph
 
 #: emphasis off and case folded. A link may open inside an emphasis span, which
@@ -84,21 +91,112 @@ def applied(page: str) -> Counter:
     return Counter(bare(m.group(1)) for m in read.IN_PAGE_LINK.finditer(page or ""))
 
 
+def linked_spans(page: str) -> Tuple[str, List[Tuple[int, int]]]:
+    """The page as plain characters, and which of them a link stands on.
+
+    Compared by span rather than by label, because a link does not survive as
+    one label: a nested link cuts it into pieces, and the page then reads
+
+        [The ](#a)[merge](#b)[ is the human's assent and his only act](#a)
+
+    where all three are right and none is the anchor. Matching labels would
+    call the whole clause missing and the two halves unaccounted for.
+    """
+    out: List[str] = []
+    spans: List[Tuple[int, int]] = []
+    where = 0
+
+    def take(raw: str, linked: bool) -> None:
+        """One run of the page, and where it lands once the markup is off."""
+        nonlocal where
+        words = plainly(raw)
+        if linked and words.strip():
+            spans.append((where + len(words) - len(words.lstrip()),
+                          where + len(words.rstrip())))
+        out.append(words)
+        where += len(words)
+
+    at = 0
+    for m in read.IN_PAGE_LINK.finditer(page or ""):
+        take((page or "")[at:m.start()], False)
+        take(m.group(1), True)
+        at = m.end()
+    take((page or "")[at:], False)
+    return "".join(out), spans
+
+
+def plainly(markdown: str) -> str:
+    """Chips, escapes and emphasis off — the characters a reader sees.
+
+    Run over one piece of the page at a time, so what is left is consistent
+    with the offsets taken beside it. A link may open inside an emphasis span,
+    which leaves a marker without its pair in one of the pieces; those come off
+    too, or the offsets would count characters nobody sees.
+    """
+    out = read.ESCAPE.sub(r"\1", markdown or "")
+    out = read.PLACED_CHIP.sub("", out)
+    return _MARKERS.sub("", text.plain(out))
+
+
 def verify(graph: Graph, qid: str, page: str) -> Report:
     """One tab's page against what the renderer and the sidecar say it holds."""
     diff = list(difflib.unified_diff(
         normalise(page), normalise(render.body(graph, qid)),
         "page", "render", lineterm="", n=0))[2:]
     entries = render.links(graph, qid)["links"]
-    wanted = Counter(bare(entry["anchor"]) for entry in entries)
-    have = applied(page)
+    plain, spans = linked_spans(page)
+    missing: List[str] = []
+    accounted: List[Tuple[int, int]] = []
+    for entry in entries:
+        want = _where(plain, entry.get("find"))
+        if want is None:
+            missing.append(bare(entry["anchor"]))
+            continue
+        under = [span for span in spans
+                 if span[0] < want[1] and want[0] < span[1]]
+        if _whole(plain, want, under):
+            accounted.extend(under)
+        else:
+            missing.append(bare(entry["anchor"]))
+    extra = sorted(plain[start:end].strip().lower()
+                   for start, end in spans if (start, end) not in accounted)
     # a link the page cannot carry because another already covers those words
     covered = {bare(entry["anchor"]): entry["covered_by"]
                for entry in entries if entry.get("covered_by")}
-    return Report(question=qid, diff=diff,
-                  missing=sorted((wanted - have).elements()),
-                  extra=sorted((have - wanted).elements()),
-                  covered=covered)
+    return Report(question=qid, diff=diff, missing=sorted(missing),
+                  extra=extra, covered=covered)
+
+
+def _where(plain: str, find) -> Optional[Tuple[int, int]]:
+    """Where on the page the run a link was meant for stands."""
+    if not find:
+        return None
+    at = -1
+    for _ in range(int(find["nth"])):
+        at = plain.find(plainly(find["text"]), at + 1)
+        if at < 0:
+            return None
+    return (at, at + len(plainly(find["text"])))
+
+
+def _whole(plain: str, want: Tuple[int, int],
+           under: List[Tuple[int, int]]) -> bool:
+    """Whether the link spans between them cover the anchor end to end.
+
+    Contiguity is what makes a split link one link again. Whitespace between
+    two of them does not break it: a link that ends in a space is reported
+    without it, and the gap is the space, not a hole in the link.
+    """
+    at = want[0]
+    for start, end in sorted(under):
+        while at < start and plain[at].isspace():
+            at += 1
+        if start > at:
+            return False
+        at = max(at, end)
+    while at < want[1] and plain[at].isspace():
+        at += 1
+    return at >= want[1]
 
 
 def verify_all(graph: Graph, pages: Dict[str, str]) -> List[Report]:

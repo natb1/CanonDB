@@ -103,7 +103,9 @@ class WholeTabTest(unittest.TestCase):
 
     def test_a_link_the_page_cannot_carry_says_what_covers_it(self):
         """Two links over one another: the document takes the outer and skips
-        the inner. The report says which, so it does not read as an omission."""
+        the inner. The words still carry a link, which is what a reader meets,
+        so they are not missing — but where that link goes is the outer one's
+        business, and the report says so."""
         qid = "canon"
         thesis = self.graph.get(qid).theses[0]
         outer = thesis.terms[0].anchors[0]
@@ -112,13 +114,32 @@ class WholeTabTest(unittest.TestCase):
         entries = self.links(qid)
         covered = [e for e in entries if e["covered_by"]]
         self.assertTrue(covered, "the inner anchor should be covered")
+
         page = page_of(self.graph, qid,
                        [e for e in entries if not e["covered_by"]])
         report = verify.verify(self.graph, qid, page)
         anchor = verify.bare(covered[0]["anchor"])
-        self.assertIn(anchor, report.missing)
+        self.assertNotIn(anchor, report.missing)
         self.assertIn(anchor, report.covered)
-        self.assertTrue(any("covered by" in line for line in report.lines()))
+        self.assertEqual(report.extra, [])
+
+    def test_a_split_link_is_one_link_again(self):
+        """A nested link cuts the outer one into pieces, and no piece is the
+        anchor. Compared by label the clause reads as missing and its halves as
+        unaccounted for; compared by span it is what it is."""
+        qid = "canon"
+        entries = self.links(qid)
+        whole = entries[0]
+        page = page_of(self.graph, qid, entries)
+        anchor = whole["anchor"]
+        cut = len(anchor) // 2
+        page = page.replace(
+            LINK % (anchor, "mq2x81a0kfd", 0),
+            (LINK % (anchor[:cut], "mq2x81a0kfd", 0)
+             + LINK % (anchor[cut:], "mq2x81a0kfd", 9)), 1)
+        report = verify.verify(self.graph, qid, page)
+        self.assertNotIn(verify.bare(anchor), report.missing)
+        self.assertEqual(report.extra, [])
 
     def test_a_body_that_is_not_what_the_renderer_makes_is_reported(self):
         page = page_of(self.graph, "canon", self.links("canon"))
