@@ -583,6 +583,33 @@ class FindTest(unittest.TestCase):
         self.assertIn("<?claude block m_plato?>\n\n↗ <?claude block m_canon?>", body)
         self.assertIn("m_canon", render.mention_blocks(graph, "ti-esti"))
 
+    def test_every_chip_a_body_writes_has_an_entry_behind_it(self):
+        """A chip is a token in the markdown and an entry in the map beside it;
+        a token with no entry is written into the page as words. The list and
+        the map were once gathered by two walks of the graph, and the first to
+        learn something the second did not wrote a chip with nothing behind it."""
+        for name in sorted(os.listdir(FIXTURES)):
+            if not name.endswith(".json"):
+                continue
+            graph = load(name[:-5])
+            for q in graph.questions:
+                with self.subTest(fixture=name, question=q.id):
+                    keys = set(re.findall(r"<\?claude block ([0-9A-Za-z_]+)\?>",
+                                          render.body(graph, q.id)))
+                    blocks = set(render.links(graph, q.id)["blocks"])
+                    known = {render.chip_key(x.id) for x in graph.questions}
+                    self.assertEqual({k for k in keys - blocks
+                                      if k in known or k == render.STATE_KEY
+                                      and graph.state_enum}, set())
+
+    def test_a_tradition_cited_only_by_a_borrowing_carries_the_citer_s_chips(self):
+        graph = load("valid")
+        graph.get("canon").theses[0].definitions[0].tradition = model.Borrowing(
+            to="plato", note="the word of the dialogues")
+        body = render.body(graph, "plato")
+        self.assertIn("<?claude block m_canon?>", body)
+        self.assertIn("m_canon", render.mention_blocks(graph, "plato"))
+
     def test_a_definition_is_linked_on_the_form_the_thesis_uses(self):
         """A headword is not always the form the sentence wants. The thesis
         that says `grants` and never `grant` has anchored the word, and the

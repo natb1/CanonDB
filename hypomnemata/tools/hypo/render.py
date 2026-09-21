@@ -139,6 +139,31 @@ def _tradition_blocks(graph: Graph, thesis: Thesis) -> List[str]:
     return blocks
 
 
+def _citing(graph: Graph, qid: str) -> List[Tuple[str, str]]:
+    """(relation, source question) for every thesis that cites ``qid``, sorted.
+
+    A borrowed sense cites the party it was borrowed from as surely as a
+    thesis does, so a definition's borrowing counts. It never diverges — a
+    definition that departed from the sense it names would not be naming it —
+    so it counts as support.
+
+    One function for the list and for its chips. The two used to walk the
+    graph separately, and when the list learned to count borrowings the chip
+    map did not: a tab cited only through a definition wrote a chip with
+    nothing behind it.
+    """
+    rows: Set[Tuple[str, str]] = set()
+    for src in graph.questions:
+        for thesis in src.theses:
+            for trad in thesis.traditions:
+                if trad.to == qid:
+                    rows.add((trad.relation, src.id))
+            for definition in thesis.definitions:
+                if definition.tradition and definition.tradition.to == qid:
+                    rows.add(("support", src.id))
+    return sorted(rows)
+
+
 def _cited_by_blocks(graph: Graph, q: Question) -> List[str]:
     """The mirror: the theses that reach this question by a tradition edge.
 
@@ -152,21 +177,7 @@ def _cited_by_blocks(graph: Graph, q: Question) -> List[str]:
     so the same graph read from a differently ordered document rendered a
     differently ordered list.
     """
-    rows: List[Tuple[str, str]] = []
-    for src in graph.questions:
-        for thesis in src.theses:
-            for trad in thesis.traditions:
-                if trad.to == q.id:
-                    rows.append((trad.relation, src.id))
-            # a borrowed sense cites the party it was borrowed from as surely
-            # as a thesis does, and read only the thesis edges this list could
-            # be empty on a tradition the graph does cite. A borrowing never
-            # diverges — a definition that departed from the sense it names
-            # would not be naming it — so it is listed as support.
-            for definition in thesis.definitions:
-                if definition.tradition and definition.tradition.to == q.id:
-                    rows.append(("support", src.id))
-    rows = sorted(set(rows))
+    rows = _citing(graph, q.id)
     blocks: List[str] = []
     for relation, heading in (("support", "Support"), ("divergence", "Divergence")):
         items = ["- %s" % breadcrumb(graph, src, plain_last=False)
@@ -531,11 +542,9 @@ def mention_targets(graph: Graph, qid: str) -> List[str]:
                 add(definition.tradition.to)
             if definition.question:
                 add(definition.question)
-    for src in graph.questions:  # the mirror, on a tab something cites
-        if any(trad.to == qid for thesis in src.theses
-               for trad in thesis.traditions):
-            for step in project.lineage(graph, src.id):
-                add(step)
+    for _, src in _citing(graph, qid):  # the mirror, on a tab something cites
+        for step in project.lineage(graph, src):
+            add(step)
     return targets
 
 
