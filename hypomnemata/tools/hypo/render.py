@@ -615,7 +615,7 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
             "anchor": text.plain(titles[want]),
             "target": "#%s.%s" % (home.tab, titles[want]),
         })
-    page = text.plain(body(graph, qid))
+    page = _as_the_page_holds_it(body(graph, qid))
     fixed = _fixed_spans(page)
     sections = _section_spans(page)
     taken: Dict[Tuple[str, Optional[str]], int] = {}
@@ -689,6 +689,25 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
 #: and the incoming anchors and the requires list stand above the first
 #: heading. A link put anywhere else is a link on words that mean the same and
 #: say something else.
+#: a chip, as the renderer writes one, with the space that carries it.
+_CHIP_TOKEN = re.compile(r" ?<\?claude block [0-9A-Za-z_]+\?>")
+
+
+def _as_the_page_holds_it(rendered: str) -> str:
+    """A rendered body as the characters the document will hold.
+
+    Emphasis comes off because the page stores it beside the words rather
+    than in them. A **chip** comes off because it is a token here and an atom
+    there: the word inside ``<?claude block m_priority?>`` is not a word the
+    document can find, so counting it makes every later run of that word one
+    too high. Two links went that way — ``\u2261 state`` onto the letters inside
+    *stated*, and ``\u2261 priority`` onto its own heading — and neither is
+    visible afterwards, since the page the checker reads back has no chips in
+    it either and agrees with the document about where the link is.
+    """
+    return _CHIP_TOKEN.sub("", text.plain(rendered))
+
+
 _HOME = {"incoming": None, "requires": None,   # None: above the first section
          "term": "Thesis", "definition": "Thesis", "inbox-term": "Inbox"}
 
