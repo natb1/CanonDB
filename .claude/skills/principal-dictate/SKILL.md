@@ -179,10 +179,13 @@ a procedure rather than a script.
   a block and the page only shows which tab it is on. So read an outline in the call before the
   one that spends it, and never carry a file of them between runs.
 - **The enum holds the model's states and nothing else.** A state renders as a dropdown by
-  index, so the document's enum must list exactly `STATES` — `held · in thread · landed` — in
-  that order. A stale option is removed, never left: a reader can pick it, and the model will
-  not take it. Nothing can check the document's enum from the graph file. Read it once, and
-  again after anyone edits the enum.
+  index, so the enum the graph file names must list exactly `STATES` — `held · in thread ·
+  landed` — in that order. A document enum only grows: an option can be appended, never
+  renamed, reordered or removed. So when the states change, create a new enum holding exactly
+  `STATES`, set `state_enum` to it, and re-render every tab so that no dropdown still points at
+  the old one. A stale option left where a reader can pick it is a state the model will not
+  take. Nothing can check the document's enum from the graph file. Read it once, and again
+  after anyone edits the enum.
 - **A note is somebody's and stays theirs.** The renderer round-trips a note as a blockquote, so it
   survives a re-render. What it cannot tell you is that a blockquote someone wrote on the page has
   not yet been taken into the graph file: export before you write, always, or you will replace it.
