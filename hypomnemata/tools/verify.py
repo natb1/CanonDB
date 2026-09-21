@@ -68,9 +68,10 @@ def main(argv=None) -> int:
     for report in bad:
         for line in report.lines():
             print(line)
-    absent = [q.id for q in graph.questions if q.id not in found]
-    if absent:
-        print("no export on disk for: %s" % ", ".join(absent))
+    if not args.only:  # with --only, everything else is absent on purpose
+        absent = [q.id for q in graph.questions if q.id not in found]
+        if absent:
+            print("no export on disk for: %s" % ", ".join(absent))
     print("%d of %d tabs differ, %d link(s) missing, %d unaccounted"
           % (len(bad), len(reports),
              sum(len(r.missing) for r in reports),

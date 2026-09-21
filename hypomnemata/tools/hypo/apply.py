@@ -123,34 +123,64 @@ def _scan(body: str) -> List[Block]:
     return out
 
 
-def headings(outline: List[Block]) -> Dict[str, str]:
-    """Heading text -> block id, first one wins.
+#: what an outline puts where it stopped printing a block's words.
+_ELIDED = "…"
 
-    A link's target names a heading by the words it opens with, glyph and all,
-    because the chip that closes it is a token before the write and a block id
-    after it. So the match is on the prefix the renderer could promise.
+#: a heading line of the rendered body, and the chip that closes one.
+_HEADING = re.compile(r"^(#+)\s*(.*)$")
+
+
+def rendered_headings(body: str) -> List[str]:
+    """The heading text of each heading in a rendered tab, in order.
+
+    The chip that closes a term heading comes off: it is a token before the
+    write and a block id after it, and a target names only the words.
     """
-    found: Dict[str, str] = {}
-    for block in outline:
-        if block.heading and block.text:
-            found.setdefault(block.text, block.id)
-    return found
+    out: List[str] = []
+    for chunk in (body or "").split("\n\n"):
+        m = _HEADING.match(chunk.strip())
+        if m:
+            out.append(_CHIP.sub("", m.group(2)).strip())
+    return out
 
 
-def _resolve(target: str, by_tab: Dict[str, List[Block]],
+def headings(graph: Graph, tab: str, outline: List[Block]) -> Dict[str, str]:
+    """Heading text -> block id, paired by position.
+
+    An outline elides a block's words after a few characters, so a heading
+    cannot be found on the page by the text a target names. It does not have
+    to be: the body is what the renderer produced, so the nth heading of the
+    outline is the nth heading of the render. The elided text is kept as a
+    check on that pairing rather than as the means of it — if the two have
+    drifted, the page is not what was rendered, and ``verify`` says so.
+    """
+    qid = next((q.id for q in graph.questions if q.tab == tab), None)
+    if qid is None:
+        return {}
+    full = rendered_headings(render.body(graph, qid))
+    seen = [block for block in outline if block.heading]
+    out: Dict[str, str] = {}
+    for words, block in zip(full, seen):
+        shown = block.text.rstrip(_ELIDED)
+        if shown and not words.startswith(shown):
+            return {}  # the page is not this render; nothing here can be trusted
+        out.setdefault(words, block.id)
+    return out
+
+
+def _resolve(graph: Graph, target: str, by_tab: Dict[str, List[Block]],
              artifact: str, own_tab: str) -> Optional[str]:
     """A sidecar target — ``#<tab>.<heading>`` — as an href the viewer follows."""
     tab, _, heading = target.lstrip("#").partition(".")
     outline = by_tab.get(tab)
     if outline is None:
         return None
-    found = headings(outline)
-    bid = found.get(heading)
-    if bid is None:  # the heading may carry a chip the outline spells out
-        for words, candidate in found.items():
-            if words.startswith(heading):
-                bid = candidate
-                break
+    found = headings(graph, tab, outline)
+    # a target names the prefix the renderer could promise: a term heading goes
+    # on to an arrow and a chip, which are a block id once the tab is written
+    bid = found.get(heading) or next(
+        (candidate for words, candidate in found.items()
+         if words.startswith(heading)), None)
     if bid is None:
         return None
     if tab == own_tab:
@@ -167,6 +197,12 @@ def body_ops(graph: Graph, qid: str, outline: List[Block]) -> List[dict]:
     ids = [block.id for block in outline if block.id]
     if not ids:
         raise Unresolved(["%s: the outline names no block to replace" % qid])
+    if all(block.heading for block in outline):
+        # a tab is headings and the prose under them; an outline of headings
+        # alone is a reduced one, kept for resolving link targets. Replacing
+        # only the blocks it names would leave the prose of the old tab behind.
+        raise Unresolved(["%s: the outline holds headings only, so it is not "
+                          "the whole tab" % qid])
     payload = render.links(graph, qid)
     with_ = {"as": "markdown",
              "from": {"kind": "inline", "content": render.body(graph, qid)}}
@@ -195,7 +231,7 @@ def link_ops(graph: Graph, qid: str, by_tab: Dict[str, List[Block]],
             missing.append("%s: no occurrence of %r on the page"
                            % (entry["kind"], entry["anchor"]))
             continue
-        href = _resolve(entry["target"], by_tab, artifact, own)
+        href = _resolve(graph, entry["target"], by_tab, artifact, own)
         if href is None:
             missing.append("%s: %s" % (entry["kind"], entry["target"]))
             continue

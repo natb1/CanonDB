@@ -47,7 +47,37 @@ class OutlineTest(unittest.TestCase):
         blocks = apply.parse_outline(
             "<doc><paragraph id='a.1' heading='3'>▸ A term "
             "<?claude block m_canon?></paragraph></doc>")
-        self.assertEqual(apply.headings(blocks), {"▸ A term": "a.1"})
+        self.assertEqual([(b.heading, b.text) for b in blocks], [(3, "▸ A term")])
+
+
+class HeadingTest(unittest.TestCase):
+    """Which block a target's heading is, when the outline will not say."""
+
+    def setUp(self):
+        self.graph = load("valid")
+        self.tab = self.graph.get("ti-esti").tab
+        self.blocks = apply.parse_outline(outline_of(self.graph, "ti-esti"))
+
+    def test_every_rendered_heading_is_paired_with_a_block(self):
+        found = apply.headings(self.graph, self.tab, self.blocks)
+        self.assertEqual(sorted(found),
+                         sorted(apply.rendered_headings(
+                             render.body(self.graph, "ti-esti"))))
+
+    def test_an_elided_heading_is_paired_by_position(self):
+        """An outline stops printing a block's words after a few characters, so
+        a heading cannot be found by the text a target names."""
+        short = [b._replace(text=b.text[:8] + "…") if b.heading else b
+                 for b in self.blocks]
+        self.assertEqual(apply.headings(self.graph, self.tab, short),
+                         apply.headings(self.graph, self.tab, self.blocks))
+
+    def test_a_page_that_is_not_this_render_pairs_nothing(self):
+        """The elided text is a check on the pairing, not the means of it: if
+        the two have drifted, no id here can be trusted."""
+        drifted = [b._replace(text="something else") if b.heading else b
+                   for b in self.blocks]
+        self.assertEqual(apply.headings(self.graph, self.tab, drifted), {})
 
     def test_a_doctype_is_refused_rather_than_parsed(self):
         with self.assertRaises(apply.Unresolved):
@@ -85,6 +115,14 @@ class BodyTest(unittest.TestCase):
         graph = load("valid")
         with self.assertRaises(apply.Unresolved):
             apply.body_ops(graph, "canon", [])
+
+    def test_an_outline_of_headings_alone_is_refused(self):
+        """A reduced outline is kept for resolving link targets. Replacing only
+        the blocks it names would leave the prose of the old tab behind."""
+        graph = load("valid")
+        whole = apply.parse_outline(outline_of(graph, "canon"))
+        with self.assertRaises(apply.Unresolved):
+            apply.body_ops(graph, "canon", [b for b in whole if b.heading])
 
 
 class LinkTest(unittest.TestCase):
