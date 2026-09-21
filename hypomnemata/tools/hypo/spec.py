@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple
 
-from . import project
+from . import project, text
 from .model import (CANON, Graph, INBOX_KINDS, KINDS, MODES, NODE_STANDINGS,
                     RELATIONS, SECTIONS, STANDINGS, STATES)
 
@@ -364,11 +364,23 @@ def assent_present(graph: Graph) -> Yield:
 
 @check("definition-anchorable", "a definition's word occurs in its thesis text")
 def definition_anchorable(graph: Graph) -> Yield:
+    """As a word, and in whichever regular form the sentence wants.
+
+    A glossary entry is a headword, so a thesis that only ever says `grants`
+    has anchored `grant` as properly as one that says the base — and the
+    renderer puts the link on the form that stands there. What it cannot do is
+    anchor letters hidden inside a longer word, which is what asking for a
+    substring allowed: `grant` was found in `grants`, the check passed, and
+    the renderer had nowhere to put the link.
+    """
     for q in graph.questions:
         for thesis, definition in q.definitions():
-            if definition.word.lower() not in thesis.text.lower():
-                yield q.id, ("definition %r does not occur in the thesis text, so the "
-                             "renderer cannot anchor it" % definition.word)
+            body = text.plain(thesis.text)
+            if not any(text.occurrences(body, form, True)
+                       for form in text.forms(definition.word)):
+                yield q.id, ("definition %r does not occur in the thesis text as a "
+                             "word, in any regular form, so the renderer cannot "
+                             "anchor it" % definition.word)
 
 
 @check("requires-exist",

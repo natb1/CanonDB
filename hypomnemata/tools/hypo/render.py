@@ -15,7 +15,7 @@ identifier appears in prose is kept by construction.
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from . import project, spec, text
 from .model import STATES, Graph, Question, Term, Thesis
@@ -551,11 +551,14 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
     also opens a clause of the thesis linked the clause instead — the same
     words, saying something else.
 
-    ``find`` is null where no run qualifies. ``anchor-substring`` prevents
-    that for an anchor; for a defined word it is *not* prevented, because
-    ``definition-anchorable`` asks only that the word occur in the thesis as a
-    substring, and a thesis that says ``grants`` but never ``grant`` has no
-    whole run for the renderer to put the link on.
+    A definition's anchor is a headword rather than a passage, so every
+    regular form of it is looked for and ``find`` names the one that stands on
+    the page: a thesis that says ``grants`` and never ``grant`` has anchored
+    the word, and the link goes on the whole of ``grants``.
+
+    ``find`` is null where no run qualifies, which ``anchor-substring`` and
+    ``definition-anchorable`` between them prevent — the second asks for what
+    is asked for here, a whole run of some form of the word in the thesis.
     """
     q = graph.get(qid)
     if q is None:
@@ -623,12 +626,32 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
         # `merged`, `prior` of `priority` — so which run of characters is
         # meant has to be decided here, against the page, and handed over as
         # a number the document can count to.
-        whole = len(anchor.split()) == 1
+        #
+        # A definition's anchor is a headword rather than a passage: the
+        # thesis uses whichever inflection its sentence wants, so every
+        # regular form is looked for and the link goes on the one that
+        # actually stands there. Longest first, so `grants` is linked whole
+        # instead of as the `grant` hiding inside it — which is also why a
+        # headword is matched as a word however many words it has.
+        if entry["kind"] == "definition":
+            candidates, whole = text.forms(anchor), True
+        else:
+            candidates, whole = [anchor], len(anchor.split()) == 1
         entry["whole_word"] = whole
         home = sections.get(_HOME[entry["kind"]])
-        runs = [run for run in text.occurrences(page, anchor, whole)
-                if not any(at <= run.at < end for at, end in fixed)
-                and (home is None or home[0] <= run.at < home[1])]
+        eligible: List[Tuple[int, str, text.Run]] = []
+        seen: Set[int] = set()
+        for form in candidates:
+            for run in text.occurrences(page, form, whole):
+                if run.at in seen:
+                    continue  # a longer form already claimed this run
+                if any(at <= run.at < end for at, end in fixed):
+                    continue
+                if home is not None and not home[0] <= run.at < home[1]:
+                    continue
+                seen.add(run.at)
+                eligible.append((run.at, form, run))
+        eligible.sort()
         # successive runs are handed out per anchor within one section. The
         # key folds case for the same reason the counting does — a clause and
         # the title of the term it raises are often the same words — and it
@@ -636,10 +659,11 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
         # thesis clause and an inbox row are each the first run of their own.
         key = (text.fold(anchor), _HOME[entry["kind"]])
         used = taken.get(key, 0)
-        run = runs[used] if used < len(runs) else None
-        entry["find"] = {"text": anchor, "nth": run.nth} if run else None
+        chosen = eligible[used] if used < len(eligible) else None
+        entry["find"] = ({"text": chosen[1], "nth": chosen[2].nth}
+                         if chosen else None)
         taken[key] = used + 1
-        spans.append((run.at, run.at + len(anchor)) if run else None)
+        spans.append((chosen[0], chosen[0] + len(chosen[1])) if chosen else None)
     # a clause may be anchored whole and one of its sentences anchored again:
     # two links over one another. The document takes the outer and skips the
     # inner — silently, as a no-op rather than a refusal — so the entry is

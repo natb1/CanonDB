@@ -110,3 +110,42 @@ def occurrences(hay: str, needle: str, whole_word: bool = False) -> List[Run]:
             if _WORD.match(before) or _WORD.match(after):
                 continue
         out.append(Run(nth=n, at=at))
+
+#: a final consonant, for the endings that want the vowel kept short.
+_VOWEL = "aeiou"
+
+
+def forms(word: str) -> List[str]:
+    """A headword and the regular inflections a thesis might use it in.
+
+    A glossary entry is a **headword**: the form a dictionary files the word
+    under. Prose uses whichever inflection the sentence wants — a thesis that
+    fixes the sense of ``grant`` may only ever say ``grants`` — and the entry
+    is no less anchored for that. So the word to look for on the page is the
+    headword or any regular form of it, and the link goes on the form that
+    actually stands there rather than on the base hidden inside it.
+
+    Regular inflection only, and deliberately: an irregular form is rare
+    enough in this prose to be worth noticing by hand, and a stemmer that
+    guessed at them would also match words that are not the headword at all.
+    A phrase inflects on its last word, which is where English puts it.
+
+    Longest first, so a caller matching at a position takes ``grants`` rather
+    than the ``grant`` inside it.
+    """
+    head, sep, last = (word or "").rpartition(" ")
+    if not last:
+        return []
+    out = {last}
+    if last.endswith("y") and len(last) > 1 and last[-2] not in _VOWEL:
+        out.update({last[:-1] + "ies", last[:-1] + "ied", last + "ing"})
+    elif last.endswith("e"):
+        out.update({last + "s", last + "d", last[:-1] + "ing"})
+    elif last.endswith(("s", "x", "z", "ch", "sh", "o")):
+        out.update({last + "es", last + "ed", last + "ing"})
+    else:
+        out.update({last + "s", last + "ed", last + "ing"})
+        if (len(last) > 2 and last[-1] not in _VOWEL + "wxy"
+                and last[-2] in _VOWEL and last[-3] not in _VOWEL):
+            out.update({last + last[-1] + "ed", last + last[-1] + "ing"})
+    return sorted((head + sep + form for form in out), key=lambda f: (-len(f), f))

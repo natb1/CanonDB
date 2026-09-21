@@ -2,7 +2,7 @@
 
 import unittest
 
-from hypo.text import occurrences, plain
+from hypo.text import forms, occurrences, plain
 
 
 class PlainTest(unittest.TestCase):
@@ -96,6 +96,39 @@ class OccurrencesTest(unittest.TestCase):
         characters that moved while the case came off."""
         page = "\u0130stanbul and the merge"
         self.assertEqual(occurrences(page, "merge")[0].at, page.index("merge"))
+
+
+class FormsTest(unittest.TestCase):
+    """A glossary entry is a headword; the prose uses what the sentence wants."""
+
+    def test_the_headword_comes_back_with_its_regular_forms(self):
+        self.assertEqual(set(forms("grant")),
+                         {"grant", "grants", "granted", "granting"})
+
+    def test_a_silent_e_is_not_doubled(self):
+        self.assertEqual(set(forms("merge")),
+                         {"merge", "merges", "merged", "merging"})
+
+    def test_a_consonant_y_becomes_ies(self):
+        self.assertEqual(set(forms("carry")),
+                         {"carry", "carries", "carried", "carrying"})
+        self.assertNotIn("carrys", forms("carry"))
+
+    def test_a_sibilant_takes_es(self):
+        self.assertIn("catches", forms("catch"))
+
+    def test_a_phrase_inflects_on_its_last_word(self):
+        self.assertIn("section types", forms("section type"))
+        self.assertNotIn("sections type", forms("section type"))
+
+    def test_longest_first_so_a_caller_links_the_whole_word(self):
+        """`grants` is linked whole rather than as the `grant` inside it."""
+        self.assertEqual(forms("grant")[-1], "grant")
+        self.assertTrue(all(len(a) >= len(b) for a, b in zip(forms("grant"),
+                                                             forms("grant")[1:])))
+
+    def test_nothing_is_no_form(self):
+        self.assertEqual(forms(""), [])
 
 
 if __name__ == "__main__":

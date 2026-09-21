@@ -126,13 +126,6 @@ a procedure rather than a script.
   bears. No script can tell a second statement of one datum from two data, and the second one
   is usually added in good faith: an inbox item for debt an application already carries as a
   postulate, a note restating a field. Read for it whenever a field, a note or an item is added.
-- **A defined word stands whole in its thesis.** The renderer puts a
-  definition's link on a whole run of the word inside the thesis text, and
-  `definition-anchorable` asks only that the word occur there as a substring.
-  A thesis that says `grants` but never `grant` passes the check and gives the
-  renderer nothing to link, so the definition is reachable from the glossary
-  and from nowhere in the prose that uses it. Read for it when a definition is
-  added; `verify.py` reports the consequence but cannot name the cause.
 - **Discharge is an act, not a state.** A postulate is anything the notebook supports and canon
   does not, whether it is a thesis or an artifact built from one, and `standing-honest` grades
   both in two steps: a thesis is `canon` only where its question landed, and an artifact is

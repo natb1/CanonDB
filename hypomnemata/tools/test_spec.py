@@ -304,6 +304,22 @@ class DetailTest(unittest.TestCase):
         self.assertIn("a term edge runs inside one party's lineage",
                       spec.run(graph, only=["tradition-isolated"])[0].message)
 
+    def test_a_definition_may_be_used_in_any_regular_form(self):
+        """A glossary entry is a headword. What it may not be is letters
+        hidden inside a longer word: asking for a substring passed a thesis
+        that says `grants` and never `grant`, and the renderer then had
+        nothing to put the link on."""
+        graph = load("valid")
+        thesis = graph.get("canon").theses[0]
+        word = thesis.definitions[0].word
+        self.assertEqual(spec.run(graph, only=["definition-anchorable"]), [])
+        thesis.text = thesis.text.replace(word, word + "s")
+        self.assertEqual(spec.run(graph, only=["definition-anchorable"]), [])
+        thesis.text = thesis.text.replace(word + "s", "un" + word + "ish")
+        findings = spec.run(graph, only=["definition-anchorable"])
+        self.assertEqual([f.question for f in findings], ["canon"])
+        self.assertIn("in any regular form", findings[0].message)
+
     def test_findings_render_as_one_line_and_as_json(self):
         finding = spec.run(load("invalid-vocabulary"), only=["vocabulary"])[0]
         self.assertEqual(len(finding.line().splitlines()), 1)

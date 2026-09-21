@@ -530,6 +530,23 @@ class FindTest(unittest.TestCase):
                         any(at <= run.at < end for at, end in fixed),
                         "%r links a line the encoding decides" % entry["anchor"][:40])
 
+    def test_a_definition_is_linked_on_the_form_the_thesis_uses(self):
+        """A headword is not always the form the sentence wants. The thesis
+        that says `grants` and never `grant` has anchored the word, and the
+        link goes on the whole of `grants` rather than on the base hiding
+        inside it."""
+        graph = load("valid")
+        thesis = graph.get("canon").theses[0]
+        word = thesis.definitions[0].word
+        thesis.text = thesis.text.replace(word, word + "s")
+        find = self.entry(graph, "canon", word)["find"]
+        self.assertIsNotNone(find, "%r no longer anchors" % word)
+        self.assertEqual(find["text"], word + "s")
+        page = text.plain(render.body(graph, "canon"))
+        run = next(r for r in text.occurrences(page, find["text"])
+                   if r.nth == find["nth"])
+        self.assertEqual(page[run.at:run.at + len(find["text"])], word + "s")
+
     def test_every_find_target_stands_where_it_says(self):
         """A target the document cannot count to is a link that never lands."""
         graph = load("valid")
