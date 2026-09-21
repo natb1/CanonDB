@@ -219,7 +219,9 @@ class DetailTest(unittest.TestCase):
 
     def test_an_undone_item_nothing_requires_is_reported(self):
         """An action exists only as something a question requires. A done item
-        is exempt: its requirers drop the entry when it is discharged."""
+        is exempt here: it blocks nothing, and while a question still names it
+        the name shows that the wait is over. `inbox-history` reports it once
+        nothing does."""
         graph = load("valid")
         self.assertEqual(spec.run(graph, only=["inbox-required"]), [])
         for q in graph.questions:
@@ -274,7 +276,7 @@ class DetailTest(unittest.TestCase):
         graph = load("valid")
         thesis, app = list(graph.get("ti-esti").applications())[0]
         app.standing = "derived"
-        self.assertIn("comes from stands as 'unset'",
+        self.assertIn("comes from stands as 'postulate'",
                       spec.run(graph, only=["standing-honest"])[0].message)
         thesis.standing = "canon"
         self.assertEqual(spec.run(graph, only=["standing-honest"]), [])
@@ -319,6 +321,48 @@ class DetailTest(unittest.TestCase):
         findings = spec.run(graph, only=["definition-anchorable"])
         self.assertEqual([f.question for f in findings], ["canon"])
         self.assertIn("in any regular form", findings[0].message)
+
+    def test_an_author_question_names_its_answerer_and_a_tradition_does_not(self):
+        graph = load("valid")
+        self.assertEqual(spec.run(graph, only=["answerer-set"]), [])
+        graph.get("plato").answerer = "principal"
+        graph.get("canon").answerer = "the AI"
+        findings = spec.run(graph, only=["answerer-set"])
+        self.assertEqual(sorted(f.question for f in findings), ["canon", "plato"])
+
+    def test_a_shadow_names_another_question(self):
+        graph = load("valid")
+        word = graph.get("canon").theses[0].definitions[0]
+        word.question = "party"
+        self.assertEqual(spec.run(graph, only=["term-target"]), [])
+        word.question = "canon"
+        self.assertIn("its own question",
+                      spec.run(graph, only=["term-target"])[0].message)
+        word.question = "nowhere"
+        self.assertIn("no question", spec.run(graph, only=["term-target"])[0].message)
+
+    def test_a_term_inside_another_is_at_the_wrong_grain(self):
+        findings = spec.run(load("invalid-anchor-grain"), only=["anchor-grain"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        self.assertIn("'Two sides, two debts'", findings[0].message)
+
+    def test_a_thesis_an_application_rests_on_carries_a_standing(self):
+        graph = load("valid")
+        self.assertEqual(spec.run(graph, only=["standing-required"]), [])
+        graph.get("ti-esti").theses[0].standing = ""
+        self.assertEqual([f.question for f in spec.run(graph, only=["standing-required"])],
+                         ["ti-esti"])
+
+    def test_a_done_item_is_history_once_nothing_names_it(self):
+        graph = load("valid")
+        item = graph.get("ti-esti").inbox[0]
+        item.done = True
+        # still named by the questions that waited on it: it shows they are ready
+        self.assertEqual(spec.run(graph, only=["inbox-history"]), [])
+        for q in graph.questions:
+            q.requires = []
+        self.assertEqual([f.question for f in spec.run(graph, only=["inbox-history"])],
+                         ["ti-esti"])
 
     def test_findings_render_as_one_line_and_as_json(self):
         finding = spec.run(load("invalid-vocabulary"), only=["vocabulary"])[0]

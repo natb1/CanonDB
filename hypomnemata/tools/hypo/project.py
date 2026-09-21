@@ -224,9 +224,11 @@ def load(graph: Graph, qid: str) -> int:
 def priority(graph: Graph, qid: str) -> int:
     """A question's own pressure plus the priority of everything blocked behind it.
 
-    Pressure originates at a leaf, where work is actually waiting. Priority is
-    its transitive sum, and it answers what to do next: a question that
-    unblocks many is heavy even when little lies beneath it.
+    Pressure is set by hand on the question where work is actually waiting,
+    which need not be a leaf: an interior question can have an application
+    blocked on it too. Priority is its transitive sum, and it answers what to do
+    next: a question that unblocks many is heavy even when little lies beneath
+    it. Load is not a sum of pressure at all; it counts.
 
     The blocking relation is not stored. It is read off the term graph,
     because a turn answering a question carries canon above that question, so

@@ -98,6 +98,16 @@ def breadcrumb(graph: Graph, qid: str, plain_last: bool = True) -> str:
 #: instead; the marker is what lets an export be read back into the field.
 INSTEAD = "Instead: "
 
+#: what opens the block pointing a definition at the question its word has
+#: earned, where the definition shadows that question for reach
+SHADOW = "↗"
+
+#: what a mention says under its anchors when a term in its place would close a
+#: cycle. It is derived from the edges at every render and never stored, so the
+#: reason a mention is not a term cannot go stale or be forgotten.
+CYCLE_NOTE = ("cycle: a term here would close a cycle, because the question it "
+              "points at already stands above this one.")
+
 
 def _citation_item(graph: Graph, target: str, note: str, counter: str = "") -> str:
     crumb = breadcrumb(graph, target, plain_last=False) if graph.get(target) \
@@ -274,6 +284,11 @@ def _glossary_blocks(q: Question) -> List[str]:
             if note:
                 line = "%s %s" % (note if note.endswith(".") else note + ".", line)
             blocks.append(line)
+        if definition.question:
+            # a definition standing for a word that has earned a question of
+            # its own: the sense here, for the users of the word that cannot
+            # reach that question, and a pointer to where the argument is
+            blocks.append("%s %s" % (SHADOW, chip(definition.question)))
     return blocks
 
 
@@ -324,7 +339,7 @@ def term_heading(term: Term) -> str:
     return "▸ %s" % term.title
 
 
-def _term_blocks(q: Question) -> List[str]:
+def _term_blocks(graph: Graph, q: Question) -> List[str]:
     blocks: List[str] = []
     for term in q.terms():
         blocks.append("### %s → %s" % (term_heading(term), chip(term.to)))
@@ -346,6 +361,8 @@ def _term_blocks(q: Question) -> List[str]:
         blocks.append("### ↗ %s → %s" % (mention.title, chip(mention.to)))
         for anchor in mention.anchors:
             blocks.append("*%s*" % anchor)
+        if q.id in project.reachable_from(graph, mention.to):
+            blocks.append(CYCLE_NOTE)
     return blocks
 
 
@@ -367,6 +384,12 @@ def _application_blocks(q: Question) -> List[str]:
         blocks.append(line)
     return blocks
 
+
+#: the heading of a hinge's thesis half, which every answer's provenance names
+HINGE_THESIS = "⚓ thesis: what the answer was drawn from"
+
+#: the words on an answer's metadata line that carry its provenance link
+PROVENANCE_ANCHOR = "thesis hinge"
 
 #: the blocks key for the state dropdown, one per tab
 STATE_KEY = "state"
@@ -408,7 +431,7 @@ def _hinge_blocks(q: Question) -> List[str]:
         blocks.append("### ⚓ question: what the asking presupposes")
         blocks.append(q.hinge.question)
     if q.hinge.thesis.strip():
-        blocks.append("### ⚓ thesis: what the answer was drawn from")
+        blocks.append("### %s" % HINGE_THESIS)
         blocks.append(q.hinge.thesis)
     return blocks
 
@@ -446,6 +469,8 @@ def body(graph: Graph, qid: str) -> str:
     meta = "question: %s · %s" % (_state(graph, q), q.kind)
     if q.standing:
         meta += " · %s" % q.standing
+    if q.answerer:
+        meta += " · answerer: %s" % q.answerer
     meta += " · pressure %d · priority %d · load %d · requires: %s" % (
         q.pressure, project.priority(graph, qid), project.load(graph, qid),
         _requires(graph, q))
@@ -458,7 +483,7 @@ def body(graph: Graph, qid: str) -> str:
     for name, section in (("thesis", thesis_blocks),
                           ("glossary", _glossary_blocks(q)),
                           ("inbox", _inbox_blocks(graph, q)),
-                          ("terms", _term_blocks(q)),
+                          ("terms", _term_blocks(graph, q)),
                           ("applications", _application_blocks(q)),
                           ("cited by", _cited_by_blocks(graph, q)),
                           ("hinge", _hinge_blocks(q))):
@@ -504,6 +529,8 @@ def mention_targets(graph: Graph, qid: str) -> List[str]:
             # sentence rather than standing on a line of its own
             if definition.tradition:
                 add(definition.tradition.to)
+            if definition.question:
+                add(definition.question)
     for src in graph.questions:  # the mirror, on a tab something cites
         if any(trad.to == qid for thesis in src.theses
                for trad in thesis.traditions):
@@ -596,6 +623,17 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
             "heading": heading,
             "target": "#%s.%s" % (q.tab, heading),
         })
+    if q.hinge is not None and q.hinge.thesis.strip():
+        # each answer's metadata names its provenance, and the provenance is
+        # the thesis half of the hinge: one link per answer, on its own line
+        for _ in q.theses:
+            out.append({
+                "kind": "provenance",
+                "anchor": PROVENANCE_ANCHOR,
+                "target": "#%s.%s" % (q.tab, HINGE_THESIS),
+            })
+    titles = _inbox_titles(graph)
+    homes = {item.id: home for home in graph.questions for item in home.inbox}
     for term in _inbox_order(graph, q):
         out.append({
             "kind": "inbox-term",
@@ -603,8 +641,19 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
             "anchor": text.plain(term.title),
             "target": "#%s.%s" % (q.tab, term_heading(term)),
         })
-    titles = _inbox_titles(graph)
-    homes = {item.id: home for home in graph.questions for item in home.inbox}
+        child = by_id.get(term.to)
+        for want in (child.requires if child else []):
+            home = homes.get(want)
+            if home is None:  # requires-exist reports it
+                continue
+            # the table's requires cell names what the row's question waits on,
+            # and each name goes to the item it names, wherever that item lives
+            out.append({
+                "kind": "inbox-requires",
+                "item": want,
+                "anchor": text.plain(titles[want]),
+                "target": "#%s.%s" % (home.tab, titles[want]),
+            })
     for want in q.requires:
         home = homes.get(want)
         if home is None:  # requires-exist reports it; there is nothing to point at
@@ -655,13 +704,6 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
             "blocks": mention_blocks(graph, qid), "links": out}
 
 
-#: which section of the page each kind of link is a link *in*. Every one of
-#: these is the encoding's own statement: a clause of the thesis is anchor
-#: text linked to its term section, the defined word is anchor text in the
-#: thesis text, the inbox table's term column is linked to the term section,
-#: and the incoming anchors and the requires list stand above the first
-#: heading. A link put anywhere else is a link on words that mean the same and
-#: say something else.
 #: a chip, as the renderer writes one, with the space that carries it.
 _CHIP_TOKEN = re.compile(r" ?<\?claude block [0-9A-Za-z_]+\?>")
 
@@ -681,8 +723,17 @@ def _as_the_page_holds_it(rendered: str) -> str:
     return _CHIP_TOKEN.sub("", text.plain(rendered))
 
 
+#: which section of the page each kind of link is a link *in*. Every one of
+#: these is the encoding's own statement: a clause of the thesis is anchor
+#: text linked to its term section, the defined word is anchor text in the
+#: thesis text, each answer's metadata line links its provenance, the inbox
+#: table's term column is linked to the term section and its requires column
+#: to the items, and the incoming anchors and the question line's requires
+#: stand above the first heading. A link put anywhere else is a link on words
+#: that mean the same and say something else.
 _HOME = {"incoming": None, "requires": None,   # None: above the first section
-         "term": "Thesis", "definition": "Thesis", "inbox-term": "Inbox"}
+         "term": "Thesis", "definition": "Thesis", "provenance": "Thesis",
+         "inbox-term": "Inbox", "inbox-requires": "Inbox"}
 
 
 def _candidates(kind: str, anchor: str) -> Tuple[List[str], bool]:
@@ -729,13 +780,19 @@ def eligible(page: str, kind: str, anchor: str,
     sections = _section_spans(page) if sections is None else sections
     candidates, whole = _candidates(kind, anchor)
     home = sections.get(_HOME[kind])
+    # the provenance link is the one link the answer metadata line carries, so
+    # it may stand there and nowhere else; every other kind is kept off it
+    metadata = _metadata_spans(page) if kind == "provenance" else []
     out: List[Tuple[int, str, text.Run]] = []
     seen: Set[int] = set()
     for form in candidates:
         for run in text.occurrences(page, form, whole):
             if run.at in seen:
                 continue  # a longer form already claimed this run
-            if any(at <= run.at < end for at, end in fixed):
+            if kind == "provenance":
+                if not any(at <= run.at < end for at, end in metadata):
+                    continue
+            elif any(at <= run.at < end for at, end in fixed):
                 continue
             if home is not None and not home[0] <= run.at < home[1]:
                 continue
@@ -785,6 +842,17 @@ def _fixed_spans(page: str) -> List[Tuple[int, int]]:
     at = 0
     for line in (page or "").splitlines(keepends=True):
         if line.lstrip().startswith("#") or line.startswith("assent:"):
+            out.append((at, at + len(line)))
+        at += len(line)
+    return out
+
+
+def _metadata_spans(page: str) -> List[Tuple[int, int]]:
+    """The answer metadata lines alone: where the provenance link stands."""
+    out: List[Tuple[int, int]] = []
+    at = 0
+    for line in (page or "").splitlines(keepends=True):
+        if line.startswith("assent:"):
             out.append((at, at + len(line)))
         at += len(line)
     return out

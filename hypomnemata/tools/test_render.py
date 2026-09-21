@@ -56,8 +56,8 @@ class RootLayoutTest(unittest.TestCase):
         it comes to once everything blocked behind this question is counted."""
         self.assertEqual(
             self.lines[3],
-            "question: landed · root · pressure 27 · priority 53 · load 3 · "
-            "requires: nothing")
+            "question: landed · root · answerer: ai · pressure 27 · priority 53 · "
+            "load 3 · requires: nothing")
 
     def test_a_question_line_names_what_it_waits_on(self):
         """The root waits on nothing: its own promulgation follows its answer
@@ -72,7 +72,7 @@ class RootLayoutTest(unittest.TestCase):
     def test_thesis_heading_and_provenance(self):
         self.assertIn("### ◆ Each side owes the other what only it can give.", self.text)
         self.assertIn("assent: assented at the merge of the opening entry · "
-                      "provenance: thesis hinge", self.text)
+                      "postulate · provenance: thesis hinge", self.text)
 
     def test_traditions_are_a_list_per_relation(self):
         self.assertIn("**Support**\n\n- the opening move is asked of what the "
@@ -242,7 +242,22 @@ class MentionTest(unittest.TestCase):
         self.assertNotIn("canon", project.in_edges(self.graph)["party"])
         self.assertEqual(project.parents(self.graph)["party"], "ti-esti")
         self.assertEqual(project.load(self.graph, "canon"), 1)
-        self.assertEqual(spec.run(self.graph), [])
+        # no cycle forces this one — party does not stand above canon — so the
+        # checker suggests a term, and says nothing else
+        self.assertEqual([f.check for f in spec.run(self.graph)],
+                         ["mention-justified"])
+
+    def test_a_mention_a_cycle_forces_says_so_and_draws_no_warning(self):
+        """The reason a mention is not a term is derived at every render: here
+        a term to the root would close a cycle, because the root stands above."""
+        graph = load("valid")
+        thesis = graph.get("canon").theses[0]
+        thesis.mentions.append(model.Mention(
+            title="What the entry answers", to="ti-esti", anchors=[self.anchor]))
+        self.assertEqual(spec.run(graph, only=["mention-justified"]), [])
+        body = render.body(graph, "canon")
+        self.assertIn(render.CYCLE_NOTE, body)
+        self.assertNotIn(render.CYCLE_NOTE, render.body(self.graph, "canon"))
 
     def test_it_is_listed_apart_from_the_terms(self):
         text = render.body(self.graph, "canon")
@@ -518,17 +533,55 @@ class FindTest(unittest.TestCase):
         on a section heading and then on `provenance: thesis hinge`."""
         graph = load("valid")
         for q in graph.questions:
-            page = text.plain(render.body(graph, q.id))
+            page = render._as_the_page_holds_it(render.body(graph, q.id))
             fixed = render._fixed_spans(page)
+            metadata = render._metadata_spans(page)
             for entry in render.links(graph, q.id)["links"]:
                 if not entry["find"]:
                     continue
                 run = next(r for r in text.occurrences(page, entry["find"]["text"])
                            if r.nth == entry["find"]["nth"])
                 with self.subTest(question=q.id, anchor=entry["anchor"][:40]):
-                    self.assertFalse(
-                        any(at <= run.at < end for at, end in fixed),
-                        "%r links a line the encoding decides" % entry["anchor"][:40])
+                    if entry["kind"] == "provenance":
+                        # the one link that line is given, and it is on it
+                        self.assertTrue(
+                            any(at <= run.at < end for at, end in metadata),
+                            "the provenance link is off its metadata line")
+                    else:
+                        self.assertFalse(
+                            any(at <= run.at < end for at, end in fixed),
+                            "%r links a line the encoding decides" % entry["anchor"][:40])
+
+    def test_each_requires_cell_links_every_item_it_names(self):
+        """The table's requires column names what each row's question waits on,
+        and every name goes to its item, row by row, wherever the item lives."""
+        graph = load("valid")
+        entries = [e for e in render.links(graph, "ti-esti")["links"]
+                   if e["kind"] == "inbox-requires"]
+        rows = [t.to for t in render._inbox_order(graph, graph.get("ti-esti"))]
+        wanted = [want for child in rows for want in graph.get(child).requires]
+        self.assertEqual([e["item"] for e in entries], wanted)
+        self.assertEqual([e["find"]["nth"] for e in entries],
+                         sorted(e["find"]["nth"] for e in entries))
+        home = graph.get("ti-esti").tab
+        self.assertTrue(all(e["target"] == "#%s.promulgate the root answer" % home
+                            for e in entries))
+
+    def test_every_answer_links_its_provenance(self):
+        graph = load("valid")
+        for q in graph.questions:
+            provenance = [e for e in render.links(graph, q.id)["links"]
+                          if e["kind"] == "provenance"]
+            self.assertEqual(len(provenance), len(q.theses))
+            for entry in provenance:
+                self.assertEqual(entry["target"], "#%s.%s" % (q.tab, render.HINGE_THESIS))
+
+    def test_a_shadow_stands_after_the_borrowing(self):
+        graph = load("valid")
+        graph.get("ti-esti").theses[0].definitions[0].question = "canon"
+        body = render.body(graph, "ti-esti")
+        self.assertIn("<?claude block m_plato?>\n\n↗ <?claude block m_canon?>", body)
+        self.assertIn("m_canon", render.mention_blocks(graph, "ti-esti"))
 
     def test_a_definition_is_linked_on_the_form_the_thesis_uses(self):
         """A headword is not always the form the sentence wants. The thesis

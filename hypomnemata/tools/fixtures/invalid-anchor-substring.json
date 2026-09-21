@@ -8,11 +8,13 @@
       "question": "What does a working relationship that continues require of each side?",
       "state": "landed",
       "kind": "root",
+      "answerer": "ai",
       "requires": [],
       "theses": [
         {
           "title": "Each side owes the other what only it can give.",
           "assent": "assented at the merge of the opening entry",
+          "standing": "postulate",
           "text": "A relationship that continues is not a series of errands. The one who asks holds the questions and the standing to settle them; the other holds the work and the memory of it. The record kept between them is the only thing both can point at. Authority to act is graded by how settled the question is, and nothing irreversible is done under a grade that low. The word elenchus names the examination by which either side tests what the other has said.",
           "terms": [
             {
@@ -78,8 +80,9 @@
       "tab": "tab-02",
       "body": "body-02",
       "question": "What kind of thing is an entry, and what makes one binding?",
-      "state": "in line",
+      "state": "in thread",
       "kind": "definitional",
+      "answerer": "ai",
       "requires": [
         "promulgate-the-root-answer"
       ],
@@ -121,6 +124,7 @@
       "question": "Who are the two sides, and can either be replaced without loss?",
       "state": "held",
       "kind": "case",
+      "answerer": "ai",
       "requires": [
         "promulgate-the-root-answer"
       ],
@@ -160,6 +164,7 @@
       "question": "How is authority to act graded, and what is never done under a low grade?",
       "state": "held",
       "kind": "consistency",
+      "answerer": "principal",
       "requires": [
         "promulgate-the-root-answer"
       ],
@@ -167,6 +172,7 @@
         {
           "title": "Authority to act is graded by how settled the question is.",
           "assent": "none",
+          "standing": "postulate",
           "text": "A settled entry acts silently. An unsettled one may act only if it says so, and never irreversibly. The grade is read off the state of the entry and is not stored twice.",
           "terms": [],
           "definitions": [

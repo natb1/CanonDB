@@ -20,7 +20,7 @@ import re
 from typing import Dict, List, Optional, Tuple
 
 from .model import SECTIONS
-from .render import INSTEAD, SEPARATOR, chip_key
+from .render import INSTEAD, SEPARATOR, SHADOW, chip_key
 
 #: ``<?claude block m_canon?>`` as the renderer writes it.
 CHIP = re.compile(r"<\?claude block ([0-9A-Za-z_]+)\?>")
@@ -47,6 +47,7 @@ ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
 QUESTION_LINE = re.compile(
     r"^question: (?P<state>.+?) · (?P<kind>[^·]+?)"
     r"(?: · (?P<standing>canon|postulate))?"
+    r"(?: · answerer: (?P<answerer>[^·]+?))?"
     r" · pressure (?P<pressure>-?\d+) · priority -?\d+"
     r" · load \d+ · requires: (?P<requires>.*)$")
 ASSENT_LINE = re.compile(
@@ -263,6 +264,8 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
             q["kind"] = line.group("kind")
             if line.group("standing"):
                 q["standing"] = line.group("standing")
+            if line.group("answerer"):
+                q["answerer"] = line.group("answerer").strip()
             q["pressure"] = int(line.group("pressure"))
             q["requires"] = ([] if line.group("requires") == "nothing"
                              else [w.strip() for w in line.group("requires").split(",")])
@@ -324,6 +327,11 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
         if not theses:
             continue
         definition = {"word": word}
+        # a shadow is the last block when there is one: the question the word
+        # has earned, pointed at from the definition that stands in for it
+        if body and body[-1].startswith(SHADOW) and _chips(body[-1]):
+            definition["question"] = target(_chips(body[-1])[0])
+            body = body[:-1]
         # the renderer closes a borrowed sense with its own block, ending in
         # the chip; nothing else under a definition carries one
         if body and _chips(body[-1]):

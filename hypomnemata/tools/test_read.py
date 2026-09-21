@@ -233,6 +233,37 @@ class DetailTest(unittest.TestCase):
                          ["the opening move is asked of what the answerer "
                           "is already doing"])
 
+    def test_a_shadow_comes_back_as_the_question_it_points_at(self):
+        """A shadow is its own block after the body and after any borrowing,
+        so neither is read as the other — in the token spelling or the
+        exported one."""
+        graph = load("valid")
+        word = graph.get("ti-esti").theses[0].definitions[0]
+        word.question = "canon"
+        body = render.body(graph, "ti-esti")
+        for page in (body, body.replace("↗ <?claude block m_canon?>",
+                                        "↗ [canon](file/tab-02)")):
+            parsed = read.parse_tab(page, self.ids)["theses"][0]["definitions"][0]
+            self.assertEqual(parsed["question"], "canon")
+            self.assertEqual(parsed["tradition"]["to"], "plato")
+            self.assertEqual(parsed["body"], word.body)
+
+    def test_the_answerer_comes_back_off_the_question_line(self):
+        self.assertEqual(self.parse("attenuation")["answerer"], "principal")
+        self.assertNotIn("answerer", self.parse("plato"))
+
+    def test_the_cycle_note_is_derived_and_not_read_back(self):
+        graph = load("valid")
+        graph.get("canon").theses[0].mentions.append(model.Mention(
+            title="What the entry answers", to="ti-esti",
+            anchors=["An entry is a file in the repository, not a message in a thread."]))
+        body = render.body(graph, "canon")
+        self.assertIn(render.CYCLE_NOTE, body)
+        parsed = read.parse_tab(body, self.ids)["theses"][0]["mentions"]
+        self.assertEqual(parsed, [{"title": "What the entry answers", "to": "ti-esti",
+                                   "anchors": ["An entry is a file in the repository, "
+                                               "not a message in a thread."]}])
+
     def test_a_link_out_of_the_document_is_content(self):
         """A hinge names the commit it was answered against; that link is the
         principal's own words and is read back with them."""

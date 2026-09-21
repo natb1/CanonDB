@@ -13,8 +13,8 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple
 
 from . import project, text
-from .model import (CANON, Graph, INBOX_KINDS, KINDS, MODES, NODE_STANDINGS,
-                    RELATIONS, SECTIONS, STANDINGS, STATES)
+from .model import (ANSWERERS, CANON, Graph, INBOX_KINDS, KINDS, MODES,
+                    NODE_STANDINGS, RELATIONS, SECTIONS, STANDINGS, STATES)
 
 ERROR = "ERROR"
 WARN = "WARN"
@@ -131,8 +131,13 @@ def anchor_unique(graph: Graph) -> Yield:
                                      "the chip is undecided" % (term.title, found))
 
 
-@check("term-target", "every term and every mention names an existing question")
+@check("term-target",
+       "every term, mention and shadowing definition names an existing question")
 def term_target(graph: Graph) -> Yield:
+    """A shadow points a definition at the question its word has earned, so it
+    is an edge like the others. It may not point at its own tab: there the
+    thesis already fixes the sense, and a definition saying it again is the
+    same datum in a second home."""
     known = {q.id for q in graph.questions}
     for q in graph.questions:
         for term in q.terms():
@@ -143,6 +148,15 @@ def term_target(graph: Graph) -> Yield:
             if mention.to not in known:
                 yield q.id, "mention %r points at %r, which is no question" % (
                     mention.title, mention.to)
+        for _, definition in q.definitions():
+            if not definition.question:
+                continue
+            if definition.question not in known:
+                yield q.id, "definition %r shadows %r, which is no question" % (
+                    definition.word, definition.question)
+            elif definition.question == q.id:
+                yield q.id, ("definition %r shadows its own question, whose "
+                             "thesis already fixes the sense" % definition.word)
 
 
 @check("tradition-target", "every tradition edge names a question that is a tradition")
@@ -461,10 +475,11 @@ def inbox_required(graph: Graph) -> Yield:
     with no bearing on any question, or the same debt written twice — once on an
     application as a postulate, and again here.
 
-    A done item is exempt: a requirer drops the entry when the item is
-    discharged, so the discharged item is left with no requirers by design.
-    `inbox-placement` asks a different question of the same field and skips this
-    case, which is why it is a rule of its own.
+    A done item is exempt here: it blocks nothing, and it stays only while some
+    question still names it, which is how a question shows that what it waited
+    on is done. Once nothing names it, it is history, and `inbox-history` says
+    so. `inbox-placement` asks a different question of the same field and skips
+    this case, which is why it is a rule of its own.
     """
     wanted: Set[str] = set()
     for q in graph.questions:
@@ -587,9 +602,10 @@ def standing_honest(graph: Graph) -> Yield:
     rule in two steps: a thesis is canon only where its question has landed,
     and an artifact is derived only from a thesis that is canon.
 
-    Both are necessary and neither is sufficient. A landed question may hold a
-    thesis the principal has not yet promulgated, and a canon thesis may have
-    an artifact nobody has diffed against it. That judgement is the writer's
+    Both are necessary and neither is sufficient. A landed question may hold
+    theses beside the one that was merged, the principal's own priors among
+    them, and those stay postulates; a canon thesis may have an artifact nobody
+    has diffed against it. That judgement is the writer's
     and is named in the attenuation list; what is checked here is the part
     that is not a judgement at all.
     """
@@ -660,6 +676,95 @@ def answer_cardinality(graph: Graph) -> Yield:
     for q in graph.questions:
         if len(q.theses) != 1:
             yield q.id, "%d theses, expected exactly one" % len(q.theses)
+
+
+@check("answerer-set",
+       "an author question names who answers it; a tradition names no one")
+def answerer_set(graph: Graph) -> Yield:
+    """Who answers a question is stored, because `requires` only blocks: a
+    question with nothing left to wait on is not thereby the principal's, and
+    one he means to put later changes its answerer rather than its requires. A
+    tradition is answered by its own party, through a reconstruction, so it
+    names none."""
+    for q in graph.questions:
+        if q.tradition:
+            if q.answerer:
+                yield q.id, ("a tradition is answered by its own party and names "
+                             "no answerer, but this one names %r" % q.answerer)
+        elif not q.answerer:
+            yield q.id, ("names no answerer; say whether the AI or the principal "
+                         "answers it")
+        elif q.answerer not in ANSWERERS:
+            yield q.id, "answerer %r is not one of %s" % (
+                q.answerer, ", ".join(ANSWERERS))
+
+
+@check("mention-justified",
+       "a mention stands where a term in its place would close a cycle", WARN)
+def mention_justified(graph: Graph) -> Yield:
+    """A mention is an edge the graph has not justified: it points without
+    raising, so nothing descends from it. Where the question it points at
+    already stands above the clause, a term would close a cycle and the mention
+    is the only honest encoding; the renderer says so under it. Anywhere else a
+    term would do, and a better line is probably available."""
+    for q in graph.questions:
+        for mention in q.mentions():
+            if mention.to not in {x.id for x in graph.questions}:
+                continue  # term-target reports it
+            if q.id not in project.reachable_from(graph, mention.to):
+                yield q.id, ("mention %r points at %s, which does not stand above "
+                             "this question, so a term would close no cycle"
+                             % (mention.title, mention.to))
+
+
+@check("anchor-grain",
+       "no term's anchor contains the anchor of another term on the same thesis")
+def anchor_grain(graph: Graph) -> Yield:
+    """One follow-up is one term. A clause that contains another clause's
+    anchor raises the synthesis rather than the parts, and the two links over
+    one another are the ones the document skips in silence."""
+    for q in graph.questions:
+        for thesis in q.theses:
+            anchors = [(term.title, text.plain(a)) for term in thesis.terms
+                       for a in term.anchors if a.strip()]
+            for outer, big in anchors:
+                for inner, small in anchors:
+                    if outer != inner and small != big and small in big:
+                        yield q.id, ("term %r has an anchor containing the anchor "
+                                     "of term %r" % (outer, inner))
+
+
+@check("standing-required",
+       "a thesis that an application rests on carries a standing")
+def standing_required(graph: Graph) -> Yield:
+    """A thesis that something rests on is either canon or a postulate, and
+    which one is the point: it is the debt an artifact carries. Leaving it
+    unset says nothing either way, which is how five of them came to carry
+    none."""
+    for q in graph.questions:
+        flagged: Set[int] = set()
+        for thesis, app in q.applications():
+            if not thesis.standing and id(thesis) not in flagged:
+                flagged.add(id(thesis))
+                yield q.id, ("thesis %r has an application resting on it (%r) "
+                             "and no standing" % (_clip(thesis.title, 30), app.name))
+
+
+@check("inbox-history",
+       "a done inbox item is named by some question's requires", WARN)
+def inbox_history(graph: Graph) -> Yield:
+    """An action exists only as something a question requires. A done item
+    stays while a question still names it, since that is how the question
+    shows its wait is over; when none does, the item is a record of an act,
+    and the notebook keeps states rather than a log."""
+    wanted: Set[str] = set()
+    for q in graph.questions:
+        wanted.update(q.requires)
+    for q in graph.questions:
+        for item in q.inbox:
+            if item.done and item.id not in wanted:
+                yield q.id, ("inbox item %r is done and no question names it; it "
+                             "is history, so drop it" % item.id)
 
 
 # -- the runner -------------------------------------------------------------

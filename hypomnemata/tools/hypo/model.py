@@ -11,7 +11,13 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
-STATES = ("held", "in line", "landed")
+#: How far a question has got. It is held while drafted and not yet put; in
+#: thread while it is put on an elenchus branch and not yet merged, however
+#: many turns the thread has taken; landed once merged, which is when it is
+#: canon. The principal may note his assent on an open thread to draft the
+#: next question from it, and the question is still in thread: only the
+#: merge records assent to canon, and the merge is promulgation.
+STATES = ("held", "in thread", "landed")
 KINDS = ("definitional", "case", "consistency", "root")
 
 #: An application's standing: the artifact exists and its landed source has
@@ -23,6 +29,14 @@ STANDINGS = ("derived", "postulate")
 NODE_STANDINGS = ("canon", "postulate")
 
 RELATIONS = ("support", "divergence")
+
+#: Who answers a question: the AI, by a turn in a clean context, or the
+#: principal, from his own priors. A question the principal answers is not
+#: put. It is stored rather than read off `requires`, which only blocks: a
+#: question with nothing left to wait on is not thereby his, and one he means
+#: to put later changes its answerer, not its requires. A tradition names
+#: none, because its party answers it.
+ANSWERERS = ("ai", "principal")
 INBOX_KINDS = ("promulgate", "provide", "dispose", "build")
 
 #: The party whose notebook a question belongs to, where none is named. A
@@ -234,6 +248,10 @@ class Definition:
     word: str
     body: str
     tradition: Optional[Borrowing] = None
+    #: The question this word has earned, where the definition shadows it: the
+    #: sense in a sentence for users of the word that cannot reach the question
+    #: over their ancestors, and a pointer to where the argument is.
+    question: str = ""
 
     @staticmethod
     def read(r: _Reader, data: Any, where: str) -> "Definition":
@@ -250,6 +268,7 @@ class Definition:
             word=r.text(d, "word", where),
             body=r.text(d, "body", where),
             tradition=tradition,
+            question=r.text(d, "question", where, required=False),
         )
 
 
@@ -425,6 +444,7 @@ class Question:
     requires: List[str] = field(default_factory=list)
     party: str = AUTHOR
     standing: str = ""
+    answerer: str = ""
     theses: List[Thesis] = field(default_factory=list)
     inbox: List[InboxItem] = field(default_factory=list)
     notes: List[Note] = field(default_factory=list)
@@ -481,6 +501,7 @@ class Question:
             requires=r.strings(d, "requires", here),
             party=r.text(d, "party", here, required=False, default=AUTHOR) or AUTHOR,
             standing=r.text(d, "standing", here, required=False),
+            answerer=r.text(d, "answerer", here, required=False),
             theses=[Thesis.read(r, v, "%s.theses[%d]" % (here, i))
                     for i, v in enumerate(r.seq(d, "theses", here))],
             inbox=[InboxItem.read(r, v, "%s.inbox[%d]" % (here, i))
