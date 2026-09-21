@@ -4,9 +4,11 @@ import re
 import unittest
 
 import test_render  # the fixture loader and its graphs
-from hypo import apply, model, render
+import test_verify  # the page as the document would export one
+from hypo import apply, model, render, text, verify
 
 load = test_render.load
+page_of = test_verify.page_of
 
 
 def outline_of(graph, qid, session="mq2x81a0kfd"):
@@ -177,6 +179,58 @@ class LinkTest(unittest.TestCase):
             {e["target"].lstrip("#").partition(".")[0]
              for e in render.links(self.graph, "attenuation")["links"]}
             | {self.graph.get("attenuation").tab})
+
+
+class UnlinkTest(unittest.TestCase):
+    """Taking off a mark the sidecar no longer asks for."""
+
+    def setUp(self):
+        self.graph = load("valid")
+        self.qid = "canon"
+        self.entries = render.links(self.graph, self.qid)["links"]
+
+    def test_a_page_carrying_exactly_what_is_asked_for_gives_no_operation(self):
+        for q in self.graph.questions:
+            with self.subTest(question=q.id):
+                page = page_of(self.graph, q.id,
+                               render.links(self.graph, q.id)["links"])
+                self.assertEqual(apply.unlink_ops(self.graph, q.id, page), [])
+
+    def test_a_stray_link_is_taken_off_by_the_words_it_stands_on(self):
+        """A definition that has moved to another tab leaves its link behind,
+        pointing at a heading that is not there any more."""
+        words = "a file in the repository"
+        page = page_of(self.graph, self.qid, self.entries).replace(
+            words, test_verify.LINK % (words, "zz", 9), 1)
+        ops = apply.unlink_ops(self.graph, self.qid, page)
+        self.assertEqual(len(ops), 1)
+        self.assertEqual(ops[0]["op"], "format")
+        self.assertEqual(ops[0]["target"]["text"], words)
+        self.assertEqual(ops[0]["remove"], [{"type": "link"}])
+        self.assertNotIn("add", ops[0])
+
+    def test_the_run_is_counted_the_way_the_document_counts_it(self):
+        """The same rule as a link that is being put on: every literal match
+        counts, case does not, and the run named is the one the mark is on."""
+        words = "canon"
+        page = page_of(self.graph, self.qid, self.entries)
+        plain, _ = verify.linked_spans(page)
+        runs = text.occurrences(plain, words)
+        self.assertGreater(len(runs), 1, "the case this exists for")
+        at = runs[-1]
+        page = "%s%s%s" % (page[: page.rindex(words)],
+                           test_verify.LINK % (words, "zz", 9),
+                           page[page.rindex(words) + len(words):])
+        ops = apply.unlink_ops(self.graph, self.qid, page)
+        self.assertEqual([op["target"]["nth"] for op in ops], [at.nth])
+
+    def test_a_link_the_sidecar_wants_is_left_alone(self):
+        """The two are the same page read twice; only the stray comes off."""
+        page = page_of(self.graph, self.qid, self.entries)
+        stray = "a file in the repository"
+        both = page.replace(stray, test_verify.LINK % (stray, "zz", 9), 1)
+        self.assertEqual(len(apply.unlink_ops(self.graph, self.qid, both)), 1)
+        self.assertEqual(apply.unlink_ops(self.graph, self.qid, page), [])
 
 
 if __name__ == "__main__":

@@ -138,11 +138,16 @@ def plainly(markdown: str) -> str:
     return _MARKERS.sub("", text.plain(out))
 
 
-def verify(graph: Graph, qid: str, page: str) -> Report:
-    """One tab's page against what the renderer and the sidecar say it holds."""
-    diff = list(difflib.unified_diff(
-        normalise(page), normalise(render.body(graph, qid)),
-        "page", "render", lineterm="", n=0))[2:]
+def account(graph: Graph, qid: str,
+            page: str) -> Tuple[str, List[str], List[Tuple[int, int]]]:
+    """The page as plain characters, what it does not carry, and what it
+    carries that nothing asked for.
+
+    The strays come back as spans rather than as their words, because taking
+    one off has to name the run the mark stands on and two runs may read
+    alike. ``verify`` reports the words, which is what a reader is shown;
+    ``apply`` needs the position, which is what an operation takes.
+    """
     entries = render.links(graph, qid)["links"]
     plain, spans = linked_spans(page)
     missing: List[str] = []
@@ -158,13 +163,24 @@ def verify(graph: Graph, qid: str, page: str) -> Report:
             accounted.extend(under)
         else:
             missing.append(bare(entry["anchor"]))
-    extra = sorted(plain[start:end].strip().lower()
-                   for start, end in spans if (start, end) not in accounted)
+    extra = [span for span in spans if span not in accounted]
+    return plain, sorted(missing), extra
+
+
+def verify(graph: Graph, qid: str, page: str) -> Report:
+    """One tab's page against what the renderer and the sidecar say it holds."""
+    diff = list(difflib.unified_diff(
+        normalise(page), normalise(render.body(graph, qid)),
+        "page", "render", lineterm="", n=0))[2:]
+    plain, missing, extra = account(graph, qid, page)
     # a link the page cannot carry because another already covers those words
     covered = {bare(entry["anchor"]): entry["covered_by"]
-               for entry in entries if entry.get("covered_by")}
-    return Report(question=qid, diff=diff, missing=sorted(missing),
-                  extra=extra, covered=covered)
+               for entry in render.links(graph, qid)["links"]
+               if entry.get("covered_by")}
+    return Report(question=qid, diff=diff, missing=missing,
+                  extra=sorted(plain[start:end].strip().lower()
+                               for start, end in extra),
+                  covered=covered)
 
 
 def _where(plain: str, find) -> Optional[Tuple[int, int]]:

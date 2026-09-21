@@ -5,8 +5,9 @@ neither can be sent as it stands: an operation names **block ids**, and only the
 document mints those. So writing a tab is two calls, and this is what turns the
 renderer's output into the payload of each.
 
-    body_ops   replace every top-level block of a tab with the rendered body
-    link_ops   put each sidecar link on the words it belongs on
+    body_ops    replace every top-level block of a tab with the rendered body
+    link_ops    put each sidecar link on the words it belongs on
+    unlink_ops  take off a mark the sidecar no longer asks for
 
 The second is not optional and not something to remember: a body write alone
 leaves a tab whose every in-page link is gone, which is what happened, and
@@ -26,7 +27,7 @@ import re
 from typing import Dict, List, NamedTuple, Optional, Tuple
 from xml.etree import ElementTree
 
-from . import render
+from . import render, text, verify
 from .model import Graph
 
 #: the wrapper an outline comes in, and the one thing that must not be parsed.
@@ -243,6 +244,33 @@ def link_ops(graph: Graph, qid: str, by_tab: Dict[str, List[Block]],
                     "add": [{"type": "link", "href": href}]})
     if missing:
         raise Unresolved(missing)
+    return ops
+
+
+def unlink_ops(graph: Graph, qid: str, page: str) -> List[dict]:
+    """One ``format`` operation per in-page link the sidecar does not name.
+
+    A mark outlives what put it there. A definition moves to another tab, an
+    anchor is re-scoped, the run a link belongs on stops being the run it was
+    applied to — and the words stay, carrying a mark to a heading that may no
+    longer exist. Nothing but the page can see that, which is the other half
+    of what ``verify`` reads the page for; this is how the page is brought
+    back to what the sidecar asks for without rewriting a line of it.
+
+    The page is the argument rather than the outlines, because what is being
+    removed is on the page and nowhere else: a graph file never held a link.
+    """
+    plain, _, extra = verify.account(graph, qid, page)
+    ops: List[dict] = []
+    for start, end in extra:
+        words = plain[start:end]
+        hit = next((run for run in text.occurrences(plain, words)
+                    if run.at == start), None)
+        if hit is None:  # the span was read off this page, so it stands on it
+            raise Unresolved(["%s: no run of %r at %d" % (qid, words, start)])
+        ops.append({"op": "format",
+                    "target": {"kind": "find", "text": words, "nth": hit.nth},
+                    "remove": [{"type": "link"}]})
     return ops
 
 

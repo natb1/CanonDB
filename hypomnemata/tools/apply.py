@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""apply.py <graph.json> <question id> --outlines <dir> [--body | --links]
+"""apply.py <graph.json> <question id> [--body | --links | --unlink PAGE]
 
 Prints the operations that put a rendered tab into the document, ready to send
 as the `ops` of one prose `update`. Writing a tab is two calls, in this order:
@@ -10,6 +10,11 @@ as the `ops` of one prose `update`. Writing a tab is two calls, in this order:
 with the outlines re-read in between, because the body write mints new block
 ids. Neither payload is composed by hand, and the second is not optional: a
 body write alone leaves a tab with no in-page links at all.
+
+    apply.py graph.json canon --unlink out/canon.md     # take off the strays
+
+is the third, and it reads the exported page rather than an outline: a link
+the sidecar no longer names is on the page and nowhere else.
 
 `--outlines <dir>` holds one `<question id>.xml` per tab, as the document
 prints an outline read or a write's ack. `--wanted` lists the tabs the links
@@ -56,6 +61,9 @@ def main(argv=None) -> int:
                     help="print the body replace operation")
     ap.add_argument("--links", action="store_true",
                     help="print the format operations for the links")
+    ap.add_argument("--unlink", metavar="PAGE",
+                    help="print the format operations that take off the links "
+                         "the sidecar does not name, given the exported tab")
     ap.add_argument("--wanted", action="store_true",
                     help="list the tabs whose outlines the links step needs")
     args = ap.parse_args(argv)
@@ -81,12 +89,15 @@ def main(argv=None) -> int:
             print(tab_name.get(tab, tab))
         return 0
 
-    if not args.body and not args.links:
-        ap.error("give --body, --links or --wanted")
-    if args.body and args.links:
-        ap.error("--body and --links are separate calls: the first mints the "
-                 "ids the second needs")
-    if not args.outlines:
+    chosen = [name for name, on in (("--body", args.body), ("--links", args.links),
+                                    ("--unlink", bool(args.unlink))) if on]
+    if not chosen:
+        ap.error("give --body, --links, --unlink or --wanted")
+    if len(chosen) > 1:
+        ap.error("%s are separate calls: the body write mints the ids the "
+                 "links need, and a removal is read off the page as it stands"
+                 % " and ".join(chosen))
+    if not args.outlines and not args.unlink:
         ap.error("give --outlines DIR")
 
     # the renderer's refusal is the gate on both: a tab the checker reports an
@@ -99,9 +110,12 @@ def main(argv=None) -> int:
             print(finding.line(), file=sys.stderr)
         return 1
 
-    by_tab = outlines(graph, args.outlines)
+    by_tab = outlines(graph, args.outlines) if args.outlines else {}
     try:
-        if args.body:
+        if args.unlink:
+            with open(args.unlink, encoding="utf-8") as fh:
+                payload = ops.unlink_ops(graph, args.question, fh.read())
+        elif args.body:
             mine = by_tab.get(q.tab)
             if mine is None:
                 print("no outline for %s in %s" % (args.question, args.outlines),
