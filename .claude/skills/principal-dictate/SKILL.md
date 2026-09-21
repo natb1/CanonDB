@@ -68,6 +68,8 @@ ack, or a read with `projection: outline`:
    and save the ack's outline over the old one, because the ids have changed.
 2. `tools/apply.py … --links` → send it. `--wanted` lists the tabs whose outlines it needs
    first; it refuses rather than emitting an operation that would do nothing.
+3. `tools/apply.py … --unlink <the tab's export>` where the page carries a link the sidecar no
+   longer names — a definition that has moved tabs leaves its own behind.
 
 Then `tools/project.py $SCRATCH/graph.json` for the tab-placement patch, and send it. The tab
 tree is computed, never chosen.
@@ -148,6 +150,13 @@ a procedure rather than a script.
   by a definition that has moved, is invisible to everything else.
 - **Async edits are preserved.** The read-before-write discipline is not enforceable by a script
   that cannot see the artifact.
+- **An outline is read for the write it is used in.** `apply` pairs a target's heading to a
+  block id by position, and refuses when the outline's text has drifted from what the renderer
+  makes — so an outline stale in the words is caught. The other way it goes stale cannot be:
+  a body write mints new block ids, and an outline read before one still reads correctly while
+  naming blocks that write retired. `verify` cannot see it either, because an href resolves to
+  a block and the page only shows which tab it is on. So read an outline in the call before the
+  one that spends it, and never carry a file of them between runs.
 - **The enum options are in the model's order.** A state renders as a dropdown by index, so the
   document's enum must list its options exactly as `STATES` does. Nothing can check the document's
   enum from the graph file. Read it once, and again after anyone edits the enum.
