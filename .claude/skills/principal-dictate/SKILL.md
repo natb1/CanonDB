@@ -71,8 +71,10 @@ ack, or a read with `projection: outline`:
 3. `tools/apply.py … --unlink <the tab's export>` where the page carries a link the sidecar no
    longer names — a definition that has moved tabs leaves its own behind.
 
-Then `tools/project.py $SCRATCH/graph.json` for the tab-placement patch, and send it. The tab
-tree is computed, never chosen.
+When a run writes more than one tab, write every body before any link: a link into a tab whose
+body is written after it points at a block that write retires, and nothing can see that it
+does. Then `tools/project.py $SCRATCH/graph.json` for the tab-placement patch, and send it. The
+tab tree is computed, never chosen.
 
 **5 — Re-check.** Export every tab you touched as markdown, then run both:
 
@@ -132,10 +134,29 @@ a procedure rather than a script.
   does not, whether it is a thesis or an artifact built from one, and `standing-honest` grades
   both in two steps: a thesis is `canon` only where its question landed, and an artifact is
   `derived` only from a thesis that is `canon`. Both are necessary and neither is sufficient.
-  The check cannot tell whether a landed answer has been promulgated, whether the artifact
-  exists, or whether anyone diffed it against what the landed answer would have produced. A
-  thesis stays `postulate` until it is promulgated and an application stays `postulate` until
-  that diff is done, however green the check, and saying so is the writer's judgement.
+  A question lands by the merge, and the merge is promulgation, so a landed question's merged
+  answer is canon. The check cannot tell which of a landed question's theses is the merged
+  one, whether the artifact exists, or whether anyone diffed it against what the landed answer
+  would have produced. A thesis stays `postulate` until it is merged, and an application stays
+  `postulate` until that diff is done, however green the check. Saying so is the writer's
+  judgement.
+- **Assent in the notebook is not assent to canon.** The principal may note his assent on an
+  open thread so that the next question can be drafted from it. The question stays in thread:
+  nothing is merged, and nothing is canon, until the merge, which is promulgation. No check can
+  tell a noted assent from a merged one, so read the assent line. Only a merged answer says
+  merged, and only a landed question holds one.
+- **Who answers is the principal's call.** `answerer` is stored, and `answerer-set` checks that
+  every author question names one. Which one is right — a question he answers from his own
+  priors, or one to put to the AI — no script decides. `requires` only blocks: an empty one
+  says nothing about who answers.
+- **A defined word is used only in its defined sense.** `definition-once` finds the word, not
+  the sense. The notebook once used "line" for a run of the elenchus and for a line of text in
+  the same breath. Where the ordinary sense of a defined word is wanted, use another word.
+- **A shadow only where reach needs it.** A definition may stand for a word that has earned a
+  question of its own (`term-target` keeps it off that question's own tab) only when some user
+  of the word cannot reach the question over its ancestors. It gives the sense in a sentence
+  and points at the question, and the argument stays on the question's tab. Whether reach needs
+  it is judged by reading.
 - **The clean-context rule.** Nothing of the notebook may reach a turn that answers a canon
   question. There is no guard for this yet — it is recorded as an eventuality on the `context` tab —
   so it holds by discipline: never invoke a canon entry point from a session that has run this one.
@@ -157,9 +178,11 @@ a procedure rather than a script.
   naming blocks that write retired. `verify` cannot see it either, because an href resolves to
   a block and the page only shows which tab it is on. So read an outline in the call before the
   one that spends it, and never carry a file of them between runs.
-- **The enum options are in the model's order.** A state renders as a dropdown by index, so the
-  document's enum must list its options exactly as `STATES` does. Nothing can check the document's
-  enum from the graph file. Read it once, and again after anyone edits the enum.
+- **The enum holds the model's states and nothing else.** A state renders as a dropdown by
+  index, so the document's enum must list exactly `STATES` — `held · in thread · landed` — in
+  that order. A stale option is removed, never left: a reader can pick it, and the model will
+  not take it. Nothing can check the document's enum from the graph file. Read it once, and
+  again after anyone edits the enum.
 - **A note is somebody's and stays theirs.** The renderer round-trips a note as a blockquote, so it
   survives a re-render. What it cannot tell you is that a blockquote someone wrote on the page has
   not yet been taken into the graph file: export before you write, always, or you will replace it.
@@ -174,9 +197,11 @@ a procedure rather than a script.
 
 ## Drafting a line
 
-A **line** is one run of the elenchus: the questions put from one admission until a disposition
-ends it. Nothing here is decidable by a script — a question is well drawn or it is not — so it
-sits with the rest of the attenuation. It is the part that decides what the graph becomes, and
+A **line** is any line of questions, each drawn from an admission of the last. A **thread** is a
+line put on an elenchus branch, from the admission it starts at to the disposition that ends it.
+Almost nothing here is decidable by a script — a question is well drawn or it is not — so it
+sits with the rest of the attenuation; the one rule a script could decide, the grain of an
+anchor, is `anchor-grain` now and has left this list. It is the part that decides what the graph becomes, and
 a badly drawn question is not corrected later: whatever is built above it is built on a step
 that was granted rather than reached.
 
@@ -223,12 +248,12 @@ hinge, for a reader — is its **ancestors** and never its breadcrumb.
 - A question scoped narrower than the answer it will receive lands under the wrong parent.
 - Prefer a term edge to a mention. A mention that crosses subtrees is an edge the graph has not
   justified, and it is a sign that a better line is available. Reach for one only where a term
-  edge would close a cycle, and record that reason on it.
+  edge would close a cycle. The renderer states that reason under the mention, and
+  `mention-justified` warns where no cycle forces it; whether a better line exists is still the
+  writer's to find.
 - Consider a new middle question before rewiring an old edge.
 - A clause that defers to a question some other clause raised is a mention; a clause that raises
   it is a term.
-- A term whose anchor contains another term's anchor is at the wrong grain: one follow-up is one
-  term, and a container clause raises the synthesis rather than the parts.
 - A word belongs on the question that introduces it, not the one that presents it. Where a user
   cannot reach it over the ancestors, either the line is missing an edge or the definition is on
   the wrong tab.
