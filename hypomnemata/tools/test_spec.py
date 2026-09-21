@@ -163,20 +163,20 @@ class DetailTest(unittest.TestCase):
         self.assertEqual(findings[0].question, "canon")
         self.assertIn("party", findings[0].message)
 
-    def test_a_title_may_be_a_phrase_and_may_carry_a_link(self):
-        """The narrowing that replaces no-ids-in-prose: a title summarises and
-        need not be a sentence, and may well be the handle a link points at.
-        Only an opaque handle or a bare question id is wrong."""
+    def test_a_headline_may_be_a_phrase_and_may_carry_a_link(self):
+        """The narrowing that replaces no-ids-in-prose: a headline summarises
+        and need not be a sentence, and may well be the handle a link points
+        at. Only an opaque handle or a bare question id is wrong."""
         graph = load("valid")
         term = graph.get("ti-esti").theses[0].terms[0]
         for allowed in ("The record between them", "Memory is the repo",
                         "≡ ti esti", "GPT is not a handle"):
             term.title = allowed
-            self.assertEqual(spec.run(graph, only=["title-not-identifier"]), [],
+            self.assertEqual(spec.run(graph, only=["headline-not-identifier"]), [],
                              allowed)
         for refused in ("term-001", "node_3"):
             term.title = refused
-            self.assertTrue(spec.run(graph, only=["title-not-identifier"]), refused)
+            self.assertTrue(spec.run(graph, only=["headline-not-identifier"]), refused)
 
     def test_a_deadlock_sentinel_is_a_vocabulary_finding(self):
         """assent is required, so `none` is a real value there. A deadlock is
@@ -372,6 +372,25 @@ class DetailTest(unittest.TestCase):
         findings = spec.run(load("invalid-anchor-grain"), only=["anchor-grain"])
         self.assertEqual([f.question for f in findings], ["ti-esti"])
         self.assertIn("'Two sides, two debts'", findings[0].message)
+
+    def test_a_word_the_ai_uses_is_the_notebook_s_to_give_up(self):
+        """The finding goes where the word is defined, since that is the word
+        that can change. A held answer is the principal's own, and can change
+        too; and a word the answer's own question defines had its sense fixed
+        against that very answer."""
+        graph = load("invalid-verbatim-collision")
+        findings = spec.run(graph, only=["verbatim-collision"])
+        self.assertEqual([f.question for f in findings], ["attenuation"])
+        self.assertIn("'graded'", findings[0].message)
+        root = graph.get("ti-esti")
+        root.theses[0].state = "held"
+        self.assertEqual(spec.run(graph, only=["verbatim-collision"]), [])
+        root.theses[0].state = "in thread"
+        owner = graph.get("attenuation").theses[0]
+        word = [d for d in owner.definitions if d.word == "grade"][0]
+        owner.definitions.remove(word)
+        root.theses[0].definitions.append(word)
+        self.assertEqual(spec.run(graph, only=["verbatim-collision"]), [])
 
     def test_a_clause_is_suspended_only_on_an_open_thread(self):
         """Acceptance withheld while the thread runs. The merge settles every

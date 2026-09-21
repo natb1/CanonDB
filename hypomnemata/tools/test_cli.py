@@ -36,7 +36,7 @@ class CheckCliTest(unittest.TestCase):
         self.assertIn("acyclic", done.stdout)
 
     def test_a_warning_fixture_exits_zero(self):
-        done = run("check.py", fixture("invalid-title-not-identifier"))
+        done = run("check.py", fixture("invalid-headline-not-identifier"))
         self.assertEqual(done.returncode, 0)
         self.assertIn("WARN", done.stdout)
 

@@ -51,12 +51,12 @@ class RootLayoutTest(unittest.TestCase):
         self.assertNotIn("›", self.text)
 
     def test_the_question_line_carries_pressure_and_its_two_projections(self):
-        """Pressure is stored and priority is summed from it along the term
+        """Pressure is stored and the backlog is summed from it along the term
         edges, so both stand on the page: the one the principal set, and what
         it comes to once everything blocked behind this question is counted."""
         self.assertEqual(
             self.lines[3],
-            "question: landed · root · answerer: ai · pressure 27 · priority 53 · "
+            "question: landed · root · answerer: ai · pressure 27 · backlog 53 · "
             "load 3 · requires: nothing")
 
     def test_a_question_line_names_what_it_waits_on(self):
@@ -96,7 +96,7 @@ class RootLayoutTest(unittest.TestCase):
                       "<?claude block m_plato?>", render.body(graph, "ti-esti"))
 
     def test_the_inbox_table_lists_the_children(self):
-        self.assertIn("| question | term | kind | priority | requires |", self.text)
+        self.assertIn("| question | term | kind | backlog | requires |", self.text)
         self.assertIn("| <?claude block m_canon?> | The record between them | "
                       "definitional | 17 | promulgate the root answer |", self.text)
         self.assertIn("| <?claude block m_party?> | Two sides, two debts | case | 14 | "
@@ -130,7 +130,7 @@ class RootLayoutTest(unittest.TestCase):
 
     def test_the_inbox_table_is_heaviest_first(self):
         """The section answers what to do next; a table in file order answers
-        nothing. valid.json happens to be in priority order already, so the
+        nothing. valid.json happens to be in backlog order already, so the
         sort has to be shown by putting it out of order."""
         graph = load("valid")
         graph.get("canon").pressure = 1
@@ -748,7 +748,7 @@ class RefusalTest(unittest.TestCase):
             render.render(graph, "plato")
 
     def test_a_warning_does_not_refuse(self):
-        graph = load("invalid-title-not-identifier")
+        graph = load("invalid-headline-not-identifier")
         self.assertTrue(spec.run(graph))
         self.assertIn("# canon", render.render(graph, "canon"))
 

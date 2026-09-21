@@ -22,7 +22,7 @@ WARN = "WARN"
 #: The three sources a hinge's thesis part must name, as they are written.
 PROVENANCE = ("model:", "harness:", "canon:")
 
-#: A title that is a machine's handle rather than a reader's: `term-001`.
+#: A headline that is a machine's handle rather than a reader's: `term-001`.
 HANDLE = re.compile(r"[A-Za-z]\w*[-_]\d+")
 
 #: Words that stand in for an absent optional field instead of leaving it out.
@@ -341,14 +341,18 @@ def vocabulary(graph: Graph) -> Yield:
                         trad.to, trad.relation, ", ".join(RELATIONS))
 
 
-@check("title-not-identifier",
-       "a title names its content rather than standing in as a handle", WARN)
-def title_not_identifier(graph: Graph) -> Yield:
+@check("headline-not-identifier",
+       "a headline names its content rather than standing in as a handle", WARN)
+def headline_not_identifier(graph: Graph) -> Yield:
     """What survives of the retired no-ids-in-prose, narrowed to the thing it
-    was really after. A title summarises; it need not be a sentence, and it may
-    well be what a link points at. What it may not be is opaque — `term-001`
-    tells a reader nothing — or a bare question id, which names a tab and not
-    this thing.
+    was really after. A headline summarises; it need not be a sentence, and it
+    may well be what a link points at. What it may not be is opaque —
+    `term-001` tells a reader nothing — or a bare question id, which names a
+    tab and not this thing.
+
+    The notebook called it a title until the root's own answer turned out to
+    use that word in its ordinary sense ("the commit … is titled"). The field
+    in the graph file keeps its old name: it never reaches the page.
     """
     ids = {q.id for q in graph.questions}
     for q in graph.questions:
@@ -360,10 +364,42 @@ def title_not_identifier(graph: Graph) -> Yield:
         for what, title in titled:
             bare = (title or "").strip()
             if bare in ids:
-                yield q.id, ("%s title %r is a question id, which names a tab "
+                yield q.id, ("%s headline %r is a question id, which names a tab "
                              "and not this" % (what, bare))
             elif HANDLE.fullmatch(bare):
-                yield q.id, "%s title %r is a handle and not a name" % (what, bare)
+                yield q.id, "%s headline %r is a handle and not a name" % (what, bare)
+
+
+@check("verbatim-collision",
+       "no answer in the AI's words uses a word the notebook defines elsewhere", WARN)
+def verbatim_collision(graph: Graph) -> Yield:
+    """The AI's words are canon's and cannot change; the notebook's defined
+    words can. So where an answer given in the AI's words — one in thread or
+    landed — uses, in any regular form, a word the notebook defines on another
+    question, the finding goes where the word is defined, since that is the
+    one that can give way. `priority` and `title` went that way once the
+    root's answer turned out to say "priorities" and "titled".
+
+    Only the word is decided here. Whether the answer uses it in the defined
+    sense is a reading, and a word its own question defines is exempt: that
+    definition fixed its sense against that very answer.
+    """
+    verbatim = [(q, thesis) for q in graph.questions for thesis in q.theses
+                if thesis.state in STATES[1:]]
+    for owner in graph.questions:
+        for _, definition in owner.definitions():
+            for q, thesis in verbatim:
+                if q.id == owner.id:
+                    continue
+                body = text.plain(thesis.text)
+                used = [form for form in text.forms(definition.word)
+                        if text.occurrences(body, form, True)]
+                if used:
+                    yield owner.id, ("%r is defined here, and the answer on %s, in "
+                                     "the AI's words, uses it as %s; those words "
+                                     "cannot change, so this one should"
+                                     % (definition.word, q.id,
+                                        ", ".join(repr(u) for u in used)))
 
 
 @check("assent-present", "every thesis has a non-empty assent")
@@ -504,11 +540,11 @@ def inbox_required(graph: Graph) -> Yield:
 def pressure_shape(graph: Graph) -> Yield:
     """Pressure is the one scheduling number the principal sets by hand.
 
-    Priority used to be stored and taken on trust, because nothing recorded
-    what was blocked behind what. It is now computed — pressure summed along
-    the term edges, since a question cannot be put until the questions above
-    it have landed — so the only thing left to check is the shape of the
-    number the sum runs over.
+    The backlog, once stored as a priority and taken on trust because nothing
+    recorded what was blocked behind what, is now computed — pressure summed
+    along the term edges, since a question cannot be put until the answers
+    above it have landed — so the only thing left to check is the shape of
+    the number the sum runs over.
     """
     for q in graph.questions:
         if isinstance(q.pressure, bool) or not isinstance(q.pressure, int) or q.pressure < 0:

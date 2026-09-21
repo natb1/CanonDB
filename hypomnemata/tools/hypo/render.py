@@ -312,7 +312,7 @@ def _inbox_order(graph: Graph, q: Question) -> List[Term]:
 
     def weight(term: Term) -> Tuple[int, str]:
         child = by_id.get(term.to)
-        return (-(project.priority(graph, term.to) if child else 0), term.to)
+        return (-(project.backlog(graph, term.to) if child else 0), term.to)
 
     return sorted(q.terms(), key=weight)
 
@@ -325,12 +325,12 @@ def _inbox_blocks(graph: Graph, q: Question) -> List[str]:
         rows.append("| %s | %s | %s | %s | %s |" % (
             chip(term.to), term.title,
             child.kind if child else "?",
-            project.priority(graph, term.to) if child else "?",
+            project.backlog(graph, term.to) if child else "?",
             _requires(graph, child)))
     blocks: List[str] = []
     if rows:
         blocks.append("\n".join(
-            ["| question | term | kind | priority | requires |",
+            ["| question | term | kind | backlog | requires |",
              "| --- | --- | --- | --- | --- |"] + rows))
     for item in q.inbox:
         blocks.append("### %s" % item.title)
@@ -499,8 +499,8 @@ def body(graph: Graph, qid: str) -> str:
     meta = "question: %s · %s" % (_state(graph, q), q.kind)
     if q.answerer:
         meta += " · answerer: %s" % q.answerer
-    meta += " · pressure %d · priority %d · load %d · requires: %s" % (
-        q.pressure, project.priority(graph, qid), project.load(graph, qid),
+    meta += " · pressure %d · backlog %d · load %d · requires: %s" % (
+        q.pressure, project.backlog(graph, qid), project.load(graph, qid),
         _requires(graph, q))
     blocks.append(meta)
 

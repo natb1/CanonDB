@@ -86,7 +86,7 @@ class ParentTest(unittest.TestCase):
         def add_term(data):
             data["questions"][0]["theses"][0]["terms"].append({
                 "title": "Straight to the grading", "to": "attenuation",
-                "anchors": ["Authority to act is graded by how settled the question is"],
+                "anchors": ["Authority to act follows how settled the question is"],
                 "deadlock": None})
         self.assertEqual(project.parents(rewrite("valid", add_term))["attenuation"],
                          "ti-esti")
@@ -162,17 +162,17 @@ class LoadTest(unittest.TestCase):
         self.assertEqual(project.load(graph, "plato"), 1)
         self.assertEqual(project.tradition_roots(graph), ["plato"])
 
-    def test_priority_is_the_pressure_of_everything_blocked_behind(self):
-        """Pressure originates at a leaf; priority is its total over what the
-        question's term edges reach, which is what answers what to do next.
-        The blocking relation is read off the term graph because a turn carries
-        canon above its question, so nothing below a question can be put until
-        it has landed."""
+    def test_backlog_is_the_pressure_of_everything_blocked_behind(self):
+        """Pressure is set where work waits; the backlog is its total over what
+        the question's term edges reach, which is what answers what to do
+        next. The blocking relation is read off the term graph because a turn
+        carries canon above its question, so nothing below a question can be
+        put until its answer has landed."""
         graph = load("valid")
-        self.assertEqual(project.priority(graph, "canon"), 17)
-        self.assertEqual(project.priority(graph, "party"), 14)
+        self.assertEqual(project.backlog(graph, "canon"), 17)
+        self.assertEqual(project.backlog(graph, "party"), 14)
         self.assertEqual(
-            project.priority(graph, "ti-esti"),
+            project.backlog(graph, "ti-esti"),
             sum(graph.get(q).pressure
                 for q in project.reachable_from(graph, "ti-esti")))
 
@@ -184,17 +184,17 @@ class LoadTest(unittest.TestCase):
         shared = set(project.reachable_from(graph, "canon")) & \
             set(project.reachable_from(graph, "party"))
         self.assertTrue(shared)
-        self.assertLess(project.priority(graph, "ti-esti"),
+        self.assertLess(project.backlog(graph, "ti-esti"),
                         graph.get("ti-esti").pressure
-                        + project.priority(graph, "canon")
-                        + project.priority(graph, "party"))
+                        + project.backlog(graph, "canon")
+                        + project.backlog(graph, "party"))
 
-    def test_priority_is_total_on_a_cycle(self):
+    def test_backlog_is_total_on_a_cycle(self):
         """Every projection here is total on a graph the checker rejects, so a
         question already being summed contributes nothing to itself."""
         graph = load("invalid-acyclic")
         for q in graph.questions:
-            self.assertIsInstance(project.priority(graph, q.id), int)
+            self.assertIsInstance(project.backlog(graph, q.id), int)
 
     def test_load_counts_what_the_term_edges_reach(self):
         graph = load("valid")

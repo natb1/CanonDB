@@ -221,20 +221,25 @@ def load(graph: Graph, qid: str) -> int:
     return len(reachable_from(graph, qid)) - 1
 
 
-def priority(graph: Graph, qid: str) -> int:
-    """A question's own pressure plus the priority of everything blocked behind it.
+def backlog(graph: Graph, qid: str) -> int:
+    """A question's own pressure plus the pressure of everything blocked behind it.
 
     Pressure is set by hand on the question where work is actually waiting,
     which need not be a leaf: an interior question can have an application
-    blocked on it too. Priority is its transitive sum, and it answers what to do
-    next: a question that unblocks many is heavy even when little lies beneath
-    it. Load is not a sum of pressure at all; it counts.
+    blocked on it too. The backlog is its transitive sum — the work held up
+    behind a question — and it answers what to do next: a question that
+    unblocks many is heavy even when little lies beneath it. Load is not a
+    sum of pressure at all; it counts.
+
+    It was called priority until the root's own answer turned out to use that
+    word in its ordinary sense ("I cannot read your priorities"). The AI's
+    words cannot change, so the notebook's did.
 
     The blocking relation is not stored. It is read off the term graph,
     because a turn answering a question carries canon above that question, so
-    a question cannot be put until every question above it has landed. That
-    makes the questions blocked behind ``qid`` exactly the ones its term edges
-    reach, and it is what makes priority computable at all. Once a
+    a question cannot be put until the answer to every question above it has
+    landed. That makes the questions blocked behind ``qid`` exactly the ones
+    its term edges reach, and it is what makes the backlog computable at all. Once a
     question-to-question blocking edge exists in its own right the two will
     part company, and this is the half that will have to move.
 

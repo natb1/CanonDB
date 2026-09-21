@@ -163,7 +163,7 @@ class DetailTest(unittest.TestCase):
         thesis = graph.get("ti-esti").theses[0]
         thesis.mentions.append(model.Mention(
             title="Where assent is recorded", to="party",
-            anchors=["Authority to act is graded by how settled the question is"]))
+            anchors=["Authority to act follows how settled the question is"]))
         parsed = read.parse_tab(render.body(graph, "ti-esti"), self.ids)
         self.assertEqual(parsed["theses"][0]["terms"][-1]["anchors"],
                          thesis.terms[-1].anchors)

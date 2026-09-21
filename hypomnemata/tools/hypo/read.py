@@ -42,13 +42,13 @@ IN_PAGE_LINK = re.compile(
 #: this is the ordinary markdown reading of a backslash escape.
 ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
 
-#: Only pressure is read back. Priority and load are projections of the graph
+#: Only pressure is read back. Backlog and load are projections of the graph
 #: and standing is read off the state, so reading any of them would store a
 #: second copy of something already derivable.
 QUESTION_LINE = re.compile(
     r"^question: (?P<state>.+?) · (?P<kind>[^·]+?)"
     r"(?: · answerer: (?P<answerer>[^·]+?))?"
-    r" · pressure (?P<pressure>-?\d+) · priority -?\d+"
+    r" · pressure (?P<pressure>-?\d+) · backlog -?\d+"
     r" · load \d+ · requires: (?P<requires>.*)$")
 #: An answer's metadata: its assent, its own state, and its provenance.
 ASSENT_LINE = re.compile(
