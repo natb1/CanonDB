@@ -3,8 +3,9 @@
 
 Reads the exported tabs — one `<question id>.md` per tab — and reports, per tab,
 the body that is not what the renderer would produce, the links the sidecar
-names that the page does not carry, and the links the page carries that the
-sidecar does not name.
+names that the page does not carry, the links standing where the encoding
+does not put that kind, and the links the page carries that the sidecar does
+not name.
 
 This is the closing gate of a write. Every other check reads the graph file,
 and a graph file never held a link, so nothing else can see whether the links
@@ -72,9 +73,11 @@ def main(argv=None) -> int:
         absent = [q.id for q in graph.questions if q.id not in found]
         if absent:
             print("no export on disk for: %s" % ", ".join(absent))
-    print("%d of %d tabs differ, %d link(s) missing, %d unaccounted"
+    print("%d of %d tabs differ, %d link(s) missing, %d out of place, "
+          "%d unaccounted"
           % (len(bad), len(reports),
              sum(len(r.missing) for r in reports),
+             sum(len(r.misplaced) for r in reports),
              sum(len(r.extra) for r in reports)))
     return 1 if bad else 0
 

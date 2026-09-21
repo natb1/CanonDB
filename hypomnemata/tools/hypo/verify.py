@@ -3,9 +3,10 @@
 Every other check reads the graph file. This one reads the exported page, which
 is the only place two kinds of defect can show:
 
-    text     a body that is not what the renderer would produce
-    missing  a link the sidecar names that the page does not carry
-    extra    a link the page carries that the sidecar does not name
+    text      a body that is not what the renderer would produce
+    missing   a link the sidecar names that the page does not carry
+    misplaced a link standing where the encoding does not put that kind
+    extra     a link the page carries that the sidecar does not name
 
 The middle one is why this exists. An in-page link needs a block id, so it is
 applied after the body write, and ``read.py`` strips it again before parsing —
@@ -21,6 +22,14 @@ invisible to everything else; ten of them had accumulated.
 Counting, not presence: an anchor may stand twice on a tab and be linked once,
 which a set comparison calls correct. And by span rather than by label, since a
 nested link cuts the outer one into pieces and no piece is the anchor.
+
+The third is the half neither the renderer nor the graph can hold. A target
+names a run by a number and the document resolves that number itself, so the
+tool can name the run it meant and the document land on another — which is
+what a chip did: a token to the renderer, an atom to the document, and every
+later run of the word it spells one too high. Asking again whether the run
+the link sits on is one the encoding allows is the only question that does
+not go through the tool's own answer.
 
 What it does not check is where a link goes. An href names a block id, which
 this cannot resolve without the outlines ``apply`` takes; so a clause whose own
@@ -49,6 +58,12 @@ _MARKERS = re.compile(r"[*_`]")
 #: itself in what the document exports.
 _STATE = re.compile(r"^(question:)[^·]*·", re.M)
 
+#: the same field, taken off rather than named. The document holds the state
+#: as a dropdown — an atom, like a chip — and the export prints the word it
+#: shows. Counting that word counts characters the document's own find cannot
+#: reach, and every run of them after it comes out one too high.
+_STATE_WORD = re.compile(r"^(question: )[^·\n]*(· )", re.M)
+
 
 def bare(words: str) -> str:
     return _MARKERS.sub("", words or "").strip().lower()
@@ -61,9 +76,11 @@ class Report(NamedTuple):
     extra: List[str]
     #: missing anchor -> the anchor whose link already covers those words
     covered: Dict[str, str] = {}
+    #: anchors whose link stands on a run the encoding does not allow
+    misplaced: List[str] = []
 
     def ok(self) -> bool:
-        return not (self.diff or self.missing or self.extra)
+        return not (self.diff or self.missing or self.extra or self.misplaced)
 
     def lines(self) -> List[str]:
         out = ["=== %s" % self.question]
@@ -72,6 +89,9 @@ class Report(NamedTuple):
             under = self.covered.get(anchor)
             out.append("   MISSING LINK on %r%s"
                        % (anchor, " — covered by %r" % under[:48] if under else ""))
+        for anchor in self.misplaced:
+            out.append("   LINK OUT OF PLACE on %r — the run it names is not "
+                       "one the encoding allows" % anchor)
         for anchor in self.extra:
             out.append("   LINK NOT IN THE SIDECAR on %r" % anchor)
         return out
@@ -102,6 +122,7 @@ def linked_spans(page: str) -> Tuple[str, List[Tuple[int, int]]]:
     where all three are right and none is the anchor. Matching labels would
     call the whole clause missing and the two halves unaccounted for.
     """
+    page = _STATE_WORD.sub(r"\1\2", page or "")
     out: List[str] = []
     spans: List[Tuple[int, int]] = []
     where = 0
@@ -138,25 +159,38 @@ def plainly(markdown: str) -> str:
     return _MARKERS.sub("", text.plain(out))
 
 
-def account(graph: Graph, qid: str,
-            page: str) -> Tuple[str, List[str], List[Tuple[int, int]]]:
-    """The page as plain characters, what it does not carry, and what it
-    carries that nothing asked for.
+def account(graph: Graph, qid: str, page: str) -> Tuple[
+        str, List[str], List[str], List[Tuple[int, int]]]:
+    """The page as plain characters, what it does not carry, what it carries
+    in the wrong place, and what it carries that nothing asked for.
 
     The strays come back as spans rather than as their words, because taking
     one off has to name the run the mark stands on and two runs may read
     alike. ``verify`` reports the words, which is what a reader is shown;
     ``apply`` needs the position, which is what an operation takes.
+
+    Place is asked of **this** page rather than of the rendered one. The
+    sidecar's number was counted on the page the renderer built; the document
+    counts it again on the page it holds, and the two are not obliged to
+    agree. Resolving the number here the way the document does and then
+    asking the encoding whether that run is allowed is what makes the answer
+    a fact about the page rather than a restatement of the tool.
     """
     entries = render.links(graph, qid)["links"]
     plain, spans = linked_spans(page)
     missing: List[str] = []
+    misplaced: List[str] = []
     accounted: List[Tuple[int, int]] = []
     for entry in entries:
-        want = _where(plain, entry.get("find"))
+        find = entry.get("find")
+        want = _where(plain, find)
         if want is None:
             missing.append(bare(entry["anchor"]))
             continue
+        allowed = {(form, run.nth) for form, run in
+                   render.eligible(plain, entry["kind"], entry["anchor"])}
+        if (plainly(find["text"]), int(find["nth"])) not in allowed:
+            misplaced.append(bare(entry["anchor"]))
         under = [span for span in spans
                  if span[0] < want[1] and want[0] < span[1]]
         if _whole(plain, want, under):
@@ -164,7 +198,7 @@ def account(graph: Graph, qid: str,
         else:
             missing.append(bare(entry["anchor"]))
     extra = [span for span in spans if span not in accounted]
-    return plain, sorted(missing), extra
+    return plain, sorted(missing), sorted(misplaced), extra
 
 
 def verify(graph: Graph, qid: str, page: str) -> Report:
@@ -172,7 +206,7 @@ def verify(graph: Graph, qid: str, page: str) -> Report:
     diff = list(difflib.unified_diff(
         normalise(page), normalise(render.body(graph, qid)),
         "page", "render", lineterm="", n=0))[2:]
-    plain, missing, extra = account(graph, qid, page)
+    plain, missing, misplaced, extra = account(graph, qid, page)
     # a link the page cannot carry because another already covers those words
     covered = {bare(entry["anchor"]): entry["covered_by"]
                for entry in render.links(graph, qid)["links"]
@@ -180,7 +214,7 @@ def verify(graph: Graph, qid: str, page: str) -> Report:
     return Report(question=qid, diff=diff, missing=missing,
                   extra=sorted(plain[start:end].strip().lower()
                                for start, end in extra),
-                  covered=covered)
+                  covered=covered, misplaced=misplaced)
 
 
 def _where(plain: str, find) -> Optional[Tuple[int, int]]:

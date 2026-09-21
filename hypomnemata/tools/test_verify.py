@@ -147,6 +147,56 @@ class WholeTabTest(unittest.TestCase):
         self.assertTrue(report.diff)
 
 
+class MisplacedTest(unittest.TestCase):
+    """A link standing where the encoding does not put that kind.
+
+    The sidecar counts its runs on the page the renderer built; the document
+    counts again on the page it holds, and the two are not obliged to agree.
+    A chip is a token to one and an atom to the other, so a word spelled
+    inside a chip key shifts every later run of it — and the link lands a run
+    early, invisibly, because afterwards both sides agree about where it is.
+    Asking the encoding whether that run is allowed is what breaks the tie.
+    """
+
+    def setUp(self):
+        self.graph = load("valid")
+        self.qid = "canon"
+        self.entries = render.links(self.graph, self.qid)["links"]
+
+    def test_a_tab_written_properly_has_nothing_out_of_place(self):
+        for q in self.graph.questions:
+            with self.subTest(question=q.id):
+                page = page_of(self.graph, q.id,
+                               render.links(self.graph, q.id)["links"])
+                self.assertEqual(verify.verify(self.graph, q.id, page).misplaced, [])
+
+    def test_a_run_the_encoding_forbids_is_reported(self):
+        entry = next(e for e in self.entries
+                     if (e.get("find") or {}).get("nth") == 1)
+        words = entry["find"]["text"]
+        page = page_of(self.graph, self.qid, self.entries)
+        # the same words, earlier, in the tab's own heading. Nothing about
+        # the sidecar changes; what changes is which run the page counts to.
+        page = page.replace("# %s" % self.qid, "# %s %s" % (self.qid, words), 1)
+        report = verify.verify(self.graph, self.qid, page)
+        self.assertIn(verify.bare(entry["anchor"]), report.misplaced)
+        self.assertFalse(report.ok())
+
+    def test_the_state_word_is_an_atom_and_is_not_counted(self):
+        """The document holds the state as a dropdown and the export prints
+        the word it shows. Counted, it would shift every run after it — the
+        chip fault one field along."""
+        graph = load("valid")
+        q = graph.get("canon")
+        q.state = "in line"
+        entries = render.links(graph, q.id)["links"]
+        page = page_of(graph, q.id, entries).replace(
+            "<?claude block state?>", "in line", 1)
+        report = verify.verify(graph, q.id, page)
+        self.assertEqual(report.misplaced, [])
+        self.assertEqual(report.missing, [])
+
+
 class NormaliseTest(unittest.TestCase):
     def test_a_chip_reads_the_same_either_way_it_is_spelled(self):
         """The renderer writes a token; the document exports a link. Neither is

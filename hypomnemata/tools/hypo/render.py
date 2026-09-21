@@ -622,36 +622,8 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
     spans: List[Optional[Tuple[int, int]]] = []
     for entry in out:
         anchor = entry["anchor"]
-        # a one-word anchor is a substring of longer words — `merge` of
-        # `merged`, `prior` of `priority` — so which run of characters is
-        # meant has to be decided here, against the page, and handed over as
-        # a number the document can count to.
-        #
-        # A definition's anchor is a headword rather than a passage: the
-        # thesis uses whichever inflection its sentence wants, so every
-        # regular form is looked for and the link goes on the one that
-        # actually stands there. Longest first, so `grants` is linked whole
-        # instead of as the `grant` hiding inside it — which is also why a
-        # headword is matched as a word however many words it has.
-        if entry["kind"] == "definition":
-            candidates, whole = text.forms(anchor), True
-        else:
-            candidates, whole = [anchor], len(anchor.split()) == 1
-        entry["whole_word"] = whole
-        home = sections.get(_HOME[entry["kind"]])
-        eligible: List[Tuple[int, str, text.Run]] = []
-        seen: Set[int] = set()
-        for form in candidates:
-            for run in text.occurrences(page, form, whole):
-                if run.at in seen:
-                    continue  # a longer form already claimed this run
-                if any(at <= run.at < end for at, end in fixed):
-                    continue
-                if home is not None and not home[0] <= run.at < home[1]:
-                    continue
-                seen.add(run.at)
-                eligible.append((run.at, form, run))
-        eligible.sort()
+        entry["whole_word"] = _candidates(entry["kind"], anchor)[1]
+        runs = eligible(page, entry["kind"], anchor, fixed, sections)
         # successive runs are handed out per anchor within one section. The
         # key folds case for the same reason the counting does — a clause and
         # the title of the term it raises are often the same words — and it
@@ -659,11 +631,12 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
         # thesis clause and an inbox row are each the first run of their own.
         key = (text.fold(anchor), _HOME[entry["kind"]])
         used = taken.get(key, 0)
-        chosen = eligible[used] if used < len(eligible) else None
-        entry["find"] = ({"text": chosen[1], "nth": chosen[2].nth}
+        chosen = runs[used] if used < len(runs) else None
+        entry["find"] = ({"text": chosen[0], "nth": chosen[1].nth}
                          if chosen else None)
         taken[key] = used + 1
-        spans.append((chosen[0], chosen[0] + len(chosen[1])) if chosen else None)
+        spans.append((chosen[1].at, chosen[1].at + len(chosen[0]))
+                     if chosen else None)
     # a clause may be anchored whole and one of its sentences anchored again:
     # two links over one another. The document takes the outer and skips the
     # inner — silently, as a no-op rather than a refusal — so the entry is
@@ -710,6 +683,66 @@ def _as_the_page_holds_it(rendered: str) -> str:
 
 _HOME = {"incoming": None, "requires": None,   # None: above the first section
          "term": "Thesis", "definition": "Thesis", "inbox-term": "Inbox"}
+
+
+def _candidates(kind: str, anchor: str) -> Tuple[List[str], bool]:
+    """The spellings to look for on the page, and whether each stands whole.
+
+    A one-word anchor is a substring of longer words — `merge` of `merged`,
+    `prior` of `priority` — so which run of characters is meant has to be
+    decided against the page and handed over as a number the document can
+    count to.
+
+    A definition's anchor is a headword rather than a passage: the thesis
+    uses whichever inflection its sentence wants, so every regular form is
+    looked for and the link goes on the one that actually stands there.
+    Longest first, so `grants` is linked whole instead of as the `grant`
+    hiding inside it — which is also why a headword is matched as a word
+    however many words it has.
+    """
+    if kind == "definition":
+        return text.forms(anchor), True
+    return [anchor], len(anchor.split()) == 1
+
+
+def eligible(page: str, kind: str, anchor: str,
+             fixed: Optional[List[Tuple[int, int]]] = None,
+             sections: Optional[Dict[Optional[str], Tuple[int, int]]] = None,
+             ) -> List[Tuple[str, "text.Run"]]:
+    """The runs of ``page`` a link of this kind and anchor may stand on.
+
+    Where a link may go is the encoding's business and not the caller's: the
+    section that kind of link lives in, and that a heading and the answer
+    metadata line are destinations rather than sources. So it is decided
+    here, once — and it is a function of a page rather than of the graph,
+    because the checker has to ask the same question of the page it reads
+    back.
+
+    That is the whole reason this is not private. The renderer's guarantee
+    ends at the payload: it names a run by a number, and the **document**
+    resolves that number against characters of its own. Where the two
+    disagree about which run was meant, nothing upstream can see it — the
+    tool believes the link went where it asked, and the graph file never held
+    a link at all. Only the page knows, so only the page can be asked.
+    """
+    fixed = _fixed_spans(page) if fixed is None else fixed
+    sections = _section_spans(page) if sections is None else sections
+    candidates, whole = _candidates(kind, anchor)
+    home = sections.get(_HOME[kind])
+    out: List[Tuple[int, str, text.Run]] = []
+    seen: Set[int] = set()
+    for form in candidates:
+        for run in text.occurrences(page, form, whole):
+            if run.at in seen:
+                continue  # a longer form already claimed this run
+            if any(at <= run.at < end for at, end in fixed):
+                continue
+            if home is not None and not home[0] <= run.at < home[1]:
+                continue
+            seen.add(run.at)
+            out.append((run.at, form, run))
+    out.sort()
+    return [(form, run) for _, form, run in out]
 
 
 def _section_spans(page: str) -> Dict[Optional[str], Tuple[int, int]]:

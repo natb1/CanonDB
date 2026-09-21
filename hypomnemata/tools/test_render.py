@@ -559,6 +559,65 @@ class FindTest(unittest.TestCase):
                     self.assertIn(entry["find"]["nth"], [r.nth for r in found])
 
 
+class EligibleTest(unittest.TestCase):
+    """Which runs of a page a link of a given kind may stand on."""
+
+    def setUp(self):
+        self.graph = load("valid")
+
+    def page(self, qid):
+        return render._as_the_page_holds_it(render.body(self.graph, qid))
+
+    def allowed(self, qid, kind, anchor):
+        return {(form, run.nth)
+                for form, run in render.eligible(self.page(qid), kind, anchor)}
+
+    def test_every_find_the_sidecar_emits_names_an_eligible_run(self):
+        """The invariant the checker asks of the page it reads back. Here it
+        is asked of the page the renderer builds, so that a disagreement
+        between the two is the only thing left for the checker to find."""
+        for name in sorted(os.listdir(FIXTURES)):
+            if not name.endswith(".json"):
+                continue
+            graph = load(name[:-5])
+            for q in graph.questions:
+                page = render._as_the_page_holds_it(render.body(graph, q.id))
+                for entry in render.links(graph, q.id)["links"]:
+                    find = entry.get("find")
+                    if not find:
+                        continue
+                    with self.subTest(fixture=name, question=q.id,
+                                      anchor=entry["anchor"]):
+                        allowed = {(form, run.nth) for form, run in render.eligible(
+                            page, entry["kind"], entry["anchor"])}
+                        self.assertIn((find["text"], find["nth"]), allowed)
+
+    def test_a_heading_is_a_destination_and_never_a_source(self):
+        """A definition's own glossary heading spells the word, and is where
+        the link points rather than where it goes."""
+        word = self.graph.get("canon").theses[0].definitions[0].word
+        page = self.page("canon")
+        heading = page.index("### \u2261 %s" % word)
+        at = {run.at for _, run in render.eligible(page, "definition", word)}
+        self.assertTrue(at, "the word is anchored somewhere")
+        self.assertFalse([x for x in at if heading <= x < page.index("\n", heading)])
+
+    def test_a_run_inside_a_longer_word_is_not_eligible(self):
+        page = "## Thesis\n\nprioritised, and then priority again.\n"
+        at = [run.at for _, run in render.eligible(page, "definition", "priority")]
+        self.assertEqual(at, [page.index("priority again")])
+
+    def test_a_run_outside_its_own_section_is_not_eligible(self):
+        """A definition is linked on the word where the thesis uses it. The
+        same word in the inbox table belongs to the row that names it."""
+        page = ("## Thesis\n\nthe merge is his act.\n\n"
+                "## Inbox\n\n| the merge | x |\n")
+        at = [run.at for _, run in render.eligible(page, "definition", "merge")]
+        self.assertEqual(at, [page.index("merge is his act")])
+        rows = [run.at for _, run in render.eligible(page, "inbox-term", "merge")]
+        self.assertEqual(rows, [page.index("| the merge")+ 6])
+
+
 class RefusalTest(unittest.TestCase):
     def test_an_error_on_the_question_refuses(self):
         graph = load("invalid-anchor-substring")
