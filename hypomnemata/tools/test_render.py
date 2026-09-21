@@ -495,7 +495,11 @@ class FindTest(unittest.TestCase):
         # counted past rather than linked
         after = page[chosen + len(word):chosen + len(word) + 1]
         self.assertFalse(after.isalnum(), "linked inside %r" % (word + after))
-        self.assertEqual(find["nth"], text.occurrences(page, word, True)[0].nth)
+        # it is one of the standalone runs and not one of the hidden ones.
+        # Which standalone run is not this test's subject: the choice is
+        # scoped to the section the link lives in, so the page's first is
+        # often ruled out.
+        self.assertIn(find["nth"], [r.nth for r in text.occurrences(page, word, True)])
 
     def test_two_entries_sharing_an_anchor_take_successive_occurrences(self):
         graph = load("valid")
@@ -504,17 +508,18 @@ class FindTest(unittest.TestCase):
         self.assertEqual([e["find"]["nth"] for e in shared],
                          list(range(1, len(shared) + 1)))
 
-    def test_a_link_is_never_put_on_a_heading(self):
-        """A heading is a link's destination, not its source. The word a
-        definition fixes is spelled by its own glossary heading, so that
-        heading is the word's first standalone run — which is how one
+    def test_a_link_is_never_put_on_a_line_the_encoding_decides(self):
+        """A heading is a link's destination, not its source, and the answer
+        metadata line carries the links the encoding gives it and no others.
+        The word a definition fixes is spelled by its own glossary heading, so
+        that heading is the word's first standalone run — which is how one
         definition came to link to itself while the clause using the word went
-        unlinked, and how the link meant for a word in the prose landed on the
-        section heading above it."""
+        unlinked, and how the link meant for a word in the prose landed first
+        on a section heading and then on `provenance: thesis hinge`."""
         graph = load("valid")
         for q in graph.questions:
             page = text.plain(render.body(graph, q.id))
-            headings = render._heading_spans(page)
+            fixed = render._fixed_spans(page)
             for entry in render.links(graph, q.id)["links"]:
                 if not entry["find"]:
                     continue
@@ -522,8 +527,8 @@ class FindTest(unittest.TestCase):
                            if r.nth == entry["find"]["nth"])
                 with self.subTest(question=q.id, anchor=entry["anchor"][:40]):
                     self.assertFalse(
-                        any(at <= run.at < end for at, end in headings),
-                        "%r links its own heading" % entry["anchor"][:40])
+                        any(at <= run.at < end for at, end in fixed),
+                        "%r links a line the encoding decides" % entry["anchor"][:40])
 
     def test_every_find_target_stands_where_it_says(self):
         """A target the document cannot count to is a link that never lands."""

@@ -613,7 +613,7 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
             "target": "#%s.%s" % (home.tab, titles[want]),
         })
     page = text.plain(body(graph, qid))
-    headings = _heading_spans(page)
+    fixed = _fixed_spans(page)
     sections = _section_spans(page)
     taken: Dict[Tuple[str, Optional[str]], int] = {}
     spans: List[Optional[Tuple[int, int]]] = []
@@ -627,7 +627,7 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
         entry["whole_word"] = whole
         home = sections.get(_HOME[entry["kind"]])
         runs = [run for run in text.occurrences(page, anchor, whole)
-                if not any(at <= run.at < end for at, end in headings)
+                if not any(at <= run.at < end for at, end in fixed)
                 and (home is None or home[0] <= run.at < home[1])]
         # successive runs are handed out per anchor within one section. The
         # key folds case for the same reason the counting does — a clause and
@@ -687,21 +687,28 @@ def _section_spans(page: str) -> Dict[Optional[str], Tuple[int, int]]:
     return out
 
 
-def _heading_spans(page: str) -> List[Tuple[int, int]]:
-    """Where the page's headings stand.
+def _fixed_spans(page: str) -> List[Tuple[int, int]]:
+    """The lines whose links the encoding already decides.
 
-    A heading is a link's destination and never its source. A definition's
+    A **heading** is a link's destination and never its source. A definition's
     target is the glossary heading that spells the word, so the word's first
     standalone run on the page is that heading unless it is ruled out here —
     which is how `\u2261 grant` came to link to itself while the clause that
     uses the word went unlinked. The same rule keeps a link off a section
     heading that happens to spell the word, which is where the one meant for
     *thesis* in the prose landed.
+
+    The **answer metadata** line is the other. It carries the assent, the
+    standing and the provenance link "and nowhere else", and the section it
+    opens says a defined word is anchor text *in the thesis text* — which the
+    line before that text is not. Left eligible, four definitions took it, and
+    `\u2261 thesis` pointed at the words `provenance: thesis hinge` rather than at
+    the sentence that says what a thesis is.
     """
     out: List[Tuple[int, int]] = []
     at = 0
     for line in (page or "").splitlines(keepends=True):
-        if line.lstrip().startswith("#"):
+        if line.lstrip().startswith("#") or line.startswith("assent:"):
             out.append((at, at + len(line)))
         at += len(line)
     return out
