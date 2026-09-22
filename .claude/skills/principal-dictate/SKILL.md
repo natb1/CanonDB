@@ -131,14 +131,21 @@ a procedure rather than a script.
   bears. No script can tell a second statement of one datum from two data, and the second one
   is usually added in good faith: an inbox item for debt an application already carries as a
   postulate, a note restating a field. Read for it whenever a field, a note or an item is added.
+  A note carries only what the renderer cannot say: eight application notes once restated the
+  discharge condition, which is derived, and six went stale at once when the answerer field
+  arrived.
 - **Discharge is an act, not a state.** A postulate is anything the notebook supports and canon
   does not, whether it is an answer or an artifact built from one, and the two are graded in two
   steps. An answer is `canon` once it has itself landed — merged, which is promulgation — and
   that is read off its own state, so the step cannot be wrong. An artifact is `derived` only from
   an answer that is `canon`, which `standing-honest` checks; that is necessary and not
-  sufficient. The check cannot tell whether the artifact exists, or whether anyone diffed it
-  against what the landed answer would have produced. An application stays `postulate` until
-  that diff is done, however green the check. Saying so is the writer's judgement.
+  sufficient. What would discharge a postulate is rendered beside its standing, read off the
+  answer and never written: its landing and then the diff, or the diff alone once it has landed.
+  Nothing the principal answers lands, so what rests on his own answer stays a postulate while
+  he answers — and the clause says so. What no check reads is whether the artifact exists, or
+  whether anyone diffed it against what the landed answer would have produced. An application
+  stays `postulate` until that diff is done, however green the check. Saying so is the writer's
+  judgement.
 - **Assent in the notebook is not assent to canon.** The principal may note his assent on an
   open thread so that the next question can be drafted from it. The answer stays in thread:
   nothing is merged, and nothing is canon, until the merge, which is promulgation, and the
@@ -151,7 +158,9 @@ a procedure rather than a script.
 - **Who answers is the principal's call.** `answerer` is stored, and `answerer-set` checks that
   every author question names one. Which one is right — a question he answers from his own
   priors, or one to put to the AI — no script decides. `requires` only blocks: an empty one
-  says nothing about who answers.
+  says nothing about who answers. A question the principal answers is never put: it blocks
+  nothing, waits on nothing and is never on the frontier, and `only-ai-put` keeps it and its
+  answers held. Another party's is read, not asked, and is held the same way.
 - **A defined word is used only in its defined sense.** `definition-once` finds the word, not
   the sense. The notebook once used "line" for a run of the elenchus and for a line of text in
   the same breath. Where the ordinary sense of a defined word is wanted, use another word.
@@ -201,12 +210,13 @@ a procedure rather than a script.
   not yet been taken into the graph file: export before you write, always, or you will replace it.
 - **Pressure is the principal's, backlog is the tooling's.** Pressure is the one scheduling
   number set by hand — what work is actually waiting at this question — and it is his judgement,
-  never invented to make a sum come out. The backlog is computed from it along the term edges, on
-  the reading that a turn carries canon above its question and so nothing below a question can
-  be put until that question's answer has landed. That reading makes blocking and lineage the same
-  relation today; they are not the same relation, and when a question-to-question blocking edge
-  is recorded in its own right the two will part company and this sum will have to move. The
-  debt is that edge, not wherever it happens to be written down.
+  never invented to make a sum come out. The backlog is computed from it over what a question
+  blocks, and blocking is what a turn carries: canon above its question, which is the AI's
+  answers alone, since nothing the principal answers reaches a turn. So a question waits on each
+  question above it that the AI answers, by a path through the AI's questions, until that answer
+  has landed. Blocking and lineage already part there — at the principal's questions and at
+  landed answers. Where else they differ waits on a question-to-question blocking edge recorded
+  in its own right; the debt is that edge, not wherever it happens to be written down.
 
 ## Drafting a line
 
@@ -216,7 +226,7 @@ Almost nothing here is decidable by a script — a question is well drawn or it 
 sits with the rest of the attenuation; the one rule a script could decide, the grain of an
 anchor, is `anchor-grain` now and has left this list. It is the part that decides what the graph becomes, and
 a badly drawn question is not corrected later: whatever is built above it is built on a step
-that was granted rather than reached.
+that was admitted rather than reached.
 
 **Selecting the admission.** Selection is the whole of the steering. The questioner never
 asserts; his view enters as a question or not at all. What he steers *toward* is not his own
@@ -238,7 +248,7 @@ every real task done on canon supplies one for free.
 
 **Step size.** A question too far from the last admission is **decomposed, not deferred**: ask
 the question it presupposes. Ranking it lower only postpones an admission that will be hollow
-whenever it is granted. The failure of a far question is not refusal — it is a step granted out
+whenever it is made. The failure of a far question is not refusal — it is a step admitted out
 of politeness with a hollow chain built above it. Too open is also too far: a diffuse question
 is a distant one. An overreach is a disposition with a retreat, not an error.
 
@@ -267,8 +277,17 @@ hinge, for a reader — is its **ancestors** and never its breadcrumb.
 - Consider a new middle question before rewiring an old edge.
 - A clause that defers to a question some other clause raised is a mention; a clause that raises
   it is a term.
-- A word belongs on the question that introduces it, not the one that presents it. Where a user
-  cannot reach it over the ancestors, either the line is missing an edge or the definition is on
-  the wrong tab.
-- A hinge is a term taken for granted. It is inherited down the lineage and stated only where it
-  differs, and one repeated across siblings belongs to a question above them.
+- A word belongs on the question that introduces it, not the one that presents it. A question
+  introduces a word through an answer, or through what its asking stood on: the question half of
+  its hinge, which is how the root, with no ancestors, brings in "party" and "leak". The answer's
+  half records how the answer was drawn, in the encoding's own words, like the question line and
+  the answer's metadata; it introduces nothing and is not a user. Where a user cannot reach a
+  word over the ancestors, either the line is missing an edge or the definition is on the wrong
+  tab.
+- A word comes in on a hinge only because the asking stood on it. Every question sits below the
+  root, so the root's hinge is where any hard-to-reach word could be parked — and parking it
+  there silences the one signal reach gives, a missing edge. The hinge must be true before it
+  is useful.
+- A hinge is what an act stands on without examining it. It is inherited down the lineage and
+  stated only where it differs, and one repeated across siblings belongs to a question above
+  them.
