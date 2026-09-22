@@ -126,6 +126,42 @@ class DetailTest(unittest.TestCase):
         self.assertEqual(read.parse_tab(applied, self.ids),
                          read.parse_tab(body, self.ids))
 
+    def test_a_chip_kept_as_text_reads_the_same_as_a_token(self):
+        """The export writes a chip as `[label](file/…)` sometimes and as the
+        bare label at others — `kept_as_text`, its own note for the second.
+        The label is the question id, so the edge survives; what is lost is
+        the mark that it was a chip, and it is found back by the place it
+        stands in."""
+        for q in self.graph.questions:
+            with self.subTest(question=q.id):
+                body = render.body(self.graph, q.id)
+                bare = render.CHIP_TOKEN.sub(
+                    lambda m: (m.group(0)[:-len(m.group(1))
+                                          - len("<?claude block ?>")]
+                               + self.ids[m.group(1)])
+                    if m.group(1) in self.ids else m.group(0), body)
+                self.assertNotEqual(bare, body)
+                self.assertEqual(read.parse_tab(bare, self.ids),
+                                 read.parse_tab(body, self.ids))
+
+    def test_a_word_of_prose_that_is_a_question_id_is_not_eaten(self):
+        """The removal is checked by running the insertion forward over what
+        it leaves, so a thesis that uses a target's name as an ordinary word
+        keeps it — which the live notebook does, on several tabs at once."""
+        graph = load("valid")
+        thesis = graph.get("ti-esti").theses[0]
+        thesis.text = ("A relationship that continues. The canon is the record "
+                       "between them, and canon is what both can point at.")
+        thesis.terms[0].anchors = ["A relationship that continues"]
+        ids = chip_ids(graph)
+        body = render.body(graph, "ti-esti")
+        bare = render.CHIP_TOKEN.sub(
+            lambda m: (m.group(0)[:-len(m.group(1)) - len("<?claude block ?>")]
+                       + ids[m.group(1)]) if m.group(1) in ids else m.group(0),
+            body)
+        self.assertEqual(read.parse_tab(bare, ids)["theses"][0]["text"],
+                         thesis.text)
+
     def test_a_bulleted_thesis_keeps_its_bullets_and_its_citations(self):
         """Citations were told from prose by shape — a block opening `**` or
         `- ` — which swallowed every bolded lead and every list a thesis

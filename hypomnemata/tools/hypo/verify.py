@@ -51,7 +51,7 @@ from __future__ import annotations
 import difflib
 import re
 from collections import Counter
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
 
 from . import read, render, text
 from .model import Graph
@@ -124,10 +124,27 @@ class Report(NamedTuple):
         return out
 
 
-def normalise(markdown: str) -> List[str]:
-    """A page or a rendered body as the lines the two can be compared on."""
+def labels_of(graph: Graph) -> Dict[str, str]:
+    """Chip key to the label the document shows for it, which is the id."""
+    return {render.chip_key(q.id): q.id for q in graph.questions}
+
+
+def normalise(markdown: str, labels: Optional[Dict[str, str]] = None) -> List[str]:
+    """A page or a rendered body as the lines the two can be compared on.
+
+    With ``labels``, a chip reads as its label on both sides. The markdown
+    export writes one as ``[label](file/<tab>)`` sometimes and as the bare
+    label at others — ``kept_as_text``, its own note for the second — and a
+    bare label cannot be told from prose by looking. Taking both sides to the
+    label compares them without having to: the renderer knows where its chips
+    are, so nothing here has to guess.
+    """
     out = read.IN_PAGE_LINK.sub(r"\1", markdown or "")
-    out = read.PLACED_CHIP.sub("", out)
+    if labels is not None:
+        out = read.CHIP.sub(lambda m: labels.get(m.group(1), m.group(1)), out)
+        out = read.EXPORTED_CHIP.sub(r"\1", out)
+    else:
+        out = read.PLACED_CHIP.sub("", out)
     out = read.ESCAPE.sub(r"\1", out)
     out = _STATE.sub(r"\1 STATE ·", out)
     out = _ANSWER_STATE.sub(r"\1 STATE \2", out)
@@ -207,6 +224,47 @@ def _leads_to(href: str, tab: str, own: str) -> bool:
     return href.partition("#")[2].partition(".")[0] == tab
 
 
+def _as_the_document_holds_it(plain: str, spans: List[Link], target: str,
+                              labels: Iterable[str]) -> Tuple[str, List[Link]]:
+    """The page's characters as the document counts them, and the link spans.
+
+    A chip is an atom in the document and not text: a search for ``party`` on
+    a tab whose answer carries a chip labelled ``party`` finds the word and
+    not the chip. The markdown export writes that label out as words, so the
+    page read back holds characters the document does not, and a ``nth``
+    counted over it lands one run late.
+
+    The two strings are the same but for those labels, so they are walked in
+    step and a label is cut where they part. Nothing else is: where the
+    divergence is not a label this gives the page back untouched, because
+    then it is a real difference and the text comparison is what reports it.
+    """
+    if plain == target:
+        return plain, spans
+    forms = [form for label in sorted(set(labels), key=len, reverse=True)
+             for form in (" " + label, label + " ", label)]
+    out: List[str] = []
+    shift: List[Tuple[int, int]] = []  # from this offset on, subtract this much
+    gone = i = j = 0
+    while i < len(plain):
+        if j < len(target) and plain[i] == target[j]:
+            out.append(plain[i])
+            i += 1
+            j += 1
+            continue
+        cut = next((len(f) for f in forms if plain.startswith(f, i)), 0)
+        if not cut:
+            return plain, spans
+        i += cut
+        gone += cut
+        shift.append((i, gone))
+
+    def moved(at: int) -> int:
+        return at - next((g for end, g in reversed(shift) if at >= end), 0)
+
+    return "".join(out), [Link(moved(s.at), moved(s.end), s.href) for s in spans]
+
+
 def account(graph: Graph, qid: str, page: str) -> Tuple[
         str, List[str], List[str], List[str], List[Link]]:
     """The page as plain characters, what it does not carry, what it carries
@@ -229,7 +287,9 @@ def account(graph: Graph, qid: str, page: str) -> Tuple[
     destination by design, and reporting it would be reporting the design.
     """
     entries = render.links(graph, qid)["links"]
-    plain, spans = linked_spans(page)
+    plain, spans = _as_the_document_holds_it(
+        *linked_spans(page), render.page_text(graph, qid),
+        [q.id for q in graph.questions])
     own = graph.get(qid).tab if graph.get(qid) is not None else ""
     missing: List[str] = []
     misplaced: List[str] = []
@@ -261,8 +321,9 @@ def account(graph: Graph, qid: str, page: str) -> Tuple[
 
 def verify(graph: Graph, qid: str, page: str) -> Report:
     """One tab's page against what the renderer and the sidecar say it holds."""
+    labels = labels_of(graph)
     diff = list(difflib.unified_diff(
-        normalise(page), normalise(render.body(graph, qid)),
+        normalise(page, labels), normalise(render.body(graph, qid), labels),
         "page", "render", lineterm="", n=0))[2:]
     plain, missing, misplaced, astray, extra = account(graph, qid, page)
     # a link the page cannot carry because another already covers those words

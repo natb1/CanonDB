@@ -15,7 +15,7 @@ identifier appears in prose is kept by construction.
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Callable, Dict, List, Optional, Set, Tuple
 
 from . import project, spec, text
 from .model import (ANSWERERS, STANDINGS, STATES, Application, Graph, Question,
@@ -239,32 +239,57 @@ def _placement(body_text: str, end: int) -> int:
     return end
 
 
-def _anchored_text(thesis: Thesis) -> str:
-    """The thesis text with a chip after every occurrence of every anchor.
+def anchor_cuts(body_text: str, edges: List[Tuple[str, List[str]]]
+                ) -> List[Tuple[int, int, str]]:
+    """Where a chip goes, as ``(position, edge order, target)``, sorted.
+
+    Named on its own because the inverse needs it: a chip the export kept as
+    its bare label can only be told from the same word in prose by the place
+    it stands in, and this is what decides that place going forward.
+    """
+    cuts: List[Tuple[int, int, str]] = []
+    for order, (to, anchors) in enumerate(edges):
+        for anchor in anchors:
+            if not anchor:
+                continue
+            at = body_text.find(anchor)
+            while at != -1:
+                cuts.append((_placement(body_text, at + len(anchor)), order, to))
+                at = body_text.find(anchor, at + 1)
+    return sorted(cuts)
+
+
+def anchored(body_text: str, edges: List[Tuple[str, List[str]]],
+             token_of: Optional[Callable[[str], str]] = None) -> str:
+    """``body_text`` with a chip after every occurrence of every anchor.
 
     One pass over the original text, occurrences taken left to right, so an
     inserted token is never itself scanned for an anchor that overlaps it.
+
+    ``edges`` is one ``(target, anchors)`` pair per term and mention, in the
+    order the renderer writes them. It is taken apart from the thesis so that
+    the reader can run this forward over a candidate and check its own inverse
+    against it: only insertion is defined here, so the inverse is a removal
+    that this function has to agree with.
     """
-    cuts: List[Tuple[int, int, str]] = []
-    for order, term in enumerate(list(thesis.terms) + list(thesis.mentions)):
-        token = " " + chip(term.to)
-        for anchor in term.anchors:
-            if not anchor:
-                continue
-            at = thesis.text.find(anchor)
-            while at != -1:
-                cuts.append((_placement(thesis.text, at + len(anchor)), order, token))
-                at = thesis.text.find(anchor, at + 1)
+    token_of = token_of or (lambda to: " " + chip(to))
+    cuts = [(at, order, token_of(to)) for at, order, to in anchor_cuts(body_text, edges)]
     if not cuts:
-        return thesis.text
+        return body_text
     out: List[str] = []
     last = 0
     for at, _, token in sorted(cuts, key=lambda cut: (cut[0], cut[1])):
-        out.append(thesis.text[last:at])
+        out.append(body_text[last:at])
         out.append(token)
         last = at
-    out.append(thesis.text[last:])
+    out.append(body_text[last:])
     return "".join(out)
+
+
+def _anchored_text(thesis: Thesis) -> str:
+    return anchored(thesis.text,
+                    [(edge.to, list(edge.anchors))
+                     for edge in list(thesis.terms) + list(thesis.mentions)])
 
 
 def _thesis_blocks(graph: Graph, thesis: Thesis, index: int) -> List[str]:
@@ -783,7 +808,8 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
 
 
 #: a chip, as the renderer writes one, with the space that carries it.
-_CHIP_TOKEN = re.compile(r" ?<\?claude block [0-9A-Za-z_]+\?>")
+CHIP_TOKEN = re.compile(r" ?<\?claude block ([0-9A-Za-z_]+)\?>")
+_CHIP_TOKEN = CHIP_TOKEN
 
 
 def _as_the_page_holds_it(rendered: str) -> str:
@@ -799,6 +825,15 @@ def _as_the_page_holds_it(rendered: str) -> str:
     it either and agrees with the document about where the link is.
     """
     return _CHIP_TOKEN.sub("", text.plain(rendered))
+
+
+def page_text(graph: Graph, qid: str) -> str:
+    """A tab's characters as the document counts them, chips not among them.
+
+    What ``links`` counts a run against, named so that the gate can ask for
+    the same string rather than rebuild it.
+    """
+    return _as_the_page_holds_it(body(graph, qid))
 
 
 #: which section of the page each kind of link is a link *in*. Every one of

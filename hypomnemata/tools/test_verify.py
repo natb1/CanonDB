@@ -164,6 +164,42 @@ class WholeTabTest(unittest.TestCase):
         self.assertTrue(report.diff)
 
 
+class KeptAsTextTest(unittest.TestCase):
+    """The export does not always write a chip as a link."""
+
+    def bare(self, graph, page):
+        ids = {render.chip_key(q.id): q.id for q in graph.questions}
+        return render.CHIP_TOKEN.sub(
+            lambda m: (m.group(0)[:-len(m.group(1)) - len("<?claude block ?>")]
+                       + ids[m.group(1)]) if m.group(1) in ids else m.group(0),
+            page)
+
+    def test_a_page_whose_chips_are_labels_still_verifies(self):
+        graph = load("valid")
+        for q in graph.questions:
+            with self.subTest(question=q.id):
+                entries = render.links(graph, q.id)["links"]
+                page = self.bare(graph, page_of(graph, q.id, entries))
+                report = verify.verify(graph, q.id, page)
+                self.assertTrue(report.ok(), report.lines())
+
+    def test_a_label_does_not_move_the_run_a_link_is_counted_to(self):
+        """A chip is an atom to the document and text to the export, so a
+        label that repeats a word the page already carries would push every
+        later run of it one too high. That is what put a link on the wrong
+        `party` and then reported the right one missing."""
+        graph = load("valid")
+        graph.state_enum = "000e742f-9e41"  # as the document has one
+        qid = "ti-esti"
+        entries = render.links(graph, qid)["links"]
+        page = self.bare(graph, page_of(graph, qid, entries))
+        plain, _ = verify._as_the_document_holds_it(
+            *verify.linked_spans(page), render.page_text(graph, qid),
+            [q.id for q in graph.questions])
+        self.assertEqual(plain, render.page_text(graph, qid))
+
+
+
 class MisplacedTest(unittest.TestCase):
     """A link standing where the encoding does not put that kind.
 

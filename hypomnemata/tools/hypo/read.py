@@ -17,9 +17,10 @@ tab outside the main root's tree.
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 from .model import SECTIONS
+from . import render
 from .render import INSTEAD, SEPARATOR, SHADOW, chip_key
 
 #: ``<?claude block m_canon?>`` as the renderer writes it.
@@ -83,21 +84,119 @@ class ParseError(Exception):
     """The markdown is not in the grammar the renderer writes."""
 
 
-def _chips(line: str) -> List[str]:
-    """The chip keys a line carries, in order, in either spelling."""
-    return (CHIP.findall(line)
+def _label_run(line: str, labels: Iterable[str]) -> Optional[Tuple[int, List[str]]]:
+    """The trailing run of bare question ids on a line, and where it begins.
+
+    A third spelling, and the export's own: it writes a mention chip as
+    ``[label](file/<tab>)`` sometimes and as the bare label at others, saying
+    ``kept_as_text`` when it does the second. The label is the question id, so
+    the datum survives; what is lost is any mark that it was a chip at all.
+
+    It is read back only where the renderer puts a chip — at the end of a
+    line, alone or as the tail of a ` › ` breadcrumb, and preceded by a space
+    or nothing. A bare id anywhere else is prose and is left alone, which is
+    the whole reason this is a run at the end rather than a search for words.
+    """
+    labels = set(labels)
+    if not labels:
+        return None
+    at, found = len(line), []
+    while True:
+        head, sep, word = line[:at].rpartition(" › " if found else " ")
+        if not sep and found:
+            break
+        candidate = (word if sep else line[:at]).strip()
+        if candidate not in labels:
+            break
+        found.insert(0, candidate)
+        at = len(head)
+        if not sep:  # the run reaches the start of the line
+            break
+    return (at, found) if found else None
+
+
+def _closing(line: str, labels: Iterable[str]) -> Set[str]:
+    """``labels``, but only where a bare run really closes this block.
+
+    The renderer writes a borrowed sense as a block of its own: the chip
+    alone, or a note that ends in a full stop and then the chip. Requiring
+    that shape keeps a definition body whose last word happens to be a
+    question id from being read as a borrowing from that question.
+    """
+    run = _label_run(line, labels)
+    if run and (run[0] == 0 or line[:run[0]].rstrip().endswith(".")):
+        return set(labels)
+    return set()
+
+
+def _chips(line: str, labels: Iterable[str] = ()) -> List[str]:
+    """The chip keys a line carries, in order, in any of the three spellings."""
+    keys = (CHIP.findall(line)
             + [chip_key(label) for label, _ in EXPORTED_CHIP.findall(line)])
+    if keys:
+        return keys
+    run = _label_run(line, labels)
+    return [chip_key(word) for word in run[1]] if run else []
 
 
-def _strip_chips(line: str) -> str:
-    """The line without its chips, in either spelling.
+def _strip_chips(line: str, labels: Iterable[str] = ()) -> str:
+    """The line without its chips, in any spelling.
 
     A chip goes entirely, label and all. It is a token the renderer put there
     for the edge it stands on, and the edge is read from `_chips`; keeping the
     label put the tradition's name inside the note that cites it — `…already
     prosecuting for impiety. Plato`.
     """
-    return PLACED_CHIP.sub("", line).strip()
+    out = PLACED_CHIP.sub("", line)
+    if out == line:
+        run = _label_run(line, labels)
+        if run:
+            out = line[:run[0]]
+    return out.strip()
+
+
+def _unchip_prose(body_text: str, edges: List[Tuple[str, List[str]]],
+                  labels: Iterable[str]) -> str:
+    """The answer's own words, with the chips the export kept as text removed.
+
+    Only a removal is possible, since the renderer only ever inserts: it puts
+    ``` <label>``` wherever ``_placement`` sends a chip. So the candidate is
+    checked by running that insertion forward again over it, and taken only if
+    it comes back as the page reads. A word of prose that happens to be a
+    question id therefore cannot be eaten quietly — the check fails, the words
+    are left exactly as the page had them, and ``verify`` reports the
+    difference rather than a graph file being silently wrong.
+    """
+    labels = set(labels)
+    if not {to for to, _ in edges if to in labels}:
+        return body_text
+    bare = lambda to: " " + to  # noqa: E731 - the export's own spelling
+    wanted: Dict[int, List[str]] = {}
+    for at, _, to in render.anchor_cuts(body_text, edges):
+        wanted.setdefault(at, []).append(to)
+    out = body_text
+    # Right to left, so removing one label does not move the place of the next.
+    # A paragraph puts the chip after the anchor, where the cut is; a list item
+    # puts it at the end of the item, so over the page the cut lands after it.
+    # Several anchors in one item stack their chips there, and each removal
+    # moves the end, which is why the position is carried rather than reused.
+    for at in sorted(wanted, reverse=True):
+        here, end, moved = list(wanted[at]), at, True
+        while here and moved:
+            moved = False
+            for to in list(here):
+                token = bare(to)
+                if out[end:end + len(token)] == token:
+                    out = out[:end] + out[end + len(token):]
+                elif end >= len(token) and out[end - len(token):end] == token:
+                    out = out[:end - len(token)] + out[end:]
+                    end -= len(token)
+                else:
+                    continue
+                here.remove(to)
+                moved = True
+                break
+    return out if render.anchored(out, edges, bare) == body_text else body_text
 
 
 def _blocks(markdown: str) -> List[str]:
@@ -178,16 +277,17 @@ def _notes(blocks: List[str], section: str) -> List[dict]:
     return notes
 
 
-def _edge(heading: str) -> Tuple[str, str]:
+def _edge(heading: str, labels: Iterable[str] = ()) -> Tuple[str, str]:
     """``<title> → <chip>`` from a term or mention heading."""
     title, _, target = heading.rpartition("→")
-    keys = _chips(target)
+    keys = _chips(target, labels)
     if not title.strip() or not keys:
         raise ParseError("a term heading needs a title and a chip: %r" % heading)
     return title.strip(), keys[0]
 
 
-def _citations(blocks: List[str]) -> List[Tuple[str, str, str, str]]:
+def _citations(blocks: List[str],
+               labels: Iterable[str] = ()) -> List[Tuple[str, str, str, str]]:
     """(relation, note, counter, last chip key) from the Support/Divergence lists.
 
     A divergence is a deadlock with another party, so it says what is held
@@ -201,13 +301,13 @@ def _citations(blocks: List[str]) -> List[Tuple[str, str, str, str]]:
             relation = block.strip("*").strip().lower()
         elif block.startswith("- "):
             for line in block.splitlines():
-                keys = _chips(line)
+                keys = _chips(line, labels)
                 if not keys:
                     continue
                 # the crumb is a breadcrumb, so taking its chips out leaves the
                 # separators that stood between them; they belong to the path
                 # and not to the note that precedes it
-                text = CRUMB_TAIL.sub("", _strip_chips(line[2:]))
+                text = CRUMB_TAIL.sub("", _strip_chips(line[2:], labels))
                 note, _, counter = text.partition(INSTEAD)
                 out.append((relation, note.strip().rstrip("."),
                             CRUMB_TAIL.sub("", counter).strip(), keys[-1]))
@@ -222,6 +322,8 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     its own; the document's file list supplies the map.
     """
     ids = ids or {}
+    # a chip the export kept as text is its label, and the label is the id
+    labels = set(ids.values())
     # the sidecar's links are applied to the page after the body is written, so
     # every export carries them and no graph file ever did. They come off here,
     # before the grammar is read, or they would land inside a thesis text and
@@ -251,8 +353,8 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
             for line in block.splitlines():
                 item = ITEM.match(line)
                 if item:
-                    keys = _chips(line)
-                    incoming.append((_strip_chips(item.group("text")),
+                    keys = _chips(line, labels)
+                    incoming.append((_strip_chips(item.group("text"), labels),
                                      target(keys[0]) if keys else ""))
         elif block.startswith("*") and block.endswith("*"):
             q["question"] = block.strip("*")
@@ -294,13 +396,13 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
                 rest.append(("text", block))
         text = SEPARATOR.join(b for kind, b in rest if kind == "text")
         thesis["text"] = PLACED_CHIP.sub("", text)
-        for relation, note, counter, key in _citations(cited):
+        for relation, note, counter, key in _citations(cited, labels):
             thesis["traditions"].append({"to": target(key), "relation": relation,
                                          "note": note, "counter": counter})
         theses.append(thesis)
 
     for heading, body in _subsections(named.get("terms", []), "▸"):
-        title, key = _edge(heading)
+        title, key = _edge(heading, labels)
         anchors = [_unwrap(b) for b in body if b.startswith("*")]
         term = {"title": title, "to": target(key), "anchors": anchors}
         deadlock: dict = {}
@@ -319,11 +421,18 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
         if theses:
             theses[0]["terms"].append(term)
     for heading, body in _subsections(named.get("terms", []), "↗"):
-        title, key = _edge(heading)
+        title, key = _edge(heading, labels)
         if theses:
             theses[0]["mentions"].append({
                 "title": title, "to": target(key),
                 "anchors": [_unwrap(b) for b in body if b.startswith("*")]})
+
+    for thesis in theses:
+        thesis["text"] = _unchip_prose(
+            thesis["text"],
+            [(edge["to"], edge["anchors"])
+             for edge in thesis["terms"] + thesis["mentions"]],
+            labels)
 
     # the glossary is the question's: a word may have come in on the hinge,
     # and one sense per word leaves nothing for an answer to own
@@ -332,15 +441,16 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
         definition = {"word": word}
         # a shadow is the last block when there is one: the question the word
         # has earned, pointed at from the definition that stands in for it
-        if body and body[-1].startswith(SHADOW) and _chips(body[-1]):
-            definition["question"] = target(_chips(body[-1])[0])
+        if body and body[-1].startswith(SHADOW) and _chips(body[-1], labels):
+            definition["question"] = target(_chips(body[-1], labels)[0])
             body = body[:-1]
         # the renderer closes a borrowed sense with its own block, ending in
         # the chip; nothing else under a definition carries one
-        if body and _chips(body[-1]):
+        if body and _chips(body[-1], _closing(body[-1], labels)):
             borrowing, body = body[-1], body[:-1]
-            definition["tradition"] = {"to": target(_chips(borrowing)[-1]),
-                                       "note": _strip_chips(borrowing).rstrip(".")}
+            here = _closing(borrowing, labels)
+            definition["tradition"] = {"to": target(_chips(borrowing, here)[-1]),
+                                       "note": _strip_chips(borrowing, here).rstrip(".")}
         definition["body"] = SEPARATOR.join(body)
         definitions.append(definition)
 
