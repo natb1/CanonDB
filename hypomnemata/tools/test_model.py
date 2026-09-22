@@ -51,6 +51,20 @@ class LoadTest(unittest.TestCase):
                 model.load(old)
         self.assertIn("belongs to the question", "; ".join(caught.exception.problems))
 
+    def test_a_definition_with_no_body_must_import_one(self):
+        """An entry with no body says the word is a party's, in the party's
+        sense. With no party named there is no sense anywhere."""
+        with open(fixture("valid"), encoding="utf-8") as fh:
+            data = json.load(fh)
+        data["questions"][0]["definitions"].append({"word": "homologia", "body": ""})
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "bodiless.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(data, fh)
+            with self.assertRaises(model.ShapeError) as caught:
+                model.load(path)
+        self.assertIn("unless it imports", "; ".join(caught.exception.problems))
+
     def test_absent_hinge_is_none(self):
         without = model.load(fixture("invalid-hinge-present"))
         self.assertIsNone(without.get("canon").hinge)

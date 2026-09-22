@@ -431,6 +431,10 @@ def definition_anchorable(graph: Graph) -> Yield:
     """
     for q in graph.questions:
         pool = [text.plain(thesis.text) for thesis in q.theses]
+        # a note on a tradition edge is part of the answer it hangs on, and an
+        # imported word usually stands nowhere else on the tab
+        pool += [text.plain("%s %s" % (edge.note, edge.counter))
+                 for thesis in q.theses for edge in thesis.traditions]
         if q.hinge is not None:
             pool.append(text.plain(q.hinge.question))
         for definition in q.definitions:
@@ -626,13 +630,19 @@ def definition_once(graph: Graph) -> Yield:
     breadcrumb: a question may be raised by several clauses, so the tab tree
     is one path through a DAG and not the whole of what stands above. A word
     no user can reach that way is either a definition on the wrong question or
-    a line missing an edge, and neither is decidable here — which is why this
-    check counts entries and the reachability is read rather than run.
+    a line missing an edge, which ``reach`` decides.
+
+    An import is not counted: it has no body, and what it says is that this
+    question brings in a party's word in the party's own sense. The sense is
+    still stated once, on the party's tab. Two questions may import the same
+    word, because each is declaring its own dependency on it.
     """
     where: Dict[str, List[str]] = {}
     spelling: Dict[str, str] = {}
     for q in graph.questions:
         for definition in q.definitions:
+            if definition.imported:
+                continue  # a pointer at a party's entry, not a second sense
             key = definition.word.strip().lower()
             if not key:
                 continue
@@ -643,6 +653,169 @@ def definition_once(graph: Graph) -> Yield:
         if len(owners) > 1:
             yield owners[0], "%r is defined here and again on %s" % (
                 spelling[key], ", ".join(owners[1:]))
+
+
+@check("import-defined", "an imported word is defined by the party it names")
+def import_defined(graph: Graph) -> Yield:
+    """An import has no body: it says that this question brings in a party's
+    word, in the sense the party's own glossary gives it. Where that glossary
+    gives none, the word has no sense anywhere and the entry points at
+    nothing — which is worse than leaving the word undefined, because the
+    reader is sent somewhere for a sense that is not there."""
+    for q in graph.questions:
+        for definition in q.definitions:
+            if not definition.imported:
+                continue
+            party = graph.get(definition.tradition.to)
+            if party is None:
+                continue  # tradition-target says so, and says it better
+            if not any(text.fold(other.word) == text.fold(definition.word)
+                       and not other.imported for other in party.definitions):
+                yield q.id, ("imports %r from %s, which does not define it"
+                             % (definition.word, definition.tradition.to))
+
+
+def _senses(graph: Graph) -> Dict[str, Set[str]]:
+    """The folded word -> the questions whose glossary fixes its sense.
+
+    One question, where the graph is well formed. A word defined twice is
+    ``definition-once``'s to report, and until it is answered a reader
+    reaching either entry has reached the word, so both count here.
+    """
+    out: Dict[str, Set[str]] = {}
+    for q in graph.questions:
+        for d in q.definitions:
+            if not d.imported:
+                out.setdefault(text.fold(d.word), set()).add(q.id)
+    return out
+
+
+def _imported(graph: Graph) -> Dict[str, Set[str]]:
+    """question -> the folded words it imports from a party."""
+    out: Dict[str, Set[str]] = {}
+    for q in graph.questions:
+        words = {text.fold(d.word) for d in q.definitions if d.imported}
+        if words:
+            out[q.id] = words
+    return out
+
+
+def _above(graph: Graph, qid: str) -> Set[str]:
+    """The questions whose glossary ``qid`` reaches: its ancestors and itself.
+
+    A party's question reaches, besides its own party's lineage, what stands
+    above every question that cites it. The reconstruction was made for those
+    questions, and the tradition edge is the one thing that crosses between
+    two parties; without it a party's root, which has no parent here, would
+    reach nothing at all — not even the word `party`.
+    """
+    seen = project.ancestors(graph, qid) | {qid}
+    q = graph.get(qid)
+    if q is not None and q.tradition:
+        for other in graph.questions:
+            cites = {edge.to for thesis in other.theses
+                     for edge in thesis.traditions}
+            cites |= {d.tradition.to for d in other.definitions if d.tradition}
+            if qid in cites:
+                seen |= project.ancestors(graph, other.id) | {other.id}
+    return seen
+
+
+def _words_used(senses: Dict[str, str], prose: str) -> List[Tuple[str, str]]:
+    """Every defined word standing in ``prose`` as a word, longest first.
+
+    Longest first and once per run, so that a word inside a longer defined one
+    is counted as the longer: `term` inside `term edge` is the edge.
+    """
+    plain = text.plain(prose or "")
+    taken: List[Tuple[int, int]] = []
+    found: List[Tuple[int, str, str]] = []
+    for word in sorted(senses, key=lambda w: -len(w)):
+        for form in text.forms(word):
+            for run in text.occurrences(plain, form, True):
+                span = (run.at, run.at + len(form))
+                if any(a < span[1] and span[0] < b for a, b in taken):
+                    continue
+                taken.append(span)
+                found.append((span[0], word, form))
+    return [(word, form) for _, word, form in sorted(found)]
+
+
+def _prose(graph: Graph, q) -> Iterator[Tuple[str, str, Optional[List[str]]]]:
+    """What the principal writes on a question, and where each part is judged.
+
+    Not the rendered lines, which are the encoding's words and not his; not
+    the answer's hinge, which records how the answer was drawn in those same
+    words; and not an answer in the AI's words, which cannot be reworded at
+    all. An inbox item is hoisted to a common ancestor to make a dashboard, so
+    it is judged from every question that requires it — the tabs it was
+    lifted from — and from its own only when nothing does.
+    """
+    yield "the question", q.question, None
+    if q.hinge is not None:
+        yield "the question's hinge", q.hinge.question, None
+    for definition in q.definitions:
+        yield "≡ %s" % definition.word, definition.body, None
+    for note in q.notes:
+        yield "a note", note.body, None
+    for item in q.inbox:
+        wants = [other.id for other in graph.questions if item.id in other.requires]
+        yield ("inbox item %r" % item.id,
+               "%s %s %s" % (item.title, item.what, item.obligation), wants or None)
+    for thesis in q.theses:
+        yield "a headline", thesis.title, None
+        if thesis.state == STATES[0]:  # the AI's words are verbatim-collision's
+            yield "an answer", thesis.text, None
+        for term in thesis.terms:
+            yield "the term %r" % _clip(term.title), term.title, None
+            if term.deadlock:
+                yield ("the deadlock on %r" % _clip(term.title),
+                       "%s %s" % (term.deadlock.counter, term.deadlock.attenuation), None)
+            if term.suspended:
+                yield "the suspension on %r" % _clip(term.title), term.suspended, None
+        for mention in thesis.mentions:
+            yield "the mention %r" % _clip(mention.title), mention.title, None
+        for edge in thesis.traditions:
+            yield ("the note on %s" % edge.to,
+                   "%s %s" % (edge.note, edge.counter), None)
+        for app in thesis.applications:
+            yield ("⚙ %s" % app.name, "%s %s" % (app.name, app.note), None)
+
+
+@check("reach", "a defined word is used where its sense can be reached")
+def reach(graph: Graph) -> Yield:
+    """The context rule, held over the notebook's own vocabulary.
+
+    A turn carries canon above its question and nothing else. So a word the
+    principal writes leans on a sense that will be in the turn only if the
+    question fixing it stands above the one he is writing on. Where it does
+    not, the line is missing an edge or the definition sits on the wrong
+    question — and where the word is a party's, neither remedy applies,
+    because a party's notebook never stands above a question of his: the word
+    is imported, or it is not used.
+
+    Which parts are his is the whole of what this turns on, and ``_prose``
+    says. The rest is the encoding's own words: the rendered lines, the
+    answer's hinge, and an answer in the AI's words, which he cannot reword
+    and which ``verbatim-collision`` reports where the word is defined.
+    """
+    senses = _senses(graph)
+    imports = _imported(graph)
+    above = {q.id: _above(graph, q.id) for q in graph.questions}
+    for q in graph.questions:
+        for what, prose, wants in _prose(graph, q):
+            for word, form in _words_used(senses, prose):
+                for judged in (wants or [q.id]):
+                    seen = above.get(judged, {judged})
+                    if senses[word] & seen:
+                        continue
+                    if any(word in imports.get(other, set()) for other in seen):
+                        continue
+                    where = "" if judged == q.id else ", which %s requires" % judged
+                    yield q.id, ("%s uses %r%s, and its sense is fixed on %s, "
+                                 "which %s cannot reach"
+                                 % (what, form, where,
+                                    " and ".join(sorted(senses[word])), judged))
 
 
 @check("standing-honest",
@@ -812,6 +985,43 @@ def only_ai_put(graph: Graph) -> Yield:
             if thesis.state != STATES[0]:
                 yield q.id, ("answer %r is %r, but nothing %s answers lands"
                              % (_clip(thesis.title), thesis.state, who))
+
+
+@check("requires-put", "a question the AI does not answer waits on nothing")
+def requires_put(graph: Graph) -> Yield:
+    """``requires`` names what must be done before a question can be put, and
+    a question the AI does not answer is never put. The entry is not merely
+    idle: an item nothing else names stays alive on ``inbox-required``
+    because of it, and ``inbox-placement`` drags the item's home toward a
+    question that is not waiting for anything."""
+    for q in graph.questions:
+        if q.answerer == ANSWERERS[0] or not q.requires:
+            continue
+        who = "the principal" if q.answerer == ANSWERERS[1] else "another party"
+        yield q.id, ("waits on %s, but a question %s answers is never put"
+                     % (", ".join(repr(w) for w in q.requires), who))
+
+
+@check("put-in-order", "nothing is put below a question that has not been")
+def put_in_order(graph: Graph) -> Yield:
+    """A turn carries canon above its question, so a question cannot be put
+    while one the AI answers above it is still held: that answer is neither
+    on main nor on the branch, and the turn would go without it.
+
+    What this cannot see is which thread a question is on. An answer earlier
+    in the same thread is in the turn's context without having landed — which
+    is how a thread runs on past one question — so what is held here is the
+    half that stands either way: the question above has at least been put.
+    """
+    for q in graph.questions:
+        if not _put(q):
+            continue
+        for other in graph.questions:
+            if other.id == q.id or _put(other):
+                continue
+            if q.id in project.blocked_behind(graph, other.id):
+                yield q.id, ("is put, but %s, which the AI answers above it, is "
+                             "still held" % other.id)
 
 
 @check("mention-justified",

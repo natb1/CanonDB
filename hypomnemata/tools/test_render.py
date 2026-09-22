@@ -4,7 +4,7 @@ import os
 import re
 import unittest
 
-from hypo import model, project, render, spec, text
+from hypo import model, project, read, render, spec, text
 
 FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
 
@@ -205,10 +205,10 @@ class DescendantLayoutTest(unittest.TestCase):
         graph stays a graph while the tabs are a tree — and each item ends in a
         chip to the tab whose term section holds it."""
         self.assertEqual(self.lines[2],
-                         "- Authority to act on an unassented entry is graded down, "
+                         "- Authority to act on an unassented entry is held down, "
                          "never removed. <?claude block m_canon?>")
         self.assertEqual(self.lines[3],
-                         "- the act that would settle it is graded down until the "
+                         "- the act that would settle it is held down until the "
                          "standing side speaks <?claude block m_party?>")
 
     def test_the_lineage_line_is_the_lineage_alone(self):
@@ -448,6 +448,37 @@ class ChipTest(unittest.TestCase):
         self.assertIn("› <?claude block m_canon?>", text)
 
 
+class ImportTest(unittest.TestCase):
+    """A word of a party's own, brought in where the notebook uses it."""
+
+    def body(self):
+        graph = load("valid")
+        plato = graph.get("plato")
+        plato.theses[0].text += " What he grants is a homologia."
+        plato.definitions.append(model.Definition(
+            word="homologia", body="What the one questioned has granted."))
+        root = graph.get("ti-esti")
+        root.definitions.append(model.Definition(
+            word="homologia", body="", tradition=model.Borrowing(to="plato", note="")))
+        return graph, render.body(graph, "ti-esti")
+
+    def test_an_import_is_the_heading_and_the_party_s_chip(self):
+        """No body: the sense is the party's and stands on the party's tab,
+        where it has one home."""
+        _, body = self.body()
+        blocks = body.split("\n\n")
+        at = blocks.index("### ≡ homologia")
+        self.assertEqual(blocks[at + 1], "<?claude block m_plato?>")
+
+    def test_an_import_comes_back_off_the_page_as_it_went_on(self):
+        graph, body = self.body()
+        ids = {render.chip_key(q.id): q.id for q in graph.questions}
+        parsed = read.parse_tab(body, ids)
+        entry = [d for d in parsed["definitions"] if d["word"] == "homologia"][0]
+        self.assertEqual(entry["body"], "")
+        self.assertEqual(entry["tradition"], {"to": "plato", "note": ""})
+
+
 class LinksTest(unittest.TestCase):
     def setUp(self):
         self.sidecar = render.links(load("valid"), "ti-esti")
@@ -494,10 +525,10 @@ class LinksTest(unittest.TestCase):
         incoming = [l for l in render.links(load("valid"), "attenuation")["links"]
                     if l["kind"] == "incoming"]
         self.assertEqual([l["from"] for l in incoming], ["canon", "party"])
-        self.assertEqual(incoming[0]["term"], "Grading of authority")
-        self.assertEqual(incoming[0]["target"], "#tab-02.▸ Grading of authority")
+        self.assertEqual(incoming[0]["term"], "Authority held down")
+        self.assertEqual(incoming[0]["target"], "#tab-02.▸ Authority held down")
         self.assertEqual(incoming[0]["anchor"],
-                         "Authority to act on an unassented entry is graded down, "
+                         "Authority to act on an unassented entry is held down, "
                          "never removed.")
 
     def test_the_root_has_no_incoming_links(self):

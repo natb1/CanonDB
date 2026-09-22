@@ -451,6 +451,83 @@ class DetailTest(unittest.TestCase):
         self.assertEqual([f.question for f in spec.run(graph, only=["inbox-history"])],
                          ["ti-esti"])
 
+    def test_a_word_is_used_where_its_sense_can_be_reached(self):
+        """The context rule over the notebook's own words: a turn carries
+        canon above its question, so a word leans on a sense that will be
+        there only if the question fixing it stands above."""
+        graph = load("valid")
+        self.assertEqual(spec.run(graph, only=["reach"]), [])
+        canon = graph.get("canon")
+        canon.notes.append(model.Note(section="thesis", body="The grade is his."))
+        findings = spec.run(graph, only=["reach"])
+        self.assertEqual([f.question for f in findings], ["canon"])
+        self.assertIn("attenuation", findings[0].message)
+
+    def test_an_inbox_item_is_judged_from_the_questions_that_require_it(self):
+        """It is hoisted to a common ancestor to make a dashboard, so the tab
+        it is displayed on is not the tab it was lifted from."""
+        graph = load("valid")
+        graph.get("party").requires = []          # canon alone requires it now
+        item = graph.get("ti-esti").inbox[0]
+        item.what += " The assent is his to give."
+        self.assertEqual(spec.run(graph, only=["reach"]), [])
+        graph.get("party").requires = ["promulgate-the-root-answer"]
+        findings = spec.run(graph, only=["reach"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        self.assertIn("which party requires", findings[0].message)
+
+    def test_a_party_s_word_is_imported_rather_than_assumed(self):
+        """A party's notebook never stands above a question here, so its word
+        is brought in by an entry that says so, or it is out of reach."""
+        graph = load("valid")
+        plato = graph.get("plato")
+        plato.theses[0].text += " What he grants is a homologia."
+        plato.definitions.append(model.Definition(
+            word="homologia", body="What the one questioned has granted."))
+        root = graph.get("ti-esti")
+        edge = root.theses[0].traditions[0]
+        edge.note += "; the homologia is his"
+        findings = spec.run(graph, only=["reach"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        root.definitions.append(model.Definition(
+            word="homologia", body="", tradition=model.Borrowing(to="plato", note="")))
+        self.assertEqual(spec.run(graph, only=["reach"]), [])
+        self.assertEqual(spec.run(graph, only=["import-defined"]), [])
+        self.assertEqual(spec.run(graph, only=["definition-once"]), [])
+        self.assertEqual(spec.run(graph, only=["definition-anchorable"]), [])
+
+    def test_an_import_whose_party_defines_nothing_points_at_nothing(self):
+        graph = load("valid")
+        root = graph.get("ti-esti")
+        root.theses[0].traditions[0].note += "; the homologia is his"
+        root.definitions.append(model.Definition(
+            word="homologia", body="", tradition=model.Borrowing(to="plato", note="")))
+        findings = spec.run(graph, only=["import-defined"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        self.assertIn("does not define it", findings[0].message)
+
+    def test_a_question_the_ai_does_not_answer_waits_on_nothing(self):
+        """It is never put, so the entry says nothing — and it would keep an
+        item alive that nothing is actually waiting for."""
+        graph = load("valid")
+        self.assertEqual(spec.run(graph, only=["requires-put"]), [])
+        graph.get("attenuation").requires = ["promulgate-the-root-answer"]
+        findings = spec.run(graph, only=["requires-put"])
+        self.assertEqual([f.question for f in findings], ["attenuation"])
+        self.assertIn("never put", findings[0].message)
+
+    def test_nothing_is_put_below_a_question_that_has_not_been(self):
+        """A turn carries canon above its question; an answer that was never
+        asked for is neither on main nor on the branch."""
+        graph = load("valid")
+        self.assertEqual(spec.run(graph, only=["put-in-order"]), [])
+        root = graph.get("ti-esti")
+        root.state, root.theses[0].state = "held", "held"
+        graph.get("canon").state = "in thread"
+        findings = spec.run(graph, only=["put-in-order"])
+        self.assertEqual([f.question for f in findings], ["canon"])
+        self.assertIn("ti-esti", findings[0].message)
+
     def test_findings_render_as_one_line_and_as_json(self):
         finding = spec.run(load("invalid-vocabulary"), only=["vocabulary"])[0]
         self.assertEqual(len(finding.line().splitlines()), 1)

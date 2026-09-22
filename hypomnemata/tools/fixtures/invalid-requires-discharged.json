@@ -93,13 +93,13 @@
           "title": "An entry binds when the one with standing has marked it.",
           "assent": "none",
           "state": "held",
-          "text": "An entry is a file in the repository, not a message in a thread. It binds when the one with standing has marked assent to it, and not before. Authority to act on an unassented entry is graded down, never removed.",
+          "text": "An entry is a file in the repository, not a message in a thread. It binds when the one with standing has marked assent to it, and not before. Authority to act on an unassented entry is held down, never removed.",
           "terms": [
             {
-              "title": "Grading of authority",
+              "title": "Authority held down",
               "to": "attenuation",
               "anchors": [
-                "Authority to act on an unassented entry is graded down, never removed."
+                "Authority to act on an unassented entry is held down, never removed."
               ]
             }
           ],
@@ -136,13 +136,13 @@
           "title": "The two sides are asymmetric and neither substitutes for the other.",
           "assent": "none",
           "state": "held",
-          "text": "One side persists across sessions and carries the standing; the other persists across files and carries the memory. Neither can do the other's work. Where the two disagree, the disagreement is recorded rather than resolved by force, and the act that would settle it is graded down until the standing side speaks.",
+          "text": "One side persists across sessions and carries the standing; the other persists across files and carries the memory. Neither can do the other's work. Where the two disagree, the disagreement is recorded rather than resolved by force, and the act that would settle it is held down until the standing side speaks.",
           "terms": [
             {
               "title": "Deadlock waits on standing",
               "to": "attenuation",
               "anchors": [
-                "the act that would settle it is graded down until the standing side speaks"
+                "the act that would settle it is held down until the standing side speaks"
               ],
               "deadlock": {
                 "counter": "one side holds that the other may act meanwhile; the other holds that it may not",
@@ -168,9 +168,7 @@
       "state": "held",
       "kind": "consistency",
       "answerer": "principal",
-      "requires": [
-        "promulgate-the-root-answer"
-      ],
+      "requires": [],
       "theses": [
         {
           "title": "Authority to act is graded by how settled the question is.",

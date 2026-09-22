@@ -266,6 +266,13 @@ class Definition:
     It belongs to the question and not to an answer. One sense per word means
     the sense cannot differ from one answer to another, and a word the
     question's hinge brought in belongs to no answer at all.
+
+    An entry with no body of its own is an **import**: the word is another
+    party's, in the sense that party's own glossary gives it, and the entry
+    records that this question brings it in. A party's notebook never stands
+    above a question of this one's, so an import is the only way its word
+    reaches one. A word of the notebook's own that a question cannot reach is
+    a missing edge or a definition on the wrong question, and never an import.
     """
 
     word: str
@@ -275,6 +282,11 @@ class Definition:
     #: sense in a sentence for users of the word that cannot reach the question
     #: over their ancestors, and a pointer to where the argument is.
     question: str = ""
+
+    @property
+    def imported(self) -> bool:
+        """The word is a party's own, and its sense is on the party's tab."""
+        return not self.body.strip() and self.tradition is not None
 
     @staticmethod
     def read(r: _Reader, data: Any, where: str) -> "Definition":
@@ -287,12 +299,16 @@ class Definition:
         else:
             r.fail(where + ".tradition", "expected an object or null")
             tradition = None
-        return Definition(
+        entry = Definition(
             word=r.text(d, "word", where),
             body=r.text(d, "body", where),
             tradition=tradition,
             question=r.text(d, "question", where, required=False),
         )
+        if not entry.body.strip() and entry.tradition is None:
+            r.fail(where, "a definition needs a body, unless it imports a "
+                          "party's word and names the party it comes from")
+        return entry
 
 
 @dataclass

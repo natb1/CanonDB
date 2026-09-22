@@ -284,11 +284,15 @@ def _glossary_blocks(q: Question) -> List[str]:
     so that a reader who wants the lineage has somewhere to click and a parser
     can tell the borrowing from the body it follows. Appended to the body's
     own paragraph neither would be true.
+
+    An import has no body: the heading and the party's chip, because the sense
+    is the party's and stands on the party's tab, where it has one home.
     """
     blocks: List[str] = []
     for definition in q.definitions:
         blocks.append("### ≡ %s" % definition.word)
-        blocks.append(definition.body)
+        if definition.body.strip():
+            blocks.append(definition.body)
         if definition.tradition:
             note = definition.tradition.note.strip()
             line = chip(definition.tradition.to)

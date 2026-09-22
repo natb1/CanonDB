@@ -259,6 +259,11 @@ def backlog(graph: Graph, qid: str) -> int:
     reached twice, and adding up the branches would count the work waiting at
     it once per path to it. Total on a cycle, since a set has no depth to run
     away down.
+
+    The relation reads "landed", and a turn takes an answer earlier in its own
+    thread as well: a thread runs on past one question, and what it answered
+    is on its branch. Which thread a question is on is not recorded, so that
+    half is the principal's to keep and this half is the one a script holds.
     """
     by_id = graph.by_id()
     q = by_id.get(qid)
