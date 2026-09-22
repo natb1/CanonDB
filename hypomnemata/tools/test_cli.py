@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 
+import test_verify  # the page as the document would export one
 from hypo import model, project, render, spec
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -228,6 +229,67 @@ class ReadCliTest(unittest.TestCase):
         self.assertEqual(second.returncode, 0, second.stderr)
         self.assertIn("is current", second.stderr)
         self.assertEqual(slurp(self.envelope), after_first)
+
+    def test_the_enum_the_states_point_at_is_kept_across_a_rebuild(self):
+        """The document read names the tabs and the exports carry the words;
+        the enum is in neither, so a rebuild that took only those rendered
+        every state as a word rather than a dropdown, and no gate saw it."""
+        out = os.path.join(self.dir, "graph.json")
+        first = run("read.py", self.manifest, self.tabs, "-o", out, "--no-seal",
+                    "--state-enum", "enum-1")
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(model.load(out).state_enum, "enum-1")
+        second = run("read.py", self.manifest, self.tabs, "-o", out, "--no-seal")
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertEqual(model.load(out).state_enum, "enum-1")
+        self.assertIn("state_enum kept", second.stdout)
+
+    def test_a_first_read_has_no_enum_to_keep(self):
+        done = self.read(no_seal=True)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIsNone(model.load(os.path.join(self.dir, "graph.json")).state_enum)
+
+
+class VerifyCliTest(unittest.TestCase):
+    """The closing gate reads what is on disk, and says what is not."""
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
+        self.graph = model.load(fixture("valid"))
+        self.tabs = os.path.join(self.dir, "tabs")
+        os.makedirs(self.tabs)
+        for q in self.graph.questions:
+            entries = render.links(self.graph, q.id)["links"]
+            with open(os.path.join(self.tabs, q.id + ".md"), "w",
+                      encoding="utf-8") as fh:
+                fh.write(test_verify.page_of(self.graph, q.id, entries))
+
+    def verify(self, *args):
+        return run("verify.py", fixture("valid"), self.tabs, "--no-envelope", *args)
+
+    def test_every_tab_written_properly_exits_zero(self):
+        done = self.verify()
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+    def test_a_tab_with_no_export_is_a_finding(self):
+        """A tab this could not read is a tab this did not verify; a green
+        exit over it would be the closing gate passing what it never saw."""
+        os.unlink(os.path.join(self.tabs, "attenuation.md"))
+        done = self.verify()
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("no export on disk for: attenuation", done.stdout)
+
+    def test_only_naming_a_tab_with_no_export_is_a_finding(self):
+        os.unlink(os.path.join(self.tabs, "attenuation.md"))
+        done = self.verify("--only", "attenuation")
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("no export on disk for: attenuation", done.stdout)
+
+    def test_only_a_present_tab_is_not_bothered_by_the_absent(self):
+        os.unlink(os.path.join(self.tabs, "attenuation.md"))
+        done = self.verify("--only", "canon")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
 
 
 if __name__ == "__main__":

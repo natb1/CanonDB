@@ -114,6 +114,17 @@ def anchor_substring(graph: Graph) -> Yield:
                                      % (term.title, _clip(anchor)))
 
 
+def _overlapping(haystack: str, needle: str) -> int:
+    """Occurrences counted the way the renderer places chips: every start,
+    overlapping ones included. ``that that`` stands twice in ``that that
+    that`` and gets two chips, so it has to count as two here."""
+    found, at = 0, haystack.find(needle)
+    while at != -1:
+        found += 1
+        at = haystack.find(needle, at + 1)
+    return found
+
+
 @check("anchor-unique", "an anchor occurs once in the thesis text it is taken from")
 def anchor_unique(graph: Graph) -> Yield:
     """Two occurrences give the renderer two places to put one chip, and give
@@ -124,7 +135,7 @@ def anchor_unique(graph: Graph) -> Yield:
         for thesis in q.theses:
             for term in list(thesis.terms) + list(thesis.mentions):
                 for anchor in term.anchors:
-                    found = thesis.text.count(anchor) if anchor else 0
+                    found = _overlapping(thesis.text, anchor) if anchor else 0
                     if found > 1:
                         yield q.id, ("term %r: its anchor occurs %d times in the "
                                      "thesis text, so which occurrence carries "

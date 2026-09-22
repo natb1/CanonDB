@@ -302,6 +302,33 @@ class AstrayTest(unittest.TestCase):
                          [m.group(0) for m in verify._HREF.finditer(page)])
 
 
+class NoEnumTest(unittest.TestCase):
+    def test_without_an_enum_the_state_word_is_characters_and_is_counted(self):
+        """No enum, and the renderer wrote the word: the document holds it as
+        characters its find can reach, and the sidecar counted it. Taken off
+        here, every later run of `thread` came out one short — three findings
+        on a page that was right."""
+        graph = load("valid")
+        self.assertIsNone(graph.state_enum)
+        thesis = graph.get("ti-esti").theses[0]
+        thesis.text += " The answer waits in a thread until the merge."
+        graph.get("ti-esti").definitions.append(model.Definition(
+            word="thread", body="An open line of questions."))
+        entries = render.links(graph, "ti-esti")["links"]
+        self.assertIn("thread", [e["anchor"] for e in entries])
+        report = verify.verify(graph, "ti-esti",
+                               page_of(graph, "ti-esti", entries))
+        self.assertTrue(report.ok(), report.lines())
+
+
+class PlainlyTest(unittest.TestCase):
+    def test_an_underscore_inside_a_word_is_a_character(self):
+        """`text.plain` keeps it and the page holds it, so a needle without it
+        finds nothing — a stray link on a session id could never come off."""
+        self.assertEqual(verify.plainly("session_01Jjv"), "session_01Jjv")
+        self.assertEqual(verify.plainly("_word_ and *word*"), "word and word")
+
+
 class NormaliseTest(unittest.TestCase):
     def test_a_chip_reads_the_same_either_way_it_is_spelled(self):
         """The renderer writes a token; the document exports a link. Neither is

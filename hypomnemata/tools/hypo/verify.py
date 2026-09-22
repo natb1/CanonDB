@@ -59,8 +59,11 @@ from .model import Graph
 #: emphasis off and case folded. A link may open inside an emphasis span, which
 #: leaves the closing marker inside the captured text and the opener outside;
 #: and a defined word is capitalised where it opens a sentence, so ``pressure``
-#: is linked on the page as ``Pressure``.
-_MARKERS = re.compile(r"[*_`]")
+#: is linked on the page as ``Pressure``. An underscore is a marker only at a
+#: word boundary, as markdown reads it and as ``text.plain`` keeps it: inside
+#: ``session_01…`` it is a character the page holds, and a needle without it
+#: finds nothing there.
+_MARKERS = re.compile(r"[*`]|(?<![0-9A-Za-z])_|_(?![0-9A-Za-z])")
 
 #: the question line's state: a chip in what the renderer writes, the word
 #: itself in what the document exports.
@@ -146,7 +149,7 @@ class Link(NamedTuple):
     href: str
 
 
-def linked_spans(page: str) -> Tuple[str, List[Link]]:
+def linked_spans(page: str, atoms: bool = True) -> Tuple[str, List[Link]]:
     """The page as plain characters, and which of them a link stands on.
 
     Compared by span rather than by label, because a link does not survive as
@@ -156,9 +159,18 @@ def linked_spans(page: str) -> Tuple[str, List[Link]]:
 
     where all three are right and none is the anchor. Matching labels would
     call the whole clause missing and the two halves unaccounted for.
+
+    ``atoms`` says whether the page holds each state as a dropdown — the graph
+    names an enum — in which case the word the export prints for it is not
+    counted, since the document's own find cannot reach it. Without an enum
+    the renderer wrote the word and the document holds it as characters, so it
+    counts like any other; taken off, every later run of those letters came
+    out one short of where the sidecar counted it.
     """
-    page = _STATE_WORD.sub(r"\1\2", page or "")
-    page = _ANSWER_STATE_WORD.sub(r"\1\2", page)
+    page = page or ""
+    if atoms:
+        page = _STATE_WORD.sub(r"\1\2", page)
+        page = _ANSWER_STATE_WORD.sub(r"\1\2", page)
     out: List[str] = []
     spans: List[Link] = []
     where = 0
@@ -229,7 +241,7 @@ def account(graph: Graph, qid: str, page: str) -> Tuple[
     destination by design, and reporting it would be reporting the design.
     """
     entries = render.links(graph, qid)["links"]
-    plain, spans = linked_spans(page)
+    plain, spans = linked_spans(page, atoms=bool(graph.state_enum))
     own = graph.get(qid).tab if graph.get(qid) is not None else ""
     missing: List[str] = []
     misplaced: List[str] = []
