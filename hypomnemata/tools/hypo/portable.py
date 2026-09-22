@@ -2,11 +2,12 @@
 
 A live document cannot be handed to anyone. What can be handed over is the
 notebook: the questions, their theses, their edges — everything the graph file
-holds that is not a name for *this* document. Four values are such names, and
-this is the whole of the coupling: the ``artifact`` the file caches, the
-``state_enum`` the tabs' state field points at, and each question's ``tab`` and
-``body`` ids. Sealing empties them; the receiving party's own document supplies
-them again, which is what ``STEPS`` says how to do.
+holds that is not a name for *this* document. Four values are such names: the
+``artifact`` the file caches, the ``state_enum`` the tabs' state field points at,
+and each question's ``tab`` and ``body`` ids — and one more wears content's
+clothes, the link of an application whose link is this document
+(``self_links``). Sealing empties them; the receiving party's own document
+supplies them again, which is what ``STEPS`` says how to do.
 
 Nothing else travels, because nothing else has to. The tab tree is not carried:
 ``project`` derives it from the term edges, so the receiving document lays out
@@ -36,7 +37,7 @@ from __future__ import annotations
 import copy
 import json
 import os
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Iterator, List, Tuple
 
 from . import model, project
 
@@ -68,9 +69,9 @@ NAMED = 8
 #: with it, rather than having to be told separately.
 STEPS = [
     "Get the tooling named under `tools`, and the dictation skill beside it."
-    " Every step below is one of those tools. None is optional, and no tab is"
-    " ever hand-written: the renderer is the only sanctioned producer of a tab"
-    " body.",
+    " Every step below that runs a tool runs one of those, and the skill says"
+    " how each is driven. None is optional, and no tab is ever hand-written:"
+    " the renderer is the only sanctioned producer of a tab body.",
     "Create a document for the notebook.",
     "Create an enum whose options are exactly `states`, in that order, and"
     " nothing else. A document enum only grows — an option can be appended,"
@@ -82,7 +83,7 @@ STEPS = [
     " id of the enum just created. Each application named under `rebind` is an"
     " application whose link was the old document — the notebook is an"
     " application of some of its own theses. Point each one's `link` at the new"
-    " document, or leave it empty and its standing will say it is owed.",
+    " document; one left empty is owed a link, and no check will say so.",
     "Create one tab per question, each named by that question's `id`, and"
     " record the tab's id in its question's `tab` and the tab's body block id"
     " in its `body`. A tab whose ids are still empty is not yet bound.",
@@ -90,11 +91,17 @@ STEPS = [
     " Until the tabs are bound it reports `unique-ids` on the empty `tab`"
     " and `body` ids, which is the check saying what is still missing:"
     " binding them is what clears it.",
-    "Write each tab with `render.py` and `apply.py`: the body first, which"
-    " mints the block ids, then the links, which need those ids. Writing"
-    " several tabs, send every body before any links. Never hand-write a tab.",
-    "`project.py graph.json` prints the tab-placement patch; send it as the"
-    " document's `tabs` patch. The tree it prints must match `expect.tree`.",
+    "Write each tab with `apply.py`, which needs `--outlines DIR` holding one"
+    " `<question id>.xml` outline per tab as the document prints it: `--body`"
+    " first, which replaces the tab with the rendered body and mints the block"
+    " ids, then — the outline re-read, since those ids are new — `--links`,"
+    " which needs them; `--wanted` lists the outlines the links call needs."
+    " Writing several tabs, send every body before any links. Never hand-write"
+    " a tab.",
+    "`project.py graph.json` prints the tab-placement patch — send it as the"
+    " document's `tabs` patch — and, with `--json`, the tree it derived, whose"
+    " entries must match `expect.tree` on `question`, `parent` and `order`"
+    " (they carry `distance` and `load` besides).",
     "`verify.py graph.json <exported tabs dir>` reads the pages back. It is the"
     " closing gate: a graph file never held a link, so nothing else can see"
     " whether the links reached the page.",
@@ -109,6 +116,20 @@ def _data(graph: model.Graph) -> Dict[str, Any]:
         return json.load(fh)
 
 
+def _self_linked(data: Dict[str, Any]) -> Iterator[Tuple[dict, dict, dict]]:
+    """``(question, thesis, application)`` per application whose link is the
+    document being sealed — the one place that decides what a self-link is,
+    so that what ``seal`` empties is exactly what ``self_links`` reports."""
+    artifact = data.get("artifact") or ""
+    if not artifact:
+        return
+    for q in data.get("questions", []):
+        for t in q.get("theses", []):
+            for a in t.get("applications", []):
+                if artifact in (a.get("link") or ""):
+                    yield q, t, a
+
+
 def self_links(data: Dict[str, Any]) -> List[Dict[str, str]]:
     """Every application whose link is the document being sealed.
 
@@ -120,18 +141,10 @@ def self_links(data: Dict[str, Any]) -> List[Dict[str, str]]:
     the application itself is content and stays, owed a link to a document that
     does not exist yet.
     """
-    artifact = data.get("artifact") or ""
-    found: List[Dict[str, str]] = []
-    if not artifact:
-        return found
-    for q in data.get("questions", []):
-        for t in q.get("theses", []):
-            for a in t.get("applications", []):
-                if artifact in (a.get("link") or ""):
-                    found.append({"question": q.get("id", "?"),
-                                  "thesis": t.get("title", ""),
-                                  "application": a.get("name", "?")})
-    return found
+    return [{"question": q.get("id", "?"),
+             "thesis": t.get("title", ""),
+             "application": a.get("name", "?")}
+            for q, t, a in _self_linked(data)]
 
 
 def bindings(data: Dict[str, Any]) -> List[str]:
@@ -171,12 +184,8 @@ def seal(graph: model.Graph, name: str = "", tools: str = "") -> Dict[str, Any]:
         for key in QUESTION_KEYS:
             q[key] = ""
     rebind = self_links(data)
-    for q in questions:
-        for t in q.get("theses", []):
-            for a in t.get("applications", []):
-                if (data.get("artifact") or "") and \
-                        (data["artifact"] in (a.get("link") or "")):
-                    a["link"] = ""
+    for _, _, a in _self_linked(data):
+        a["link"] = ""
     return {
         "format": FORMAT,
         "name": name,
@@ -238,6 +247,10 @@ def opened(envelope: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
     if found not in READS:
         raise ValueError("not a %s envelope (found %r)" % (FORMAT, found))
     questions = copy.deepcopy(envelope.get("questions", []))
+    if not isinstance(questions, list) or not all(isinstance(q, dict)
+                                                  for q in questions):
+        raise ValueError("an envelope's `questions` is a list of question "
+                         "objects")
     notes: List[str] = []
     if found != FORMAT:
         said = FORWARD[found](questions)

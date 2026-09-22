@@ -23,7 +23,9 @@ correction, an addition, or a change to the specification the notebook is writte
 3. **Never hand-write tab markdown.** `tools/render.py` is the only sanctioned producer of a tab
    body. Hand-written markdown is how the layout drifts.
 4. **Every file under `hypomnemata/` is a cache**, including any graph file you export. Nothing on
-   disk is authoritative over the artifact, and no export is committed.
+   disk is authoritative over the artifact, and no cache is committed. The one file of the
+   notebook's content that is committed is the sealed envelope at the branch root: it is not a
+   cache but a thing handed to another party (see **Carrying**).
 
 ## Procedure
 
@@ -100,9 +102,10 @@ already written it. Nothing else is committed for that content: it lives in the 
 ## Carrying
 
 A live document cannot be shared between users, so a party who wants this notebook raises their
-own from its graph. `tools/portable.py seal $SCRATCH/graph.json -o <file> --name "<notebook>"`
-empties the four values that name *this* document — the `artifact`, the `state_enum`, and each
-question's `tab` and `body` — and says on stderr how many it dropped, or which, with `--verbose`.
+own from its graph. `tools/portable.py seal $SCRATCH/graph.json -o <file> --name "<notebook>" --tools "<repo>"`
+empties the values that name *this* document — the `artifact`, the `state_enum`, each question's
+`tab` and `body`, and the link of any application whose link is this document, recorded under
+`rebind` — and says on stderr how many it dropped, or which, with `--verbose`.
 It refuses a graph the checker faults: what is handed over stands, or it is not handed over. `tools/portable.py open <file> -o
 graph.json` gives the graph back, unbound, and the rebuild steps ride inside the envelope so the
 receiving party reads them from the same file.
