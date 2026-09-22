@@ -11,6 +11,7 @@ from its reads of the document, and renders canonical markdown back from it.
     read     the inverse of the renderer: an exported tab back into a question
     apply    the operations that put a rendered tab into the document
     verify   the page against the renderer, links included
+    portable the notebook parted from its document, and the export cache
     text     plain text from markdown, and where a run of it stands
 
 Enforcement is by interface: the renderer is the only sanctioned way to produce
@@ -25,4 +26,5 @@ here would pass over a tab that reached the document with none of its links,
 which is exactly what happened.
 """
 
-__all__ = ["model", "spec", "project", "render", "read", "apply", "verify", "text"]
+__all__ = ["model", "spec", "project", "render", "read", "apply", "verify",
+           "portable", "text"]

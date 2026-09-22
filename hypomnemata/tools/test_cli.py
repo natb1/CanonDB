@@ -2,11 +2,13 @@
 
 import json
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 
-from hypo import spec
+from hypo import model, project, render, spec
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURES = os.path.join(HERE, "fixtures")
@@ -21,6 +23,42 @@ def run(script, *args, cwd=None):
 
 def fixture(name):
     return os.path.join(FIXTURES, name + ".json")
+
+
+def slurp(path):
+    with open(path, encoding="utf-8") as fh:
+        return fh.read()
+
+
+def document(where):
+    """A document read plus its tab exports, built from fixtures/valid.json.
+
+    read.py needs a manifest (a document read) and a directory of rendered
+    tabs; nothing in the fixtures directory is that shape. Rather than commit
+    a second, static copy of the fixture in manifest form, this derives one
+    from fixtures/valid.json itself, so it can never drift out of step with
+    it: the tab tree comes from `project.tabs_patch`, the same patch
+    `project.py` would hand the document, and each tab's markdown is exactly
+    what `render.py --all` would print for it. Returns `(manifest path, tabs
+    dir)`, both under `dir`.
+    """
+    graph = model.load(fixture("valid"))
+    findings = spec.run(graph)
+    tabs = {op["path"][1]: op["value"] for op in project.tabs_patch(graph)}
+    manifest = {
+        "value": {"tabs": tabs},
+        "files": [{"id": q.tab, "content": {"id": q.body}} for q in graph.questions],
+        "frame": {"artifactUrl": graph.artifact},
+    }
+    manifest_path = os.path.join(where, "manifest.json")
+    with open(manifest_path, "w", encoding="utf-8") as fh:
+        json.dump(manifest, fh)
+    tabs_dir = os.path.join(where, "tabs")
+    os.makedirs(tabs_dir)
+    for q in graph.questions:
+        with open(os.path.join(tabs_dir, q.id + ".md"), "w", encoding="utf-8") as fh:
+            fh.write(render.render(graph, q.id, findings))
+    return manifest_path, tabs_dir
 
 
 class CheckCliTest(unittest.TestCase):
@@ -118,6 +156,78 @@ class RenderCliTest(unittest.TestCase):
     def test_a_question_or_all_is_required(self):
         done = run("render.py", fixture("valid"))
         self.assertEqual(done.returncode, 2)
+
+
+class ReadCliTest(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.manifest, self.tabs = document(self.dir)
+        self.envelope = os.path.join(self.dir, "envelope.json")
+        sealed = run("portable.py", "seal", fixture("valid"), "-o", self.envelope,
+                     "--name", "a notebook", "--tools", "somewhere/tools")
+        self.assertEqual(sealed.returncode, 0, sealed.stderr)
+
+    def read(self, tabs=None, envelope=None, no_seal=False):
+        args = [self.manifest, tabs or self.tabs,
+                "-o", os.path.join(self.dir, "graph.json")]
+        if envelope is not None:
+            args += ["--envelope", envelope]
+        if no_seal:
+            args.append("--no-seal")
+        return run("read.py", *args)
+
+    def test_a_complete_read_re_seals_a_named_envelope(self):
+        before = json.loads(slurp(self.envelope))
+        done = self.read(envelope=self.envelope)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertTrue("re-sealed" in done.stderr or "is current" in done.stderr,
+                        done.stderr)
+        after = json.loads(slurp(self.envelope))
+        self.assertEqual(after["format"], before["format"])
+        self.assertEqual(after["name"], before["name"])
+        self.assertEqual(after["tools"], before["tools"])
+        rebuilt = model.load(os.path.join(self.dir, "graph.json"))
+        self.assertEqual([q["id"] for q in after["questions"]],
+                         [q.id for q in rebuilt.questions])
+
+    def test_what_the_re_seal_says_is_ids_and_not_the_notebook(self):
+        done = self.read(envelope=self.envelope)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        said = [line for line in done.stderr.splitlines()
+                if "sealed" in line or "is current" in line]
+        self.assertEqual(len(said), 1, done.stderr)  # one line, whatever moved
+        graph = model.load(fixture("valid"))
+        for q in graph.questions:
+            for thesis in q.theses:
+                self.assertNotIn(thesis.title, said[0])
+
+    def test_no_seal_leaves_the_envelope_byte_identical(self):
+        before = slurp(self.envelope)
+        done = self.read(envelope=self.envelope, no_seal=True)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(slurp(self.envelope), before)
+
+    def test_a_read_that_leaves_out_a_tab_does_not_seal(self):
+        partial = os.path.join(self.dir, "partial")
+        os.makedirs(partial)
+        for entry in os.listdir(self.tabs):
+            if entry != "attenuation.md":
+                shutil.copy(os.path.join(self.tabs, entry), partial)
+        before = slurp(self.envelope)
+        done = self.read(tabs=partial, envelope=self.envelope)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("not sealed over", done.stderr)
+        self.assertEqual(slurp(self.envelope), before)
+
+    def test_re_sealing_is_idempotent(self):
+        first = self.read(envelope=self.envelope)
+        self.assertEqual(first.returncode, 0, first.stderr)
+        after_first = slurp(self.envelope)
+
+        second = self.read(envelope=self.envelope)
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertIn("is current", second.stderr)
+        self.assertEqual(slurp(self.envelope), after_first)
 
 
 if __name__ == "__main__":

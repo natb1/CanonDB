@@ -30,7 +30,9 @@ correction, an addition, or a change to the specification the notebook is writte
 **1 — Read.** Read the artifact's tab list, then export every tab as markdown and build the graph
 file with `tools/read.py <document read> <directory of exports>` (`$SCRATCH/graph.json`, schema in
 `tools/hypo/model.py`). Read the tabs the dictation could touch yourself as well: the reader tells
-you what the page holds, not what it means.
+you what the page holds, not what it means. A complete read also re-seals the committed envelope
+(see **Carrying**), which is how an edit the principal made asynchronously reaches it: that read is
+the first moment anything here knows the notebook moved.
 
 **2 — Plan.** Enter plan mode and write the plan before any write. The plan is a table, one row per
 edit:
@@ -87,16 +89,21 @@ The second is not a repetition of the first. A graph file never held a link, so 
 blind to every one of them: it passed green over a page that had lost all 192. Report WARN
 findings rather than fixing them silently.
 
-**6 — Commit** the tooling and skill changes on the `hypomnemata` branch. Nothing is committed for
-the notebook's content: it lives in the artifact.
+The rebuild re-seals the committed envelope as it goes, and `verify.py` reports it where it did
+not. Both say so in a line; neither prints the notebook. Read that line — it is the whole of what
+this run costs you for the export cache being current.
+
+**6 — Commit** the tooling and skill changes on the `hypomnemata` branch, and the re-sealed
+envelope with them: it is the one file here that carries the notebook's content, and step 5 has
+already written it. Nothing else is committed for that content: it lives in the artifact.
 
 ## Carrying
 
 A live document cannot be shared between users, so a party who wants this notebook raises their
 own from its graph. `tools/portable.py seal $SCRATCH/graph.json -o <file> --name "<notebook>"`
 empties the four values that name *this* document — the `artifact`, the `state_enum`, and each
-question's `tab` and `body` — and says on stderr which it dropped. It refuses a graph the checker
-faults: what is handed over stands, or it is not handed over. `tools/portable.py open <file> -o
+question's `tab` and `body` — and says on stderr how many it dropped, or which, with `--verbose`.
+It refuses a graph the checker faults: what is handed over stands, or it is not handed over. `tools/portable.py open <file> -o
 graph.json` gives the graph back, unbound, and the rebuild steps ride inside the envelope so the
 receiving party reads them from the same file.
 
@@ -110,8 +117,25 @@ nothing is committed for the notebook's content: it is not a cache of the artifa
 handed to another party, and a party who has it must be able to say which notebook they received.
 What it was sealed from — the graph file and the tab exports — stays a cache and stays uncommitted.
 
-An envelope goes stale the moment the notebook moves, so re-seal it in any run that lands a change,
-and let the diff show what the other party would now receive.
+An envelope goes stale the moment the notebook moves, so it is not left to be remembered.
+`tools/read.py` seals the rebuilt graph over it on every complete read, taking the `name` and the
+`tools` from the file it replaces — nothing is retyped, so nothing drifts, and the envelope is
+found at the branch root by its own `format` rather than named. It costs no call of its own and one
+line of output.
+
+That line is the shape of the difference and never the notebook: which questions came, went or
+moved, by id, at most eight of them named before it counts instead, and which header values no
+longer agree. It is a handful of lines for a notebook of any size. The words are in `git diff`,
+which is the right place for them — putting a diff of the export into a turn puts the whole
+notebook back into the context this tooling exists to keep it out of.
+
+It declines rather than seal something partial, and says which: a read that left tabs out, a graph
+the checker faults, or a re-seal that would drop questions — a partial read is indistinguishable
+from a notebook that lost them, and that drift is the one re-reading cannot undo. Where the drop is
+the change, `tools/portable.py reseal $SCRATCH/graph.json --force` says so deliberately, and
+`tools/portable.py stale $SCRATCH/graph.json` asks the question without answering it. `verify.py`
+asks it at the close of every write, so a run cannot end green over an export cache that went out
+of date.
 
 ## Attenuation
 
