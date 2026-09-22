@@ -528,6 +528,20 @@ class DetailTest(unittest.TestCase):
         self.assertEqual([f.question for f in findings], ["canon"])
         self.assertIn("ti-esti", findings[0].message)
 
+    def test_a_list_keeps_its_line_breaks_and_a_paragraph_may_not(self):
+        """A single newline is the markdown's own inside a list, and a wrap
+        anywhere else: the document joins it, so the page and the renderer
+        would disagree for as long as the text stood."""
+        graph = load("valid")
+        thesis = graph.get("ti-esti").theses[0]
+        self.assertEqual(spec.run(graph, only=["text-unwrapped"]), [])
+        kept = thesis.text
+        thesis.text = "What it requires of me\n- Report truthfully.\n- Be predictable."
+        self.assertEqual(spec.run(graph, only=["text-unwrapped"]), [])
+        thesis.text = kept.replace(" ", "\n", 1)
+        findings = spec.run(graph, only=["text-unwrapped"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+
     def test_findings_render_as_one_line_and_as_json(self):
         finding = spec.run(load("invalid-vocabulary"), only=["vocabulary"])[0]
         self.assertEqual(len(finding.line().splitlines()), 1)

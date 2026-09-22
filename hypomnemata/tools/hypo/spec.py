@@ -1076,6 +1076,33 @@ def inbox_history(graph: Graph) -> Yield:
                              "is history, so drop it" % item.id)
 
 
+#: a line break inside a paragraph. A single newline is the markdown's own only
+#: where the block is built out of lines — a list, a table, a quotation — so
+#: what opens the next line is what decides which it is.
+_WRAPPED = re.compile(r"(?<!\n)\n(?!\n)(?! *(?:[-*>|#]|\d+\.))")
+
+
+@check("text-unwrapped",
+       "an answer's text has no line break inside a paragraph")
+def text_unwrapped(graph: Graph) -> Yield:
+    """The document joins a wrapped line back into its paragraph, so a text
+    written with hard breaks can never be read back as it was stored: the page
+    and the renderer disagree for as long as it stands.
+
+    It arrives from outside — a draft wrapped at whatever column the tool that
+    wrote it used — and nothing downstream could see it, because the local
+    round trip renders and reads the same breaks straight back.
+    """
+    for q in graph.questions:
+        for thesis in q.theses:
+            broken = _WRAPPED.search(thesis.text)
+            if broken:
+                at = broken.start()
+                yield q.id, ("the answer's text breaks a line inside a "
+                             "paragraph, which the document will join: %r"
+                             % thesis.text[max(0, at - 30):at + 30])
+
+
 # -- the runner -------------------------------------------------------------
 
 def run(graph: Graph, only: Optional[Iterable[str]] = None) -> List[Finding]:
