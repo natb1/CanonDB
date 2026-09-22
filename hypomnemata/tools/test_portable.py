@@ -195,6 +195,104 @@ class OpenTest(unittest.TestCase):
             portable.unseal({"format": "something-else", "questions": []})
 
 
+def as_v1(envelope):
+    """The same envelope as `hypomnemata-export/1` sealed it.
+
+    That format hung the glossary off the answer that used a word rather than
+    off the question, so an old envelope is reconstructed by pushing every
+    question's definitions back down onto its first thesis — which is where the
+    reader had already filed them, and so where an old file has them.
+    """
+    old = copy.deepcopy(envelope)
+    old["format"] = "hypomnemata-export/1"
+    for q in old["questions"]:
+        words = q.pop("definitions", [])
+        if words:
+            q["theses"][0]["definitions"] = words
+    return old
+
+
+class OlderFormatTest(unittest.TestCase):
+    """An envelope outlives the tooling that sealed it, so it is read forward."""
+
+    def setUp(self):
+        self.graph = model.load(VALID)
+        self.envelope = portable.seal(self.graph)
+        self.old = as_v1(self.envelope)
+
+    def test_the_old_shape_is_the_one_the_model_refuses(self):
+        # the premise: without the forward step this is what the receiving
+        # party would be handed, and it is a graph the checker will not take
+        raw = copy.deepcopy(self.old)
+        for q in raw["questions"]:
+            q["tab"], q["body"] = "t", "b"
+        held = [q for q in raw["questions"] if q["theses"][0].get("definitions")]
+        self.assertTrue(held)
+        with self.assertRaises(model.ShapeError):
+            model.load(graph_file({"artifact": "a", "mode": raw["mode"],
+                                   "state_enum": "e",
+                                   "questions": raw["questions"]}))
+
+    def test_an_older_envelope_opens(self):
+        data, notes = portable.opened(self.old)
+        self.assertEqual([q["id"] for q in data["questions"]],
+                         [q["id"] for q in self.envelope["questions"]])
+        self.assertTrue(notes)
+
+    def test_it_opens_to_what_the_current_format_opens_to(self):
+        self.assertEqual(portable.unseal(self.old),
+                         portable.unseal(self.envelope))
+
+    def test_the_words_come_up_whole_and_in_order(self):
+        data = portable.unseal(self.old)
+        for came, want in zip(data["questions"], self.envelope["questions"]):
+            self.assertEqual(came.get("definitions", []),
+                             want.get("definitions", []))
+            for t in came["theses"]:
+                self.assertNotIn("definitions", t)
+
+    def test_the_current_format_says_nothing(self):
+        self.assertEqual(portable.opened(self.envelope)[1], [])
+
+    def test_every_format_read_is_one_the_current_one_or_has_a_step(self):
+        for fmt in portable.READS:
+            self.assertTrue(fmt == portable.FORMAT or fmt in portable.FORWARD)
+
+    def test_an_older_envelope_is_found_where_it_is_committed(self):
+        where = tempfile.mkdtemp()
+        path = os.path.join(where, "carried.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(portable.dump(self.old))
+        self.assertEqual(portable.committed(where), path)
+
+    def test_an_older_envelope_is_stale_by_its_format(self):
+        where = tempfile.mkdtemp()
+        path = os.path.join(where, "carried.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(portable.dump(self.old))
+        _, changed = portable.compare(self.graph, path)
+        self.assertIn("~ format", changed)
+
+    def test_resealing_brings_a_carried_copy_forward(self):
+        where = tempfile.mkdtemp()
+        path = os.path.join(where, "carried.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(portable.dump(self.old))
+        portable.reseal(self.graph, path)
+        with open(path, encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh)["format"], portable.FORMAT)
+
+    def test_open_says_what_it_read_forward(self):
+        where = tempfile.mkdtemp()
+        path = os.path.join(where, "carried.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(portable.dump(self.old))
+        code, _, err = run(["open", path, "-o", os.path.join(where, "g.json")])
+        self.assertEqual(code, 0)
+        self.assertIn("read forward", err)
+        self.assertIn("definition(s)", err)
+
+
 class CommandTest(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp()

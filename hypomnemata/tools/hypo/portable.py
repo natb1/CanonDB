@@ -15,6 +15,15 @@ for a datum that already has one. It is recorded under ``expect`` instead — no
 as input to the rebuild but as the shape the rebuild has to come out to, so the
 party who runs it can tell that it did.
 
+What the envelope is *for* is a party who is not here, and so a copy of it
+outlives the tooling that sealed it: it is read whenever they get to it, which
+may be after a key has changed meaning. `FORMAT` says which shape a file is in
+and `READS` which shapes can still be opened, with one step in `FORWARD` per
+older format. An old envelope is read forward rather than turned away, because
+turning it away leaves its holder with a notebook and no way to raise it, and
+read forward in the open rather than quietly, because what comes out is then
+not the shape the file says it is.
+
 An envelope goes stale the moment the notebook moves, and a party holding a
 stale one holds a notebook nobody has. So re-sealing is not a thing to
 remember: ``reseal`` puts the current graph over the committed envelope, taking
@@ -27,13 +36,21 @@ from __future__ import annotations
 import copy
 import json
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 
 from . import model, project
 
 #: The envelope's format, so a reader can tell what it is holding. The version
 #: moves when a key changes meaning, not when the notebook does.
-FORMAT = "hypomnemata-export/1"
+FORMAT = "hypomnemata-export/2"
+
+#: The formats this tooling opens. An envelope is handed over once and read
+#: whenever the receiving party gets to it, so the version that was current at
+#: sealing has to stay readable: what moving the version buys is a reader that
+#: knows which shape it is holding, not one that turns the older shape away. A
+#: format listed here that is not `FORMAT` needs a step in `FORWARD` saying how
+#: to read it.
+READS = ("hypomnemata-export/1", FORMAT)
 
 #: What names this document and must not travel: on the graph, and on each
 #: question. Emptied rather than dropped, because the model requires the keys
@@ -173,16 +190,59 @@ def seal(graph: model.Graph, name: str = "", tools: str = "") -> Dict[str, Any]:
     }
 
 
-def unseal(envelope: Dict[str, Any]) -> Dict[str, Any]:
-    """The graph file again, unbound: every document-local value empty.
+def _glossary_to_question(questions: List[Dict[str, Any]]) -> str:
+    """`hypomnemata-export/1`: the glossary hung off an answer, not its question.
+
+    One sense per word left nothing for an answer to own, and a word a hinge
+    brought in belongs to no answer at all, so the glossary moved up to the
+    question. An envelope sealed before that carries each word under the answer
+    that used it, in the order a reader already filed them, so the words come
+    up in that order and land on the question whose answer held them.
+
+    It is done here because here is the only place that knows the envelope is
+    an old one. The model refuses a `definitions` key on a thesis outright —
+    deliberately, so that an old *graph file* cannot lose its glossary in
+    silence — which means nothing downstream of this can do the move instead:
+    the receiving party would get a graph the checker faults once per question,
+    on a key their envelope never said was wrong.
+    """
+    moved = 0
+    for q in questions:
+        carried: List[Any] = []
+        for t in q.get("theses", []):
+            carried.extend(t.pop("definitions", []))
+        if carried:
+            q["definitions"] = list(q.get("definitions", [])) + carried
+            moved += len(carried)
+    if not moved:
+        return ""
+    return ("hypomnemata-export/1: %d definition(s) move from their answer to "
+            "their question" % moved)
+
+
+#: How to read each format older than `FORMAT`: one step per format, run over
+#: the questions as they come out of the envelope. A step says what it moved,
+#: in a line, because reading an old envelope produces a graph in a shape that
+#: envelope does not have, and that is a thing to be told rather than to notice.
+FORWARD = {"hypomnemata-export/1": _glossary_to_question}
+
+
+def opened(envelope: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
+    """`(the graph file again, what reading an older format moved)`.
 
     The inverse of `seal` up to the binding it dropped, which is the point —
-    what comes out is the same notebook, waiting for a document to name it.
+    what comes out is the same notebook, waiting for a document to name it —
+    and up to whatever `FORWARD` had to do to read the shape it was sealed in.
     """
-    if envelope.get("format") != FORMAT:
-        raise ValueError("not a %s envelope (found %r)"
-                         % (FORMAT, envelope.get("format")))
+    found = envelope.get("format")
+    if found not in READS:
+        raise ValueError("not a %s envelope (found %r)" % (FORMAT, found))
     questions = copy.deepcopy(envelope.get("questions", []))
+    notes: List[str] = []
+    if found != FORMAT:
+        said = FORWARD[found](questions)
+        if said:
+            notes.append(said)
     for q in questions:
         for key in QUESTION_KEYS:
             q[key] = ""
@@ -191,7 +251,12 @@ def unseal(envelope: Dict[str, Any]) -> Dict[str, Any]:
         "mode": envelope.get("mode", model.NOTEBOOK),
         "state_enum": None,
         "questions": questions,
-    }
+    }, notes
+
+
+def unseal(envelope: Dict[str, Any]) -> Dict[str, Any]:
+    """The graph file again, unbound: every document-local value empty."""
+    return opened(envelope)[0]
 
 
 #: Where the committed envelope sits, from this file's own place: `hypo` is in
@@ -207,9 +272,14 @@ def committed(where: str) -> str:
 
     The envelope is found rather than named. A path retyped on every run is a
     path that drifts, and the file already says what it is: the one JSON file
-    at the branch root whose `format` is ours is the notebook that was handed
-    over. A directory holding two of them is a question this cannot answer, so
-    it takes the first in name order and says nothing clever about the second.
+    at the branch root whose `format` is one of ours is the notebook that was
+    handed over. A directory holding two of them is a question this cannot
+    answer, so it takes the first in name order and says nothing clever about
+    the second.
+
+    An older format counts as ours, or a party whose envelope predates a
+    version would find their own notebook invisible to `reseal` and `stale` —
+    which is precisely the party who most needs the next re-seal to reach it.
     """
     try:
         entries = sorted(os.listdir(where))
@@ -221,7 +291,7 @@ def committed(where: str) -> str:
         path = os.path.join(where, entry)
         try:
             with open(path, encoding="utf-8") as fh:
-                if json.load(fh).get("format") == FORMAT:
+                if json.load(fh).get("format") in READS:
                     return path
         except (OSError, ValueError):
             continue
@@ -294,11 +364,13 @@ def compare(graph: model.Graph, path: str) -> tuple:
     """`(the envelope this graph would seal to, what that would change)`.
 
     Raises `ValueError` where `path` is not one of ours, so a stale-looking
-    envelope and a file that was never an envelope are told apart.
+    envelope and a file that was never an envelope are told apart. An envelope
+    in an older format is stale by that fact and `drift` says so under
+    `~ format`: re-sealing is how a party's copy comes forward.
     """
     with open(path, encoding="utf-8") as fh:
         previous = json.load(fh)
-    if previous.get("format") != FORMAT:
+    if previous.get("format") not in READS:
         raise ValueError("not a %s envelope (found %r)"
                          % (FORMAT, previous.get("format")))
     current = seal(graph, **carried(previous))
