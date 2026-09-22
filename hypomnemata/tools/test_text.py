@@ -121,6 +121,14 @@ class FormsTest(unittest.TestCase):
         self.assertIn("section types", forms("section type"))
         self.assertNotIn("sections type", forms("section type"))
 
+    def test_a_phrase_before_a_noun_is_hyphenated(self):
+        """A clean-context answer uses `clean context`, in the form a phrase
+        takes in front of the noun it qualifies."""
+        self.assertIn("clean-context", forms("clean context"))
+        self.assertIn("clean-contexts", forms("clean context"))
+        self.assertNotIn("grant", [f for f in forms("grant") if "-" in f])
+        self.assertEqual([f for f in forms("merge") if "-" in f], [])
+
     def test_longest_first_so_a_caller_links_the_whole_word(self):
         """`grants` is linked whole rather than as the `grant` inside it."""
         self.assertEqual(forms("grant")[-1], "grant")

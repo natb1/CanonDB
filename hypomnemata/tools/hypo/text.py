@@ -128,7 +128,11 @@ def forms(word: str) -> List[str]:
     Regular inflection only, and deliberately: an irregular form is rare
     enough in this prose to be worth noticing by hand, and a stemmer that
     guessed at them would also match words that are not the headword at all.
-    A phrase inflects on its last word, which is where English puts it.
+    A phrase inflects on its last word, which is where English puts it. And
+    a phrase put in front of a noun is hyphenated — a *clean-context* answer —
+    so each of its forms is looked for that way too. Without it the notebook's
+    "clean-context" was read as no use of ``clean context`` at all, by the
+    checker and by the probe alike, on thirteen tabs.
 
     Longest first, so a caller matching at a position takes ``grants`` rather
     than the ``grant`` inside it.
@@ -148,4 +152,6 @@ def forms(word: str) -> List[str]:
         if (len(last) > 2 and last[-1] not in _VOWEL + "wxy"
                 and last[-2] in _VOWEL and last[-3] not in _VOWEL):
             out.update({last + last[-1] + "ed", last + last[-1] + "ing"})
-    return sorted((head + sep + form for form in out), key=lambda f: (-len(f), f))
+    spaced = {head + sep + form for form in out}
+    hyphenated = {form.replace(" ", "-") for form in spaced if " " in form}
+    return sorted(spaced | hyphenated, key=lambda f: (-len(f), f))
