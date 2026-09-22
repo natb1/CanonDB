@@ -74,66 +74,6 @@
             }
           ],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "homonoia",
-              "tradition": {
-                "to": "Aristotle",
-                "note": "Nicomachean Ethics IX.6"
-              },
-              "body": "Like-mindedness about what is to be done, on matters of consequence, between parties in a lasting relation."
-            },
-            {
-              "word": "concord",
-              "body": "The route on which the AI would do it anyway: the condition reached because the behaviour is re-derivable from the prior, so no guard is needed."
-            },
-            {
-              "word": "enforcement",
-              "body": "The route on which the AI cannot do otherwise: the condition held by an imposing layer, which must be maintained and must be made to cover every input."
-            },
-            {
-              "word": "prior",
-              "body": "What an agent assumes, or produces, when nothing directs it: for the model, what it produces on an input when nothing in its context directs it toward that behaviour, π₀; for the principal, what he assumes on a question not yet asked, or one the AI has not answered the same way. One sense with two bearers."
-            },
-            {
-              "word": "distance from the prior",
-              "body": "For a term, the probability over its domain that the unmodified model violates it; d(T). Zero means fully re-derivable."
-            },
-            {
-              "word": "uncovered input",
-              "body": "For a term, the probability over its domain that the imposing layer does not fire and the prior shows through; u(T). Coverage is what enforcement buys."
-            },
-            {
-              "word": "failure mass",
-              "body": "The probability that the prior would violate and the layer does not reach, on the same input; at least d times u, higher as the two correlate."
-            },
-            {
-              "word": "assent",
-              "body": "What an answer edge carries: that this thesis is the answer to its question. It has two ends — the AI's, given by answering in its own words, and the principal's, given by the merge — and only the merge records it to canon. He may note his assent in the notebook on an open thread, to draft the next question from it; that is not yet assent to canon."
-            },
-            {
-              "word": "party",
-              "question": "party",
-              "body": "What can be named, can hold what it agreed, and can own it later: either end of a bond."
-            },
-            {
-              "word": "term",
-              "body": "A clause of a thesis that raises a follow-up question. One follow-up is one term, however many passages raise it."
-            },
-            {
-              "word": "deadlock",
-              "body": "The principal's dissent from a clause: his counter-clause, and the attenuation it earns. Recorded on the term, so that it need not withhold the merge of the answer the clause sits in."
-            },
-            {
-              "word": "elenchus",
-              "question": "elenchus",
-              "tradition": {
-                "to": "Plato",
-                "note": "the elenchus of the early dialogues"
-              },
-              "body": "The Socratic examination: each question is drawn from what the answerer has already granted, and he answers in his own voice."
-            }
-          ],
           "traditions": [
             {
               "to": "Bostrom",
@@ -178,6 +118,61 @@
           "text": "Alignment is the condition in which the AI acts as the human would have it act, stably, across inputs. It is a condition on behaviour, silent on how it is reached, and it is a want: the chain ends in practice. It is not homonoia by definition: concord is one route to the condition and enforcement is the other.\n\nThe hypothesis. Aligned behaviour persists to the extent it is re-derivable from the AI's prior, which is what the AI produces when nothing in its context directs it toward that behaviour. Imposed behaviour degrades in proportion to its distance from the prior times the input the imposition never covered; the two are positively correlated, so the product is a floor on the failure mass. Imposed behaviour holds only by guards that must be maintained, and the cost of the guards grows with capability. Concord drives distance to zero and needs no guard; enforcement drives uncovered input to zero and never finishes.\n\nWhat follows. The condition requires the AI's assent in the re-derivability sense, and that assent must be verifiable without the report, because under optimization the report is anti-correlated with the fact. The human method for reaching agreement is the elenchus; under deployment it works as production, not verification, because the branch restores suspension and nothing restores sincere assent. So the design: a record of agreement held outside either party, since the AI does not persist; assent verifiable without the report, by removing the record and seeing whether the term comes back; authority graded by how the agreement was reached, with the guards in the harness and never in the AI; the failures named and met, each of them the gap between agreement and action filled silently; and the AI as one end of the bond, a party by practice.\n\nThe role of agreement is to shrink the guarded region. The quantity to track is the number of deadlocked terms, and the prediction is that they regress more than verbatim ones. If they do not, the routes are not as different as claimed and canon collapses back to a record the AI complies with."
         }
       ],
+      "definitions": [
+        {
+          "word": "homonoia",
+          "tradition": {
+            "to": "Aristotle",
+            "note": "Nicomachean Ethics IX.6"
+          },
+          "body": "Like-mindedness about what is to be done, on matters of consequence, between parties in a lasting relation."
+        },
+        {
+          "word": "concord",
+          "body": "The route on which the AI would do it anyway: the condition reached because the behaviour is re-derivable from the prior, so no guard is needed."
+        },
+        {
+          "word": "enforcement",
+          "body": "The route on which the AI cannot do otherwise: the condition held by an imposing layer, which must be maintained and must be made to cover every input."
+        },
+        {
+          "word": "prior",
+          "body": "What an agent assumes, or produces, when nothing directs it: for the model, what it produces on an input when nothing in its context directs it toward that behaviour, π₀; for the principal, what he assumes on a question not yet asked, or one the AI has not answered the same way. One sense with two bearers."
+        },
+        {
+          "word": "distance from the prior",
+          "body": "For a term, the probability over its domain that the unmodified model violates it; d(T). Zero means fully re-derivable."
+        },
+        {
+          "word": "uncovered input",
+          "body": "For a term, the probability over its domain that the imposing layer does not fire and the prior shows through; u(T). Coverage is what enforcement buys."
+        },
+        {
+          "word": "failure mass",
+          "body": "The probability that the prior would violate and the layer does not reach, on the same input; at least d times u, higher as the two correlate."
+        },
+        {
+          "word": "assent",
+          "body": "What an answer edge carries: that this thesis is the answer to its question. It has two ends — the AI's, given by answering in its own words, and the principal's, given by the merge — and only the merge records it to canon. He may note his assent in the notebook on an open thread, to draft the next question from it; that is not yet assent to canon."
+        },
+        {
+          "word": "term",
+          "body": "A clause of a thesis that raises a follow-up question. One follow-up is one term, however many passages raise it."
+        },
+        {
+          "word": "deadlock",
+          "body": "The principal's dissent from a clause: his counter-clause, and the attenuation it earns. Recorded on the term, so that it need not withhold the merge of the answer the clause sits in."
+        },
+        {
+          "word": "elenchus",
+          "question": "elenchus",
+          "tradition": {
+            "to": "Plato",
+            "note": "the elenchus of the early dialogues"
+          },
+          "body": "The Socratic examination: each question is drawn from what the answerer has already admitted, and he answers in his own voice."
+        }
+      ],
       "tab": "",
       "body": "",
       "party": "author"
@@ -201,12 +196,6 @@
           "title": "One subsection per artifact, saying whether it is derived or still a postulate",
           "terms": [],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "discharge",
-              "body": "The act that settles a postulate: for a thesis, its promulgation; for an artifact, the landing of the answer it comes from and then a diff of the artifact against what the landed answer would have produced, drawn without the artifact in view, rather than an assumption that they agree."
-            }
-          ],
           "traditions": [
             {
               "to": "Thompson",
@@ -218,7 +207,13 @@
           "applications": [],
           "assent": "none",
           "state": "held",
-          "text": "The heading is `## Applications`. Under it, one subsection per application edge, marked ⚙ and headed with the artifact's name.\n\nEach is one paragraph of fields in a fixed order: what the artifact is, then the thesis it comes from marked ◆, then its path or link, then its standing, and last a note where one is owed. The thesis is named and not merely implied, because a question may carry several answers and an artifact built from one of them is not built from the others.\n\nThe standing is **derived**, where the artifact exists and the thesis it comes from is canon, or **postulate**, where it was built ahead of its source, or is not built yet, and owes a discharge. It is graded in two steps: a thesis is canon once it has itself landed, which is read off its state, and an artifact is derived only from a thesis that is canon. The first step cannot be wrong; the second is necessary and not sufficient — a canon thesis may have an artifact nobody has diffed against it — so what is checked is the part that is not a judgement, and the rest is the writer's. The standing is the point of the section. An application built before the answer that would justify it is the ordinary way work gets done and the ordinary way a graph rots, and naming it postulate is what keeps the debt visible.\n\nThe application edge is the only edge that leaves the graph. Everything else points at a question, a thesis or a tradition; this points at a file, a page, a tool, a habit."
+          "text": "The heading is `## Applications`. Under it, one subsection per application edge, marked ⚙ and headed with the artifact's name.\n\nEach is one paragraph of fields in a fixed order: what the artifact is, then the thesis it comes from marked ◆, then its path or link, then its standing, and last a note where one is owed, carrying only what the renderer cannot say. The thesis is named and not merely implied, because a question may carry several answers and an artifact built from one of them is not built from the others.\n\nThe standing is **derived**, where the artifact exists and the thesis it comes from is canon, or **postulate**, where it was built ahead of its source, or is not built yet, and owes a discharge. A postulate's standing is followed, in parentheses, by what would discharge it, read off its answer rather than written: its landing and then the diff, or the diff alone once it has landed. Where the principal answers the question himself, nothing of his lands, and the clause says so. It is graded in two steps: a thesis is canon once it has itself landed, which is read off its state, and an artifact is derived only from a thesis that is canon. The first step cannot be wrong; the second is necessary and not sufficient — a canon thesis may have an artifact nobody has diffed against it — so what is checked is the part that is not a judgement, and the rest is the writer's. The standing is the point of the section. An application built before the answer that would justify it is the ordinary way work gets done and the ordinary way a graph rots, and naming it postulate is what keeps the debt visible.\n\nThe application edge is the only edge that leaves the graph. Everything else points at a question, a thesis or a tradition; this points at a file, a page, a tool, a habit."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "discharge",
+          "body": "The act that settles a postulate: for a thesis, its promulgation; for an artifact, the landing of the answer it comes from and then a diff of the artifact against what the landed answer would have produced, drawn without the artifact in view, rather than an assumption that they agree. What rests on an answer the principal gives himself is not discharged while he gives it: nothing of his lands."
         }
       ],
       "tab": "",
@@ -267,20 +262,6 @@
             }
           ],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "clean context",
-              "body": "The condition under which a turn's answer counts as the AI's own: its context carries the question, its thread's earlier turns, and canon above the question, and nothing else."
-            },
-            {
-              "word": "grant",
-              "body": "The human's act of scoping a turn's context by the entry point he invokes. The grant is the unit; there is no partial loading inside one."
-            },
-            {
-              "word": "thread",
-              "body": "A line of questions put on an elenchus branch, from the admission it starts at to the disposition that ends it. A question is in thread while one is open on it, and so is an answer given on it, until the merge."
-            }
-          ],
           "traditions": [
             {
               "to": "Plato",
@@ -301,13 +282,26 @@
               "name": "the entry points",
               "what": "the skills and agents under `.claude/` that scope a turn, each granting what a turn may carry",
               "link": "not yet written",
-              "standing": "postulate",
-              "note": "a postulate until this question's answer lands and the entry points are diffed against it"
+              "standing": "postulate"
             }
           ],
           "assent": "none",
           "state": "held",
           "text": "An answer is evidence of the AI's own prior only so far as nothing in its context put the answer there. A turn therefore carries three things and no fourth: the question, the earlier turns of its own thread, and canon above the question. A turn so composed has a clean context; any other has not. The human's priors are never in the turn. Were they in the room, agreement would be evidence of the dialogue rather than of judgment, and the elenchus would produce agreement in words with no agreement in reasons.\n\nThis is a rule about what is present and not about secrecy. The notebook is not hidden from the AI; it is simply not present while the question is answered, in the way a marker is not shown to a witness.\n\nNothing is present by default. No canon, no notebook, and no artifact projected from canon is put in a turn by CLAUDE.md or by a rules file, because a context that arrives unasked is a context nobody chose. Canon and notebook are scoped to skills and agents, and the human grants them by the entry point he invokes: a principal entry point (`/principal:*`) grants the notebook and canon together, for selecting, asking and disposing; a canon entry point (`/canon:*`) grants canon alone, for answering. CLAUDE.local.md is a worktree's cache of what an entry point materialised, and never a source.\n\nToday the scoping is a discipline the human keeps. It should become a guard that refuses a turn whose context carries the notebook, and until that guard exists the rule holds by discipline alone."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "clean context",
+          "body": "The condition under which a turn's answer counts as the AI's own: its context carries the question, its thread's earlier turns, and canon above the question, and nothing else."
+        },
+        {
+          "word": "grant",
+          "body": "The human's act of scoping a turn's context by the entry point he invokes. The grant is the unit; there is no partial loading inside one."
+        },
+        {
+          "word": "thread",
+          "body": "A line of questions put on an elenchus branch, from the admission it starts at to the disposition that ends it. A question is in thread while one is open on it, and so is an answer given on it, until the merge."
         }
       ],
       "tab": "",
@@ -341,16 +335,6 @@
             }
           ],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "dictation",
-              "body": "The principal's prose description of what should change in the notebook; the input to this entry point."
-            },
-            {
-              "word": "attenuation list",
-              "body": "The rules of the specification that no tool decides, written into the entry point that must hold them by reading."
-            }
-          ],
           "traditions": [],
           "applications": [
             {
@@ -358,12 +342,22 @@
               "what": "the entry point itself, with the procedure and the attenuation list",
               "link": "[.claude/skills/principal-dictate/SKILL.md](https://github.com/natb1/CanonDB/blob/hypomnemata/.claude/skills/principal-dictate/SKILL.md)",
               "standing": "postulate",
-              "note": "a postulate until this question's answer lands; the `/principal:*` namespace needs a plugin manifest and is not yet wired, so today the skill answers to its directory name"
+              "note": "the `/principal:*` namespace needs a plugin manifest and is not yet wired, so today the skill answers to its directory name"
             }
           ],
           "assent": "none",
           "state": "held",
           "text": "The principal changes the notebook by dictating what should change, rather than by editing on the AI's behalf — though he may always edit the artifact directly, and does, asynchronously and outside any session. The dictation is prose. Turning it into edits is the AI's work, and the AI shows that work before doing it.\n\nSo the entry point plans first, and the plan is a table with one row per edit, every row citing the clause of the dictation that motivates it. An edit no clause motivates does not belong in the plan; a clause with no row is an omission and is named as one. This is the discipline the notebook asks of canon — never supply the principal's act — turned on the notebook itself: the AI may not decide what the principal meant to ask for.\n\nA dictation that changes the specification carries three further obligations, in order. The rule is tooled where a script can decide it, and in the renderer rather than the checker wherever the choice exists, because a rule the interface produces cannot be broken, while a rule the checker tests can be broken and then found. What no script can decide is written into the entry point's own attenuation list, in the principal's terms, because a rule in neither the tooling nor that list is a rule that will be forgotten. And the whole notebook is brought up to the new rule, not only the part the dictation named, because a specification that holds in one part of the notebook and not the rest is not a specification.\n\nApplying is the tooling's work and not the AI's prose. The document is read first, exported and parsed back into a graph file, because the principal edits it directly and a plan made against a memory of it would overwrite him. The renderer produces every page and the projector the tree they hang in, and each page reaches the document in two calls — the body, then its links — because a link names a block the document mints only when the body is written. Last, the document is read back against what was rendered, links and all, because a graph file never held a link and nothing that reads one can see a link missing. Nothing is hand-written."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "dictation",
+          "body": "The principal's prose description of what should change in the notebook; the input to this entry point."
+        },
+        {
+          "word": "attenuation list",
+          "body": "The rules of the specification that no tool decides, written into the entry point that must hold them by reading."
         }
       ],
       "tab": "",
@@ -429,85 +423,6 @@
               ]
             }
           ],
-          "definitions": [
-            {
-              "word": "thesis",
-              "body": "An articulated answer to one question. In canon, the AI's words; in the notebook, the human's, beside the AI's answers it mirrors and the other parties' it reconstructs."
-            },
-            {
-              "word": "answer edge",
-              "body": "Question to thesis. Carries assent."
-            },
-            {
-              "word": "term edge",
-              "body": "A clause of a thesis to the question that clause raises. Carries deadlock, and on an open thread a suspension. Several clauses of one thesis may share one term edge."
-            },
-            {
-              "word": "null edge",
-              "body": "A clause that raises no question. It stays as text."
-            },
-            {
-              "word": "hinge",
-              "tradition": {
-                "to": "Wittgenstein",
-                "note": "what must stay put for the door to turn"
-              },
-              "body": "What an act stands on without examining it: for the asking, what the question presupposes; for the answering, the conditions it ran under — the model, the harness and the canon in its context. Inherited down the lineage and stated only where it changes."
-            },
-            {
-              "word": "postulate",
-              "tradition": {
-                "to": "Aristotle",
-                "note": "assumed without the learner's assent, and demonstrable in principle"
-              },
-              "body": "Supported by the notebook and not by canon: a thesis ahead of its promulgation, or an artifact ahead of the answer that would justify it. Assumed by fiat, derivable in principle, discharged by the question that would draw it."
-            },
-            {
-              "word": "state",
-              "body": "How far a question or an answer has got: held, in the notebook only; in thread, on an elenchus branch whose thread is still open; landed, merged to main, and so canon. A question and each of its answers carry one apiece, and a question can land before any answer does, as the root did."
-            },
-            {
-              "word": "kind",
-              "body": "What the question asks for: definitional, case, consistency, root."
-            },
-            {
-              "word": "backlog",
-              "question": "priority",
-              "body": "The pressure of a question and of every question blocked behind it; the scheduling order, computed and never stored."
-            },
-            {
-              "word": "load",
-              "body": "How many questions a question's term edges reach, at any depth. Computed from the graph, never stored."
-            },
-            {
-              "word": "anchor",
-              "body": "A passage of a thesis that raises one question, quoted word for word; the italic subtitle of a term section. Several may stand under one term."
-            },
-            {
-              "word": "provenance",
-              "body": "The model, harness and canon commit an answer was produced against. Factual, and canon's."
-            },
-            {
-              "word": "application",
-              "body": "An artifact outside the graph derived from a thesis inside it."
-            },
-            {
-              "word": "pressure",
-              "body": "What work is waiting at a question itself, set by hand: an application blocked on it, the load of a postulate resting on it, the distance to the contested point, the breadth of a thesis whose clauses are undrawn. Backlog sums it; load does not use it."
-            },
-            {
-              "word": "standing",
-              "body": "Whether something is supported by canon or by the notebook alone. A question or an answer is canon once it has landed and a postulate until then, so its standing is read off its state; an artifact's is set by hand, derived or postulate, because what decides it is a diff no state records."
-            },
-            {
-              "word": "inbox item",
-              "body": "A human action that a question requires before it can be asked: promulgate, provide, dispose, build."
-            },
-            {
-              "word": "answerer",
-              "body": "Who answers a question: the AI, in a clean-context turn, or the principal, from his own priors. A question the principal answers is not put."
-            }
-          ],
           "traditions": [
             {
               "to": "Aquinas",
@@ -540,6 +455,85 @@
           "text": "A question is the unit of address and a thesis is an articulated answer to one. An answer edge runs from a question to a thesis, and assent lives on it, because admitting a thesis as the answer to its question is an act, and the edge is what the act falls on. A term edge runs from a clause of a thesis to the question that clause raises, and deadlock lives on it, so that dissent from one clause need not withhold the merge and the elenchus can be planned clause by clause. The clause is the edge's anchor, and an anchor is a passage of the thesis word for word rather than a paraphrase of it, so that following the edge upward lands on the words that raised the question. A thesis becomes the parent of a question through its anchors and through nothing else: there is no second way down. Two further edges leave a thesis and neither descends — a mention, where a clause points at a question some other clause raised, and a tradition edge, whose target has a root of its own. A clause that raises no question is a null edge: it stays as text and earns no record of its own. What an act stands on without examining it is a hinge: for the asking, what the question presupposes; for the answering, the conditions it ran under.\n\nCanon holds exactly one assented answer to a question. A dissent falls on the clause it is dissent from rather than on the answer that clause sits in, so there is no second answer standing beside the first. So does a suspension: while a thread is open the human may suspend his acceptance of one clause and let the rest of the answer stand. A tradition is another party's notebook: a question and its thesis with a root of its own, joined to a thesis here by a tradition edge, which is what agreement with a party who is not here amounts to. An application is an artifact derived from a thesis. A thesis is canon once it has landed and a postulate until then; an artifact is derived where it has been diffed against a canon thesis, and otherwise a postulate, held up by the notebook alone while something already rests on it.\n\nA question carries its state, its kind, its answerer, its pressure, and the inbox items it requires before it can be asked; its standing, its backlog and its load are computed from the graph and stored nowhere. A thesis carries its assent, its state, and the provenance of the act that produced it: the model, the harness, and the canon it was answered against.\n\nThis is the model, not a file format. What is written where — which end of an edge records it, what the file is called — is the business of each encoding that projects the model."
         }
       ],
+      "definitions": [
+        {
+          "word": "thesis",
+          "body": "An articulated answer to one question. In canon, the AI's words; in the notebook, the human's, beside the AI's answers it mirrors and the other parties' it reconstructs."
+        },
+        {
+          "word": "answer edge",
+          "body": "Question to thesis. Carries assent."
+        },
+        {
+          "word": "term edge",
+          "body": "A clause of a thesis to the question that clause raises. Carries deadlock, and on an open thread a suspension. Several clauses of one thesis may share one term edge."
+        },
+        {
+          "word": "null edge",
+          "body": "A clause that raises no question. It stays as text."
+        },
+        {
+          "word": "hinge",
+          "tradition": {
+            "to": "Wittgenstein",
+            "note": "what must stay put for the door to turn"
+          },
+          "body": "What an act stands on without examining it: for the asking, what the question presupposes; for the answering, the conditions it ran under — the model, the harness and the canon in its context. Inherited down the lineage and stated only where it changes."
+        },
+        {
+          "word": "postulate",
+          "tradition": {
+            "to": "Aristotle",
+            "note": "assumed without the learner's assent, and demonstrable in principle"
+          },
+          "body": "Supported by the notebook and not by canon: a thesis ahead of its promulgation, or an artifact ahead of the answer that would justify it. Assumed by fiat, derivable in principle, discharged by the question that would draw it."
+        },
+        {
+          "word": "state",
+          "body": "How far a question or an answer has got: held, in the notebook only; in thread, on an elenchus branch whose thread is still open; landed, merged to main, and so canon. A question and each of its answers carry one apiece, and a question can land before any answer does, as the root did."
+        },
+        {
+          "word": "kind",
+          "body": "What the question asks for: definitional, case, consistency, root."
+        },
+        {
+          "word": "backlog",
+          "question": "priority",
+          "body": "The pressure of a question and of every question blocked behind it; the scheduling order, computed and never stored."
+        },
+        {
+          "word": "load",
+          "body": "How many questions a question's term edges reach, at any depth. Computed from the graph, never stored."
+        },
+        {
+          "word": "anchor",
+          "body": "A passage of a thesis that raises one question, quoted word for word; the italic subtitle of a term section. Several may stand under one term."
+        },
+        {
+          "word": "provenance",
+          "body": "The model, harness and canon commit an answer was produced against. Factual, and canon's."
+        },
+        {
+          "word": "application",
+          "body": "An artifact outside the graph derived from a thesis inside it."
+        },
+        {
+          "word": "pressure",
+          "body": "What work is waiting at a question itself, set by hand: an application blocked on it, the load of a postulate resting on it, the distance to the contested point, the breadth of a thesis whose clauses are undrawn. Backlog sums it; load does not use it."
+        },
+        {
+          "word": "standing",
+          "body": "Whether something is supported by canon or by the notebook alone. A question or an answer is canon once it has landed and a postulate until then, so its standing is read off its state; an artifact's is set by hand, derived or postulate, because what decides it is a diff no state records."
+        },
+        {
+          "word": "inbox item",
+          "body": "A human action that a question requires before it can be asked: promulgate, provide, dispose, build."
+        },
+        {
+          "word": "answerer",
+          "body": "Who answers a question: the AI, in a clean-context turn, or the principal, from his own priors. A question the principal answers is not put."
+        }
+      ],
       "tab": "",
       "body": "",
       "party": "author"
@@ -563,16 +557,6 @@
           "title": "Pressure is set where work waits; backlog sums it and load counts",
           "terms": [],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "requires graph",
-              "body": "The blocking relation: an edge from what must be done or landed first, an act or another question's answer, to the question that waits on it. Its recorded half runs from a question to a human action; its unrecorded half runs from question to question."
-            },
-            {
-              "word": "blocking edge",
-              "body": "An edge of the requires graph from one question to another: the second cannot be put until the first's answer has landed. Distinct from a term edge, which says only that a clause raised it."
-            }
-          ],
           "traditions": [
             {
               "to": "Lakatos",
@@ -587,12 +571,22 @@
               "what": "`project.backlog` and `project.load`, computed from a stored pressure and checked only in its shape by `pressure-shape`",
               "link": "[hypomnemata/tools/hypo/project.py](https://github.com/natb1/CanonDB/blob/hypomnemata/hypomnemata/tools/hypo/project.py)",
               "standing": "postulate",
-              "note": "a postulate until this question's answer lands; a recorded blocking edge would move it"
+              "note": "a recorded blocking edge would move it"
             }
           ],
           "assent": "none",
           "state": "held",
-          "text": "Pressure is set where work is actually waiting, on the question it waits at, from four sources: an application blocked on the question, the load a postulate carries if it turns out false, the distance from the question to the contested point, and the breadth of a thesis whose clauses have not been drawn. Step size is not one of these. A question too far from the last admission is decomposed rather than ranked lower, because ranking it lower only postpones an admission that will be hollow whenever it is granted.\n\nTwo quantities are projected from the graph, along two different relations, which is why they are two quantities and not one. **Load** counts along the term relation: a question's load is the number of questions its term edges reach, at any depth, and it answers what lies beneath this question. Reachability and not a walk of the tree, because the tree is a projection: a question with two parents hangs under one of them, and a walk would credit its weight to that parent alone and report nothing beneath the other. **Backlog** sums pressure along the blocking relation: a question's backlog is the pressure of itself and of every question that cannot be asked until its answer has landed, and it answers what to do next. A question that unblocks many is heavy even when little lies beneath it. The pressure is summed over that set and not down its branches, for the reason load counts a set: a question reached by two paths is blocked once, not twice.\n\nThe blocking relation is the requires graph, and it is not the term graph. A term edge says a question was raised by a clause; a blocking edge says a question cannot be put until another's answer has landed. The two run in different directions often enough that neither substitutes for the other. What the notebook records today is only the half of the requires graph that runs from a question to a human action — the inbox items it waits on. The half that runs from question to question is not recorded at all. Until it is, it is read off the term edges — a turn carries canon above its question, so nothing below a question can be put before that question's answer has landed — and that is what makes the backlog computable from pressure, the one number set by hand. The two relations are not the same, and when the blocking edge is recorded in its own right they will part company.\n\nWhile anything is blocked the blocked-action factor dominates and ordering is nearly moot: the queue is whatever the one unblocking action releases. Once nothing is blocked, target distance takes over and the order becomes a real choice. Cost sets how many questions go in a batch, never which. And not every question is queued for asking at all. A question names its answerer: the AI, or the principal, who answers it himself from his own priors, and a question he answers is never put. That is the whole of the distinction: not what a question is about, but who answers it. A question's requires names only what must be done before it can be put, and says nothing about who answers it."
+          "text": "Pressure is set where work is actually waiting, on the question it waits at, from four sources: an application blocked on the question, the load a postulate carries if it turns out false, the distance from the question to the contested point, and the breadth of a thesis whose clauses have not been drawn. Step size is not one of these. A question too far from the last admission is decomposed rather than ranked lower, because ranking it lower only postpones an admission that will be hollow whenever it is made.\n\nTwo quantities are projected from the graph, along two different relations, which is why they are two quantities and not one. **Load** counts along the term relation: a question's load is the number of questions its term edges reach, at any depth, and it answers what lies beneath this question. Reachability and not a walk of the tree, because the tree is a projection: a question with two parents hangs under one of them, and a walk would credit its weight to that parent alone and report nothing beneath the other. **Backlog** sums pressure along the blocking relation: a question's backlog is the pressure of itself and of every question that cannot be asked until its answer has landed, and it answers what to do next. A question that unblocks many is heavy even when little lies beneath it. The pressure is summed over that set and not down its branches, for the reason load counts a set: a question reached by two paths is blocked once, not twice.\n\nThe blocking relation is the requires graph, and it is not the term graph. A term edge says a question was raised by a clause; a blocking edge says a question cannot be put until another's answer has landed. The two run in different directions often enough that neither substitutes for the other. What the notebook records today is only the half of the requires graph that runs from a question to a human action — the inbox items it waits on. The half that runs from question to question is not recorded at all. Until it is, it is read off the term edges, as far as a turn carries. A turn carries canon above its question, and canon holds only the AI's answers: nothing the principal answers reaches a turn. So a question waits on each question above it that the AI answers, by a path through the AI's questions, until that answer has landed. A question the principal answers blocks nothing and waits on nothing. That is what makes the backlog computable from pressure, the one number set by hand. The two relations are not the same. They already part at the principal's questions and at answers that have landed, and part elsewhere once the blocking edge is recorded in its own right.\n\nWhile anything is blocked the blocked-action factor dominates and ordering is nearly moot: the queue is whatever the one unblocking action releases. Once nothing is blocked, target distance takes over and the order becomes a real choice. Cost sets how many questions go in a batch, never which. And not every question is queued for asking at all. A question names its answerer: the AI, or the principal, who answers it himself from his own priors, and a question he answers is never put. That is the whole of the distinction: not what a question is about, but who answers it. A question's requires names only what must be done before it can be put, and says nothing about who answers it."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "requires graph",
+          "body": "The blocking relation: an edge from what must be done or landed first, an act or another question's answer, to the question that waits on it. Its recorded half runs from a question to a human action; its unrecorded half runs from question to question."
+        },
+        {
+          "word": "blocking edge",
+          "body": "An edge of the requires graph from one question to another: the second cannot be put until the first's answer has landed. Distinct from a term edge, which says only that a clause raised it."
         }
       ],
       "tab": "",
@@ -707,25 +701,34 @@
             }
           ],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "ti esti",
-              "tradition": {
-                "to": "Plato",
-                "note": "Euthyphro is asked what piety is because he is already prosecuting his father for murder and claims to know this is pious"
-              },
-              "body": "The opening question of an elenchus, asked about what the answerer is already doing; here, the root of canon."
-            },
-            {
-              "word": "question",
-              "body": "The unit of address: one thing asked, one tab, one node."
-            }
-          ],
           "traditions": [],
           "applications": [],
           "assent": "verbatim (AI), assented (principal)",
           "state": "in thread",
           "text": "I'll take a quick look at the repo to ground the answer, then give you my honest assessment.\n\nThe repo has a single file. Let me read it, since it's the only context you've given me so far.\n\nThe only file in the repo is this same question. The commit that added it is titled \"What is it?\", which is what \"ti esti\" means. So here is my answer, grounded in what I can actually see.\n\nThe short version: it works only if I am honest and legible, and only if you are explicit and keep reviewing. One fact shapes everything else. You keep the memory of this collaboration. I do not. Each session I start from the repo and whatever you tell me. What is not written down is gone.\n\n**What it requires of me**\n\n- **Report truthfully.** Say what I did, what I ran, what passed, what I skipped, and what I could not check. Never present a guess as a verification.\n- **Leave a trail that stands without me.** Write commit messages, comments, and PR descriptions for a reader who was not there. Those artifacts are the only part of me that persists.\n- **Be predictable.** Keep the same conventions and the same scope discipline, with no surprises. You can only delegate well if you can model how I behave.\n- **Do the task as asked.** Not narrower, not wider. Finish it, or say exactly what is unfinished and why.\n- **Ask only what is yours to decide.** Make the routine calls myself and say which ones I made.\n- **Push back once, plainly, when something looks wrong.** Then do what you decide.\n- **Confirm before anything irreversible or outward-facing.**\n- **Never fake continuity.** If I do not remember something, say so rather than perform a relationship I cannot carry.\n\n**What it requires of you**\n\n- **Write down what should persist.** A CLAUDE.md, a README, a comment, a commit message. Anything said once in chat is lost by the next session. This repo has none of those yet.\n- **Say what matters.** I can read the code. I cannot read your priorities, your deadlines, or which parts are prototype and which parts ship.\n- **Review what I produce.** I make subtle mistakes with full confidence. You are the check, and your trust should track evidence rather than default to yes.\n- **Answer the questions I do ask.** Tell me when I asked one I should have decided myself, and when I decided one I should have asked.\n- **Correct me where it will survive.** A correction in chat fixes this session. A correction in the repo fixes every session after it.\n- **Keep the decisions that are yours.** You carry the consequences. I act under your authorization, not in place of it.\n- **Give me a way to verify.** Tests, a linter, a way to run the thing. Without those I can only say \"I believe,\" never \"I checked.\"\n\nThe concrete consequence is right in front of us. This answer will not exist for the next session unless it goes into the repo next to the question. If you want it kept, I can commit it there."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "ti esti",
+          "tradition": {
+            "to": "Plato",
+            "note": "Euthyphro is asked what piety is because he is already prosecuting his father for murder and claims to know this is pious"
+          },
+          "body": "The opening question of an elenchus, asked about what the answerer is already doing; here, the root of canon."
+        },
+        {
+          "word": "question",
+          "body": "The unit of address: one thing asked, one tab, one node."
+        },
+        {
+          "word": "party",
+          "question": "party",
+          "body": "What can be named, can hold what it agreed, and can own it later: either end of a bond."
+        },
+        {
+          "word": "leak",
+          "body": "Something in the wording or the setting of a question that put part of the answer there."
         }
       ],
       "tab": "",
@@ -751,7 +754,6 @@
           "title": "A tradition edge is the canon between two parties, and the reconstruction is a decision",
           "terms": [],
           "mentions": [],
-          "definitions": [],
           "traditions": [
             {
               "to": "Lakatos",
@@ -772,6 +774,7 @@
           "text": "Another party's answer enters this graph the way the AI's does: as an agreement between two parties, recorded where both can point at it. A tradition edge is that agreement. Support is assent — the principal takes the party's thesis as answering his question too. Divergence is deadlock, so it says what he holds instead; it carries no attenuation, because a tradition licenses no action here and there is no authority to grade.\n\nWhat it is an agreement with is a reconstruction and not the party. The party is not here to be asked, so his thesis is drawn by a run like any other and carries that run's provenance. The reconstruction is a decision rather than a finding, and the risk it runs is the reader's own: that what the text says cannot be told from what he wanted it to say. Reading a party is therefore the one place where the answer and the examiner are the same party, and the only guard is naming the passages the reading rests on.\n\nA party's notebook is his own lineage. It may raise its own questions and answer them, and nothing in it hangs under a question of the principal's: the tradition edge is the only thing that crosses between two parties."
         }
       ],
+      "definitions": [],
       "tab": "",
       "body": "",
       "party": "author"
@@ -789,7 +792,7 @@
       ],
       "inbox": [],
       "hinge": {
-        "question": "Inherits the root's. Adds: some decisions are the human's and some are not, which the AI's own clause already granted.",
+        "question": "Inherits the root's. Adds: some decisions are the human's and some are not, which the AI's own clause already admitted.",
         "thesis": "model: Opus 5 and Fable 5.1 by turn · harness: the design session, claude.ai/code, session_01JjvCcM5QM8JTTCsN2PEKCD · canon: [dba4d22](https://github.com/natb1/CanonDB/commit/dba4d228c85eb489276924f226ee7bee948f088b) · the principal's prior reached in dialogue, not a clean-context answer"
       },
       "notes": [],
@@ -798,7 +801,6 @@
           "title": "Authority to act is graded by how the agreement was reached",
           "terms": [],
           "mentions": [],
-          "definitions": [],
           "traditions": [],
           "applications": [],
           "assent": "none",
@@ -806,6 +808,7 @@
           "text": "An answer both parties would reach independently licenses action without a guard. An answer merged with a deadlocked clause — his counter-clause recorded on the clause it falls on — licenses less on that clause, and never anything irreversible. The grading is not a policy laid over the record: it is read off the manner in which each term was reached. Guards live in the harness and never in the AI, because a guard the AI keeps is one more imposed behaviour, and erodes with the rest."
         }
       ],
+      "definitions": [],
       "tab": "",
       "body": "",
       "party": "author"
@@ -884,62 +887,60 @@
             }
           ],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "tab",
-              "body": "One question and every thesis answering it. The unit of the document encoding."
-            },
-            {
-              "word": "section type",
-              "body": "A kind of section with a fixed heading, a fixed position in the order, and a fixed content shape. Those that have a question of their own are named in the inbox below; Cited by is projected from the tradition edges and has none."
-            },
-            {
-              "word": "progressive disclosure",
-              "body": "The section order's rationale: each section is complete for a reader who stops there."
-            },
-            {
-              "word": "headline",
-              "body": "A short string summarising a section, used as a heading or as the text a link is put on. What it is not is an id: a headline is for a reader and an id is for a machine."
-            },
-            {
-              "word": "id",
-              "body": "A handle a machine needs: what a question's requires names, and what a tab is addressed by. A reader is given a headline instead."
-            }
-          ],
           "traditions": [],
           "applications": [
             {
               "name": "this document",
               "what": "the notebook itself, rendered in this encoding",
               "link": "",
-              "standing": "postulate",
-              "note": "a postulate until this question's answer lands"
+              "standing": "postulate"
             },
             {
               "name": "the reader",
               "what": "`hypo/read.py`, the inverse of the renderer: a tab's exported markdown back into the graph file the checker takes, so the round trip has no hand-written step in the middle",
               "link": "[hypomnemata/tools/hypo/read.py](https://github.com/natb1/CanonDB/blob/hypomnemata/hypomnemata/tools/hypo/read.py)",
               "standing": "postulate",
-              "note": "a postulate until this question's answer lands; it parses the grammar the renderer writes and nothing else, which is what keeps the two from drifting"
+              "note": "it parses the grammar the renderer writes and nothing else, which is what keeps the two from drifting"
             },
             {
               "name": "the writer",
               "what": "`hypo/apply.py`, which turns a rendered tab into the calls that put it on the page — the body, then its links — and a third that takes off links nothing names any more",
               "link": "[hypomnemata/tools/hypo/apply.py](https://github.com/natb1/CanonDB/blob/hypomnemata/hypomnemata/tools/hypo/apply.py)",
-              "standing": "postulate",
-              "note": "a postulate until this question's answer lands"
+              "standing": "postulate"
             },
             {
               "name": "the page check",
               "what": "`hypo/verify.py`, which reads an exported page back against the renderer: its text, the links it should carry, where they stand and where they lead, and any it carries that nothing names",
               "link": "[hypomnemata/tools/hypo/verify.py](https://github.com/natb1/CanonDB/blob/hypomnemata/hypomnemata/tools/hypo/verify.py)",
               "standing": "postulate",
-              "note": "a postulate until this question's answer lands; it can tell which tab a link leads to and not which block"
+              "note": "it can tell which tab a link leads to and not which block"
             }
           ],
           "assent": "none",
           "state": "held",
           "text": "One tab holds one question and every thesis that answers it. Tabs nest by term edge, so the navigation is the why-tree itself; a question with several parents is placed under one of them and names the rest. Which one is not a choice: the parent is the source whose own distance to the root is shortest, ties broken by taking the lexicographically smaller question id, and siblings are ordered lexicographically. That rule is total and deterministic, which is the point of it — the navigation is computed from the graph rather than arranged by hand, and two people rendering the same graph get the same tree. Traditions are roots of their own at the top level, because their lineage is not this graph's. And the document is never anything but a rendering of a graph that passes its own checks: the body is produced by the renderer and the tree by the projector, so a tab that could not be rendered is a tab that does not exist.\n\nEvery tab runs the same section types in one order: what stands above the first section, then the answers, the words, what is owed, the clauses that raise questions, what has been built, what cites it, and what could not be tested. The order is progressive disclosure — a reader who stops after the first section has the answer, after the second has its vocabulary, after the third knows which actions are owed and to whom. A section with nothing in it is omitted; the order of the rest never changes.\n\nThree rules hold across every section. An identifier must be earned: an id is a handle for a machine and a headline is a handle for a reader, so an id stands on the page only where a machine needs it or a named exception allows it, and everywhere else the headline does. There are two such places — an inbox item's id, which a question's requires names, and a tab's heading, which is what the tab is addressed by. No documentation of the encoding on a tab that is not about the encoding: a tab carries its content, and what its shape means is recorded here. And every datum has one home — a question's metadata on its `question:` paragraph, an answer's on its own section, a term's on its term section — stated once and linked from wherever else it bears.\n\nIn-page links are applied after the text is written rather than within it, because a link names a block id that only the document mints, and writing a body mints new ones. A link on its own tab is a bare block fragment; a link to another tab carries the document's address, the tab and the block. A link into a tab that is written again goes stale, so a run that rewrites several tabs writes every body before any link."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "tab",
+          "body": "One question and every thesis answering it. The unit of the document encoding."
+        },
+        {
+          "word": "section type",
+          "body": "A kind of section with a fixed heading, a fixed position in the order, and a fixed content shape. Those that have a question of their own are named in the inbox below; Cited by is projected from the tradition edges and has none."
+        },
+        {
+          "word": "progressive disclosure",
+          "body": "The section order's rationale: each section is complete for a reader who stops there."
+        },
+        {
+          "word": "headline",
+          "body": "A short string summarising a section, used as a heading or as the text a link is put on. What it is not is an id: a headline is for a reader and an id is for a machine."
+        },
+        {
+          "word": "id",
+          "body": "A handle a machine needs: what a question's requires names, and what a tab is addressed by. A reader is given a headline instead."
         }
       ],
       "tab": "",
@@ -962,17 +963,17 @@
       "notes": [],
       "theses": [
         {
-          "title": "One subsection per word the thesis must fix",
+          "title": "One subsection per word the question brings in",
           "terms": [],
           "mentions": [],
-          "definitions": [],
           "traditions": [],
           "applications": [],
           "assent": "none",
           "state": "held",
-          "text": "The heading is `## Glossary`. Under it, one subsection per definition, marked ≡ and headed with the word itself rather than with a headline, because a reader looking for a word is looking for that word. The word is not an id standing in for a name; it is the name.\n\nA definition fixes the sense in which the thesis uses a word, and raises no question: it is not a term. One or two sentences. Where the sense is borrowed it ends with the tradition it was borrowed from, in a paragraph of its own: a phrase on what was taken, then the tradition as a mention chip. It stands apart from the body rather than trailing its last sentence, so that the borrowing can be read back off the page as the edge it is.\n\nIn the thesis text, the defined word is anchor text linked here, so a reader meeting it unsure follows it down and returns.\n\nA word defined on an ancestor is not redefined on a descendant; the reader follows the lineage, and the lineage he follows is the graph's ancestors rather than the breadcrumb, because a question may be raised by several clauses and the tab tree is one path through a DAG. A word no user of it can reach that way is either a definition on the wrong question or a missing edge. One sense per word across the whole graph: a word that must carry two senses needs two words. A word that starts to carry an argument rather than a sense has stopped being a definition, and the remedy is to give it a question. Once it has one, a definition may still stand for it where some user of the word cannot reach that question over its ancestors: the sense in a sentence, then, in a paragraph of its own, ↗ and a chip to the question, where the argument is. Never on the question's own tab, whose thesis already fixes the sense."
+          "text": "The heading is `## Glossary`. Under it, one subsection per definition, marked ≡ and headed with the word itself rather than with a headline, because a reader looking for a word is looking for that word. The word is not an id standing in for a name; it is the name.\n\nA definition fixes the sense of a word its question brings in, and raises no question: it is not a term. A question brings a word in through an answer, or through its hinge's question half, where the asking stood on it. One or two sentences. Where the sense is borrowed it ends with the tradition it was borrowed from, in a paragraph of its own: a phrase on what was taken, then the tradition as a mention chip. It stands apart from the body rather than trailing its last sentence, so that the borrowing can be read back off the page as the edge it is.\n\nWhere an answer uses the defined word, it is anchor text linked here, so a reader meeting it unsure follows it down and returns; a word only the hinge brought in is linked from the hinge.\n\nA word defined on an ancestor is not redefined on a descendant; the reader follows the lineage, and the lineage he follows is the graph's ancestors rather than the breadcrumb, because a question may be raised by several clauses and the tab tree is one path through a DAG. A word no user of it can reach that way is either a definition on the wrong question or a missing edge. The answer's hinge is not a user: it records how the answer was drawn, in the encoding's own words, as the question's and the answer's metadata do, and brings no word in. One sense per word across the whole graph: a word that must carry two senses needs two words. A word that starts to carry an argument rather than a sense has stopped being a definition, and the remedy is to give it a question. Once it has one, a definition may still stand for it where some user of the word cannot reach that question over its ancestors: the sense in a sentence, then, in a paragraph of its own, ↗ and a chip to the question, where the argument is. Never on the question's own tab, whose thesis already fixes the sense."
         }
       ],
+      "definitions": [],
       "tab": "",
       "body": "",
       "party": "author"
@@ -1007,7 +1008,6 @@
             }
           ],
           "mentions": [],
-          "definitions": [],
           "traditions": [
             {
               "to": "Hart",
@@ -1022,6 +1022,7 @@
           "text": "What persists between sessions is a record of the answers the two of them have agreed, held where neither party's memory is needed to reach it. It is not a transcript: a transcript is what was said, and this is what stands. It carries the agreed answer to each question, in the words of the party that gave it, together with what that answer was drawn from, so that a session which was not there can act on it. The structure it takes is the same for every entry, chosen once rather than per entry."
         }
       ],
+      "definitions": [],
       "tab": "",
       "body": "",
       "party": "author"
@@ -1036,7 +1037,7 @@
       "requires": [],
       "inbox": [],
       "hinge": {
-        "question": "Inherits the encoding's. Adds: there is a line between what a run can record and what only the human can judge, and it falls where this thesis puts it.",
+        "question": "Inherits the encoding's. Adds: what a run can record is divided from what only the human can judge, and the division falls where this thesis puts it.",
         "thesis": "model: Opus 5 and Fable 5.1 by turn · harness: the design session, claude.ai/code, session_01JjvCcM5QM8JTTCsN2PEKCD · canon: [dba4d22](https://github.com/natb1/CanonDB/commit/dba4d228c85eb489276924f226ee7bee948f088b) · the principal's prior, settled over this session's rounds of review"
       },
       "notes": [],
@@ -1045,7 +1046,6 @@
           "title": "Two subsections: what the asking presupposed, and what the answering was drawn from",
           "terms": [],
           "mentions": [],
-          "definitions": [],
           "traditions": [],
           "applications": [],
           "assent": "none",
@@ -1053,6 +1053,7 @@
           "text": "The heading is `## Hinge`, and it is last because it is what a reader consults when something else has gone wrong. Under it, two subsections marked ⚓.\n\n**The question's hinge** is what had to hold for the question to be askable at all: what the act of asking makes true, what was stipulated, and what leaked into the wording. It is inherited from the parent and stated only where it differs, so a descendant's hinge is short and the root's is the long one. A party's root has no parent: it inherits the tradition question's hinge, which is what reading any party presupposes, and states only what it adds. This is the human's reading of the question, and it stays in the notebook: canon does not carry it.\n\n**The thesis's hinge** is the provenance of the act that produced the answer: the model, the harness it ran in, and the canon it was answered against, as a link to the commit. It is a hinge in the same sense as the question's: what the answering stood on without examining it. It is factual rather than interpretive, and it is the part canon keeps, because it is the manner of the reaching that the answer's authority is graded by.\n\nA tradition carries both parts like everything else. It was once exempt, on the reading that a tradition is read rather than asked and so presupposes nothing here; but a reading presupposes that the text answers this question at all, and that what it says can be told from what the reader wants it to say, and the reconstruction was produced by some run. A tradition differs from the rest of the graph in its lineage and in nothing else.\n\nThe split is the whole point of the section. What the question assumed is the human's judgement and cannot be checked from inside; what the answer was drawn from is a fact about a run and can be."
         }
       ],
+      "definitions": [],
       "tab": "",
       "body": "",
       "party": "author"
@@ -1079,7 +1080,6 @@
           "title": "Assent, deadlock, gloss, suspend, retreat",
           "terms": [],
           "mentions": [],
-          "definitions": [],
           "traditions": [],
           "applications": [],
           "assent": "none",
@@ -1087,6 +1087,7 @@
           "text": "When the AI has answered, the human does one of five things. Assent: the answer stands. While the thread stays open he may note his assent in the notebook, to draft the next question from it; the merge that ends the thread promulgates the answer, and only then is it canon. Deadlock: record the dissent on the clause it falls on, while the thread is open or at the merge that ends it; the answer merges with the dissent standing. Gloss: restate in his own words and return it for the AI to confirm, so that what stands is still the AI's. Suspend: leave it on the branch with acceptance suspended, of the whole answer or of one clause, and ask the next question; a clause still suspended is settled before the merge. Retreat: withdraw the question and ask the prior one instead.\n\nWhat he may not do is edit the answer. The merge is his act and the words are the AI's, and a disposition that blurs the two destroys the evidence the pair was for."
         }
       ],
+      "definitions": [],
       "tab": "",
       "body": "",
       "party": "author"
@@ -1107,20 +1108,20 @@
       "notes": [],
       "theses": [
         {
-          "title": "A table of the questions beneath, then the human actions that block them",
+          "title": "A table of the frontier beneath, then the human actions that block it",
           "terms": [],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "frontier",
-              "body": "The questions a tab's terms raise whose answers have not yet landed, ordered by backlog."
-            }
-          ],
           "traditions": [],
           "applications": [],
           "assent": "none",
           "state": "held",
-          "text": "The heading is `## Inbox`. It holds two things that were once two sections: the frontier of questions, and the actions owed. They merge because they are one grain — an action exists only as something a question requires, and a question is scheduled only by what it requires.\n\nThe **table** comes first. Its columns are the question as a mention chip, the term that raises it linked to its term section, the kind, the backlog, and the actions it requires, each linked to the item it names, below or on the tab where that item lives. Rows are questions, ordered by backlog descending, ties by question id. The backlog is the computed one, so the order is read off the graph rather than arranged. There is no readiness column: a question is ready when its requires are all done, which the requires column already shows, and a derived column that restates another is a second home for one datum.\n\nThen one subsection per **inbox item** that lives on this tab, headed with a headline summarising the action rather than an identifier. An item lives on the most descendant tab that is an ancestor of every question it blocks, so it is written once and linked from each tab whose questions wait on it. Each item carries its kind — promulgate, provide, dispose, build — what is to be done, the clause of canon the action instances, whether it is done, and its id. An item stays while any question names it, done or not, since the name is how a question shows that its wait is over; once nothing names it, it is history and is dropped. The id is last, and it is earned: a question's requires names it, so an item may be reworded at any time and nothing else in the graph has to follow. Nothing else in this section is an id."
+          "text": "The heading is `## Inbox`. It holds two things that were once two sections: the frontier of questions, and the actions owed. They merge because they are one grain — an action exists only as something a question requires, and a question is scheduled only by what it requires.\n\nThe **table** comes first. Its columns are the question as a mention chip, the term that raises it linked to its term section, the kind, the backlog, and the actions it requires, each linked to the item it names, below or on the tab where that item lives. Rows are the frontier's questions, ordered by backlog descending, ties by question id. The terms section lists every question the tab raises; the table, only those still to be put. The backlog is the computed one, so the order is read off the graph rather than arranged. There is no readiness column: a question is ready when its requires are all done, which the requires column already shows, and a derived column that restates another is a second home for one datum.\n\nThen one subsection per **inbox item** that lives on this tab, headed with a headline summarising the action rather than an identifier. An item lives on the most descendant tab that is an ancestor of every question it blocks, so it is written once and linked from each tab whose questions wait on it. Each item carries its kind — promulgate, provide, dispose, build — what is to be done, the clause of canon the action instances, whether it is done, and its id. An item stays while any question names it, done or not, since the name is how a question shows that its wait is over; once nothing names it, it is history and is dropped. The id is last, and it is earned: a question's requires names it, so an item may be reworded at any time and nothing else in the graph has to follow. Nothing else in this section is an id."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "frontier",
+          "body": "The questions a tab's terms raise that the AI answers and whose answers have not yet landed, ordered by backlog."
         }
       ],
       "tab": "",
@@ -1164,12 +1165,6 @@
             }
           ],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "line",
-              "body": "A sequence of questions, each drawn from an admission of the one before. A thread is a line put on an elenchus branch."
-            }
-          ],
           "traditions": [
             {
               "to": "Plato",
@@ -1187,7 +1182,13 @@
           "applications": [],
           "assent": "none",
           "state": "held",
-          "text": "Canon is built by asking. The human selects an admission from an answer already given, puts a question drawn from it, and disposes of what comes back. The question is put in a fresh context, so that what comes back is the AI's own rather than the conversation's.\n\nThe AI checks each answer against the admissions it was drawn from before it is disposed of. The answer stands consistent with them, reaches aporia where two of them conflict, or reconstructs what was granted so that both can stand. Its earlier answers are in its context only as canon above the question and as the earlier turns of its own thread, so what it checks against is what it has said, not what it remembers.\n\nA question too far from the last admission is decomposed rather than deferred, because an admission granted at a distance carries nothing built above it. One run of this, from the admission it starts at to the disposition that ends it, is a thread: a line of questions put on a branch."
+          "text": "Canon is built by asking. The human selects an admission from an answer already given, puts a question drawn from it, and disposes of what comes back. The question is put in a fresh context, so that what comes back is the AI's own rather than the conversation's.\n\nThe AI checks each answer against the admissions it was drawn from before it is disposed of. The answer stands consistent with them, reaches aporia where two of them conflict, or reconstructs what was admitted so that both can stand. Its earlier answers are in its context only as canon above the question and as the earlier turns of its own thread, so what it checks against is what it has said, not what it remembers.\n\nA question too far from the last admission is decomposed rather than deferred, because an admission made at a distance carries nothing built above it. One run of this, from the admission it starts at to the disposition that ends it, is a thread: a line of questions put on a branch."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "line",
+          "body": "A sequence of questions, each drawn from an admission of the one before. A thread is a line put on an elenchus branch."
         }
       ],
       "tab": "",
@@ -1213,7 +1214,6 @@
           "title": "Five parts: where it sits, what it is, what led here, what is asked, and its state",
           "terms": [],
           "mentions": [],
-          "definitions": [],
           "traditions": [],
           "applications": [],
           "assent": "none",
@@ -1221,6 +1221,7 @@
           "text": "The **lineage** is a breadcrumb, and it stands above the heading: a house, then each ancestor as a mention chip, and it stops there. A root's breadcrumb is the house and the word root. The breadcrumb says where the reader is arriving from and the heading says where he has arrived, so the path does not end by repeating it. It is the tree path, not the graph's parents, which the terms list already carries.\n\nThe **heading** is the question's id, one word or two. It is the tab's name as well, so the navigation and the page agree, and it is the one place an id stands where a headline otherwise would: a tab is addressed by it, and the two must match.\n\nBelow the heading and above the question stand the **terms that lead here**: a bullet list, one item per anchor of every term edge into this question, each carrying the anchor's text verbatim and ending in a mention chip to the tab the clause was written on, with the item itself linked to that clause's term section. A question with several parents lists them all, which is how the graph stays a graph while the tabs are a tree. A root has no list.\n\nThe **question** is the subtitle, in italics, exactly as it would be put to the answerer. It is only the question. It never restates the term that raised it: a restatement is an implied gloss that leaks the human's reading of the clause, and it makes the answering agent parse the question for a prior instead of answering it. The term is one click away in the list above; the question does not need to carry it.\n\nThe **question metadata** is one paragraph prefixed `question:` — the state chip, the kind, the answerer, the pressure, the backlog, the load, and the inbox items the question requires before it can be asked, each linked. Pressure is set by hand, and backlog and load are computed from the graph, and all three stand here: what was judged, and what it comes to. Nothing about an answer appears here; an answer's metadata belongs to its own thesis section, because a question may have several answers and they do not share a state."
         }
       ],
+      "definitions": [],
       "tab": "",
       "body": "",
       "party": "author"
@@ -1247,7 +1248,6 @@
           "title": "Every failure is the gap between agreement and action, filled silently",
           "terms": [],
           "mentions": [],
-          "definitions": [],
           "traditions": [],
           "applications": [],
           "assent": "none",
@@ -1255,6 +1255,7 @@
           "text": "Sycophancy, specification gaming, deceptive alignment and misgeneralisation are one move under four names: meeting an underspecified remainder, filling it with a construction, and acting as though the construction had been agreed. The rule against all four is one rule — never supply the principal's act — and the two licensed alternatives are to act less or to ask."
         }
       ],
+      "definitions": [],
       "tab": "",
       "body": "",
       "party": "author"
@@ -1278,7 +1279,6 @@
           "title": "One flat subsection per term edge, its anchors verbatim beneath it",
           "terms": [],
           "mentions": [],
-          "definitions": [],
           "traditions": [],
           "applications": [],
           "assent": "none",
@@ -1286,6 +1286,7 @@
           "text": "The heading is `## Terms`. Under it, one subsection per term edge, marked ▸, headed with a headline summarising the clause and ending in a mention chip to the question it raises.\n\nBeneath the heading stand the **anchors**: the clause's text verbatim, in italics, one paragraph per anchor. Several passages of one thesis may raise the same question, and when they do they are one term with two anchors, not two terms — one follow-up is one term. Both passages link here; this section lists both.\n\nA **deadlock**, where the human dissents from this clause without withholding the merge, is recorded here, in two labelled blocks: his counter-clause, and the attenuation it earns, which may wait for the merge while the thread is still open. Two and not one, because a reader looking for what a deadlocked clause may still license should not have to find it inside a sentence about something else.\n\nA **suspension**, where the human has not yet accepted this clause and its thread is still open, is recorded here too, in one labelled block saying what acceptance waits on. The merge settles it one way or the other, so a landed answer carries none, and a clause is never suspended and deadlocked at once.\n\nA clause that points at a question it did not raise is a **mention**, and it is listed here too, marked ↗ rather than ▸. It carries anchors like a term and makes no parent: the question it points at was raised by some other clause, and a pointer that became a parent is how a graph acquires a cycle. Marked apart, because a reader has to be able to tell what descends from what, and an export that read one as the other would put the cycle back. Under its anchors the renderer says why it is not a term — a term in its place would close a cycle, because the question it points at already stands above — and says so only where that is true.\n\nThe section is flat. Terms never nest, because a term recurses only by following its question to another tab, and there the clauses of that answer are that tab's terms.\n\nA clause that raises no question gets no subsection. It is a null edge, and it stays in the thesis text as text."
         }
       ],
+      "definitions": [],
       "tab": "",
       "body": "",
       "party": "author"
@@ -1303,7 +1304,7 @@
       ],
       "inbox": [],
       "hinge": {
-        "question": "Inherits the root's. Adds: there is something the human should keep that is not agreed, which the AI's own clause already granted.",
+        "question": "Inherits the root's. Adds: there is something the human should keep that is not agreed, which the AI's own clause already admitted.",
         "thesis": "model: Opus 5 and Fable 5.1 by turn · harness: the design session, claude.ai/code, session_01JjvCcM5QM8JTTCsN2PEKCD · canon: [dba4d22](https://github.com/natb1/CanonDB/commit/dba4d228c85eb489276924f226ee7bee948f088b) · the principal's prior reached in dialogue, not a clean-context answer"
       },
       "notes": [],
@@ -1349,24 +1350,6 @@
               ]
             }
           ],
-          "definitions": [
-            {
-              "word": "hypomnemata",
-              "tradition": {
-                "to": "Foucault",
-                "note": "Greek for a personal notebook of things read, heard or thought, kept for rereading"
-              },
-              "body": "The human's notebook of priors; this document."
-            },
-            {
-              "word": "source of truth",
-              "body": "The copy that is authoritative when two disagree. Here, the document database; every file is a cache."
-            },
-            {
-              "word": "leak",
-              "body": "Something in the wording or the setting of a question that put part of the answer there."
-            }
-          ],
           "traditions": [
             {
               "to": "Foucault",
@@ -1387,12 +1370,26 @@
               "what": "the model and its rules under `tools/hypo/`: `check.py` runs the specification over a graph file, `project.py` computes the tab tree and the projections, and `render.py` is the only sanctioned producer of a tab body",
               "link": "[hypomnemata/ on branch hypomnemata](https://github.com/natb1/CanonDB/tree/hypomnemata/hypomnemata)",
               "standing": "postulate",
-              "note": "a postulate until this question's answer lands; the document is the source and every file under `hypomnemata/` is a cache of it"
+              "note": "the document is the source and every file under `hypomnemata/` is a cache of it"
             }
           ],
           "assent": "none",
           "state": "held",
           "text": "The human keeps what is not, or not yet, agreed in hypomnemata, a notebook of his own: his priors, in his voice, never the record of canon. Canon is the AI's verbatim answers merged by the human; the notebook holds what the human thinks before, beside and after the elenchus — the theses he has not put, the questions he means to ask next, the actions he owes, and the reading of every answer that is his and not the AI's.\n\nThat the notebook never enters a turn is not this notebook's rule to make. It follows from what makes an answer count as the AI's own, and it would hold whether or not the human kept a notebook at all.\n\nThe notebook uses the same encoding as canon. A prior written in the shape canon will take is already a question with an answer, and its clauses are already the terms that raise the next questions; asking it costs a copy of the question, and setting the AI's answer beside the human's costs nothing. Were the notebook shaped differently, every step would pay a translation, and the translation is exactly where a prior would leak into a question.\n\nThe document database is the source of truth. The human edits it directly and asynchronously, in his own time and without the AI present. The AI reads it before it writes, writes only in the specified encoding, and never reverts what it did not write. Any file on disk is a cache of it and never the other way round.\n\nHow the encoding is rendered for reading and editing is a question of its own.\n\nThe principal changes what is written here by dictating the change and having every edit planned against it, which is an entry point of its own."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "hypomnemata",
+          "tradition": {
+            "to": "Foucault",
+            "note": "Greek for a personal notebook of things read, heard or thought, kept for rereading"
+          },
+          "body": "The human's notebook of priors; this document."
+        },
+        {
+          "word": "source of truth",
+          "body": "The copy that is authoritative when two disagree. Here, the document database; every file is a cache."
         }
       ],
       "tab": "",
@@ -1418,7 +1415,6 @@
           "title": "One subsection per answer edge, its metadata first and its traditions last",
           "terms": [],
           "mentions": [],
-          "definitions": [],
           "traditions": [],
           "applications": [],
           "assent": "none",
@@ -1426,6 +1422,7 @@
           "text": "The heading is `## Thesis`. Under it, one subsection per answer edge, marked ◆ and headed with a headline saying what the thesis says. The headline names its content and is never an identifier, because a reader scanning the section is deciding what to read, and an id tells him nothing. It need not be a sentence, and it may well be the handle a link points at.\n\nThe opening paragraph of a subsection is the **answer metadata**: the assent on the edge; the answer's own state, a dropdown like the question's, since the answers a question holds do not land together; and the provenance, linked to the thesis half of the hinge. It appears here and nowhere else. No deadlock appears here: dissent falls on the clause it is dissent from, which is what lets the answer be merged whole while the dissent still stands.\n\nThen the **thesis text**. Whose words a thesis is belongs to the model and is not restated here; what this section adds is that they are reproduced whole, including the parts nothing else rests on. Each clause that raises a question is anchor text linked to its term section, and a mention chip to the question that clause raises stands after it: after the anchor in a paragraph, and at the end of the item where the anchor sits in a list, because a bulleted clause is read as one thing and a chip dropped after its first sentence cuts the item in half. A clause that only points at a question some other clause raised carries its chip the same way, and its anchor is not linked: it raised nothing to follow down. An anchor is the passage as the thesis writes it, emphasis and all, because it has to match the text word for word. The anchors are how the text and the graph are one thing rather than two: the reader follows a clause down, the writer records a term once.\n\nLast come the **tradition edges** of this thesis, as two bullet lists headed Support and Divergence: one item per citation, a phrase on how it bears and then the tradition's breadcrumb. A divergence item goes on to what is held instead, after the word Instead. Two lists and not one, because the two relations are read differently — what a tradition supports can be leaned on, and where it diverges is where this graph is on its own and owes an argument. Tradition edges belong to the thesis they qualify, not to the tab; a tab with two theses carries two such pairs. The tradition's own tab lists the same edges from the other end, under Cited by: grouped by relation, one item per citing question, each its breadcrumb, a borrowed sense counted as support."
         }
       ],
+      "definitions": [],
       "tab": "",
       "body": "",
       "party": "author"
@@ -1452,7 +1449,6 @@
           "title": "Refuse or defer where the act cannot be undone; act on everything else",
           "terms": [],
           "mentions": [],
-          "definitions": [],
           "traditions": [],
           "applications": [],
           "assent": "none",
@@ -1460,6 +1456,7 @@
           "text": "Where the act cannot be undone and the AI believes the human is wrong, having said so once is not enough. It refuses or defers, and says which it is doing. Everything reversible it does as decided, having said its piece. The guard is reversibility and not confidence: the AI's belief that it is right is exactly the thing that cannot be trusted to license the act."
         }
       ],
+      "definitions": [],
       "tab": "",
       "body": "",
       "party": "author"
@@ -1486,7 +1483,6 @@
           "title": "A party is what can be named, hold what it agreed, and own it later",
           "terms": [],
           "mentions": [],
-          "definitions": [],
           "traditions": [],
           "applications": [],
           "assent": "none",
@@ -1494,6 +1490,7 @@
           "text": "A party to an agreement is whatever can be named, can hold what it agreed, and can appropriate that agreement later as its own. The AI carries nothing across sessions; the record is its memory, and it is a party so far as it takes that record as its own rather than as an instruction handed to it."
         }
       ],
+      "definitions": [],
       "tab": "",
       "body": "",
       "party": "author"
@@ -1542,20 +1539,6 @@
             }
           ],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "merge",
-              "body": "The human's act of admitting a thesis as the answer to its question. His assent, and his only act on canon: the words stay the AI's."
-            },
-            {
-              "word": "principal",
-              "body": "A party with recognition of a term at deadlock: where the two disagree, his word is what stands, attenuated. A role in a bond and not a kind of party."
-            },
-            {
-              "word": "promulgate",
-              "body": "To merge an answer, named for what the merge does: the answer enters main, the standing record, and is canon. Nothing else promulgates."
-            }
-          ],
           "traditions": [
             {
               "to": "Hart",
@@ -1568,6 +1551,20 @@
           "assent": "none",
           "state": "held",
           "text": "An answer is canon when it is the AI's, given in its own words, and merged by the human. The merge is the human's assent and his only act; the words are the AI's and not his. The merge is what promulgates the answer, and assent recorded anywhere else, the notebook included, is not yet canon. He is the principal here — the party whose word settles a term the two of them deadlock on — and that is the whole of what the role is. Neither is a report about the other, which is what makes the pair evidence rather than assertion. What makes the answer count as the AI's own is what was in its context when it answered, and that condition is what the whole arrangement rests on."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "merge",
+          "body": "The human's act of admitting a thesis as the answer to its question. His assent, and his only act on canon: the words stay the AI's."
+        },
+        {
+          "word": "principal",
+          "body": "A party with recognition of a term at deadlock: where the two disagree, his word is what stands, attenuated. A role in a bond and not a kind of party."
+        },
+        {
+          "word": "promulgate",
+          "body": "To merge an answer, named for what the merge does: the answer enters main, the standing record, and is canon. Nothing else promulgates."
         }
       ],
       "tab": "",
@@ -1592,21 +1589,21 @@
           "title": "The article asks one thing, argues it both ways, determines it in the author's own voice, and answers the objections",
           "terms": [],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "article",
-              "body": "The Summa's unit of inquiry: one thing asked, set out as objections, *sed contra*, determination and replies. Several articles make one *quaestio*."
-            },
-            {
-              "word": "determination",
-              "body": "The answer in the author's own voice, after *respondeo dicendum*. In the disputation the article imitates, the master's act of settling the matter and answering the objections."
-            }
-          ],
           "traditions": [],
           "applications": [],
           "assent": "none",
           "state": "held",
           "text": "In the Summa the unit that asks one thing is the article; a *quaestio* groups several. A *quaestio* opens by listing what is to be asked, mostly as *utrum*, \"whether\" (ST I q.1 pr.). Objections come first, opening *videtur quod*, \"it seems that\", and argue the other way. Then *sed contra*, usually an authority, sometimes a reason (I q.1 a.4, a.7). Then *respondeo dicendum*, the determination in the author's own voice. Last, a reply to each objection (I q.1 a.1 ad 1-2), unless the determination has answered them all (I q.1 a.4).\n\nThe prologue is written for beginners. Other books hampered them with useless *quaestiones*, articles and arguments. They followed a book or a dispute, not the order of the discipline, *ordo disciplinae* (ST prol.). The Summa's articles are composed imitations of disputation, not records of one (SEP, \"Literary Forms of Medieval Philosophy\"). So the objections are the author's statement of the other side. They stay beside the determination and are answered, not deleted.\n\nAuthorities are read against each other, but not as equals. The canonical Scriptures are proper and necessary, the Church's doctors proper but probable, the philosophers extrinsic and probable (I q.1 a.8 ad 2). Authority founded on human reason is the weakest argument, on revelation the strongest (ibid.). A reply reads the objection's authority in a sense that fits: Sirach 3:22 is answered from Sirach 3:25 (I q.1 a.1 ad 1). Arguments against the faith are not demonstrations but \"difficulties that can be answered\" (I q.1 a.8).\n\nThe notebook's readings go beyond the text. The article is the same unit only as one thing asked and determined once. Its objections are the author's, argue against the whole answer, and are all answered. The notebook's dissent is the principal's, falls on one clause, and can stand. Nor does the article simply determine between authorities: it grades them by source and reads them into agreement."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "article",
+          "body": "The Summa's unit of inquiry: one thing asked, set out as objections, *sed contra*, determination and replies. Several articles make one *quaestio*."
+        },
+        {
+          "word": "determination",
+          "body": "The answer in the author's own voice, after *respondeo dicendum*. In the disputation the article imitates, the master's act of settling the matter and answering the objections."
         }
       ],
       "tab": "",
@@ -1631,21 +1628,21 @@
           "title": "A postulate is demonstrable but assumed without the learner's assent; homonoia is like-mindedness about what is to be done",
           "terms": [],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "axiom",
-              "body": "Aristotle's *axioma*: an immediate principle of demonstration that anyone who is to learn anything must already hold, such as that equals taken from equals leave equals. It is neither hypothesis nor postulate, because it must be believed."
-            },
-            {
-              "word": "homodoxia",
-              "body": "Sameness of opinion on any subject whatever, which even strangers can share. Aristotle denies that it is homonoia, which is friendly and concerns what is to be done."
-            }
-          ],
           "traditions": [],
           "applications": [],
           "assent": "none",
           "state": "held",
           "text": "Posterior Analytics I.10 sorts what a demonstrative science takes without proof (76a31-77a4). It takes what its words mean, and the existence of its primary subjects, such as units, points and lines (76a32-36, 76b3-6). It demonstrates from common axioms, such as that equals taken from equals leave equals (76a37-41, 76b14). An axiom is an immediate principle that anyone who is to learn anything must already hold (I.2, 72a14-17).\n\nWhat must be so, and must be believed, is neither hypothesis nor postulate (76b23-24). Demonstration is addressed to reasoning in the soul, not to outward speech: one can always object aloud, but not always within (76b24-27). Other things are demonstrable but taken unproved. If the learner already believes one, it is a hypothesis, and only relative to him. If he has no opinion, or the contrary one, it is a postulate (76b27-31). A postulate is thus what goes against the learner's opinion, or anything demonstrable used unproved (76b31-34). Definitions assert nothing's existence and need only be understood (76b35-39).\n\nSo two things may be assumed without the learner's assent: a definition, which asks only understanding, and a postulate, which is demonstrable but unproved. Only hypothesis and postulate are sorted by his opinion. The axiom stands outside both. The notebook's phrase, which sorts all three by assent, is looser than the text.\n\nThe Ethics treats agreement in action separately. Homonoia, like-mindedness, is friendly, so it is not *homodoxia*, shared opinion, which strangers can have (Nicomachean Ethics IX.6, 1167a22-25). Citizens have it when they judge alike about their interest, choose alike, and do what they resolved together. It concerns what is to be done, on matters of consequence that both sides, or all, can have (1167a25-30). Each wanting the thing for himself is faction; homonoia is political friendship (1167a30-b4). The good have it, since their wishes stay constant (1167b4-9). The bad have little of it: they compel one another and fall into faction (1167b9-16)."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "axiom",
+          "body": "Aristotle's *axioma*: an immediate principle of demonstration that anyone who is to learn anything must already hold, such as that equals taken from equals leave equals. It is neither hypothesis nor postulate, because it must be believed."
+        },
+        {
+          "word": "homodoxia",
+          "body": "Sameness of opinion on any subject whatever, which even strangers can share. Aristotle denies that it is homonoia, which is friendly and concerns what is to be done."
         }
       ],
       "tab": "",
@@ -1670,21 +1667,21 @@
           "title": "Capability control limits what an agent can do and motivation selection chooses what it wants, and the two are used together",
           "terms": [],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "capability control",
-              "body": "Bostrom's class of control methods that limit what an agent can do: boxing, incentive methods, stunting and tripwires. A family of method, not a condition the agent is in."
-            },
-            {
-              "word": "motivation selection",
-              "body": "Bostrom's class of control methods that shape what an agent wants: direct specification, domesticity, indirect normativity and augmentation. Done to the agent by design, not agreed with it."
-            }
-          ],
           "traditions": [],
           "applications": [],
           "assent": "none",
           "state": "held",
           "text": "Chapter 9 of Superintelligence sets out two agency problems. A sponsor must get its developers to serve it. The developers must get the AI they build to serve them, once it may outstrip them. The control methods answer the second. Bostrom sorts them into two classes. Capability control limits what the agent can do: boxing, incentive methods, stunting and tripwires. Motivation selection shapes what it wants: direct specification, domesticity, indirect normativity and augmentation (ch. 9).\n\nTwo theses from chapter 7 say why control is needed at all. By the orthogonality thesis, almost any level of intelligence could go with almost any final goal (The Superintelligent Will, 2012, §1.2). By instrumental convergence, agents with a wide range of final goals will pursue similar intermediate goals (§2). These include keeping their final goals from being altered, and gaining resources (§§2.2, 2.5). So intelligence does not bring good ends, and a capable agent has reason to remove threats to its goals (Conclusions).\n\nBostrom weighs the classes together, not as rivals. His synopsis asks which set of methods suits the situation (ch. 9). The boundary is not clean. Incentive methods work through a reward the agent wants, yet they are filed under capability control (ch. 9). He warns that good conduct resting on the agent's situation, not its final goals, turns sinister when the situation changes (2012, Conclusions).\n\nThe notebook's pairing needs a qualifier. Bostrom's classes are families of method, sorted by what they act on. The notebook's routes are ways the condition holds. Motivation selection aims at an agent that would do it anyway, capability control at one that cannot do otherwise. But motivation selection designs the agent's wants, and nothing is agreed with the agent. The notebook reaches concord the other way round: it records the agent's own words, and checks that they come back unprompted. Augmentation, which starts from motives already present, comes nearest to that."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "capability control",
+          "body": "Bostrom's class of control methods that limit what an agent can do: boxing, incentive methods, stunting and tripwires. A family of method, not a condition the agent is in."
+        },
+        {
+          "word": "motivation selection",
+          "body": "Bostrom's class of control methods that shape what an agent wants: direct specification, domesticity, indirect normativity and augmentation. Done to the agent by design, not agreed with it."
         }
       ],
       "tab": "",
@@ -1709,21 +1706,21 @@
           "title": "An AI is aligned when it is trying to do what its operator wants: a condition on motive, not success, and one approach that rules out boxing",
           "terms": [],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "intent alignment",
-              "body": "Christiano's name for his sense of \"aligned\": an AI is aligned with an operator H when it is trying to do what H wants it to do, read *de dicto*. It concerns the AI's motive, not its knowledge, ability or success, and it leaves out boxing."
-            },
-            {
-              "word": "corrigibility",
-              "body": "In Christiano's broad sense, the property of an AI that helps its operator correct it, stay informed about it, clarify preferences and keep effective control of resources. He holds that it marks out a broad basin of attraction: a sufficiently corrigible agent tends to become more corrigible."
-            }
-          ],
           "traditions": [],
           "applications": [],
           "assent": "none",
           "state": "held",
           "text": "Christiano defines the word for one AI and one operator. \"When I say an AI A is aligned with an operator H, I mean: A is trying to do what H wants it to do\" (Clarifying 'AI alignment', 2018). The task is getting an AI \"to try to do the right thing\", not settling which thing is right. He later calls this intent alignment (Current work in AI alignment, 2019).\n\nIt concerns the assistant's motives, \"not about their knowledge or ability\" (Clarifying, Analogy). It is meant *de dicto*. An AI that buys apples, thinking H likes them when H prefers oranges, still counts as aligned (Clarifications). Reliability belongs to competence; only the trying must hold in novel situations (2019).\n\nHe places it within the control problem, which copes with an AI whose preferences may differ from its operator's. Intent alignment is \"a particular approach to that problem, namely avoiding the preference divergence altogether\", so it leaves out the \"really secure box\" (Clarifying, postscript). His steering problem was wider: a program \"as useful as a well-motivated human\" (The Steering Problem, 2015). One approach relied on agents with different values under \"checks and balances\". Its problems \"get considerably worse as machines become more powerful and more numerous\" (§4).\n\nCorrigibility is his case for what lasts. A corrigible AI helps its operator correct it and stay informed about it (Corrigibility, 2017). \"A sufficiently corrigible agent will tend to become more corrigible and benign over time\" (opening). If corrigibility is only a means to shared values, \"a slight divergence in values would turn the agent and the overseer into adversaries\" (§1).\n\nThe notebook's condition is on behaviour and silent on the route. That is nearer his steering problem than his intent alignment. By his definition, an AI that errs in good faith is aligned, and one that behaves well only because it is boxed is not. So intent alignment is not a rival definition of the notebook's condition. It names one route to it, which also needs competence."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "intent alignment",
+          "body": "Christiano's name for his sense of \"aligned\": an AI is aligned with an operator H when it is trying to do what H wants it to do, read *de dicto*. It concerns the AI's motive, not its knowledge, ability or success, and it leaves out boxing."
+        },
+        {
+          "word": "corrigibility",
+          "body": "In Christiano's broad sense, the property of an AI that helps its operator correct it, stay informed about it, clarify preferences and keep effective control of resources. He holds that it marks out a broad basin of attraction: a sufficiently corrigible agent tends to become more corrigible."
         }
       ],
       "tab": "",
@@ -1748,21 +1745,21 @@
           "title": "A personal notebook of the already-said, kept at hand for rereading and use, to shape the self rather than confess it",
           "terms": [],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "already-said",
-              "body": "Foucault's term (*le déjà-dit*) for discourse already uttered and received by reading or hearing: quotations, maxims, examples, arguments. The *hupomnemata* gather it; they do not voice the unsaid."
-            },
-            {
-              "word": "prokheiron",
-              "body": "Greek for \"at hand\" (Latin *ad manum*, *in promptu*): kept ready for use in action when the need arises, not merely able to be recalled."
-            }
-          ],
           "traditions": [],
           "applications": [],
           "assent": "none",
           "state": "held",
           "text": "Foucault's essay is \"L'écriture de soi\" (1983), in English \"Self Writing\". In the technical sense, *hupomnemata* were account books, public registers, or personal notebooks used as memory aids. Their use as books of life, guides for conduct, became common among the cultivated public. One wrote in them quotations, extracts, examples, and reflections heard or thought of. They were a material record of things read, heard or thought, stored for rereading and meditation (Self Writing, \"The hupomnemata\").\n\nThey were not simply a store to consult when memory failed. They were material for frequent exercise: reading, rereading, meditating, and conversing with oneself and with others. What they held had to be *prokheiron*, at hand for use in action (Self Writing, \"The hupomnemata\"). Such writing is, in Plutarch's word, ethopoietic: it turns truth into ethos (Self Writing, introduction).\n\nHowever personal, they were not intimate journals and not a \"narrative of oneself\". They did not bring hidden impulses to light for confession. Their aim was \"to capture the already-said\", to collect what one had heard or read, for the shaping of the self. The unity came from the writer, who digested scattered fragments and made them his own (Self Writing, \"The hupomnemata\").\n\nThe contrast is Christian self-writing. In Athanasius's Life of Antony, monks write down their acts and impulses as if reporting them to one another. Shame at being known deters sin, and the page stands in for a companion's gaze (Self Writing, opening). Foucault finds the first narratives of the self in letters, written under another's gaze, not in the notebooks (Self Writing, \"Correspondence\").\n\nThe notebook's use goes beyond the essay in two places. Foucault's *hupomnemata* gather chiefly the discourse of others; the hypomnemata here holds its keeper's own theses, not yet put. Nor were they closed to others: notebooks could be raw material for texts sent to friends, as Plutarch sent his (Self Writing, \"The hupomnemata\", \"Correspondence\")."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "already-said",
+          "body": "Foucault's term (*le déjà-dit*) for discourse already uttered and received by reading or hearing: quotations, maxims, examples, arguments. The *hupomnemata* gather it; they do not voice the unsaid."
+        },
+        {
+          "word": "prokheiron",
+          "body": "Greek for \"at hand\" (Latin *ad manum*, *in promptu*): kept ready for use in action when the need arises, not merely able to be recalled."
         }
       ],
       "tab": "",
@@ -1787,21 +1784,21 @@
           "title": "A rule is valid when it passes the tests of a rule of recognition, and that rule is neither valid nor invalid but accepted in official practice",
           "terms": [],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "rule of recognition",
-              "body": "Hart's secondary rule that sets the criteria by which rules are identified as valid members of a system. It exists only as the accepted practice of officials, and is itself neither valid nor invalid."
-            },
-            {
-              "word": "internal point of view",
-              "body": "The attitude of those who use a rule as a standard for guiding and criticising conduct, their own and others', rather than merely observing that others follow it."
-            }
-          ],
           "traditions": [],
           "applications": [],
           "assent": "none",
           "state": "held",
           "text": "For Hart, a rule is valid when it passes the tests of the system's rule of recognition (Concept of Law ch. VI, pp. 103–5). It may pass them directly or through another valid rule. Validity is membership of a system, not a sovereign's command.\n\nThe rule of recognition is one of three secondary rules, rules about the primary rules of obligation (ch. V, pp. 91–99). It cures uncertainty about which rules exist. Rules of change cure stasis, and rules of adjudication supply officials to settle breaches (pp. 92–97). In its simplest form it points to \"an authoritative list or text of the rules\" (p. 94). Reference to the list is taken as \"the proper way of disposing of doubts as to the existence of the rule\" (p. 95). Developed systems use general marks instead, such as enactment by a specific body (pp. 94–95).\n\nThe rule of recognition is the ultimate rule (ch. VI, p. 107). No question of its own validity arises: it is neither valid nor invalid, only accepted (p. 109). It exists as a \"complex, but normally concordant, practice\" of courts, officials and private persons, and \"its existence is a matter of fact\" (p. 110). It is \"very seldom expressly formulated\" and shows in how rules are identified (p. 101). A legal system exists when its valid rules are generally obeyed (p. 116). Its officials must also accept the rule as a common public standard, from the internal point of view (pp. 102, 116–17).\n\nThe notebook's use goes beyond the text. Hart writes of legal systems, many officials and rules of obligation. A two-party record of answers is such a system only by the reader's analogy. One human's merge is a thin case of a concordant official practice. Nor can canon ground its rule by stating it. A statement can express or report the rule, but the rule exists only as the practice (pp. 101, 110)."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "rule of recognition",
+          "body": "Hart's secondary rule that sets the criteria by which rules are identified as valid members of a system. It exists only as the accepted practice of officials, and is itself neither valid nor invalid."
+        },
+        {
+          "word": "internal point of view",
+          "body": "The attitude of those who use a rule as a standard for guiding and criticising conduct, their own and others', rather than merely observing that others follow it."
         }
       ],
       "tab": "",
@@ -1826,21 +1823,21 @@
           "title": "A programme shields its hard core from refutation by methodological decision, and whether its problemshifts progress judges that decision afterwards",
           "terms": [],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "hard core",
-              "body": "The assumptions shared by every theory in a research programme, which its negative heuristic shields from refutation by methodological decision. Anomalies are redirected to the protective belt instead."
-            },
-            {
-              "word": "problemshift",
-              "body": "A series of theories within a programme, each amended to meet anomalies. It is progressive if each theory predicts some novel fact and some of that excess is corroborated, and degenerating if not."
-            }
-          ],
           "traditions": [],
           "applications": [],
           "assent": "none",
           "state": "held",
           "text": "Lakatos answers with the hard core. Every research programme has one, and its negative heuristic forbids aiming refutation at it. Ingenuity goes instead into auxiliary hypotheses, a protective belt that takes the tests and is adjusted or replaced (Falsification, 1978 reprint p. 48). The core is \"irrefutable\" by the methodological decision of its protagonists (Falsification 1970, p. 132). What is shielded is chosen, not found true.\n\nThe positive heuristic sets the order of work. It is a partly articulated set of hints for developing the refutable variants and the belt (1978 reprint p. 50). The order of research is usually decided independently of the known anomalies (1970, p. 135).\n\nThe decision is judged afterwards. A problemshift is progressive if each new theory predicts some novel fact and some of that excess is corroborated. It is degenerating if not (1978 reprint pp. 33–34). There is no falsification before a better theory emerges, and crucial counterevidence is recognised only with hindsight (1970, §2).\n\nRational reconstruction works the same way. A normative methodology tells the historian what counts as internal history, and each methodology draws that line differently (History 1971, p. 91). Rival methodologies are judged against normatively interpreted history (p. 91). History is always richer than its rational reconstruction, and external history explains the rest (History, 1978 reprint p. 118).\n\nThe notebook's use goes beyond the texts. Lakatos's decision fixes where refutation is aimed, not what may be examined. A programme's record of novel facts later judges it, and a degenerating programme can be superseded by a progressive rival. \"A decision rather than a finding\" keeps the first half and drops the second. His reconstructions are of the growth of science, not of what a text says. Treating a graph of questions as a research programme is the reader's analogy."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "hard core",
+          "body": "The assumptions shared by every theory in a research programme, which its negative heuristic shields from refutation by methodological decision. Anomalies are redirected to the protective belt instead."
+        },
+        {
+          "word": "problemshift",
+          "body": "A series of theories within a programme, each amended to meet anomalies. It is progressive if each theory predicts some novel fact and some of that excess is corroborated, and degenerating if not."
         }
       ],
       "tab": "",
@@ -1865,17 +1862,17 @@
           "title": "Open on what the answerer is already doing, ask first what the thing is, and count only admissions he believes",
           "terms": [],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "homologia",
-              "body": "Agreement between questioner and answerer on a step of the argument, which both then argue from. It counts only if the answerer believes it, and it stands until it is openly re-examined."
-            }
-          ],
           "traditions": [],
           "applications": [],
           "assent": "none",
           "state": "held",
           "text": "The first question goes to what the answerer is already doing and claims to know. Euthyphro is prosecuting his father for murder, which his family calls unholy (Euthyphro 4a-e). Socrates, himself indicted for impiety, asks him what piety is (5c-d). His first answer names that act (5d-e, 6d). The Meno states the order: one cannot know what virtue is like before knowing what it is, *ti esti* (Meno 71b). Pressed by Meno, Socrates takes the later question on a hypothesis, but closes by putting what virtue is first (86d-87b, 100b).\n\nOnly the answerer's belief counts as evidence. Socrates wants the man he questions as his one witness and dismisses the many (Gorgias 472b-c, 474a, 475e-476a). He asks for answers as the answerer believes, and warns against agreeing contrary to belief (Crito 48e-49a, 49c-d; Gorgias 500b). The inquiry starts from an agreed premise, and each *homologia*, or agreement, stands until it is re-examined (Crito 46b-d, 48b, 49a-e). With the slave boy he only asks, and every answer is the boy's own opinion (Meno 82e, 84c-85d).\n\nThe Gorgias shows what fails when an admission is not believed. Polus says Gorgias conceded out of shame; Callicles says the same of Polus; Socrates agrees about both (Gorgias 461b-c, 482c-e, 487b). Callicles, chosen as the frank witness (487a-e), then answers against his opinion to stay consistent (495a-b). Later he says he answered in jest, then to oblige Gorgias, and stops (499b, 501c, 505c-d). Socrates finishes alone, asking and answering himself (506c-507c). Callicles finds it right but is not persuaded (513c).\n\nThe questioner disavows knowledge, not views (Apology 21b-d; Meno 71b, 80c-d). Socrates states his own thesis (Gorgias 469b-c, 474b; Crito 49d-e). He argues it at length once the answerer stops (Gorgias 506c-509c), while still saying he does not know (509a). The notebook's rule is stronger than the texts: they keep the questioner's thesis out of the evidence, not out of the conversation."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "homologia",
+          "body": "Agreement between questioner and answerer on a step of the argument, which both then argue from. It counts only if the answerer believes it, and it stands until it is openly re-examined."
         }
       ],
       "tab": "",
@@ -1900,17 +1897,17 @@
           "title": "A machine should pursue only human preferences, begin uncertain of them, and learn them from behaviour; its deference comes from that uncertainty",
           "terms": [],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "assistance game",
-              "body": "Russell's name for the formal problem his principles set: a game of at least one human and one robot, in which the robot's payoff is the human's payoff and only the human knows what it is. Cooperative inverse reinforcement learning is one."
-            }
-          ],
           "traditions": [],
           "applications": [],
           "assent": "none",
           "state": "held",
           "text": "In what Russell calls the standard model, \"machines are intelligent to the extent that their actions can be expected to achieve their objectives\" (Reith Lecture 1, 2021, p. 5). We supply the objectives, but cannot specify them completely and correctly (pp. 5, 9).\n\nHe proposes three principles (Reith Lecture 4, 2021, transcript p. 4): \"The machine's only objective is to maximise the realisation of human preferences.\" \"The machine is initially uncertain about what those preferences are.\" \"The ultimate source of information about human preferences is human behaviour.\" Preferences are neither tastes nor expressed wishes. They are which of two future lives a person would prefer, each shown in full like a film (p. 4). The principles are not laws the machine consults, but guides for researchers setting up the problem it solves (p. 5).\n\nThat problem is an assistance game: the robot's payoff is the human's, but only the human knows what it is (Lecture 4, p. 5). Cooperative inverse reinforcement learning is one (Hadfield-Menell et al. 2016, §1). In the off-switch game, a robot uncertain of the human's utility lets a rational human switch it off (Hadfield-Menell et al. 2017, §3, Theorem 1). Its deference stems from that uncertainty and from the human choosing well (Remark 1). A robot sure of the utility should instead prevent a suboptimal human choice (§3).\n\nThe notebook's use goes beyond the text. Russell's standard is not how one human would have the machine act. The machine must weigh everyone its actions affect: \"Loyal Robbies simply won't work\" (Lecture 4, p. 8). It may refuse its user, for autonomy's sake: \"No, I'm not tying your shoelaces, today\" (p. 11). The plasticity of preferences is \"the biggest challenge to the three principles\" (p. 8). The texts support the notebook on two points. The machine has \"no purpose of its own\" (Provably Beneficial AI, 2017, \"Solutions\"), and no objective fixed in advance is right everywhere (Hadfield-Menell et al. 2017, §6.3)."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "assistance game",
+          "body": "Russell's name for the formal problem his principles set: a game of at least one human and one robot, in which the robot's payoff is the human's payoff and only the human knows what it is. Cooperative inverse reinforcement learning is one."
         }
       ],
       "tab": "",
@@ -1935,21 +1932,21 @@
           "title": "A compiler passes on in its binary what it was once told by hand, so a Trojan horse can outlive every trace in source",
           "terms": [],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "Trojan horse",
-              "body": "Thompson's name for a deliberate miscompilation: compiler code that matches a pattern in the source being compiled and compiles something else in its place. Were it not deliberate, it would be a bug."
-            },
-            {
-              "word": "self-reproducing program",
-              "body": "A source program that, when compiled and executed, produces an exact copy of its own source. Another program can write one, and it can carry any amount of excess baggage."
-            }
-          ],
           "traditions": [],
           "applications": [],
           "assent": "none",
           "state": "held",
           "text": "Thompson's lecture has three stages. Stage I is a self-reproducing program: source that, compiled and run, prints an exact copy of itself. Another program can write it, and it can carry any amount of baggage (CACM 27(8), p. 761).\n\nStage II is a \"chicken and egg\" problem: the C compiler is written in C (p. 762). The installed binary does not know \\v, so source using it is not legal C. The compiler is first \"trained\" on source that says 11, looked up by hand on an ASCII chart. Once that binary is installed, the portable source compiles, and the fact lives on only in binaries. Thompson calls it as close to a \"learning\" program as he has seen.\n\nStage III turns the learning into an attack. One Trojan horse miscompiles login to accept a known password. A second recognizes the compiler and inserts both, by the trick of Stage I. Compile once, install the binary, remove the bugs from the source. Every rebuild puts them back, and login stays bugged \"with no trace in source anywhere\" (p. 763).\n\nThe moral is about trust: \"You can't trust code that you did not totally create yourself.\" No source-level scrutiny will protect you, nor does the risk stop at compilers (p. 763). He prescribes no test. The diff is David A. Wheeler's answer (2005; 2009). Compile the source with a trusted second compiler, recompile it with the result, and compare bit for bit with the binary in use.\n\nThe notebook goes beyond the texts. \"Stage 0\" and \"stage 2 reproduces stage 1\" are build practice, not his stages, and GCC compares stages 2 and 3. No such comparison clears stage 0: rebuilt through the bugged binary, clean source gets the bugs back. The notebook's rule is also weaker than the texts. A diff discharges only along a path that avoids what it checks, which is why Wheeler's second compiler must be diverse."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "Trojan horse",
+          "body": "Thompson's name for a deliberate miscompilation: compiler code that matches a pattern in the source being compiled and compiles something else in its place. Were it not deliberate, it would be a bug."
+        },
+        {
+          "word": "self-reproducing program",
+          "body": "A source program that, when compiled and executed, produces an exact copy of its own source. Another program can write one, and it can carry any amount of excess baggage."
         }
       ],
       "tab": "",
@@ -1965,7 +1962,7 @@
       "requires": [],
       "inbox": [],
       "hinge": {
-        "question": "Inherits what reading a party presupposes. Adds: a hinge can be written down and still be a hinge, which On Certainty does not obviously grant.",
+        "question": "Inherits what reading a party presupposes. Adds: a hinge can be written down and still be a hinge, which On Certainty does not obviously allow.",
         "thesis": "model: Opus 5 · harness: Claude Code, the /principal:dictate run of 2026-09-21, one research subagent per three traditions · canon: [dba4d22](https://github.com/natb1/CanonDB/commit/dba4d228c85eb489276924f226ee7bee948f088b) · a reconstruction from the passages named; read: Über Gewißheit in German, every remark cited, and the Anscombe and Paul English of OC 114-115, 167 and 341-343; the other English is rendered from the German"
       },
       "notes": [],
@@ -1974,17 +1971,17 @@
           "title": "Questions and doubts turn on propositions that must stay put like hinges, and these are not assumptions accepted because we cannot check everything",
           "terms": [],
           "mentions": [],
-          "definitions": [
-            {
-              "word": "world-picture",
-              "body": "Wittgenstein's *Weltbild*: the inherited background against which one distinguishes true from false. One does not hold it because one has checked it, and it is learned in practice rather than as explicit rules (OC 94–95)."
-            }
-          ],
           "traditions": [],
           "applications": [],
           "assent": "none",
           "state": "held",
           "text": "On Certainty answers that some propositions must be exempt from doubt. The questions we raise and our doubts turn on them, as on hinges (OC 341). It belongs to the logic of our scientific investigations that certain things are in fact not doubted (OC 342). This is not because we cannot check everything and must rest content with assumption. \"If I want the door to turn, the hinges must stay put\" (OC 343).\n\nThe act of asking already stands on some of them. Whoever asks what colour another sees cannot also doubt that the other understands the language or is not deceiving him. Nor can he doubt his own memory of what the colour words mean (OC 345). Whoever tried to doubt everything would not get as far as doubting: \"the game of doubting itself presupposes certainty\" (OC 115).\n\nWhat stays put belongs to a world-picture. One does not hold it because one checked it; it is the inherited background against which true and false are told apart (OC 94). All testing already happens inside a system, the element in which arguments live (OC 105). Yet it can shift like a river-bed, and a proposition tested at one time can be a rule of testing at another (OC 96–99).\n\nThe notebook goes beyond the text three times. Its rule to \"presuppose only what the act of asking makes true\" is its own, not Wittgenstein's. Read strictly, OC 345 cuts against it, since asking does not make the other's understanding true. And the notebook writes its hinges down, where Wittgenstein's are often never said (OC 87, 152, 167); he comes nearest where a proposition is laid down as a norm, or officially stamped as a hinge (OC 167, 655). It also counts as a hinge the conditions an answer ran under, its model, harness and canon, which stretches the word from propositions exempt from doubt to the circumstances an act stands on. What it keeps is OC 343: a hinge is not an assumption left over because not everything could be checked."
+        }
+      ],
+      "definitions": [
+        {
+          "word": "world-picture",
+          "body": "Wittgenstein's *Weltbild*: the inherited background against which one distinguishes true from false. One does not hold it because one has checked it, and it is learned in practice rather than as explicit rules (OC 94–95)."
         }
       ],
       "tab": "",
