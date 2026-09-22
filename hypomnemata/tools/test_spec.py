@@ -113,7 +113,7 @@ class DetailTest(unittest.TestCase):
         """A borrowed sense names a tradition the same way a citation does, so
         a dangling one is caught by the same rule and not by a second."""
         graph = load("valid")
-        borrowing = graph.get("ti-esti").theses[0].definitions[0].tradition
+        borrowing = graph.get("ti-esti").definitions[0].tradition
         self.assertEqual(borrowing.to, "plato")
         self.assertEqual(spec.run(graph, only=["tradition-target"]), [])
         borrowing.to = "socrates"
@@ -156,9 +156,9 @@ class DetailTest(unittest.TestCase):
         through — which is how one word came to carry two senses."""
         graph = load("valid")
         canon, party = graph.get("canon"), graph.get("party")
-        word = canon.theses[0].definitions[0]
+        word = canon.definitions[0]
         self.assertEqual(spec.run(graph, only=["definition-once"]), [])
-        party.theses[0].definitions.append(word)
+        party.definitions.append(word)
         findings = spec.run(graph, only=["definition-once"])
         self.assertEqual(findings[0].question, "canon")
         self.assertIn("party", findings[0].message)
@@ -340,14 +340,34 @@ class DetailTest(unittest.TestCase):
         nothing to put the link on."""
         graph = load("valid")
         thesis = graph.get("canon").theses[0]
-        word = thesis.definitions[0].word
+        word = graph.get("canon").definitions[0].word
         self.assertEqual(spec.run(graph, only=["definition-anchorable"]), [])
         thesis.text = thesis.text.replace(word, word + "s")
         self.assertEqual(spec.run(graph, only=["definition-anchorable"]), [])
+        # the question's hinge brings words in too, so it is cleared of this one
+        graph.get("canon").hinge.question = "that a mark can be made at all"
         thesis.text = thesis.text.replace(word + "s", "un" + word + "ish")
         findings = spec.run(graph, only=["definition-anchorable"])
         self.assertEqual([f.question for f in findings], ["canon"])
         self.assertIn("in any regular form", findings[0].message)
+
+    def test_a_word_may_come_in_on_the_question_s_hinge(self):
+        """A question brings a word in through an answer, or through what its
+        asking stood on. The root has no ancestors, so a word its hinge
+        presupposed could be defined nowhere it reached until the hinge
+        counted. The answer's half of the hinge records how the answer was
+        drawn and brings no word in."""
+        graph = load("valid")
+        canon = graph.get("canon")
+        word = canon.definitions[0].word
+        canon.theses[0].text = canon.theses[0].text.replace(
+            "marked %s" % word, "marked accord")
+        self.assertIn(word, canon.hinge.question)
+        self.assertEqual(spec.run(graph, only=["definition-anchorable"]), [])
+        canon.hinge.question = "that a mark can be made at all"
+        canon.hinge.thesis += " · the %s was noted" % word
+        findings = spec.run(graph, only=["definition-anchorable"])
+        self.assertEqual([f.question for f in findings], ["canon"])
 
     def test_an_author_question_names_its_answerer_and_a_tradition_does_not(self):
         graph = load("valid")
@@ -359,7 +379,7 @@ class DetailTest(unittest.TestCase):
 
     def test_a_shadow_names_another_question(self):
         graph = load("valid")
-        word = graph.get("canon").theses[0].definitions[0]
+        word = graph.get("canon").definitions[0]
         word.question = "party"
         self.assertEqual(spec.run(graph, only=["term-target"]), [])
         word.question = "canon"
@@ -386,10 +406,10 @@ class DetailTest(unittest.TestCase):
         root.theses[0].state = "held"
         self.assertEqual(spec.run(graph, only=["verbatim-collision"]), [])
         root.theses[0].state = "in thread"
-        owner = graph.get("attenuation").theses[0]
+        owner = graph.get("attenuation")
         word = [d for d in owner.definitions if d.word == "grade"][0]
         owner.definitions.remove(word)
-        root.theses[0].definitions.append(word)
+        root.definitions.append(word)
         self.assertEqual(spec.run(graph, only=["verbatim-collision"]), [])
 
     def test_a_clause_is_suspended_only_on_an_open_thread(self):

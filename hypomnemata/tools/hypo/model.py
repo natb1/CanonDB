@@ -261,7 +261,12 @@ class Borrowing:
 
 @dataclass
 class Definition:
-    """A word of a thesis fixed in place; it opens no descendant question."""
+    """A word its question brings in, fixed in place; it opens no question.
+
+    It belongs to the question and not to an answer. One sense per word means
+    the sense cannot differ from one answer to another, and a word the
+    question's hinge brought in belongs to no answer at all.
+    """
 
     word: str
     body: str
@@ -357,7 +362,6 @@ class Thesis:
     state: str = "held"
     terms: List[Term] = field(default_factory=list)
     mentions: List[Mention] = field(default_factory=list)
-    definitions: List[Definition] = field(default_factory=list)
     traditions: List[TraditionEdge] = field(default_factory=list)
     applications: List[Application] = field(default_factory=list)
 
@@ -369,6 +373,11 @@ class Thesis:
     @staticmethod
     def read(r: _Reader, data: Any, where: str) -> "Thesis":
         d = r.obj(data, where)
+        if "definitions" in d:
+            # the glossary moved to the question; nothing else refuses a key
+            # it does not know, so an old file would lose its words silently
+            r.fail(where + ".definitions", "a definition belongs to the question, "
+                   "not to an answer: move it to the question's definitions")
         return Thesis(
             title=r.text(d, "title", where),
             text=r.text(d, "text", where),
@@ -378,8 +387,6 @@ class Thesis:
                    for i, v in enumerate(r.seq(d, "terms", where))],
             mentions=[Mention.read(r, v, "%s.mentions[%d]" % (where, i))
                       for i, v in enumerate(r.seq(d, "mentions", where))],
-            definitions=[Definition.read(r, v, "%s.definitions[%d]" % (where, i))
-                         for i, v in enumerate(r.seq(d, "definitions", where))],
             traditions=[TraditionEdge.read(r, v, "%s.traditions[%d]" % (where, i))
                         for i, v in enumerate(r.seq(d, "traditions", where))],
             applications=[Application.read(r, v, "%s.applications[%d]" % (where, i))
@@ -474,6 +481,9 @@ class Question:
     party: str = AUTHOR
     answerer: str = ""
     theses: List[Thesis] = field(default_factory=list)
+    #: the glossary: the words this question brings in, through an answer or
+    #: through the question half of its hinge
+    definitions: List[Definition] = field(default_factory=list)
     inbox: List[InboxItem] = field(default_factory=list)
     notes: List[Note] = field(default_factory=list)
     hinge: Optional[Hinge] = None
@@ -504,11 +514,6 @@ class Question:
             for m in t.mentions:
                 yield m
 
-    def definitions(self) -> Iterator[Tuple[Thesis, Definition]]:
-        for t in self.theses:
-            for d in t.definitions:
-                yield t, d
-
     def applications(self) -> Iterator[Tuple[Thesis, Application]]:
         """Every application on this question, with the thesis it derives from."""
         for t in self.theses:
@@ -536,6 +541,8 @@ class Question:
             answerer=r.text(d, "answerer", here, required=False),
             theses=[Thesis.read(r, v, "%s.theses[%d]" % (here, i))
                     for i, v in enumerate(r.seq(d, "theses", here))],
+            definitions=[Definition.read(r, v, "%s.definitions[%d]" % (here, i))
+                         for i, v in enumerate(r.seq(d, "definitions", here))],
             inbox=[InboxItem.read(r, v, "%s.inbox[%d]" % (here, i))
                    for i, v in enumerate(r.seq(d, "inbox", here))],
             notes=[Note.read(r, v, "%s.notes[%d]" % (here, i))

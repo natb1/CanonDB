@@ -244,7 +244,7 @@ class DetailTest(unittest.TestCase):
                                 "[Plato](file/0c4d2d88-79ab)")
         parsed = read.parse_tab(exported, self.ids)
         thesis = parsed["theses"][0]
-        self.assertEqual(thesis["definitions"][0]["tradition"],
+        self.assertEqual(parsed["definitions"][0]["tradition"],
                          {"to": "plato", "note": ""})
         self.assertEqual([t["note"] for t in thesis["traditions"]],
                          ["the opening move is asked of what the answerer "
@@ -255,12 +255,12 @@ class DetailTest(unittest.TestCase):
         so neither is read as the other — in the token spelling or the
         exported one."""
         graph = load("valid")
-        word = graph.get("ti-esti").theses[0].definitions[0]
+        word = graph.get("ti-esti").definitions[0]
         word.question = "canon"
         body = render.body(graph, "ti-esti")
         for page in (body, body.replace("↗ <?claude block m_canon?>",
                                         "↗ [canon](file/tab-02)")):
-            parsed = read.parse_tab(page, self.ids)["theses"][0]["definitions"][0]
+            parsed = read.parse_tab(page, self.ids)["definitions"][0]
             self.assertEqual(parsed["question"], "canon")
             self.assertEqual(parsed["tradition"]["to"], "plato")
             self.assertEqual(parsed["body"], word.body)

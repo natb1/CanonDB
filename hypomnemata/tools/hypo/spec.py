@@ -148,7 +148,7 @@ def term_target(graph: Graph) -> Yield:
             if mention.to not in known:
                 yield q.id, "mention %r points at %r, which is no question" % (
                     mention.title, mention.to)
-        for _, definition in q.definitions():
+        for definition in q.definitions:
             if not definition.question:
                 continue
             if definition.question not in known:
@@ -171,16 +171,16 @@ def tradition_target(graph: Graph) -> Yield:
     known = {q.id for q in graph.questions}
     traditions = set(graph.tradition_ids())
     for q in graph.questions:
-        for thesis in q.theses:
-            edges = [("tradition edge", t.to) for t in thesis.traditions]
-            edges += [("definition %r borrows from" % d.word, d.tradition.to)
-                      for d in thesis.definitions if d.tradition]
-            for what, to in edges:
-                if to not in known:
-                    yield q.id, "%s %r, which is no question" % (what, to)
-                elif to not in traditions:
-                    yield q.id, ("%s %r, which is a question "
-                                 "of this graph and not a tradition" % (what, to))
+        edges = [("tradition edge", t.to)
+                 for thesis in q.theses for t in thesis.traditions]
+        edges += [("definition %r borrows from" % d.word, d.tradition.to)
+                  for d in q.definitions if d.tradition]
+        for what, to in edges:
+            if to not in known:
+                yield q.id, "%s %r, which is no question" % (what, to)
+            elif to not in traditions:
+                yield q.id, ("%s %r, which is a question "
+                             "of this graph and not a tradition" % (what, to))
 
 
 @check("term-total", "every term has at least one anchor and a target")
@@ -387,7 +387,7 @@ def verbatim_collision(graph: Graph) -> Yield:
     verbatim = [(q, thesis) for q in graph.questions for thesis in q.theses
                 if thesis.state in STATES[1:]]
     for owner in graph.questions:
-        for _, definition in owner.definitions():
+        for definition in owner.definitions:
             for q, thesis in verbatim:
                 if q.id == owner.id:
                     continue
@@ -410,7 +410,8 @@ def assent_present(graph: Graph) -> Yield:
                 yield q.id, "thesis %r records no assent" % _clip(thesis.title)
 
 
-@check("definition-anchorable", "a definition's word occurs in its thesis text")
+@check("definition-anchorable",
+       "a definition's word occurs in an answer or in the question's hinge")
 def definition_anchorable(graph: Graph) -> Yield:
     """As a word, and in whichever regular form the sentence wants.
 
@@ -420,15 +421,25 @@ def definition_anchorable(graph: Graph) -> Yield:
     anchor letters hidden inside a longer word, which is what asking for a
     substring allowed: `grant` was found in `grants`, the check passed, and
     the renderer had nowhere to put the link.
+
+    A question brings a word in two ways: through an answer, or through what
+    its asking stood on, which is the question half of its hinge. The root
+    has no ancestors, so a word its hinge presupposed could be defined
+    nowhere it could reach until the hinge counted. The answer's half does
+    not count: it records how the answer was drawn, in the encoding's own
+    words, and brings none in.
     """
     for q in graph.questions:
-        for thesis, definition in q.definitions():
-            body = text.plain(thesis.text)
+        pool = [text.plain(thesis.text) for thesis in q.theses]
+        if q.hinge is not None:
+            pool.append(text.plain(q.hinge.question))
+        for definition in q.definitions:
             if not any(text.occurrences(body, form, True)
-                       for form in text.forms(definition.word)):
-                yield q.id, ("definition %r does not occur in the thesis text as a "
-                             "word, in any regular form, so the renderer cannot "
-                             "anchor it" % definition.word)
+                       for body in pool for form in text.forms(definition.word)):
+                yield q.id, ("definition %r does not occur as a word, in any "
+                             "regular form, in an answer or in the question's "
+                             "hinge, so the renderer cannot anchor it"
+                             % definition.word)
 
 
 @check("requires-exist",
@@ -621,7 +632,7 @@ def definition_once(graph: Graph) -> Yield:
     where: Dict[str, List[str]] = {}
     spelling: Dict[str, str] = {}
     for q in graph.questions:
-        for _, definition in q.definitions():
+        for definition in q.definitions:
             key = definition.word.strip().lower()
             if not key:
                 continue

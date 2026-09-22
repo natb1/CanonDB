@@ -274,7 +274,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     theses = []
     for title, body in _subsections(named.get("thesis", []), "◆"):
         thesis: dict = {"title": title, "terms": [], "mentions": [],
-                        "definitions": [], "traditions": [], "applications": []}
+                        "traditions": [], "applications": []}
         # The citations close the subsection — the renderer appends them after
         # the text and nothing follows them — so the split is positional and
         # not by shape. Reading it by shape swallowed every bolded lead and
@@ -325,9 +325,10 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
                 "title": title, "to": target(key),
                 "anchors": [_unwrap(b) for b in body if b.startswith("*")]})
 
+    # the glossary is the question's: a word may have come in on the hinge,
+    # and one sense per word leaves nothing for an answer to own
+    definitions = []
     for word, body in _subsections(named.get("glossary", []), "≡"):
-        if not theses:
-            continue
         definition = {"word": word}
         # a shadow is the last block when there is one: the question the word
         # has earned, pointed at from the definition that stands in for it
@@ -341,7 +342,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
             definition["tradition"] = {"to": target(_chips(borrowing)[-1]),
                                        "note": _strip_chips(borrowing).rstrip(".")}
         definition["body"] = SEPARATOR.join(body)
-        theses[0]["definitions"].append(definition)
+        definitions.append(definition)
 
     for name, body in _subsections(named.get("applications", []), "⚙"):
         line = APPLICATION_LINE.match(body[0]) if body else None
@@ -377,4 +378,5 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     q["notes"] = [note for section in SECTIONS
                   for note in _notes(named.get(section, []), section)]
     q["theses"] = theses
+    q["definitions"] = definitions
     return q

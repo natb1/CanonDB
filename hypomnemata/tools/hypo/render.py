@@ -158,9 +158,9 @@ def _citing(graph: Graph, qid: str) -> List[Tuple[str, str]]:
             for trad in thesis.traditions:
                 if trad.to == qid:
                     rows.add((trad.relation, src.id))
-            for definition in thesis.definitions:
-                if definition.tradition and definition.tradition.to == qid:
-                    rows.add(("support", src.id))
+        for definition in src.definitions:
+            if definition.tradition and definition.tradition.to == qid:
+                rows.add(("support", src.id))
     return sorted(rows)
 
 
@@ -285,7 +285,7 @@ def _glossary_blocks(q: Question) -> List[str]:
     own paragraph neither would be true.
     """
     blocks: List[str] = []
-    for _, definition in q.definitions():
+    for definition in q.definitions:
         blocks.append("### ≡ %s" % definition.word)
         blocks.append(definition.body)
         if definition.tradition:
@@ -399,6 +399,10 @@ def _application_blocks(q: Question) -> List[str]:
     return blocks
 
 
+#: the heading of a hinge's question half: what the asking stood on, and so
+#: the one place besides an answer where a question brings a word in
+HINGE_QUESTION = "⚓ question: what the asking presupposes"
+
 #: the heading of a hinge's thesis half, which every answer's provenance names
 HINGE_THESIS = "⚓ thesis: what the answer was drawn from"
 
@@ -456,7 +460,7 @@ def _hinge_blocks(q: Question) -> List[str]:
         return []
     blocks: List[str] = []
     if q.hinge.question.strip():
-        blocks.append("### ⚓ question: what the asking presupposes")
+        blocks.append("### %s" % HINGE_QUESTION)
         blocks.append(q.hinge.question)
     if q.hinge.thesis.strip():
         blocks.append("### %s" % HINGE_THESIS)
@@ -552,13 +556,13 @@ def mention_targets(graph: Graph, qid: str) -> List[str]:
             for step in (project.lineage(graph, trad.to)
                          if graph.get(trad.to) else [trad.to]):
                 add(step)
-        for definition in thesis.definitions:
-            # a borrowing is one chip and not a breadcrumb: it closes a
-            # sentence rather than standing on a line of its own
-            if definition.tradition:
-                add(definition.tradition.to)
-            if definition.question:
-                add(definition.question)
+    for definition in q.definitions:
+        # a borrowing is one chip and not a breadcrumb: it closes a
+        # sentence rather than standing on a line of its own
+        if definition.tradition:
+            add(definition.tradition.to)
+        if definition.question:
+            add(definition.question)
     for _, src in _citing(graph, qid):  # the mirror, on a tab something cites
         for step in project.lineage(graph, src):
             add(step)
@@ -646,7 +650,7 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
                 # the anchor is what navigates to the question it raises
                 "target": "#%s.%s" % (q.tab, term_heading(term)),
             })
-    for _, definition in q.definitions():
+    for definition in q.definitions:
         heading = "≡ %s" % definition.word
         out.append({
             "kind": "definition",
@@ -710,7 +714,11 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
         # the title of the term it raises are often the same words — and it
         # carries the section because the two draw from different pools: a
         # thesis clause and an inbox row are each the first run of their own.
-        key = (text.fold(anchor), _HOME[entry["kind"]])
+        home = _HOME[entry["kind"]]
+        if (entry["kind"] == "definition" and runs
+                and not _inside(runs[0][1].at, sections.get(home))):
+            home = HINGE_QUESTION  # a word the hinge brought in
+        key = (text.fold(anchor), home)
         used = taken.get(key, 0)
         chosen = runs[used] if used < len(runs) else None
         entry["find"] = ({"text": chosen[0], "nth": chosen[1].nth}
@@ -810,8 +818,24 @@ def eligible(page: str, kind: str, anchor: str,
     """
     fixed = _fixed_spans(page) if fixed is None else fixed
     sections = _section_spans(page) if sections is None else sections
-    candidates, whole = _candidates(kind, anchor)
+    # a section the page does not have holds no run: an absent home is not
+    # licence to link anywhere
     home = sections.get(_HOME[kind])
+    runs = _eligible_in(page, kind, anchor, fixed, home) if home else []
+    if kind == "definition" and not runs:
+        # a question brings a word in through an answer or through what its
+        # asking stood on; a word only the hinge brought in is linked there,
+        # in the question half and never in the answer's provenance
+        hinge = _hinge_question_span(page)
+        runs = _eligible_in(page, kind, anchor, fixed, hinge) if hinge else []
+    return runs
+
+
+def _eligible_in(page: str, kind: str, anchor: str,
+                 fixed: List[Tuple[int, int]],
+                 home: Tuple[int, int]) -> List[Tuple[str, "text.Run"]]:
+    """The runs of one span a link of this kind may stand on."""
+    candidates, whole = _candidates(kind, anchor)
     # the provenance link is the one link the answer metadata line carries, so
     # it may stand there and nowhere else; every other kind is kept off it
     metadata = _metadata_spans(page) if kind == "provenance" else []
@@ -826,12 +850,30 @@ def eligible(page: str, kind: str, anchor: str,
                     continue
             elif any(at <= run.at < end for at, end in fixed):
                 continue
-            if home is not None and not home[0] <= run.at < home[1]:
+            if not home[0] <= run.at < home[1]:
                 continue
             seen.add(run.at)
             out.append((run.at, form, run))
     out.sort()
     return [(form, run) for _, form, run in out]
+
+
+def _inside(at: int, span: Optional[Tuple[int, int]]) -> bool:
+    return span is not None and span[0] <= at < span[1]
+
+
+def _hinge_question_span(page: str) -> Optional[Tuple[int, int]]:
+    """Where the question half of the hinge stands, heading excluded."""
+    start: Optional[int] = None
+    at = 0
+    for line in (page or "").splitlines(keepends=True):
+        if start is None:
+            if line.strip() == "### " + HINGE_QUESTION:
+                start = at + len(line)
+        elif line.startswith("#"):
+            return (start, at)
+        at += len(line)
+    return None if start is None else (start, len(page or ""))
 
 
 def _section_spans(page: str) -> Dict[Optional[str], Tuple[int, int]]:

@@ -39,16 +39,6 @@
               ]
             }
           ],
-          "definitions": [
-            {
-              "word": "elenchus",
-              "body": "The examination by which a claim is tested against what its holder already grants.",
-              "tradition": {
-                "to": "plato",
-                "note": ""
-              }
-            }
-          ],
           "traditions": [
             {
               "to": "plato",
@@ -64,6 +54,16 @@
               "standing": "postulate"
             }
           ]
+        }
+      ],
+      "definitions": [
+        {
+          "word": "elenchus",
+          "body": "The examination by which a claim is tested against what its holder already grants.",
+          "tradition": {
+            "to": "plato",
+            "note": ""
+          }
         }
       ],
       "inbox": [
@@ -108,14 +108,14 @@
               ]
             }
           ],
-          "definitions": [
-            {
-              "word": "assent",
-              "body": "The mark by which the one with standing makes an entry binding.",
-              "tradition": null
-            }
-          ],
           "traditions": []
+        }
+      ],
+      "definitions": [
+        {
+          "word": "assent",
+          "body": "The mark by which the one with standing makes an entry binding.",
+          "tradition": null
         }
       ],
       "inbox": [],
@@ -155,7 +155,6 @@
               }
             }
           ],
-          "definitions": [],
           "traditions": []
         }
       ],
@@ -184,13 +183,6 @@
           "state": "held",
           "text": "A settled entry acts silently. An unsettled one may act only if it says so, and never irreversibly. The grade is read off the state of the entry and is not stored twice.",
           "terms": [],
-          "definitions": [
-            {
-              "word": "grade",
-              "body": "How much authority to act an entry carries, read off its state.",
-              "tradition": null
-            }
-          ],
           "traditions": [],
           "applications": [
             {
@@ -200,6 +192,13 @@
               "standing": "postulate"
             }
           ]
+        }
+      ],
+      "definitions": [
+        {
+          "word": "grade",
+          "body": "How much authority to act an entry carries, read off its state.",
+          "tradition": null
         }
       ],
       "inbox": [],
@@ -224,7 +223,6 @@
           "state": "held",
           "text": "The one questioned answers in his own voice and is held to what he grants.",
           "terms": [],
-          "definitions": [],
           "traditions": []
         }
       ],

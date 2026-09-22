@@ -172,7 +172,7 @@ class LoadTest(unittest.TestCase):
                 "theses": [{"title": "Flattery answers to please.",
                             "assent": "read, not agreed", "state": "held",
                             "text": "Flattery answers to please.",
-                            "terms": [], "definitions": [], "traditions": []}],
+                            "terms": [], "traditions": []}],
                 "hinge": {"question": "the reading presupposes the text bears on this",
                           "thesis": "model: none · harness: a reading · canon: empty"}})
 

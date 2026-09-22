@@ -90,7 +90,7 @@ class RootLayoutTest(unittest.TestCase):
 
     def test_a_borrowing_note_precedes_its_chip(self):
         graph = load("valid")
-        graph.get("ti-esti").theses[0].definitions[0].tradition.note = \
+        graph.get("ti-esti").definitions[0].tradition.note = \
             "the sense the dialogues put it to"
         self.assertIn("\n\nthe sense the dialogues put it to. "
                       "<?claude block m_plato?>", render.body(graph, "ti-esti"))
@@ -109,7 +109,7 @@ class RootLayoutTest(unittest.TestCase):
         graph = load("valid")
         graph.get("ti-esti").theses[0].traditions = []
         self.assertEqual(
-            graph.get("ti-esti").theses[0].definitions[0].tradition.to, "plato")
+            graph.get("ti-esti").definitions[0].tradition.to, "plato")
         text = render.body(graph, "plato")
         self.assertIn("**Support**", text)
         self.assertIn("<?claude block m_ti_esti?>", text)
@@ -527,10 +527,30 @@ class FindTest(unittest.TestCase):
         return [l for l in render.links(graph, qid)["links"]
                 if l["anchor"] == anchor][0]
 
+    def test_a_word_the_hinge_brought_in_is_linked_in_the_hinge(self):
+        """No answer uses the word, so its link stands in the question half of
+        the hinge, where the asking stood on it — never in the answer's half,
+        which records provenance in the encoding's own words. With the word
+        in neither, there is nowhere to put it."""
+        graph = load("valid")
+        canon = graph.get("canon")
+        word = canon.definitions[0].word
+        canon.theses[0].text = canon.theses[0].text.replace(
+            "marked %s" % word, "marked accord")
+        canon.hinge.thesis += " · the %s was noted" % word
+        page = render._as_the_page_holds_it(render.body(graph, "canon"))
+        find = self.entry(graph, "canon", word)["find"]
+        run = [r for r in text.occurrences(page, find["text"])
+               if r.nth == find["nth"]][0]
+        self.assertLess(page.index(render.HINGE_QUESTION), run.at)
+        self.assertLess(run.at, page.index(render.HINGE_THESIS))
+        canon.hinge.question = "that a mark can be made at all"
+        self.assertIsNone(self.entry(graph, "canon", word)["find"])
+
     def test_a_one_word_anchor_skips_the_longer_words_it_hides_in(self):
         graph = load("valid")
         thesis = graph.get("canon").theses[0]
-        word = thesis.definitions[0].word
+        word = graph.get("canon").definitions[0].word
         thesis.text = "The %sd record, and then the %s itself. %s" % (
             word, word, thesis.text)
         find = self.entry(graph, "canon", word)["find"]
@@ -609,7 +629,7 @@ class FindTest(unittest.TestCase):
 
     def test_a_shadow_stands_after_the_borrowing(self):
         graph = load("valid")
-        graph.get("ti-esti").theses[0].definitions[0].question = "canon"
+        graph.get("ti-esti").definitions[0].question = "canon"
         body = render.body(graph, "ti-esti")
         self.assertIn("<?claude block m_plato?>\n\n↗ <?claude block m_canon?>", body)
         self.assertIn("m_canon", render.mention_blocks(graph, "ti-esti"))
@@ -636,7 +656,7 @@ class FindTest(unittest.TestCase):
 
     def test_a_tradition_cited_only_by_a_borrowing_carries_the_citer_s_chips(self):
         graph = load("valid")
-        graph.get("canon").theses[0].definitions[0].tradition = model.Borrowing(
+        graph.get("canon").definitions[0].tradition = model.Borrowing(
             to="plato", note="the word of the dialogues")
         body = render.body(graph, "plato")
         self.assertIn("<?claude block m_canon?>", body)
@@ -649,7 +669,7 @@ class FindTest(unittest.TestCase):
         inside it."""
         graph = load("valid")
         thesis = graph.get("canon").theses[0]
-        word = thesis.definitions[0].word
+        word = graph.get("canon").definitions[0].word
         thesis.text = thesis.text.replace(word, word + "s")
         find = self.entry(graph, "canon", word)["find"]
         self.assertIsNotNone(find, "%r no longer anchors" % word)
@@ -707,7 +727,7 @@ class EligibleTest(unittest.TestCase):
     def test_a_heading_is_a_destination_and_never_a_source(self):
         """A definition's own glossary heading spells the word, and is where
         the link points rather than where it goes."""
-        word = self.graph.get("canon").theses[0].definitions[0].word
+        word = self.graph.get("canon").definitions[0].word
         page = self.page("canon")
         heading = page.index("### \u2261 %s" % word)
         at = {run.at for _, run in render.eligible(page, "definition", word)}

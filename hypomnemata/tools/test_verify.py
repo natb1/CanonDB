@@ -126,7 +126,7 @@ class WholeTabTest(unittest.TestCase):
         thesis = self.graph.get(qid).theses[0]
         outer = thesis.terms[0].anchors[0]
         inner = outer.split(".")[0] if "." in outer else outer[: len(outer) // 2]
-        thesis.definitions.append(model.Definition(word=inner, body="A part."))
+        self.graph.get(qid).definitions.append(model.Definition(word=inner, body="A part."))
         entries = self.links(qid)
         covered = [e for e in entries if e["covered_by"]]
         self.assertTrue(covered, "the inner anchor should be covered")
@@ -214,6 +214,20 @@ class MisplacedTest(unittest.TestCase):
         self.assertEqual(report.missing, [])
 
 
+class HingeWordTest(unittest.TestCase):
+    def test_a_word_the_hinge_brought_in_is_placed_and_accounted(self):
+        """The link stands in the hinge, so the page check has to allow it
+        there — or a correct page reads as a link out of place."""
+        graph = load("valid")
+        canon = graph.get("canon")
+        word = canon.definitions[0].word
+        canon.theses[0].text = canon.theses[0].text.replace(
+            "marked %s" % word, "marked accord")
+        entries = render.links(graph, "canon")["links"]
+        report = verify.verify(graph, "canon", page_of(graph, "canon", entries))
+        self.assertTrue(report.ok(), report.lines())
+
+
 class AnswerStateTest(unittest.TestCase):
     """An answer's state is a dropdown too, and the same fault waits for it.
 
@@ -227,7 +241,7 @@ class AnswerStateTest(unittest.TestCase):
         graph.state_enum = "cc6462ad-8c3e"
         thesis = graph.get("ti-esti").theses[0]
         thesis.text += " The answer waits in a thread until the merge."
-        thesis.definitions.append(model.Definition(
+        graph.get("ti-esti").definitions.append(model.Definition(
             word="thread", body="An open line of questions."))
         entries = render.links(graph, "ti-esti")["links"]
         self.assertIn("thread", [e["anchor"] for e in entries])

@@ -30,11 +30,26 @@ class LoadTest(unittest.TestCase):
         self.assertIsInstance(root, model.Question)
         self.assertIsInstance(root.theses[0], model.Thesis)
         self.assertIsInstance(root.theses[0].terms[0], model.Term)
-        self.assertIsInstance(root.theses[0].definitions[0], model.Definition)
+        self.assertIsInstance(root.definitions[0], model.Definition)
         self.assertIsInstance(root.theses[0].traditions[0], model.TraditionEdge)
         self.assertIsInstance(root.inbox[0], model.InboxItem)
         self.assertIsInstance(list(root.applications())[0][1], model.Application)
         self.assertIsInstance(root.hinge, model.Hinge)
+
+    def test_a_glossary_on_an_answer_is_refused(self):
+        """The glossary moved to the question. Nothing else refuses a key it
+        does not know, so an old file would lose its words without a word."""
+        with open(fixture("valid"), encoding="utf-8") as fh:
+            data = json.load(fh)
+        root = data["questions"][0]
+        root["theses"][0]["definitions"] = root.pop("definitions")
+        with tempfile.TemporaryDirectory() as tmp:
+            old = os.path.join(tmp, "old.json")
+            with open(old, "w", encoding="utf-8") as fh:
+                json.dump(data, fh)
+            with self.assertRaises(model.ShapeError) as caught:
+                model.load(old)
+        self.assertIn("belongs to the question", "; ".join(caught.exception.problems))
 
     def test_absent_hinge_is_none(self):
         without = model.load(fixture("invalid-hinge-present"))
