@@ -1,5 +1,5 @@
 {
-  "format": "hypomnemata-export/1",
+  "format": "hypomnemata-export/2",
   "name": "Hypomnemata — CanonDB v1",
   "tools": "hypomnemata/tools and .claude/skills/principal-dictate, on the hypomnemata branch of github.com/natb1/CanonDB",
   "mode": "notebook",
@@ -3168,15 +3168,15 @@
     ]
   },
   "rebuild": [
-    "Get the tooling named under `tools`, and the dictation skill beside it. Every step below is one of those tools. None is optional, and no tab is ever hand-written: the renderer is the only sanctioned producer of a tab body.",
+    "Get the tooling named under `tools`, and the dictation skill beside it. Every step below that runs a tool runs one of those, and the skill says how each is driven. None is optional, and no tab is ever hand-written: the renderer is the only sanctioned producer of a tab body.",
     "Create a document for the notebook.",
     "Create an enum whose options are exactly `states`, in that order, and nothing else. A document enum only grows — an option can be appended, never renamed, reordered or removed — so it has to be right the first time.",
     "`portable.py open <this file> -o graph.json` writes the graph back out with `artifact`, `state_enum`, and every `tab` and `body` empty.",
-    "Set `artifact` to the new document's artifact URL and `state_enum` to the id of the enum just created. Each application named under `rebind` is an application whose link was the old document — the notebook is an application of some of its own theses. Point each one's `link` at the new document, or leave it empty and its standing will say it is owed.",
+    "Set `artifact` to the new document's artifact URL and `state_enum` to the id of the enum just created. Each application named under `rebind` is an application whose link was the old document — the notebook is an application of some of its own theses. Point each one's `link` at the new document; one left empty is owed a link, and no check will say so.",
     "Create one tab per question, each named by that question's `id`, and record the tab's id in its question's `tab` and the tab's body block id in its `body`. A tab whose ids are still empty is not yet bound.",
     "`check.py graph.json` must report no ERROR before anything is written. Until the tabs are bound it reports `unique-ids` on the empty `tab` and `body` ids, which is the check saying what is still missing: binding them is what clears it.",
-    "Write each tab with `render.py` and `apply.py`: the body first, which mints the block ids, then the links, which need those ids. Writing several tabs, send every body before any links. Never hand-write a tab.",
-    "`project.py graph.json` prints the tab-placement patch; send it as the document's `tabs` patch. The tree it prints must match `expect.tree`.",
+    "Write each tab with `apply.py`, which needs `--outlines DIR` holding one `<question id>.xml` outline per tab as the document prints it: `--body` first, which replaces the tab with the rendered body and mints the block ids, then — the outline re-read, since those ids are new — `--links`, which needs them; `--wanted` lists the outlines the links call needs. Writing several tabs, send every body before any links. Never hand-write a tab.",
+    "`project.py graph.json` prints the tab-placement patch — send it as the document's `tabs` patch — and, with `--json`, the tree it derived, whose entries must match `expect.tree` on `question`, `parent` and `order` (they carry `distance` and `load` besides).",
     "`verify.py graph.json <exported tabs dir>` reads the pages back. It is the closing gate: a graph file never held a link, so nothing else can see whether the links reached the page."
   ]
 }

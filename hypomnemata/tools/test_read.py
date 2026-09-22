@@ -101,6 +101,38 @@ class DetailTest(unittest.TestCase):
         with self.assertRaises(read.ParseError):
             read.parse_tab("just some prose", self.ids)
 
+    def test_a_question_that_ends_in_emphasis_comes_back_whole(self):
+        """The line is the question in italics; one layer comes off, and not
+        the closing marker of a word the question itself emphasises."""
+        self.graph.get("canon").question = "What makes an entry *binding*"
+        parsed = read.parse_tab(render.body(self.graph, "canon"), self.ids)
+        self.assertEqual(parsed["question"], "What makes an entry *binding*")
+
+    def test_an_inbox_line_that_does_not_parse_is_refused(self):
+        """Skipped, the item would leave the graph in silence and the page on
+        the next body write — a prior overwritten without a word."""
+        body = render.body(self.graph, "ti-esti")
+        self.assertIn(" · not done · ", body)
+        with self.assertRaises(read.ParseError):
+            read.parse_tab(body.replace(" · not done · ", " · pending · ", 1),
+                           self.ids)
+
+    def test_a_term_on_a_second_answer_comes_back_on_it(self):
+        """The page files every term under one section; which answer raised
+        it is said only by the chip in that answer's text."""
+        q = self.graph.get("canon")
+        q.theses.append(model.Thesis(
+            title="A second reading",
+            text="An entry is also a promise that binds.",
+            assent="none", state="held",
+            terms=[model.Term(title="A promise", to="attenuation",
+                              anchors=["a promise that binds"])]))
+        parsed = read.parse_tab(render.body(self.graph, "canon"), self.ids)
+        self.assertEqual([t["title"] for t in parsed["theses"][1]["terms"]],
+                         ["A promise"])
+        self.assertNotIn("A promise",
+                         [t["title"] for t in parsed["theses"][0]["terms"]])
+
     def test_an_exported_chip_reads_the_same_as_a_token(self):
         """The document flattens a chip to a link when it exports markdown."""
         body = render.body(self.graph, "ti-esti")

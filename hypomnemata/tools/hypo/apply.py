@@ -92,6 +92,8 @@ def parse_outline(xml: str) -> List[Block]:
     for el in root:
         bid = el.get("id", "")
         if not bid:
+            if el.tag == "gap":  # a sinceRev read folds what did not change
+                out.append(Block(id="", kind="gap", heading=0, text=""))
             continue
         bid, prefix = _expand(bid, prefix)
         out.append(Block(id=bid, kind=el.tag,
@@ -115,6 +117,8 @@ def _scan(body: str) -> List[Block]:
         attrs = dict(_ATTR.findall(m.group("attrs") or ""))
         bid = attrs.get("id", "")
         if not bid:
+            if m.group("kind") == "gap":
+                out.append(Block(id="", kind="gap", heading=0, text=""))
             continue
         bid, prefix = _expand(bid, prefix)
         words = _TAG.sub("", _CHIP.sub("", m.group("text") or ""))
@@ -180,14 +184,17 @@ def _resolve(graph: Graph, target: str, by_tab: Dict[str, List[Block]],
         return None
     found = headings(graph, tab, outline)
     # a target names the prefix the renderer could promise: a term heading goes
-    # on to an arrow and a chip, which are a block id once the tab is written
-    bid = found.get(heading) or next(
-        (candidate for words, candidate in found.items()
-         if words.startswith(heading)), None)
+    # on to an arrow and a chip, which are a block id once the tab is written.
+    # So the arrow is tried after the words themselves, and nothing looser: one
+    # term's title may open another's, and the first heading that merely began
+    # with the words was taken for it
+    bid = found.get(heading) or found.get("%s →" % heading)
     if bid is None:
         return None
     if tab == own_tab:
         return "#%s" % bid
+    if not artifact:  # a bare fragment would land on this tab, the wrong page
+        return None
     return "%s#%s.%s" % (artifact, tab, bid)
 
 
@@ -200,6 +207,14 @@ def body_ops(graph: Graph, qid: str, outline: List[Block]) -> List[dict]:
     ids = [block.id for block in outline if block.id]
     if not ids:
         raise Unresolved(["%s: the outline names no block to replace" % qid])
+    folded = [block for block in outline if block.kind in ("gap", "gone")]
+    if folded:
+        # a sinceRev read shows what changed and folds the rest into a gap;
+        # replacing only the blocks it names would leave the folded ones on
+        # the page beside the fresh body
+        raise Unresolved(["%s: the outline folds or retires %d block(s) it "
+                          "does not show, so it is not the whole tab"
+                          % (qid, len(folded))])
     if all(block.heading for block in outline):
         # a tab is headings and the prose under them; an outline of headings
         # alone is a reduced one, kept for resolving link targets. Replacing
@@ -233,6 +248,13 @@ def link_ops(graph: Graph, qid: str, by_tab: Dict[str, List[Block]],
         if not find:
             missing.append("%s: no occurrence of %r on the page"
                            % (entry["kind"], entry["anchor"]))
+            continue
+        tab = entry["target"].lstrip("#").partition(".")[0]
+        if tab != own and not artifact:
+            # a fragment alone leads to the tab it stands on: sent, the link
+            # would land on this page rather than the one it names
+            missing.append("%s: %s leaves the tab, and the graph names no "
+                           "artifact to leave it by" % (entry["kind"], entry["target"]))
             continue
         href = _resolve(graph, entry["target"], by_tab, artifact, own)
         if href is None:

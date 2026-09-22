@@ -254,6 +254,21 @@ def _named_subsections(blocks: List[str]) -> List[Tuple[str, List[str]]]:
     return out
 
 
+def _owner(theses: List[dict], anchors: List[str]) -> dict:
+    """The answer a term or mention was read off.
+
+    The page files every term under one section, and which answer raised it is
+    said only by the chip in that answer's text — so the answer is the one
+    whose text holds the anchors. A term with no anchor, or one no answer holds
+    whole, goes to the first: the graph has to say something, and the checker
+    says if that was wrong.
+    """
+    for thesis in theses:
+        if anchors and all(anchor in thesis.get("text", "") for anchor in anchors):
+            return thesis
+    return theses[0]
+
+
 def _unwrap(block: str) -> str:
     """An anchor line back to the anchor: one layer of italics off, no more.
 
@@ -357,7 +372,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
                     incoming.append((_strip_chips(item.group("text"), labels),
                                      target(keys[0]) if keys else ""))
         elif block.startswith("*") and block.endswith("*"):
-            q["question"] = block.strip("*")
+            q["question"] = _unwrap(block)  # one layer: the question's own
         elif block.startswith("⌂"):
             continue  # the breadcrumb is projected, never stored
         elif block.startswith("question: "):
@@ -419,13 +434,13 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
         if deadlock:
             term["deadlock"] = deadlock
         if theses:
-            theses[0]["terms"].append(term)
+            _owner(theses, anchors)["terms"].append(term)
     for heading, body in _subsections(named.get("terms", []), "↗"):
         title, key = _edge(heading, labels)
+        anchors = [_unwrap(b) for b in body if b.startswith("*")]
         if theses:
-            theses[0]["mentions"].append({
-                "title": title, "to": target(key),
-                "anchors": [_unwrap(b) for b in body if b.startswith("*")]})
+            _owner(theses, anchors)["mentions"].append({
+                "title": title, "to": target(key), "anchors": anchors})
 
     for thesis in theses:
         thesis["text"] = _unchip_prose(
@@ -470,12 +485,15 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     inbox = []
     for title, body in _named_subsections(named.get("inbox", [])):
         line = INBOX_LINE.match(body[0]) if body else None
-        if line:
-            inbox.append({"id": line.group("id"), "title": title,
-                          "kind": line.group("kind").strip(),
-                          "what": line.group("what"),
-                          "obligation": line.group("obligation"),
-                          "done": line.group("done") == "done"})
+        if not line:
+            # skipped, the item would leave the graph in silence and the page
+            # on the next body write: a prior overwritten without a word
+            raise ParseError("an inbox item's line is malformed under %r" % title)
+        inbox.append({"id": line.group("id"), "title": title,
+                      "kind": line.group("kind").strip(),
+                      "what": line.group("what"),
+                      "obligation": line.group("obligation"),
+                      "done": line.group("done") == "done"})
     q["inbox"] = inbox
 
     hinge: dict = {}

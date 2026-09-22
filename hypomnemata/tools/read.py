@@ -13,6 +13,11 @@ moves with the notebook rather than in the runs somebody remembered to move it.
 It costs no extra call and one line of output, and it declines — out loud —
 rather than seal a partial read. `--no-seal` turns it off; `--envelope` seals
 over a named file instead of the committed one.
+
+The enum the states point at is in neither the document read nor the exports,
+so `--state-enum ID` names it, and a rebuild over an existing graph file keeps
+the one that file holds rather than dropping it — dropped, every state would
+render as a word rather than a dropdown, and no gate can see the difference.
 """
 
 from __future__ import annotations
@@ -99,6 +104,24 @@ def uncovered(manifest: dict, bodies: dict) -> list:
                   if meta.get("name", tab_id) not in bodies)
 
 
+def kept(path: Optional[str]) -> str:
+    """The `state_enum` of the graph file this read is about to rewrite.
+
+    The document read names the tabs and the artifact, and the exports carry
+    the words; the enum the states point at is in neither. It is the document's
+    — set from it once, as the skill says — and a rebuild keeps it the way a
+    re-seal keeps an envelope's name: from the file it replaces, rather than
+    retyped on every run.
+    """
+    if not path:
+        return ""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return json.load(fh).get("state_enum") or ""
+    except (OSError, ValueError):
+        return ""
+
+
 def carry(graph: model.Graph, envelope: str, absent: list) -> None:
     """Put the graph into the committed envelope, or say why it was not.
 
@@ -143,6 +166,9 @@ def main(argv=None) -> int:
                     help="seal over this envelope instead of the committed one")
     ap.add_argument("--no-seal", action="store_true", dest="no_seal",
                     help="leave the committed envelope alone")
+    ap.add_argument("--state-enum", metavar="ID", dest="state_enum",
+                    help="the document enum the states point at (else kept "
+                         "from the graph file being rewritten)")
     args = ap.parse_args(argv)
 
     try:
@@ -167,11 +193,16 @@ def main(argv=None) -> int:
         print("ERROR parse: %s" % exc, file=sys.stderr)
         return 1
 
+    held = "" if args.state_enum else kept(args.out)
+    if args.state_enum or held:
+        graph["state_enum"] = args.state_enum or held
+
     text = json.dumps(graph, indent=2, ensure_ascii=False) + "\n"
     if args.out:
         with open(args.out, "w", encoding="utf-8") as fh:
             fh.write(text)
-        print("%d questions -> %s" % (len(graph["questions"]), args.out))
+        print("%d questions -> %s%s" % (len(graph["questions"]), args.out,
+                                        " (state_enum kept)" if held else ""))
     else:
         sys.stdout.write(text)
 

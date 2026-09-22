@@ -51,6 +51,16 @@ class OutlineTest(unittest.TestCase):
             "<?claude block m_canon?></paragraph></doc>")
         self.assertEqual([(b.heading, b.text) for b in blocks], [(3, "▸ A term")])
 
+    def test_a_gap_is_kept_as_the_fold_it_is(self):
+        """A `sinceRev` read folds the runs that did not change into a gap. It
+        names no block, so it is not one; but an outline holding one is not
+        the whole tab, and the body write has to be able to see that."""
+        blocks = apply.parse_outline(
+            "<doc><paragraph id='a.0'>one</paragraph><gap blocks='3'/>"
+            "<paragraph id='.5'>two</paragraph></doc>")
+        self.assertEqual([(b.id, b.kind) for b in blocks],
+                         [("a.0", "paragraph"), ("", "gap"), ("a.5", "paragraph")])
+
 
 class HeadingTest(unittest.TestCase):
     """Which block a target's heading is, when the outline will not say."""
@@ -126,6 +136,16 @@ class BodyTest(unittest.TestCase):
         with self.assertRaises(apply.Unresolved):
             apply.body_ops(graph, "canon", [b for b in whole if b.heading])
 
+    def test_an_outline_that_folds_blocks_is_refused(self):
+        """Replacing only the blocks a `sinceRev` read shows would leave the
+        folded ones on the page beside the fresh body."""
+        graph = load("valid")
+        whole = apply.parse_outline(outline_of(graph, "canon"))
+        folded = whole[:2] + [apply.Block("", "gap", 0, "")] + whole[4:]
+        with self.assertRaises(apply.Unresolved) as caught:
+            apply.body_ops(graph, "canon", folded)
+        self.assertIn("fold", caught.exception.missing[0])
+
 
 class LinkTest(unittest.TestCase):
     def setUp(self):
@@ -170,6 +190,28 @@ class LinkTest(unittest.TestCase):
         with self.assertRaises(apply.Unresolved) as caught:
             apply.link_ops(self.graph, "ti-esti", {}, self.graph.artifact)
         self.assertTrue(caught.exception.missing)
+
+    def test_a_link_that_leaves_the_tab_needs_an_artifact_to_leave_it_by(self):
+        """With no artifact the href would be a bare fragment, which the
+        document takes as a link on this tab: the wrong page, sent."""
+        with self.assertRaises(apply.Unresolved) as caught:
+            apply.link_ops(self.graph, "attenuation", self.by_tab, "")
+        self.assertTrue(any("artifact" in line for line in caught.exception.missing),
+                        caught.exception.missing)
+
+    def test_a_term_whose_title_opens_another_s_resolves_to_its_own_heading(self):
+        """`▸ The record` opens `▸ The record between them →` as well, and the
+        first heading that merely began with the words was taken for it."""
+        q = self.graph.get("ti-esti")
+        q.theses[0].text += " The record."
+        q.theses[0].terms.append(model.Term(title="The record", to="party",
+                                            anchors=["The record."]))
+        by_tab = outlines(self.graph)
+        found = apply.headings(self.graph, q.tab, by_tab[q.tab])
+        href = apply._resolve(self.graph, "#%s.▸ The record" % q.tab, by_tab,
+                              self.graph.artifact, q.tab)
+        self.assertEqual(href, "#" + found["▸ The record →"])
+        self.assertNotEqual(href, "#" + found["▸ The record between them →"])
 
     def test_wanted_names_this_tab_and_every_tab_it_points_at(self):
         wanted = apply.wanted_tabs(self.graph, "attenuation")

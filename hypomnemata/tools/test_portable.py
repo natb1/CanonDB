@@ -4,16 +4,20 @@ import copy
 import io
 import json
 import os
+import shutil
 import sys
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 
 import portable as cli
-from hypo import model, portable, project
+from hypo import model, portable, project, spec
 
 FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
 VALID = os.path.join(FIXTURES, "valid.json")
+
+#: what the tests wrote to disk, removed once the module is done with them
+_TEMP = []
 
 
 def graph_file(data):
@@ -22,7 +26,23 @@ def graph_file(data):
                                          encoding="utf-8")
     json.dump(data, handle)
     handle.close()
+    _TEMP.append(handle.name)
     return handle.name
+
+
+def scratch():
+    """A temp directory that is removed once the module is done with it."""
+    where = tempfile.mkdtemp()
+    _TEMP.append(where)
+    return where
+
+
+def tearDownModule():
+    for path in _TEMP:
+        if os.path.isdir(path):
+            shutil.rmtree(path, ignore_errors=True)
+        elif os.path.exists(path):
+            os.unlink(path)
 
 
 def run(argv):
@@ -195,9 +215,107 @@ class OpenTest(unittest.TestCase):
             portable.unseal({"format": "something-else", "questions": []})
 
 
+def as_v1(envelope):
+    """The same envelope as `hypomnemata-export/1` sealed it.
+
+    That format hung the glossary off the answer that used a word rather than
+    off the question, so an old envelope is reconstructed by pushing every
+    question's definitions back down onto its first thesis — which is where the
+    reader had already filed them, and so where an old file has them.
+    """
+    old = copy.deepcopy(envelope)
+    old["format"] = "hypomnemata-export/1"
+    for q in old["questions"]:
+        words = q.pop("definitions", [])
+        if words:
+            q["theses"][0]["definitions"] = words
+    return old
+
+
+class OlderFormatTest(unittest.TestCase):
+    """An envelope outlives the tooling that sealed it, so it is read forward."""
+
+    def setUp(self):
+        self.graph = model.load(VALID)
+        self.envelope = portable.seal(self.graph)
+        self.old = as_v1(self.envelope)
+
+    def test_the_old_shape_is_the_one_the_model_refuses(self):
+        # the premise: without the forward step this is what the receiving
+        # party would be handed, and it is a graph the checker will not take
+        raw = copy.deepcopy(self.old)
+        for q in raw["questions"]:
+            q["tab"], q["body"] = "t", "b"
+        held = [q for q in raw["questions"] if q["theses"][0].get("definitions")]
+        self.assertTrue(held)
+        with self.assertRaises(model.ShapeError):
+            model.load(graph_file({"artifact": "a", "mode": raw["mode"],
+                                   "state_enum": "e",
+                                   "questions": raw["questions"]}))
+
+    def test_an_older_envelope_opens(self):
+        data, notes = portable.opened(self.old)
+        self.assertEqual([q["id"] for q in data["questions"]],
+                         [q["id"] for q in self.envelope["questions"]])
+        self.assertTrue(notes)
+
+    def test_it_opens_to_what_the_current_format_opens_to(self):
+        self.assertEqual(portable.unseal(self.old),
+                         portable.unseal(self.envelope))
+
+    def test_the_words_come_up_whole_and_in_order(self):
+        data = portable.unseal(self.old)
+        for came, want in zip(data["questions"], self.envelope["questions"]):
+            self.assertEqual(came.get("definitions", []),
+                             want.get("definitions", []))
+            for t in came["theses"]:
+                self.assertNotIn("definitions", t)
+
+    def test_the_current_format_says_nothing(self):
+        self.assertEqual(portable.opened(self.envelope)[1], [])
+
+    def test_every_format_read_is_one_the_current_one_or_has_a_step(self):
+        for fmt in portable.READS:
+            self.assertTrue(fmt == portable.FORMAT or fmt in portable.FORWARD)
+
+    def test_an_older_envelope_is_found_where_it_is_committed(self):
+        where = scratch()
+        path = os.path.join(where, "carried.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(portable.dump(self.old))
+        self.assertEqual(portable.committed(where), path)
+
+    def test_an_older_envelope_is_stale_by_its_format(self):
+        where = scratch()
+        path = os.path.join(where, "carried.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(portable.dump(self.old))
+        _, changed = portable.compare(self.graph, path)
+        self.assertIn("~ format", changed)
+
+    def test_resealing_brings_a_carried_copy_forward(self):
+        where = scratch()
+        path = os.path.join(where, "carried.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(portable.dump(self.old))
+        portable.reseal(self.graph, path)
+        with open(path, encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh)["format"], portable.FORMAT)
+
+    def test_open_says_what_it_read_forward(self):
+        where = scratch()
+        path = os.path.join(where, "carried.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(portable.dump(self.old))
+        code, _, err = run(["open", path, "-o", os.path.join(where, "g.json")])
+        self.assertEqual(code, 0)
+        self.assertIn("read forward", err)
+        self.assertIn("definition(s)", err)
+
+
 class CommandTest(unittest.TestCase):
     def setUp(self):
-        self.dir = tempfile.mkdtemp()
+        self.dir = scratch()
 
     def path(self, name):
         return os.path.join(self.dir, name)
@@ -269,12 +387,20 @@ class CommandTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("ERROR envelope", err)
 
+    def test_open_refuses_an_envelope_whose_questions_are_not_objects(self):
+        """Refused in the same line every other malformed input gets, rather
+        than a traceback out of the loop that empties the bindings."""
+        bad = graph_file({"format": portable.FORMAT, "questions": [1]})
+        code, _, err = run(["open", bad, "-o", self.path("g.json")])
+        self.assertEqual(code, 1)
+        self.assertIn("ERROR envelope", err)
+
 
 class ResealTest(unittest.TestCase):
     """The envelope brought up to date, rather than sealed again from scratch."""
 
     def setUp(self):
-        self.dir = tempfile.mkdtemp()
+        self.dir = scratch()
         self.graph = model.load(VALID)
         self.envelope = os.path.join(self.dir, "notebook.json")
         with open(self.envelope, "w", encoding="utf-8") as fh:
@@ -370,7 +496,7 @@ class ResealTest(unittest.TestCase):
         self.assertEqual(portable.committed(self.dir), self.envelope)
 
     def test_committed_says_so_where_there_is_none(self):
-        self.assertEqual(portable.committed(tempfile.mkdtemp()), "")
+        self.assertEqual(portable.committed(scratch()), "")
 
 
 class ResealCommandTest(ResealTest):
@@ -433,6 +559,46 @@ class ResealCommandTest(ResealTest):
         code, _, err = run(["reseal", VALID, VALID])
         self.assertEqual(code, 1)
         self.assertIn("ERROR envelope", err)
+
+
+class CommittedEnvelopeTest(unittest.TestCase):
+    """The envelope committed at the branch root, against the tooling beside it.
+
+    It carries copies of what the tooling says — the format, the states, the
+    rebuild steps — and a commit that moves only the tooling moves nothing of
+    the notebook, so no read re-seals it. The suite runs on every commit, so
+    this is where that drift is caught.
+    """
+
+    def setUp(self):
+        self.path = portable.committed(portable.root())
+        if not self.path:
+            self.skipTest("no envelope is committed at the branch root")
+        with open(self.path, encoding="utf-8") as fh:
+            self.envelope = json.load(fh)
+
+    def test_it_is_in_the_current_format(self):
+        self.assertEqual(self.envelope["format"], portable.FORMAT)
+
+    def test_it_carries_the_tooling_s_states_and_steps(self):
+        self.assertEqual(self.envelope["states"], list(model.STATES))
+        self.assertEqual(self.envelope["rebuild"], portable.STEPS)
+
+    def test_it_is_written_as_a_re_seal_would_write_it(self):
+        with open(self.path, encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), portable.dump(self.envelope))
+
+    def test_bound_it_stands_and_comes_out_to_what_it_expects(self):
+        data = portable.unseal(self.envelope)
+        data["artifact"] = "https://example.invalid/artifact/x"
+        data["state_enum"] = "enum-x"
+        for n, q in enumerate(data["questions"]):
+            q["tab"], q["body"] = "t%d" % n, "b%d" % n
+        graph = model.load(graph_file(data))
+        self.assertEqual([f.line() for f in spec.errors(spec.run(graph))], [])
+        expect = self.envelope["expect"]
+        self.assertEqual(len(graph.questions), expect["questions"])
+        self.assertEqual(portable.tree(graph), expect["tree"])
 
 
 if __name__ == "__main__":

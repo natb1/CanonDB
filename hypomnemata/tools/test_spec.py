@@ -34,6 +34,18 @@ class ValidGraphTest(unittest.TestCase):
         self.assertEqual([f.line() for f in findings], [])
 
 
+class AnchorUniqueTest(unittest.TestCase):
+    def test_an_anchor_that_overlaps_itself_is_two_places_for_one_chip(self):
+        """Counted without overlap it occurs once; the renderer scans every
+        start and puts down two chips."""
+        graph = load("valid")
+        thesis = graph.get("ti-esti").theses[0]
+        thesis.text += " It is so that that that is said."
+        thesis.terms[0].anchors.append("that that")
+        fired = [f for f in spec.run(graph) if f.check == "anchor-unique"]
+        self.assertTrue(fired)
+
+
 class InvalidGraphTest(unittest.TestCase):
     def test_each_fixture_fires_its_check(self):
         for c in spec.CHECKS:

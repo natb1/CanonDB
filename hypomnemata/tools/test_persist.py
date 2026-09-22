@@ -3,6 +3,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import persist  # noqa: E402
@@ -34,7 +35,8 @@ class TestCountTurns(unittest.TestCase):
 
 class TestResolve(unittest.TestCase):
     def test_single_log_needs_no_id(self):
-        with tempfile.TemporaryDirectory() as d:
+        # patch.dict puts the session id back once the test is done with it
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ):
             write_log(os.path.join(d, "abc.jsonl"), 1)
             os.environ.pop("CLAUDE_CODE_SESSION_ID", None)
             sid, path = persist.resolve(d, None)
@@ -42,7 +44,7 @@ class TestResolve(unittest.TestCase):
             self.assertTrue(path.endswith("abc.jsonl"))
 
     def test_several_logs_without_id_exits(self):
-        with tempfile.TemporaryDirectory() as d:
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ):
             write_log(os.path.join(d, "abc.jsonl"), 1)
             write_log(os.path.join(d, "def.jsonl"), 1)
             os.environ.pop("CLAUDE_CODE_SESSION_ID", None)
