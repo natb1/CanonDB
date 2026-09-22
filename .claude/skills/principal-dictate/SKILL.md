@@ -90,6 +90,24 @@ findings rather than fixing them silently.
 **6 — Commit** the tooling and skill changes on the `hypomnemata` branch. Nothing is committed for
 the notebook's content: it lives in the artifact.
 
+## Carrying
+
+A live document cannot be shared between users, so a party who wants this notebook raises their
+own from its graph. `tools/portable.py seal $SCRATCH/graph.json -o <file> --name "<notebook>"`
+empties the four values that name *this* document — the `artifact`, the `state_enum`, and each
+question's `tab` and `body` — and says on stderr which it dropped. It refuses a graph the checker
+faults: what is handed over stands, or it is not handed over. `tools/portable.py open <file> -o
+graph.json` gives the graph back, unbound, and the rebuild steps ride inside the envelope so the
+receiving party reads them from the same file.
+
+The tab tree does not travel, because `project.py` derives it; the envelope records it under
+`expect` instead, as the shape the rebuild has to come out to. The enum does not travel either —
+only its options do, since an enum id is this document's. A document enum only grows, so the new
+one is created holding exactly `STATES`, in order, the first time.
+
+An envelope is a cache like any other export, and is not committed. It is handed to the party who
+asked for it.
+
 ## Attenuation
 
 Rules of the specification that no tool decides. Hold these by reading; they are why this skill has
