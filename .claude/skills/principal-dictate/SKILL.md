@@ -105,8 +105,13 @@ The tab tree does not travel, because `project.py` derives it; the envelope reco
 only its options do, since an enum id is this document's. A document enum only grows, so the new
 one is created holding exactly `STATES`, in order, the first time.
 
-An envelope is a cache like any other export, and is not committed. It is handed to the party who
-asked for it.
+The sealed envelope is committed, at the branch root, and is the one exception to the rule that
+nothing is committed for the notebook's content: it is not a cache of the artifact but a thing
+handed to another party, and a party who has it must be able to say which notebook they received.
+What it was sealed from — the graph file and the tab exports — stays a cache and stays uncommitted.
+
+An envelope goes stale the moment the notebook moves, so re-seal it in any run that lands a change,
+and let the diff show what the other party would now receive.
 
 ## Attenuation
 
