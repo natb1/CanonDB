@@ -280,7 +280,7 @@ hinge, for a reader — is its **ancestors** and never its breadcrumb.
 - A word belongs on the question that introduces it, not the one that presents it. A question
   introduces a word through an answer, or through what its asking stood on: the question half of
   its hinge, which is how the root, with no ancestors, brings in "party" and "leak". The answer's
-  half records how the answer was drawn, in the encoding's own words, like the question line and
+  half records how the answer was drawn, in the encoding's own words, like the question's and
   the answer's metadata; it introduces nothing and is not a user. Where a user cannot reach a
   word over the ancestors, either the line is missing an edge or the definition is on the wrong
   tab.
