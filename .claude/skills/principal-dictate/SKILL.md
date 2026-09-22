@@ -70,7 +70,12 @@ ack, or a read with `projection: outline`:
 1. `tools/apply.py $SCRATCH/graph.json <question> --outlines $SCRATCH/outlines --body` → send it,
    and save the ack's outline over the old one, because the ids have changed.
 2. `tools/apply.py … --links` → send it. `--wanted` lists the tabs whose outlines it needs
-   first; it refuses rather than emitting an operation that would do nothing.
+   first; it refuses rather than emitting an operation that would do nothing. An ack prints one
+   element per operation, up to a size cap: past roughly twenty it stops printing and says
+   `complete='false'`, which is not a refusal and not a skip but the outcome going unread. Send
+   the links of a heavy tab in batches under that, or read the rest back off the page — a
+   `no_op` is exactly what this step exists to catch, and it cannot be caught in what was never
+   printed.
 3. `tools/apply.py … --unlink <the tab's export>` where the page carries a link the sidecar no
    longer names — a definition that has moved tabs leaves its own behind.
 
