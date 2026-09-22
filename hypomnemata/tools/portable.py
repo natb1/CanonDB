@@ -11,7 +11,8 @@ its graph instead, with every value that names *this* document emptied:
 a notebook that stands, not one that is owed repairs. `--force` seals anyway and
 says so. `open` writes a graph whose `artifact`, `state_enum`, `tab` and `body`
 are empty, which the receiving party fills from their own document; the steps
-for that ride inside the envelope.
+for that ride inside the envelope. An envelope sealed under an older format is
+read forward rather than refused, and `open` says on stderr what that moved.
 
 An envelope that has been handed over once is not sealed again from scratch:
 
@@ -98,7 +99,7 @@ def _open(args) -> int:
         print("ERROR envelope: %s" % exc, file=sys.stderr)
         return 1
     try:
-        data = portable.unseal(envelope)
+        data, notes = portable.opened(envelope)
     except ValueError as exc:
         print("ERROR envelope: %s" % exc, file=sys.stderr)
         return 1
@@ -107,6 +108,12 @@ def _open(args) -> int:
     if args.out:
         print("%d questions -> %s (unbound: fill artifact, state_enum, tab, body)"
               % (len(data["questions"]), args.out), file=sys.stderr)
+    # an envelope sealed under an older format is read forward rather than
+    # refused, and what that moved is said whether or not the graph went to a
+    # file: it is the one difference between the notebook sealed and the one
+    # opened, and the only run that can report it is this one
+    for line in notes:
+        print("  read forward: %s" % line, file=sys.stderr)
     return 0
 
 

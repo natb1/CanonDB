@@ -1,5 +1,5 @@
 {
-  "format": "hypomnemata-export/1",
+  "format": "hypomnemata-export/2",
   "name": "Hypomnemata — CanonDB v1",
   "tools": "hypomnemata/tools and .claude/skills/principal-dictate, on the hypomnemata branch of github.com/natb1/CanonDB",
   "mode": "notebook",
