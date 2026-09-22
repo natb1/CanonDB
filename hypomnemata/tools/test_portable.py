@@ -145,7 +145,7 @@ class SelfLinkTest(unittest.TestCase):
         self.assertEqual(portable.seal(model.load(reopened))["rebind"], [])
 
     def test_the_drop_report_names_it(self):
-        code, _, err = run(["seal", self.path, "-o", graph_file({})])
+        code, _, err = run(["seal", self.path, "-o", graph_file({}), "--verbose"])
         self.assertEqual(code, 0)
         self.assertIn("the notebook itself.link=the document itself", err)
 
@@ -212,12 +212,21 @@ class CommandTest(unittest.TestCase):
 
     def test_seal_reports_every_binding_it_dropped(self):
         env = self.path("e.json")
-        code, _, err = run(["seal", VALID, "-o", env])
+        code, _, err = run(["seal", VALID, "-o", env, "--verbose"])
         self.assertEqual(code, 0)
         with open(VALID, encoding="utf-8") as fh:
             expected = portable.bindings(json.load(fh))
         for line in expected:
             self.assertIn("dropped %s" % line, err)
+
+    def test_seal_counts_the_bindings_rather_than_naming_them(self):
+        env = self.path("e.json")
+        code, _, err = run(["seal", VALID, "-o", env])
+        self.assertEqual(code, 0)
+        with open(VALID, encoding="utf-8") as fh:
+            expected = portable.bindings(json.load(fh))
+        self.assertIn("%d binding(s) dropped" % len(expected), err)
+        self.assertNotIn("dropped %s" % expected[0], err)
 
     def test_seal_writes_to_stdout_when_asked_for_no_file(self):
         code, out, _ = run(["seal", VALID])
@@ -257,6 +266,171 @@ class CommandTest(unittest.TestCase):
 
     def test_open_refuses_a_file_that_is_not_there(self):
         code, _, err = run(["open", self.path("absent.json")])
+        self.assertEqual(code, 1)
+        self.assertIn("ERROR envelope", err)
+
+
+class ResealTest(unittest.TestCase):
+    """The envelope brought up to date, rather than sealed again from scratch."""
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.graph = model.load(VALID)
+        self.envelope = os.path.join(self.dir, "notebook.json")
+        with open(self.envelope, "w", encoding="utf-8") as fh:
+            fh.write(portable.dump(portable.seal(
+                self.graph, name="a notebook", tools="somewhere/tools")))
+
+    def moved(self, change):
+        """A graph like VALID with `change(data)` applied, on disk."""
+        with open(VALID, encoding="utf-8") as fh:
+            data = json.load(fh)
+        change(data)
+        return model.load(graph_file(data))
+
+    def shrink(self):
+        """Put a question in the envelope that the graph does not have.
+
+        A question is added to the envelope rather than cut from the fixture,
+        because cutting one leaves a graph the checker faults for other
+        reasons, and this is a test about dropping and not about those.
+        """
+        with open(self.envelope, encoding="utf-8") as fh:
+            data = json.load(fh)
+        data["questions"].append(dict(data["questions"][0], id="gone"))
+        with open(self.envelope, "w", encoding="utf-8") as fh:
+            fh.write(portable.dump(data))
+
+    def test_a_reseal_carries_the_name_and_tools_forward(self):
+        graph = self.moved(lambda d: d["questions"][0].update(pressure=3))
+        portable.reseal(graph, self.envelope)
+        with open(self.envelope, encoding="utf-8") as fh:
+            after = json.load(fh)
+        self.assertEqual(after["name"], "a notebook")
+        self.assertEqual(after["tools"], "somewhere/tools")
+
+    def test_carried_is_what_the_replaced_file_said(self):
+        with open(self.envelope, encoding="utf-8") as fh:
+            self.assertEqual(portable.carried(json.load(fh)),
+                             {"name": "a notebook", "tools": "somewhere/tools"})
+
+    def test_a_reseal_that_changes_nothing_leaves_the_file_alone(self):
+        with open(self.envelope, "rb") as fh:
+            before = fh.read()
+        self.assertEqual(portable.reseal(self.graph, self.envelope), [])
+        with open(self.envelope, "rb") as fh:
+            self.assertEqual(fh.read(), before)
+
+    def test_drift_names_the_question_that_moved(self):
+        graph = self.moved(lambda d: d["questions"][0].update(pressure=3))
+        changed = portable.reseal(graph, self.envelope)
+        self.assertIn("~ 1 question(s): ti-esti", changed)
+
+    def test_drift_says_the_shape_and_never_the_notebook(self):
+        graph = self.moved(lambda d: d["questions"][0].update(pressure=3))
+        _, changed = portable.compare(graph, self.envelope)
+        said = " ".join(changed)
+        for q in self.graph.questions:
+            for thesis in q.theses:
+                self.assertNotIn(thesis.title, said)
+
+    def test_drift_stops_naming_ids_at_a_bound(self):
+        many = [str(n) for n in range(portable.NAMED * 3)]
+        phrase = portable.named(many)
+        self.assertIn("and %d more" % (len(many) - portable.NAMED), phrase)
+        self.assertLessEqual(phrase.count(","), portable.NAMED)
+
+    def test_drift_names_them_all_while_they_are_few(self):
+        self.assertEqual(portable.named(["b", "a"]), "a, b")
+
+    def test_a_header_value_that_moved_is_named_by_key(self):
+        current = portable.seal(self.graph, name="another notebook",
+                                tools="somewhere/tools")
+        with open(self.envelope, encoding="utf-8") as fh:
+            self.assertEqual(portable.drift(json.load(fh), current), ["~ name"])
+
+    def test_dropped_names_what_the_envelope_has_and_the_graph_does_not(self):
+        self.shrink()
+        self.assertEqual(portable.dropped(self.graph, self.envelope), ["gone"])
+
+    def test_nothing_is_dropped_by_a_graph_that_still_holds_them(self):
+        self.assertEqual(portable.dropped(self.graph, self.envelope), [])
+
+    def test_a_file_that_is_not_an_envelope_is_told_apart_from_a_stale_one(self):
+        with self.assertRaises(ValueError):
+            portable.compare(self.graph, VALID)
+
+    def test_committed_finds_the_envelope_by_its_own_format(self):
+        self.assertEqual(portable.committed(self.dir), self.envelope)
+
+    def test_committed_passes_over_json_that_is_not_one(self):
+        with open(os.path.join(self.dir, "a-decoy.json"), "w",
+                  encoding="utf-8") as fh:
+            json.dump({"format": "something-else"}, fh)
+        self.assertEqual(portable.committed(self.dir), self.envelope)
+
+    def test_committed_says_so_where_there_is_none(self):
+        self.assertEqual(portable.committed(tempfile.mkdtemp()), "")
+
+
+class ResealCommandTest(ResealTest):
+    def test_reseal_brings_a_stale_envelope_up_to_date(self):
+        graph = self.moved(lambda d: d["questions"][0].update(pressure=3))
+        code, _, err = run(["reseal", graph.path, self.envelope])
+        self.assertEqual(code, 0, err)
+        self.assertIn("re-sealed", err)
+        self.assertIn("~ 1 question(s): ti-esti", err)
+
+    def test_reseal_says_when_there_is_nothing_to_do(self):
+        code, _, err = run(["reseal", VALID, self.envelope])
+        self.assertEqual(code, 0, err)
+        self.assertIn("is current", err)
+
+    def test_reseal_refuses_a_shrink_and_leaves_the_file(self):
+        self.shrink()
+        with open(self.envelope, "rb") as fh:
+            before = fh.read()
+        code, _, err = run(["reseal", VALID, self.envelope])
+        self.assertEqual(code, 1)
+        self.assertIn("would drop 1 question(s): gone", err)
+        with open(self.envelope, "rb") as fh:
+            self.assertEqual(fh.read(), before)
+
+    def test_force_seals_a_shrink_that_is_meant(self):
+        self.shrink()
+        code, _, err = run(["reseal", VALID, self.envelope, "--force"])
+        self.assertEqual(code, 0, err)
+        with open(self.envelope, encoding="utf-8") as fh:
+            self.assertNotIn("gone", [q["id"] for q in json.load(fh)["questions"]])
+
+    def test_reseal_refuses_a_graph_the_checker_faults(self):
+        bad = os.path.join(FIXTURES, "invalid-one-root.json")
+        code, _, err = run(["reseal", bad, self.envelope])
+        self.assertEqual(code, 1)
+        self.assertIn("refusing to re-seal", err)
+
+    def test_stale_exits_one_and_says_what_moved(self):
+        graph = self.moved(lambda d: d["questions"][0].update(pressure=3))
+        code, out, _ = run(["stale", graph.path, self.envelope])
+        self.assertEqual(code, 1)
+        self.assertIn("is stale", out)
+        self.assertIn("~ 1 question(s): ti-esti", out)
+
+    def test_stale_exits_zero_on_a_current_envelope(self):
+        code, out, _ = run(["stale", VALID, self.envelope])
+        self.assertEqual(code, 0)
+        self.assertIn("is current", out)
+
+    def test_stale_writes_nothing(self):
+        graph = self.moved(lambda d: d["questions"][0].update(pressure=3))
+        with open(self.envelope, "rb") as fh:
+            before = fh.read()
+        run(["stale", graph.path, self.envelope])
+        with open(self.envelope, "rb") as fh:
+            self.assertEqual(fh.read(), before)
+
+    def test_a_named_file_that_is_not_an_envelope_is_reported(self):
+        code, _, err = run(["reseal", VALID, VALID])
         self.assertEqual(code, 1)
         self.assertIn("ERROR envelope", err)
 
