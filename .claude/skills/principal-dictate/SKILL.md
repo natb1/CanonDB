@@ -23,7 +23,8 @@ correction, an addition, or a change to the specification the notebook is writte
 3. **Never hand-write tab markdown.** `tools/render.py` is the only sanctioned producer of a tab
    body. Hand-written markdown is how the layout drifts.
 4. **Every file under `hypomnemata/` is a cache**, including any graph file you export. Nothing on
-   disk is authoritative over the artifact, and no export is committed.
+   disk is authoritative over the artifact. Nothing is committed for the notebook's content but the
+   sealed envelope, which is a projection like the rest (see **Carrying**).
 
 ## Procedure
 
@@ -113,9 +114,12 @@ only its options do, since an enum id is this document's. A document enum only g
 one is created holding exactly `STATES`, in order, the first time.
 
 The sealed envelope is committed, at the branch root, and is the one exception to the rule that
-nothing is committed for the notebook's content: it is not a cache of the artifact but a thing
-handed to another party, and a party who has it must be able to say which notebook they received.
-What it was sealed from — the graph file and the tab exports — stays a cache and stays uncommitted.
+nothing is committed for the notebook's content. It is an accepted exception and not a second
+source: the envelope is only ever a projection of the notebook, which stays the source of truth,
+and it is committed as a stopgap while the document cannot be shared between users. A party who
+has it must be able to say which notebook they received, and when the document can be shared the
+stopgap goes. What it was sealed from — the graph file and the tab exports — stays a cache and
+stays uncommitted.
 
 An envelope goes stale the moment the notebook moves, so it is not left to be remembered.
 `tools/read.py` seals the rebuilt graph over it on every complete read, taking the `name` and the
@@ -222,6 +226,25 @@ a procedure rather than a script.
   of the word cannot reach the question over its ancestors. It gives the sense in a sentence
   and points at the question, and the argument stays on the question's tab. Whether reach needs
   it is judged by reading.
+- **A deadlock is what no question reaches.** A clause you cannot accept is recorded as a
+  deadlock only where the point cannot be put as a question in the lineage. Where it can, suspend
+  acceptance of the clause, put the question, and settle it before the merge — and where selection
+  cannot reach the point at all, the deadlock is what says so, which is worth as much as reaching
+  it. Nothing computes which case you are in.
+- **Reach is judged where a part is written.** `reach` holds the context rule over the notebook's
+  vocabulary, and holds it on what you write: the question, its hinge, your answers and their
+  headlines, glossary bodies, notes, tradition notes and counters, deadlocks and suspensions. An
+  inbox item is hoisted to a common ancestor to make a dashboard, so it is judged from every
+  question that requires it and written plainly enough for all of them. What the check cannot
+  judge is whether a word in reach is used in the sense that was fixed for it.
+- **A party's word is imported, never assumed.** A party's notebook never stands above a question
+  of yours, so its term of art is brought in by an entry that names the party and takes its sense
+  — and a word of the notebook's own that a question cannot reach is a missing edge or a
+  definition on the wrong question, never an import.
+- **Two open threads must not depend on each other.** `put-in-order` holds the half a script can:
+  nothing is put below a question that has not been. Which thread a question is on is not
+  recorded, so a turn carrying an answer from another open thread, or missing one it needs, is
+  yours to see.
 - **The clean-context rule.** Nothing of the notebook may reach a turn that answers a canon
   question. There is no guard for this yet — it is recorded as an eventuality on the `context` tab —
   so it holds by discipline: never invoke a canon entry point from a session that has run this one.
