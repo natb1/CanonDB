@@ -36,13 +36,15 @@ def run(argv):
 class SealTest(unittest.TestCase):
     def setUp(self):
         self.graph = model.load(VALID)
-        self.envelope = portable.seal(self.graph, name="a notebook")
+        self.envelope = portable.seal(self.graph, name="a notebook",
+                                      tools="somewhere/tools")
         with open(VALID, encoding="utf-8") as fh:
             self.data = json.load(fh)
 
     def test_the_envelope_says_what_it_is(self):
         self.assertEqual(self.envelope["format"], portable.FORMAT)
         self.assertEqual(self.envelope["name"], "a notebook")
+        self.assertEqual(self.envelope["tools"], "somewhere/tools")
 
     def test_no_document_local_value_survives(self):
         self.assertNotIn("artifact", self.envelope)
@@ -85,6 +87,71 @@ class SealTest(unittest.TestCase):
 
     def test_bindings_of_an_unbound_graph_are_none(self):
         self.assertEqual(portable.bindings(portable.unseal(self.envelope)), [])
+
+
+class SelfLinkTest(unittest.TestCase):
+    """An application whose link is the document is a binding in content's clothes."""
+
+    def setUp(self):
+        with open(VALID, encoding="utf-8") as fh:
+            self.data = json.load(fh)
+        thesis = self.data["questions"][0]["theses"][0]
+        thesis.setdefault("applications", []).append({
+            "name": "the notebook itself",
+            "what": "this notebook",
+            "link": "[it](%s)" % self.data["artifact"],
+            "standing": "postulate",
+        })
+        self.path = graph_file(self.data)
+        self.envelope = portable.seal(model.load(self.path))
+
+    def applications(self, envelope):
+        return [a for q in envelope["questions"] for t in q["theses"]
+                for a in t.get("applications", [])]
+
+    def test_the_self_link_is_found(self):
+        found = portable.self_links(self.data)
+        self.assertEqual(found, [{"question": self.data["questions"][0]["id"],
+                                  "thesis": self.data["questions"][0]["theses"][0]["title"],
+                                  "application": "the notebook itself"}])
+
+    def test_a_link_to_somewhere_else_is_not_a_binding(self):
+        data = copy.deepcopy(self.data)
+        for t in data["questions"][0]["theses"]:
+            for a in t["applications"]:
+                a["link"] = "[elsewhere](https://example.invalid/x)"
+        self.assertEqual(portable.self_links(data), [])
+
+    def test_a_graph_with_no_artifact_has_no_self_links(self):
+        data = copy.deepcopy(self.data)
+        data["artifact"] = ""
+        self.assertEqual(portable.self_links(data), [])
+
+    def test_the_envelope_carries_no_link_to_the_old_document(self):
+        self.assertNotIn(self.data["artifact"], json.dumps(self.envelope))
+
+    def test_the_application_itself_survives(self):
+        carried = [a for a in self.applications(self.envelope)
+                   if a["name"] == "the notebook itself"]
+        self.assertEqual(len(carried), 1)
+        self.assertEqual(carried[0]["what"], "this notebook")
+        self.assertEqual(carried[0]["link"], "")
+
+    def test_where_it_stood_is_recorded_for_rebinding(self):
+        self.assertEqual(self.envelope["rebind"], portable.self_links(self.data))
+
+    def test_an_unbound_graph_has_nothing_left_to_rebind(self):
+        reopened = graph_file(portable.unseal(self.envelope))
+        self.assertEqual(portable.seal(model.load(reopened))["rebind"], [])
+
+    def test_the_drop_report_names_it(self):
+        code, _, err = run(["seal", self.path, "-o", graph_file({})])
+        self.assertEqual(code, 0)
+        self.assertIn("the notebook itself.link=the document itself", err)
+
+    def test_sealing_does_not_touch_the_graph_file(self):
+        with open(self.path, encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh), self.data)
 
 
 class OpenTest(unittest.TestCase):
@@ -156,6 +223,11 @@ class CommandTest(unittest.TestCase):
         code, out, _ = run(["seal", VALID])
         self.assertEqual(code, 0)
         self.assertEqual(json.loads(out)["format"], portable.FORMAT)
+
+    def test_seal_records_where_the_tooling_is_kept(self):
+        code, out, _ = run(["seal", VALID, "--tools", "repo/tools"])
+        self.assertEqual(code, 0)
+        self.assertEqual(json.loads(out)["tools"], "repo/tools")
 
     def test_seal_refuses_a_graph_the_checker_faults(self):
         code, _, err = run(["seal", os.path.join(FIXTURES, "invalid-one-root.json"),

@@ -38,6 +38,10 @@ QUESTION_KEYS = ("tab", "body")
 #: inside the envelope: the party who receives the file receives the procedure
 #: with it, rather than having to be told separately.
 STEPS = [
+    "Get the tooling named under `tools`, and the dictation skill beside it."
+    " Every step below is one of those tools. None is optional, and no tab is"
+    " ever hand-written: the renderer is the only sanctioned producer of a tab"
+    " body.",
     "Create a document for the notebook.",
     "Create an enum whose options are exactly `states`, in that order, and"
     " nothing else. A document enum only grows — an option can be appended,"
@@ -46,7 +50,10 @@ STEPS = [
     "`portable.py open <this file> -o graph.json` writes the graph back out"
     " with `artifact`, `state_enum`, and every `tab` and `body` empty.",
     "Set `artifact` to the new document's artifact URL and `state_enum` to the"
-    " id of the enum just created.",
+    " id of the enum just created. Each application named under `rebind` is an"
+    " application whose link was the old document — the notebook is an"
+    " application of some of its own theses. Point each one's `link` at the new"
+    " document, or leave it empty and its standing will say it is owed.",
     "Create one tab per question, each named by that question's `id`, and"
     " record the tab's id in its question's `tab` and the tab's body block id"
     " in its `body`. A tab whose ids are still empty is not yet bound.",
@@ -73,6 +80,31 @@ def _data(graph: model.Graph) -> Dict[str, Any]:
         return json.load(fh)
 
 
+def self_links(data: Dict[str, Any]) -> List[Dict[str, str]]:
+    """Every application whose link is the document being sealed.
+
+    The notebook is an application of some of its own theses, and an
+    application's link is the artifact it names — so where that artifact is
+    this document, the link is a binding like any other, wearing content's
+    clothes. It cannot travel: it would tell the receiving party that their
+    notebook is this one. Sealing empties it and records where it stood, since
+    the application itself is content and stays, owed a link to a document that
+    does not exist yet.
+    """
+    artifact = data.get("artifact") or ""
+    found: List[Dict[str, str]] = []
+    if not artifact:
+        return found
+    for q in data.get("questions", []):
+        for t in q.get("theses", []):
+            for a in t.get("applications", []):
+                if artifact in (a.get("link") or ""):
+                    found.append({"question": q.get("id", "?"),
+                                  "thesis": t.get("title", ""),
+                                  "application": a.get("name", "?")})
+    return found
+
+
 def bindings(data: Dict[str, Any]) -> List[str]:
     """Every document-local value the file carries, as `where=value` lines.
 
@@ -86,6 +118,9 @@ def bindings(data: Dict[str, Any]) -> List[str]:
         for key in QUESTION_KEYS:
             if q.get(key):
                 found.append("%s.%s=%s" % (q.get("id", "?"), key, q[key]))
+    for at in self_links(data):
+        found.append("%s/%s/%s.link=the document itself"
+                     % (at["question"], at["thesis"], at["application"]))
     return found
 
 
@@ -99,19 +134,28 @@ def tree(graph: model.Graph) -> List[Dict[str, Any]]:
             for qid in project.walk(graph)]
 
 
-def seal(graph: model.Graph, name: str = "") -> Dict[str, Any]:
+def seal(graph: model.Graph, name: str = "", tools: str = "") -> Dict[str, Any]:
     """The envelope: the notebook, with nothing in it that names a document."""
     data = copy.deepcopy(_data(graph))
     questions = data.get("questions", [])
     for q in questions:
         for key in QUESTION_KEYS:
             q[key] = ""
+    rebind = self_links(data)
+    for q in questions:
+        for t in q.get("theses", []):
+            for a in t.get("applications", []):
+                if (data.get("artifact") or "") and \
+                        (data["artifact"] in (a.get("link") or "")):
+                    a["link"] = ""
     return {
         "format": FORMAT,
         "name": name,
+        "tools": tools,
         "mode": data.get("mode", model.NOTEBOOK),
         "states": list(model.STATES),
         "questions": questions,
+        "rebind": rebind,
         "expect": {"questions": len(questions), "tree": tree(graph)},
         "rebuild": STEPS,
     }

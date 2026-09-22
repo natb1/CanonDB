@@ -59,7 +59,7 @@ def _seal(args) -> int:
 
     with open(args.file, encoding="utf-8") as fh:
         bound = portable.bindings(json.load(fh))
-    envelope = portable.seal(graph, name=args.name)
+    envelope = portable.seal(graph, name=args.name, tools=args.tools)
     _write(envelope, args.out)
     if args.out:
         print("%d questions, %d binding(s) dropped -> %s"
@@ -101,6 +101,8 @@ def main(argv=None) -> int:
     s.add_argument("file", help="the graph file")
     s.add_argument("-o", "--out", help="write here instead of stdout")
     s.add_argument("--name", default="", help="what to call the notebook")
+    s.add_argument("--tools", default="",
+                   help="where the tooling that rebuilds it is kept")
     s.add_argument("--force", action="store_true",
                    help="seal even though the checker reports errors")
     s.set_defaults(run=_seal)
