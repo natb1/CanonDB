@@ -369,6 +369,16 @@ class DetailTest(unittest.TestCase):
         findings = spec.run(graph, only=["definition-anchorable"])
         self.assertEqual([f.question for f in findings], ["canon"])
 
+    def test_only_the_ai_s_questions_are_put(self):
+        """Another party's question is read, not asked, and lands no more than
+        the principal's does; the fixture covers his, this covers theirs."""
+        graph = load("valid")
+        self.assertEqual(spec.run(graph, only=["only-ai-put"]), [])
+        graph.get("plato").state = "landed"
+        findings = spec.run(graph, only=["only-ai-put"])
+        self.assertEqual([f.question for f in findings], ["plato"])
+        self.assertIn("another party", findings[0].message)
+
     def test_an_author_question_names_its_answerer_and_a_tradition_does_not(self):
         graph = load("valid")
         self.assertEqual(spec.run(graph, only=["answerer-set"]), [])

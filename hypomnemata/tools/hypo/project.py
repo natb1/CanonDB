@@ -11,7 +11,10 @@ from __future__ import annotations
 from collections import deque
 from typing import Dict, List, Optional, Set
 
-from .model import Graph
+from .model import ANSWERERS, STATES, Graph, Question
+
+#: who a question is put to; nothing else is ever put
+AI = ANSWERERS[0]
 
 INF = float("inf")
 
@@ -245,25 +248,63 @@ def backlog(graph: Graph, qid: str) -> int:
     word in its ordinary sense ("I cannot read your priorities"). The AI's
     words cannot change, so the notebook's did.
 
-    The blocking relation is not stored. It is read off the term graph,
-    because a turn answering a question carries canon above that question, so
-    a question cannot be put until the answer to every question above it has
-    landed. That makes the questions blocked behind ``qid`` exactly the ones
-    its term edges reach, and it is what makes the backlog computable at all. Once a
-    question-to-question blocking edge exists in its own right the two will
-    part company, and this is the half that will have to move.
+    The blocking relation is not stored. It is read off the term graph as far
+    as a turn carries — see ``blocked_behind`` — which is what makes the
+    backlog computable at all. It already parts from lineage at the
+    principal's questions and at landed answers; where else the two differ
+    waits on a question-to-question blocking edge recorded in its own right.
 
-    Summed over the reachable set and not down the children, for the reason
-    ``load`` counts a set: the graph is a DAG, so a question with two parents
-    is reached twice, and adding up the branches would count the work waiting
-    at it once per path to it. What is blocked behind a question is a set of
-    questions, each of them blocked once.
-
-    Total on a cycle, since a set has no depth to run away down.
+    Summed over a set and not down the children, for the reason ``load``
+    counts a set: the graph is a DAG, so a question with two parents is
+    reached twice, and adding up the branches would count the work waiting at
+    it once per path to it. Total on a cycle, since a set has no depth to run
+    away down.
     """
-    by_id = {q.id: q for q in graph.questions}
-    return sum(by_id[reached].pressure
-               for reached in reachable_from(graph, qid) if reached in by_id)
+    by_id = graph.by_id()
+    q = by_id.get(qid)
+    if q is None:
+        return 0
+    return q.pressure + sum(by_id[b].pressure for b in blocked_behind(graph, qid))
+
+
+def landed(q: Question) -> bool:
+    """Whether an answer to ``q`` has been merged, and so is canon."""
+    return any(thesis.state == STATES[-1] for thesis in q.theses)
+
+
+def blocked_behind(graph: Graph, qid: str) -> Set[str]:
+    """The questions that cannot be put until ``qid``'s answer has landed.
+
+    Blocking is what a turn carries. A turn carries canon above its question,
+    and canon holds only the AI's answers: nothing the principal answers
+    reaches a turn, since nothing of the notebook may. So a question waits on
+    each question above it that the AI answers, by a path through the AI's
+    questions, until that answer has landed — and a question the AI does not
+    answer blocks nothing and waits on nothing.
+
+    This is where blocking and lineage first part company without a stored
+    edge. `dictate`, which the principal answers, raises `failures`; while
+    blocking was every term edge, `failures` waited on an answer that never
+    lands. A landed answer blocks nothing either, and a question that has
+    one is not waiting.
+    """
+    by_id = graph.by_id()
+    q = by_id.get(qid)
+    if q is None or q.answerer != AI or landed(q):
+        return set()
+    out = out_edges(graph)
+    seen: Set[str] = set()
+    queue = deque([qid])
+    while queue:
+        cur = queue.popleft()
+        for nxt in out.get(cur, []):
+            child = by_id.get(nxt)
+            if child is None or nxt in seen or child.answerer != AI:
+                continue
+            seen.add(nxt)
+            queue.append(nxt)
+    seen.discard(qid)
+    return {b for b in seen if not landed(by_id[b])}
 
 
 # -- the patch --------------------------------------------------------------

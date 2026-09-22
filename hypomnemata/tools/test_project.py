@@ -185,23 +185,48 @@ class LoadTest(unittest.TestCase):
 
     def test_backlog_is_the_pressure_of_everything_blocked_behind(self):
         """Pressure is set where work waits; the backlog is its total over what
-        the question's term edges reach, which is what answers what to do
-        next. The blocking relation is read off the term graph because a turn
-        carries canon above its question, so nothing below a question can be
-        put until its answer has landed."""
+        a question blocks, which is what answers what to do next. A turn
+        carries canon above its question and canon holds only the AI's
+        answers, so what a question blocks is the AI's questions below it — and
+        a question the principal answers is counted by no one but itself."""
         graph = load("valid")
-        self.assertEqual(project.backlog(graph, "canon"), 17)
-        self.assertEqual(project.backlog(graph, "party"), 14)
-        self.assertEqual(
-            project.backlog(graph, "ti-esti"),
-            sum(graph.get(q).pressure
-                for q in project.reachable_from(graph, "ti-esti")))
+        self.assertEqual(graph.get("attenuation").answerer, "principal")
+        self.assertEqual(project.backlog(graph, "canon"),
+                         graph.get("canon").pressure)
+        self.assertEqual(project.backlog(graph, "attenuation"),
+                         graph.get("attenuation").pressure)
+        self.assertEqual(project.backlog(graph, "ti-esti"),
+                         sum(graph.get(q).pressure
+                             for q in ("ti-esti", "canon", "party")))
+
+    def test_blocking_runs_only_through_the_ai_s_questions(self):
+        """Nothing the principal answers reaches a turn, so it blocks nothing,
+        and a question reached only through it waits on nothing above it. In
+        the live notebook `dictate` raised `failures`, and while blocking was
+        every term edge `failures` waited on an answer that never lands."""
+        graph = load("valid")
+        graph.get("attenuation").answerer = "ai"
+        graph.get("party").answerer = "principal"
+        self.assertEqual(project.blocked_behind(graph, "party"), set())
+        self.assertEqual(project.blocked_behind(graph, "canon"), {"attenuation"})
+        self.assertEqual(project.blocked_behind(graph, "ti-esti"),
+                         {"canon", "attenuation"})
+        canon = graph.get("canon").theses[0]
+        canon.terms = [t for t in canon.terms if t.to != "attenuation"]
+        self.assertEqual(project.blocked_behind(graph, "ti-esti"), {"canon"})
+
+    def test_a_landed_answer_blocks_nothing_and_waits_on_nothing(self):
+        graph = load("valid")
+        graph.get("canon").theses[0].state = "landed"
+        self.assertEqual(project.blocked_behind(graph, "canon"), set())
+        self.assertNotIn("canon", project.blocked_behind(graph, "ti-esti"))
 
     def test_a_question_under_two_parents_is_counted_once(self):
         """The graph is a DAG, so adding up the branches would count the work
         waiting at a shared question once per path to it. What is blocked
         behind a question is a set, each of them blocked once."""
         graph = load("valid")
+        graph.get("attenuation").answerer = "ai"  # a shared question that blocks
         shared = set(project.reachable_from(graph, "canon")) & \
             set(project.reachable_from(graph, "party"))
         self.assertTrue(shared)

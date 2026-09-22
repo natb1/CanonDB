@@ -51,12 +51,12 @@ class RootLayoutTest(unittest.TestCase):
         self.assertNotIn("›", self.text)
 
     def test_the_question_line_carries_pressure_and_its_two_projections(self):
-        """Pressure is stored and the backlog is summed from it along the term
-        edges, so both stand on the page: the one the principal set, and what
-        it comes to once everything blocked behind this question is counted."""
+        """Pressure is stored and the backlog is summed from it over what the
+        question blocks, so both stand on the page: the one the principal set,
+        and what it comes to once everything blocked behind it is counted."""
         self.assertEqual(
             self.lines[3],
-            "question: landed · root · answerer: ai · pressure 27 · backlog 53 · "
+            "question: landed · root · answerer: ai · pressure 27 · backlog 48 · "
             "load 3 · requires: nothing")
 
     def test_a_question_line_names_what_it_waits_on(self):
@@ -98,9 +98,39 @@ class RootLayoutTest(unittest.TestCase):
     def test_the_inbox_table_lists_the_children(self):
         self.assertIn("| question | term | kind | backlog | requires |", self.text)
         self.assertIn("| <?claude block m_canon?> | The record between them | "
-                      "definitional | 17 | promulgate the root answer |", self.text)
-        self.assertIn("| <?claude block m_party?> | Two sides, two debts | case | 14 | "
+                      "definitional | 12 | promulgate the root answer |", self.text)
+        self.assertIn("| <?claude block m_party?> | Two sides, two debts | case | 9 | "
                       "promulgate the root answer |", self.text)
+
+    def test_the_table_is_the_frontier(self):
+        """What is still to be put. A question the principal answers never is,
+        and one whose answer has landed already was; the terms section still
+        lists both, so the table holding them too would be a second home."""
+        graph = load("valid")
+        row = "| <?claude block m_attenuation?> |"
+        self.assertNotIn(row, render.body(graph, "canon"))
+        self.assertIn("▸", render.body(graph, "canon"))
+        graph.get("attenuation").answerer = "ai"
+        self.assertIn(row, render.body(graph, "canon"))
+        graph.get("attenuation").theses[0].state = "in thread"
+        self.assertIn(row, render.body(graph, "canon"))
+        graph.get("attenuation").theses[0].state = "landed"
+        self.assertNotIn(row, render.body(graph, "canon"))
+
+    def test_a_postulate_says_what_would_discharge_it(self):
+        """Read off the answer and never written: eight notes wrote it, and six
+        went stale at once when the answerer field arrived."""
+        graph = load("valid")
+        self.assertIn("· postulate (until this answer lands and the artifact is "
+                      "diffed against it)", render.body(graph, "ti-esti"))
+        self.assertIn("· postulate (while the principal answers this question)",
+                      render.body(graph, "attenuation"))
+        graph.get("ti-esti").theses[0].state = "landed"
+        self.assertIn("· postulate (until the artifact is diffed against this "
+                      "answer)", render.body(graph, "ti-esti"))
+        _, app = list(graph.get("ti-esti").applications())[0]
+        app.standing = "derived"
+        self.assertNotIn("derived (", render.body(graph, "ti-esti"))
 
     def test_cited_by_lists_a_party_cited_only_through_a_borrowed_sense(self):
         """A borrowed sense names a party as surely as a thesis does. Read from

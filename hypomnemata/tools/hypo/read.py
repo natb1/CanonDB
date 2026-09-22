@@ -62,7 +62,7 @@ INBOX_LINE = re.compile(
     r" · (?P<done>done|not done) · id (?P<id>\S+)$")
 APPLICATION_LINE = re.compile(
     r"^(?P<what>.*?) · ◆ (?P<thesis>.*?) · (?P<link>[^·]*?) · "
-    r"(?P<standing>[^·]+?)(?: · (?P<note>.*))?$")
+    r"(?P<standing>[^·(]+?)(?: \((?P<clause>[^)]*)\))?(?: · (?P<note>.*))?$")
 ITEM = re.compile(r"^- (?P<text>.*?)(?: (?P<chip><\?claude block [0-9A-Za-z_]+\?>))?$")
 
 #: what opens the tradition edges at the foot of a thesis subsection. Nothing

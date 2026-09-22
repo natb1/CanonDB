@@ -18,7 +18,8 @@ import re
 from typing import Dict, List, Optional, Set, Tuple
 
 from . import project, spec, text
-from .model import STATES, Graph, Question, Term, Thesis
+from .model import (ANSWERERS, STANDINGS, STATES, Application, Graph, Question,
+                     Term, Thesis)
 
 SEPARATOR = "\n\n"
 
@@ -314,7 +315,15 @@ def _inbox_order(graph: Graph, q: Question) -> List[Term]:
         child = by_id.get(term.to)
         return (-(project.backlog(graph, term.to) if child else 0), term.to)
 
-    return sorted(q.terms(), key=weight)
+    def open_(term: Term) -> bool:
+        # the frontier is what is still to be put: a question the principal
+        # answers never is, and one whose answer has landed already was. A
+        # dangling target stays, so that the row shows what term-target says
+        child = by_id.get(term.to)
+        return child is None or (child.answerer == project.AI
+                                 and not project.landed(child))
+
+    return sorted((term for term in q.terms() if open_(term)), key=weight)
 
 
 def _inbox_blocks(graph: Graph, q: Question) -> List[str]:
@@ -391,12 +400,37 @@ def _application_blocks(q: Question) -> List[str]:
     blocks: List[str] = []
     for thesis, app in q.applications():
         blocks.append("### ⚙ %s" % app.name)
+        standing = app.standing
+        clause = discharge_clause(q, thesis, app)
+        if clause:
+            standing = "%s (%s)" % (standing, clause)
         line = "%s · ◆ %s · %s · %s" % (app.what, thesis.title, app.link,
-                                        app.standing)
+                                        standing)
         if app.note.strip():
             line += " · %s" % app.note.strip()
         blocks.append(line)
     return blocks
+
+
+def discharge_clause(q: Question, thesis: Thesis, app: Application) -> str:
+    """What would discharge a postulate, read off its answer and never written.
+
+    It was written, into eight notes, and six went stale at once when the
+    answerer field arrived: they promised a discharge on questions whose
+    answers never land. Derived, it cannot. Nothing the principal answers
+    lands, so what rests on it stays a postulate while he answers; an AI
+    answer discharges it by landing and then by the diff, which no state
+    records, so once it has landed the clause names the diff alone.
+    """
+    if app.standing != STANDINGS[1]:
+        return ""
+    if q.answerer == ANSWERERS[1]:
+        return "while the principal answers this question"
+    if q.answerer != ANSWERERS[0]:
+        return ""
+    if thesis.state == STATES[-1]:
+        return "until the artifact is diffed against this answer"
+    return "until this answer lands and the artifact is diffed against it"
 
 
 #: the heading of a hinge's question half: what the asking stood on, and so

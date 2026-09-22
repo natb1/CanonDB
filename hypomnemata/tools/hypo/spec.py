@@ -791,6 +791,29 @@ def answerer_set(graph: Graph) -> Yield:
                 q.answerer, ", ".join(ANSWERERS))
 
 
+@check("only-ai-put",
+       "a question the AI does not answer is never put, so it and its answers stay held")
+def only_ai_put(graph: Graph) -> Yield:
+    """Only a question the AI answers is ever put, and only the merge of what
+    it said lands. A question the principal answers is his own and never goes
+    to a turn; another party's is read, not asked. Neither goes into a thread
+    or lands, and an answer to either that said it had would read as canon —
+    which is what its standing, read off its state, would then claim. So the
+    fact the discharge clause and the frontier rest on is held here rather
+    than assumed."""
+    for q in graph.questions:
+        if q.answerer == ANSWERERS[0]:
+            continue
+        who = "the principal" if q.answerer == ANSWERERS[1] else "another party"
+        if q.state != STATES[0]:
+            yield q.id, ("the question is %r, but a question %s answers is never "
+                         "put" % (q.state, who))
+        for thesis in q.theses:
+            if thesis.state != STATES[0]:
+                yield q.id, ("answer %r is %r, but nothing %s answers lands"
+                             % (_clip(thesis.title), thesis.state, who))
+
+
 @check("mention-justified",
        "a mention stands where a term in its place would close a cycle", WARN)
 def mention_justified(graph: Graph) -> Yield:

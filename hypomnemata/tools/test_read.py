@@ -281,6 +281,19 @@ class DetailTest(unittest.TestCase):
                                    "anchors": ["An entry is a file in the repository, "
                                                "not a message in a thread."]}])
 
+    def test_the_discharge_clause_is_the_renderer_s_and_comes_back_off(self):
+        """It is read off the answer, so it is not stored and not read back;
+        the note after it is the writer's and is."""
+        graph = load("valid")
+        _, app = list(graph.get("attenuation").applications())[0]
+        app.note = "the gate is a script (for now)"
+        body = render.body(graph, "attenuation")
+        self.assertIn("(while the principal answers this question)", body)
+        parsed = read.parse_tab(body, self.ids)
+        got = parsed["theses"][0]["applications"][0]
+        self.assertEqual((got["standing"], got["note"]),
+                         ("postulate", "the gate is a script (for now)"))
+
     def test_a_link_out_of_the_document_is_content(self):
         """A hinge names the commit it was answered against; that link is the
         principal's own words and is read back with them."""
