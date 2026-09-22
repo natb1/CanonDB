@@ -294,7 +294,9 @@ A **line** is any line of questions, each drawn from an admission of the last. A
 line put on an elenchus branch, from the admission it starts at to the disposition that ends it.
 Almost nothing here is decidable by a script — a question is well drawn or it is not — so it
 sits with the rest of the attenuation; the one rule a script could decide, the grain of an
-anchor, is `anchor-grain` now and has left this list. It is the part that decides what the graph becomes, and
+anchor, is `anchor-grain` now and has left this list. The framing rules below are the notebook's
+own answer on `wording`, and this section is that answer's application: when they change there,
+they change here. It is the part that decides what the graph becomes, and
 a badly drawn question is not corrected later: whatever is built above it is built on a step
 that was admitted rather than reached.
 
