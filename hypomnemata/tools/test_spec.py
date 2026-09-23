@@ -45,6 +45,33 @@ class AnchorUniqueTest(unittest.TestCase):
         fired = [f for f in spec.run(graph) if f.check == "anchor-unique"]
         self.assertTrue(fired)
 
+    def test_an_anchor_the_answer_above_also_says_is_linked_on_the_wrong_one(self):
+        """Once in its own answer, so the chip has one place; but a link is
+        resolved across the tab's Thesis section, and the reader files a term
+        under the first answer holding its anchor, so the second answer's term
+        would be linked and read back on the first."""
+        graph = load("valid")
+        q = graph.get("ti-esti")
+        self.assertIn("series of errands", q.theses[0].text)
+        q.theses.append(model.Thesis(
+            title="A series of errands has no memory",
+            text="A series of errands has no memory, and a relationship does.",
+            assent="none", state="held",
+            terms=[model.Term(title="Errands", to="party",
+                              anchors=["series of errands"])]))
+        findings = spec.run(graph, only=["anchor-unique"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        self.assertIn("another answer", findings[0].message)
+        self.assertIn("'Errands'", findings[0].message)
+
+    def test_a_citation_s_note_stands_in_the_section_too(self):
+        graph = load("valid")
+        thesis = graph.get("ti-esti").theses[0]
+        thesis.traditions[0].note = "Plato also calls it a series of errands"
+        thesis.terms[0].anchors.append("series of errands")
+        findings = spec.run(graph, only=["anchor-unique"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+
 
 class InvalidGraphTest(unittest.TestCase):
     def test_each_fixture_fires_its_check(self):
@@ -610,6 +637,23 @@ class DetailTest(unittest.TestCase):
         thesis.text = kept.replace(" ", "\n", 1)
         findings = spec.run(graph, only=["text-unwrapped"])
         self.assertEqual([f.question for f in findings], ["ti-esti"])
+
+    def test_a_quotation_mark_is_a_character_inside_a_paragraph_and_a_note_at_a_block(self):
+        """The reader files a block that opens with ``>`` as a note on the
+        section, so an answer's text may not open one; a ``>`` inside a
+        paragraph is only a character, and the reader leaves it alone."""
+        graph = load("valid")
+        thesis = graph.get("canon").theses[0]
+        self.assertEqual(spec.run(graph, only=["text-unquoted"]), [])
+        thesis.text += " Where a > b, the entry says so."
+        self.assertEqual(spec.run(graph, only=["text-unquoted"]), [])
+        thesis.text += "\n\n> Said again, as a quotation."
+        findings = spec.run(graph, only=["text-unquoted"])
+        self.assertEqual([f.question for f in findings], ["canon"])
+        self.assertIn("Said again", findings[0].message)
+        thesis.text = "> Opening on a quotation."
+        self.assertEqual([f.question for f in spec.run(graph, only=["text-unquoted"])],
+                         ["canon"])
 
     def test_findings_render_as_one_line_and_as_json(self):
         finding = spec.run(load("invalid-vocabulary"), only=["vocabulary"])[0]

@@ -844,6 +844,12 @@ def page_text(graph: Graph, qid: str) -> str:
 #: to the items, and the incoming anchors and the question line's requires
 #: stand above the first heading. A link put anywhere else is a link on words
 #: that mean the same and say something else.
+#:
+#: The home is the section and not the one answer: a term's runs are handed
+#: out in page order across every answer under ``## Thesis``, so a term on a
+#: second answer whose anchor the first answer also says would be linked on
+#: the first. ``anchor-unique`` counts across the answers on the tab for that
+#: reason, and stands between this scope and the wrong answer.
 _HOME = {"incoming": None, "requires": None,   # None: above the first section
          "term": "Thesis", "definition": "Thesis", "provenance": "Thesis",
          "inbox-term": "Inbox", "inbox-requires": "Inbox"}

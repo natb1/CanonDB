@@ -31,13 +31,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-try:  # a tool piped into head should stop, not traceback
-    import signal
-    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-except (ImportError, AttributeError, ValueError):  # pragma: no cover - not POSIX
-    pass
+from hypo import apply as ops, cli, model, render, spec  # noqa: E402
 
-from hypo import apply as ops, model, render, spec  # noqa: E402
+cli.quiet_pipe()
 
 
 def outlines(graph: model.Graph, directory: str) -> dict:

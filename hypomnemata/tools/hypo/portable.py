@@ -30,11 +30,24 @@ stale one holds a notebook nobody has. So re-sealing is not a thing to
 remember: ``reseal`` puts the current graph over the committed envelope, taking
 its ``name`` and ``tools`` from the file it replaces, and ``drift`` says what
 that changed in a few lines of ids rather than in the notebook's own words.
+
+Two things make the committed file's history readable. The questions are
+sealed by id, not in the order the document's tray happens to hold the tabs:
+that order is a projection too, recomputed whenever a sibling is inserted or a
+group of tabs grows past ten, so a diff over it showed questions moving that
+had not changed. Ordered by id, a question moves in the file only when its id
+does, and a diff is the content that moved and nothing else. And the envelope
+carries a ``digest`` of its questions, which is how a party says which notebook
+they received: the same questions seal to the same digest wherever they are
+sealed, and a copy in the wild is matched to the commit that wrote it with
+``git log -S<digest>``. The name and the file's name carry no version; the
+format has one, and the digest is what says which state of the notebook this is.
 """
 
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import os
 from typing import Any, Dict, Iterator, List, Tuple
@@ -58,6 +71,11 @@ READS = ("hypomnemata-export/1", FORMAT)
 #: and an empty id reads as what it is — unbound, and waiting to be bound.
 GRAPH_KEYS = ("artifact", "state_enum")
 QUESTION_KEYS = ("tab", "body")
+
+#: How much of the digest is kept. It has to be said and typed — in a message,
+#: after `git log -S` — so it is short, and the notebooks that could collide
+#: on sixteen hex digits do not exist.
+DIGEST = 16
 
 #: How many ids a report names before it stops naming them and counts instead.
 #: Re-sealing happens on every run, so what it prints is read on every run; a
@@ -176,10 +194,25 @@ def tree(graph: model.Graph) -> List[Dict[str, Any]]:
             for qid in project.walk(graph)]
 
 
+def digest(questions: List[Dict[str, Any]]) -> str:
+    """The questions' fingerprint: what a party quotes to say which notebook
+    they hold. It is of the questions alone — not the name, the tools or the
+    steps, which are about the file rather than the notebook — and of their
+    content in one canonical spelling, so two envelopes sealed from the same
+    questions agree on it wherever and whenever they were sealed."""
+    text = json.dumps(sorted(questions, key=_by_id), sort_keys=True,
+                      ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:DIGEST]
+
+
+def _by_id(q: Dict[str, Any]) -> str:
+    return str(q.get("id", ""))
+
+
 def seal(graph: model.Graph, name: str = "", tools: str = "") -> Dict[str, Any]:
     """The envelope: the notebook, with nothing in it that names a document."""
     data = copy.deepcopy(_data(graph))
-    questions = data.get("questions", [])
+    questions = sorted(data.get("questions", []), key=_by_id)
     for q in questions:
         for key in QUESTION_KEYS:
             q[key] = ""
@@ -192,6 +225,7 @@ def seal(graph: model.Graph, name: str = "", tools: str = "") -> Dict[str, Any]:
         "tools": tools,
         "mode": data.get("mode", model.NOTEBOOK),
         "states": list(model.STATES),
+        "digest": digest(questions),
         "questions": questions,
         "rebind": rebind,
         "expect": {"questions": len(questions), "tree": tree(graph)},
@@ -387,8 +421,14 @@ def drift(previous: Dict[str, Any], current: Dict[str, Any]) -> List[str]:
     to keep it out of. So what is printed is the *shape* of the difference —
     which questions came, went or moved, and which header values no longer
     agree — and it is bounded twice over: never a value, and never more than
-    `NAMED` ids of the ones that moved. It is at most nine short lines for a
+    `NAMED` ids of the ones that moved. It is at most ten short lines for a
     notebook of any size. Whoever wants the text has `git diff`.
+
+    The digest is not a header that drifts on its own: it moves exactly when
+    a question does, and the question is named. An envelope whose questions
+    stand in another order than by id is stale by that alone — one sealed
+    before the order was fixed, or written by hand — and is said in a line,
+    since re-sealing it rewrites the file without moving a question.
     """
     lines: List[str] = []
     for key in ("format", "name", "tools", "mode", "states"):
@@ -401,6 +441,8 @@ def drift(previous: Dict[str, Any], current: Dict[str, Any]) -> List[str]:
                       ("~", [q for q in now if q in was and now[q] != was[q]])):
         if ids:
             lines.append("%s %d question(s): %s" % (mark, len(ids), named(ids)))
+    if [q for q in was if q in now] != [q for q in now if q in was]:
+        lines.append("~ order (the questions stand by id)")
     for key, gloss in (("rebind", "the applications owed a link"),
                        ("expect", "the shape a rebuild must come out to"),
                        ("rebuild", "the steps that ride inside")):

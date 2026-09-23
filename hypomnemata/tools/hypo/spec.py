@@ -125,21 +125,41 @@ def _overlapping(haystack: str, needle: str) -> int:
     return found
 
 
-@check("anchor-unique", "an anchor occurs once in the thesis text it is taken from")
+@check("anchor-unique",
+       "an anchor occurs once across the answers on the tab it is taken from")
 def anchor_unique(graph: Graph) -> Yield:
     """Two occurrences give the renderer two places to put one chip, and give
     the links sidecar two spans to mean by one string. Where a clause really
     is said twice, the term takes the longer passage that says it once.
+
+    The scope is the tab's Thesis section and not the one answer, because
+    that is the scope a link is resolved in: the sidecar hands out runs of an
+    anchor in page order across the whole section, and the reader files a
+    term under the first answer whose text holds its anchors. An anchor that
+    stands once in its own answer and once in the answer above it would be
+    linked, and read back, on the wrong answer — with nothing said, since
+    each answer on its own is fine. A citation's note under an answer stands
+    in the same section, so it is counted too.
     """
     for q in graph.questions:
+        section = "\n\n".join(
+            [thesis.text for thesis in q.theses]
+            + [part for thesis in q.theses for trad in thesis.traditions
+               for part in (trad.note, trad.counter) if part])
         for thesis in q.theses:
             for term in list(thesis.terms) + list(thesis.mentions):
                 for anchor in term.anchors:
-                    found = _overlapping(thesis.text, anchor) if anchor else 0
-                    if found > 1:
+                    own = _overlapping(thesis.text, anchor) if anchor else 0
+                    found = _overlapping(section, anchor) if anchor else 0
+                    if own > 1:
                         yield q.id, ("term %r: its anchor occurs %d times in the "
                                      "thesis text, so which occurrence carries "
-                                     "the chip is undecided" % (term.title, found))
+                                     "the chip is undecided" % (term.title, own))
+                    elif own and found > 1:
+                        yield q.id, ("term %r: its anchor occurs %d times across "
+                                     "the answers on this tab, so the link and the "
+                                     "reader would take it on another answer"
+                                     % (term.title, found))
 
 
 @check("term-target",
@@ -1163,6 +1183,36 @@ def text_unwrapped(graph: Graph) -> Yield:
                 yield q.id, ("the answer's text breaks a line inside a "
                              "paragraph, which the document will join: %r"
                              % thesis.text[max(0, at - 30):at + 30])
+
+
+#: a block that opens with a quotation mark, at the start of the text or after
+#: the blank line that ends the block before it. A ``>`` inside a paragraph is
+#: a character; one opening a block is a blockquote.
+_QUOTED = re.compile(r"(?:\A|\n[ \t]*\n)[ \t]*>")
+
+
+@check("text-unquoted", "an answer's text has no blockquote")
+def text_unquoted(graph: Graph) -> Yield:
+    """A blockquote on the page is a note: somebody's own words on a section,
+    kept apart from the prose the renderer wrote so that a re-render carries
+    them over instead of writing them back as content. The reader holds that
+    everywhere, so a blockquote inside an answer's text is read back as a
+    note on the Thesis section and the next render moves it out of the
+    answer — the one edit to an answer's text that nothing else can see,
+    since the local round trip agrees with itself.
+
+    An answer in canon is verbatim, so one that quotes cannot be reworded to
+    pass. Until the reader can tell a quotation in an answer from a note
+    beside it, such an answer is refused here rather than altered in silence.
+    """
+    for q in graph.questions:
+        for thesis in q.theses:
+            quoted = _QUOTED.search(thesis.text)
+            if quoted:
+                at = quoted.end() - 1
+                yield q.id, ("the answer's text holds a blockquote, which the "
+                             "page reads back as a note: %r"
+                             % thesis.text[at:at + 60])
 
 
 # -- the runner -------------------------------------------------------------

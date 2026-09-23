@@ -3,6 +3,7 @@
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -188,8 +189,8 @@ class ReadCliTest(unittest.TestCase):
         self.assertEqual(after["name"], before["name"])
         self.assertEqual(after["tools"], before["tools"])
         rebuilt = model.load(os.path.join(self.dir, "graph.json"))
-        self.assertEqual([q["id"] for q in after["questions"]],
-                         [q.id for q in rebuilt.questions])
+        self.assertEqual(sorted(q["id"] for q in after["questions"]),
+                         sorted(q.id for q in rebuilt.questions))
 
     def test_what_the_re_seal_says_is_ids_and_not_the_notebook(self):
         done = self.read(envelope=self.envelope)
@@ -290,6 +291,50 @@ class VerifyCliTest(unittest.TestCase):
         os.unlink(os.path.join(self.tabs, "attenuation.md"))
         done = self.verify("--only", "canon")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
+
+class EntryPointTest(unittest.TestCase):
+    """What every script does before its own work, held in one place."""
+
+    SCRIPTS = ("apply.py", "check.py", "portable.py", "project.py",
+               "read.py", "render.py", "verify.py")
+
+    def into_a_closed_pipe(self, *command):
+        """Run a command whose reader has gone: the pipe closes before the
+        first write, as it does when ``head`` has had its lines."""
+        proc = subprocess.Popen(list(command), stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, cwd=os.path.dirname(HERE))
+        proc.stdout.close()
+        _, err = proc.communicate()
+        return proc.returncode, err.decode("utf-8", "replace")
+
+    @unittest.skipUnless(hasattr(signal, "SIGPIPE"), "no SIGPIPE here")
+    def test_quiet_pipe_stops_the_tool_rather_than_printing_a_traceback(self):
+        """A megabyte cannot fit in the pipe, so the write is what ends the
+        process: by the signal once the default is back, by an exception
+        and its traceback before."""
+        boot = ("import sys; sys.path.insert(0, %r); from hypo import cli; "
+                % HERE)
+        say = "[print('x' * 1000) for _ in range(1000)]"
+        code, err = self.into_a_closed_pipe(sys.executable, "-c", boot + say)
+        self.assertNotEqual(code, -signal.SIGPIPE)
+        self.assertIn("BrokenPipeError", err)
+        code, err = self.into_a_closed_pipe(
+            sys.executable, "-c", boot + "cli.quiet_pipe(); " + say)
+        self.assertEqual(code, -signal.SIGPIPE)
+        self.assertEqual(err, "")
+
+    @unittest.skipUnless(hasattr(signal, "SIGPIPE"), "no SIGPIPE here")
+    def test_every_script_prints_quietly_into_a_closed_pipe(self):
+        """Each entry point calls it before any of its own work — here, before
+        argparse prints the help — so none has a copy to drift."""
+        for script in self.SCRIPTS:
+            with self.subTest(script=script):
+                code, err = self.into_a_closed_pipe(
+                    sys.executable, os.path.join(HERE, script), "--help")
+                self.assertIn(code, (0, -signal.SIGPIPE), err)
+                self.assertNotIn("Traceback", err)
+                self.assertNotIn("BrokenPipeError", err)
 
 
 if __name__ == "__main__":

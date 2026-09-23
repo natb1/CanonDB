@@ -66,12 +66,32 @@ class RoundTripTest(unittest.TestCase):
     def test_the_valid_graph(self):
         self.assert_round_trips("valid")
 
+    #: the one fixture whose mutation is a text the page cannot carry back:
+    #: a blockquote inside an answer, which the reader files as a note. That
+    #: it does not round-trip is the finding, and the test below holds it.
+    NOT_CARRIED = {"invalid-text-unquoted"}
+
     def test_every_invalid_fixture_too(self):
         """They are whole graphs with one mutation, so they exercise shapes the
         valid one does not — a term deadlock, a second thesis, a bad target."""
         for name in sorted(os.listdir(FIXTURES)):
             if name.startswith("invalid-") and name.endswith(".json"):
-                self.assert_round_trips(name[:-5])
+                if name[:-5] not in self.NOT_CARRIED:
+                    self.assert_round_trips(name[:-5])
+
+    def test_a_blockquote_in_an_answer_comes_back_as_a_note(self):
+        """A blockquote is somebody's note wherever it stands, so one inside
+        an answer's text leaves the answer on the way back and the next render
+        writes it at the section's foot: the one edit to a verbatim text the
+        local round trip cannot see. ``text-unquoted`` refuses the graph
+        before it is written; this is what it stands between."""
+        graph = load("invalid-text-unquoted")
+        thesis = graph.get("canon").theses[0]
+        self.assertIn("\n\n> Not a message in a thread.\n\n", thesis.text)
+        parsed = read.parse_tab(render.body(graph, "canon"), chip_ids(graph))
+        self.assertNotIn(">", parsed["theses"][0]["text"])
+        self.assertEqual(parsed["notes"], [{"section": "thesis",
+                                            "body": "Not a message in a thread."}])
 
 
 class DetailTest(unittest.TestCase):

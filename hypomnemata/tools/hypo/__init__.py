@@ -13,6 +13,7 @@ from its reads of the document, and renders canonical markdown back from it.
     verify   the page against the renderer, links included
     portable the notebook parted from its document, and the export cache
     text     plain text from markdown, and where a run of it stands
+    cli      what every command-line entry point does before its own work
 
 Enforcement is by interface: the renderer is the only sanctioned way to produce
 tab markdown, so a layout violation is impossible if the tool is used, and the
@@ -27,4 +28,4 @@ which is exactly what happened.
 """
 
 __all__ = ["model", "spec", "project", "render", "read", "apply", "verify",
-           "portable", "text"]
+           "portable", "text", "cli"]

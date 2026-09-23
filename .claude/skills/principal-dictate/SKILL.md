@@ -133,6 +133,18 @@ has it must be able to say which notebook they received, and when the document c
 stopgap goes. What it was sealed from — the graph file and the tab exports — stays a cache and
 stays uncommitted.
 
+What a party says is the envelope's `name` and its `digest`. The name is the notebook's handle and
+never a version of it: the file is re-sealed in place, so a version in the name or the filename
+versions nothing, and the `format` carries the one version the tooling has. The digest is of the
+questions alone, in one canonical spelling, so the same notebook seals to the same digest wherever
+it is sealed, and a copy in the wild is matched to the commit that wrote it with `git log -S` on
+the digest. The questions stand in the file by id, not in the tray's order — that order is a
+projection, recomputed when a sibling is inserted or a group grows past ten, and a diff over it
+showed questions moving that had not changed. By id, a diff of the envelope is the content that
+moved and nothing else, and a tree that moved is under `expect`, where it is the shape and not
+the notebook. Being committed at the root, the envelope is also on disk in every checkout of this
+branch, which is a matter for the clean-context rule below.
+
 An envelope goes stale the moment the notebook moves, so it is not left to be remembered.
 `tools/read.py` seals the rebuilt graph over it on every complete read, taking the `name` and the
 `tools` from the file it replaces — nothing is retyped, so nothing drifts, and the envelope is
@@ -264,6 +276,24 @@ a procedure rather than a script.
 - **The clean-context rule.** Nothing of the notebook may reach a turn that answers a canon
   question. There is no guard for this yet — it is recorded as an eventuality on the `context` tab —
   so it holds by discipline: never invoke a canon entry point from a session that has run this one.
+  The committed envelope widens what the discipline has to cover. It puts the whole notebook on
+  disk at the root of every checkout of this branch, and of `main` once the branch lands, beside
+  the canon the answering turn is granted — so a canon turn no longer needs to have run this
+  entry point to reach the notebook; a file read, a grep, or a `git log` over the root is enough,
+  and nothing granted it. Until there is a guard, a turn that answers a canon question is composed
+  rather than opened: it is given the question and the canon above it, and it has no tool that
+  reads the checkout. The shape the `context` tab records for the guard is that: the principal
+  entry point, which holds notebook and canon together, selects the question and launches a
+  separate agent to answer it, and that agent's configuration is the grant. The packet it is
+  handed is the question and a reference to the lineage — canon above the question, written to a
+  file by the tooling, never transcribed by the selecting turn, which is the one that has read
+  the notebook. The agent reads and nothing else: no shell, no search, no git, and no `CLAUDE.md`
+  (`omitClaudeMd`), so the envelope on disk is out of its reach. That leaves two things to hold
+  by reading. The question's wording is the one thing of the selecting turn's that enters the
+  packet, and it is held as it always was, by the rule that the question is only the question.
+  And a read tool is not confined to a path by the agent's definition, so what keeps its reading
+  to canon — and canon above the question is what a clean context carries, not all of canon —
+  is a hook that refuses the rest, or, until there is one, the agent's brief.
 - **The page is a second artifact.** A tab reaches the document in two calls, because a link
   needs a block id the document mints and a body write mints new ones. Nothing in the graph
   file records a link, so nothing that reads the graph can tell whether the second call was
@@ -274,7 +304,14 @@ a procedure rather than a script.
   write, and read what it says about that third class: a link applied by hand, or left behind
   by a definition that has moved, is invisible to everything else.
 - **Async edits are preserved.** The read-before-write discipline is not enforceable by a script
-  that cannot see the artifact.
+  that cannot see the artifact. And the cheap witness is not a witness: an `export` refused at
+  `maxBytes: 1` names the tab's exact size, which looks like a way to tell a moved page from a
+  still one without pulling the body back. It is not. The export writes a chip sometimes as a
+  link and sometimes as its bare label, so a tab can lose a hundred bytes and more with nothing
+  on the page having changed — and, the other way, an edit that trades one word for another of
+  the same length moves no byte at all. A size that differs is a reason to look; a size that
+  agrees is not a reason not to. What settles it is `verify.py` over a real export, which
+  compares at the label and is blind to the spelling.
 - **An outline is read for the write it is used in.** `apply` pairs a target's heading to a
   block id by position, and refuses when the outline's text has drifted from what the renderer
   makes — so an outline stale in the words is caught. The other way it goes stale cannot be:
@@ -294,6 +331,12 @@ a procedure rather than a script.
 - **A note is somebody's and stays theirs.** The renderer round-trips a note as a blockquote, so it
   survives a re-render. What it cannot tell you is that a blockquote someone wrote on the page has
   not yet been taken into the graph file: export before you write, always, or you will replace it.
+  The same mark cuts the other way: a blockquote is a note wherever it stands, so one inside an
+  answer's text is read back as a note on the section and the next render moves it out of the
+  answer. `text-unquoted` refuses such an answer rather than let that happen in silence. An answer
+  in canon is verbatim, so one that quotes cannot be reworded to pass: until the reader can tell a
+  quotation in an answer from a note beside it, it is an answer the notebook cannot hold, and the
+  refusal is where that is said.
 - **Pressure is the principal's, backlog is the tooling's.** Pressure is the one scheduling
   number set by hand — what work is actually waiting at this question — and it is his judgement,
   never invented to make a sum come out. The backlog is computed from it over what a question

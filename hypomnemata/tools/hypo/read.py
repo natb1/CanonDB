@@ -261,7 +261,9 @@ def _owner(theses: List[dict], anchors: List[str]) -> dict:
     said only by the chip in that answer's text — so the answer is the one
     whose text holds the anchors. A term with no anchor, or one no answer holds
     whole, goes to the first: the graph has to say something, and the checker
-    says if that was wrong.
+    says if that was wrong. Two answers holding the same anchor would file it
+    under the first, which ``anchor-unique`` refuses on the graph before it
+    is written.
     """
     for thesis in theses:
         if anchors and all(anchor in thesis.get("text", "") for anchor in anchors):
