@@ -128,6 +128,18 @@ has it must be able to say which notebook they received, and when the document c
 stopgap goes. What it was sealed from — the graph file and the tab exports — stays a cache and
 stays uncommitted.
 
+What a party says is the envelope's `name` and its `digest`. The name is the notebook's handle and
+never a version of it: the file is re-sealed in place, so a version in the name or the filename
+versions nothing, and the `format` carries the one version the tooling has. The digest is of the
+questions alone, in one canonical spelling, so the same notebook seals to the same digest wherever
+it is sealed, and a copy in the wild is matched to the commit that wrote it with `git log -S` on
+the digest. The questions stand in the file by id, not in the tray's order — that order is a
+projection, recomputed when a sibling is inserted or a group grows past ten, and a diff over it
+showed questions moving that had not changed. By id, a diff of the envelope is the content that
+moved and nothing else, and a tree that moved is under `expect`, where it is the shape and not
+the notebook. Being committed at the root, the envelope is also on disk in every checkout of this
+branch, which is a matter for the clean-context rule below.
+
 An envelope goes stale the moment the notebook moves, so it is not left to be remembered.
 `tools/read.py` seals the rebuilt graph over it on every complete read, taking the `name` and the
 `tools` from the file it replaces — nothing is retyped, so nothing drifts, and the envelope is
@@ -259,6 +271,19 @@ a procedure rather than a script.
 - **The clean-context rule.** Nothing of the notebook may reach a turn that answers a canon
   question. There is no guard for this yet — it is recorded as an eventuality on the `context` tab —
   so it holds by discipline: never invoke a canon entry point from a session that has run this one.
+  The committed envelope widens what the discipline has to cover. It puts the whole notebook on
+  disk at the root of every checkout of this branch, and of `main` once the branch lands, beside
+  the canon the answering turn is granted — so a canon turn no longer needs to have run this
+  entry point to reach the notebook; a file read, a grep, or a `git log` over the root is enough,
+  and nothing granted it. Until there is a guard, a turn that answers a canon question is composed
+  rather than opened: it is given the question and the canon above it, and it has no tool that
+  reads the checkout. The shape the `context` tab records for the guard is that: the principal
+  entry point, which holds notebook and canon together, selects the question and launches a
+  separate agent to answer it, and that agent's configuration is the grant — the packet it is
+  handed is produced by the tooling from canon and the question, never written by the selecting
+  turn in its own words, since the selecting turn is the one that has read the notebook. What no
+  script can decide yet is whether that packet carries anything of the notebook; until it can,
+  read the packet before it is sent, as a question is read against the term that raised it.
 - **The page is a second artifact.** A tab reaches the document in two calls, because a link
   needs a block id the document mints and a body write mints new ones. Nothing in the graph
   file records a link, so nothing that reads the graph can tell whether the second call was

@@ -108,6 +108,37 @@ class SealTest(unittest.TestCase):
     def test_bindings_of_an_unbound_graph_are_none(self):
         self.assertEqual(portable.bindings(portable.unseal(self.envelope)), [])
 
+    def test_the_questions_stand_by_id_whatever_order_the_document_held(self):
+        """The tray's order is a projection, recomputed when a sibling comes
+        or a group grows past ten; sealed in it, a diff showed questions
+        moving that had not changed."""
+        ids = [q["id"] for q in self.envelope["questions"]]
+        self.assertEqual(ids, sorted(ids))
+        self.assertNotEqual(ids, [q["id"] for q in self.data["questions"]])
+        turned = dict(self.data, questions=list(reversed(self.data["questions"])))
+        again = portable.seal(model.load(graph_file(turned)), name="a notebook",
+                              tools="somewhere/tools")
+        self.assertEqual(again, self.envelope)
+
+    def test_the_digest_is_of_the_questions_and_nothing_else(self):
+        self.assertEqual(self.envelope["digest"],
+                         portable.digest(self.envelope["questions"]))
+        self.assertEqual(len(self.envelope["digest"]), portable.DIGEST)
+        renamed = portable.seal(self.graph, name="another", tools="elsewhere")
+        self.assertEqual(renamed["digest"], self.envelope["digest"])
+        moved = copy.deepcopy(self.data)
+        moved["questions"][0]["pressure"] = 3
+        again = portable.seal(model.load(graph_file(moved)), name="a notebook",
+                              tools="somewhere/tools")
+        self.assertNotEqual(again["digest"], self.envelope["digest"])
+
+    def test_the_digest_does_not_depend_on_how_the_file_was_spelled(self):
+        """A party quotes it to say which notebook they hold, so it has to
+        agree across copies whatever order the keys or questions came in."""
+        questions = copy.deepcopy(self.envelope["questions"])
+        shuffled = [dict(reversed(list(q.items()))) for q in reversed(questions)]
+        self.assertEqual(portable.digest(shuffled), self.envelope["digest"])
+
 
 class SelfLinkTest(unittest.TestCase):
     """An application whose link is the document is a binding in content's clothes."""
@@ -182,8 +213,8 @@ class OpenTest(unittest.TestCase):
 
     def test_what_comes_out_is_a_graph_file(self):
         graph = model.load(graph_file(self.data))
-        self.assertEqual([q.id for q in graph.questions],
-                         [q.id for q in self.graph.questions])
+        self.assertEqual(sorted(q.id for q in graph.questions),
+                         sorted(q.id for q in self.graph.questions))
 
     def test_it_comes_out_unbound(self):
         self.assertEqual(self.data["artifact"], "")
@@ -325,8 +356,8 @@ class CommandTest(unittest.TestCase):
         self.assertEqual(run(["seal", VALID, "-o", env])[0], 0)
         self.assertEqual(run(["open", env, "-o", out])[0], 0)
         graph = model.load(out)
-        self.assertEqual([q.id for q in graph.questions],
-                         [q.id for q in model.load(VALID).questions])
+        self.assertEqual(sorted(q.id for q in graph.questions),
+                         sorted(q.id for q in model.load(VALID).questions))
 
     def test_seal_reports_every_binding_it_dropped(self):
         env = self.path("e.json")
@@ -474,6 +505,31 @@ class ResealTest(unittest.TestCase):
                                 tools="somewhere/tools")
         with open(self.envelope, encoding="utf-8") as fh:
             self.assertEqual(portable.drift(json.load(fh), current), ["~ name"])
+
+    def test_the_digest_is_not_a_header_that_drifts_on_its_own(self):
+        graph = self.moved(lambda d: d["questions"][0].update(pressure=3))
+        _, changed = portable.compare(graph, self.envelope)
+        self.assertEqual(changed, ["~ 1 question(s): ti-esti"])
+
+    def test_an_envelope_sealed_in_another_order_is_stale_by_that_alone(self):
+        with open(self.envelope, encoding="utf-8") as fh:
+            data = json.load(fh)
+        data["questions"].reverse()
+        with open(self.envelope, "w", encoding="utf-8") as fh:
+            fh.write(portable.dump(data))
+        self.assertEqual(portable.reseal(self.graph, self.envelope),
+                         ["~ order (the questions stand by id)"])
+        with open(self.envelope, encoding="utf-8") as fh:
+            after = json.load(fh)
+        ids = [q["id"] for q in after["questions"]]
+        self.assertEqual(ids, sorted(ids))
+        self.assertEqual(portable.reseal(self.graph, self.envelope), [])
+
+    def test_a_question_that_came_is_not_reported_as_a_reorder(self):
+        self.shrink()  # the envelope holds one the graph does not
+        with open(self.envelope, encoding="utf-8") as fh:
+            _, changed = portable.compare(self.graph, self.envelope)
+        self.assertEqual(changed, ["- 1 question(s): gone"])
 
     def test_dropped_names_what_the_envelope_has_and_the_graph_does_not(self):
         self.shrink()
@@ -667,6 +723,17 @@ class CommittedEnvelopeTest(unittest.TestCase):
     def test_it_is_written_as_a_re_seal_would_write_it(self):
         with open(self.path, encoding="utf-8") as fh:
             self.assertEqual(fh.read(), portable.dump(self.envelope))
+
+    def test_its_questions_stand_by_id(self):
+        ids = [q["id"] for q in self.envelope["questions"]]
+        self.assertEqual(ids, sorted(ids))
+
+    def test_its_digest_is_of_the_questions_it_holds(self):
+        """A digest that does not match is a file edited by hand, or one
+        sealed by a tooling that spelled the digest differently; either way a
+        party quoting it would name a notebook this is not."""
+        self.assertEqual(self.envelope["digest"],
+                         portable.digest(self.envelope["questions"]))
 
     def test_bound_it_stands_and_comes_out_to_what_it_expects(self):
         data = portable.unseal(self.envelope)

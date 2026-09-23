@@ -189,8 +189,8 @@ class ReadCliTest(unittest.TestCase):
         self.assertEqual(after["name"], before["name"])
         self.assertEqual(after["tools"], before["tools"])
         rebuilt = model.load(os.path.join(self.dir, "graph.json"))
-        self.assertEqual([q["id"] for q in after["questions"]],
-                         [q.id for q in rebuilt.questions])
+        self.assertEqual(sorted(q["id"] for q in after["questions"]),
+                         sorted(q.id for q in rebuilt.questions))
 
     def test_what_the_re_seal_says_is_ids_and_not_the_notebook(self):
         done = self.read(envelope=self.envelope)
