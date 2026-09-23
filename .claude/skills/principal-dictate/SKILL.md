@@ -279,11 +279,16 @@ a procedure rather than a script.
   rather than opened: it is given the question and the canon above it, and it has no tool that
   reads the checkout. The shape the `context` tab records for the guard is that: the principal
   entry point, which holds notebook and canon together, selects the question and launches a
-  separate agent to answer it, and that agent's configuration is the grant — the packet it is
-  handed is produced by the tooling from canon and the question, never written by the selecting
-  turn in its own words, since the selecting turn is the one that has read the notebook. What no
-  script can decide yet is whether that packet carries anything of the notebook; until it can,
-  read the packet before it is sent, as a question is read against the term that raised it.
+  separate agent to answer it, and that agent's configuration is the grant. The packet it is
+  handed is the question and a reference to the lineage — canon above the question, written to a
+  file by the tooling, never transcribed by the selecting turn, which is the one that has read
+  the notebook. The agent reads and nothing else: no shell, no search, no git, and no `CLAUDE.md`
+  (`omitClaudeMd`), so the envelope on disk is out of its reach. That leaves two things to hold
+  by reading. The question's wording is the one thing of the selecting turn's that enters the
+  packet, and it is held as it always was, by the rule that the question is only the question.
+  And a read tool is not confined to a path by the agent's definition, so what keeps its reading
+  to canon — and canon above the question is what a clean context carries, not all of canon —
+  is a hook that refuses the rest, or, until there is one, the agent's brief.
 - **The page is a second artifact.** A tab reaches the document in two calls, because a link
   needs a block id the document mints and a body write mints new ones. Nothing in the graph
   file records a link, so nothing that reads the graph can tell whether the second call was
