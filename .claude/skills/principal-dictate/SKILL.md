@@ -131,8 +131,10 @@ stays uncommitted.
 An envelope goes stale the moment the notebook moves, so it is not left to be remembered.
 `tools/read.py` seals the rebuilt graph over it on every complete read, taking the `name` and the
 `tools` from the file it replaces — nothing is retyped, so nothing drifts, and the envelope is
-found at the branch root by its own `format` rather than named. It costs no call of its own and one
-line of output.
+found by its own `format` rather than named: at the root of the repository the run is made from,
+or else at this tooling's own branch root. A party who raised their own notebook from an envelope
+keeps it at the root of their own repository, and a run made from that checkout re-seals theirs;
+a run made from this one re-seals this one. It costs no call of its own and one line of output.
 
 That line is the shape of the difference and never the notebook: which questions came, went or
 moved, by id, at most eight of them named before it counts instead, and which header values no
@@ -232,7 +234,9 @@ a procedure rather than a script.
   question of its own (`term-target` keeps it off that question's own tab) only when some user
   of the word cannot reach the question over its ancestors. It gives the sense in a sentence
   and points at the question, and the argument stays on the question's tab. Whether reach needs
-  it is judged by reading.
+  it is judged by reading. That the entry points at the question is decided in the one case a
+  script can see, a word that is a question's own id, by `shadow-declared`; a word that earned
+  its question under another name — `backlog` shadowing `priority` — is still read for.
 - **A deadlock is what no question reaches.** A clause you cannot accept is recorded as a
   deadlock only where the point cannot be put as a question in the lineage. Where it can, suspend
   acceptance of the clause, put the question, and settle it before the merge — and where selection

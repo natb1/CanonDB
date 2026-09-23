@@ -813,6 +813,10 @@ def reach(graph: Graph) -> Yield:
     senses = _senses(graph)
     imports = _imported(graph)
     above = {q.id: _above(graph, q.id) for q in graph.questions}
+    parties = set(graph.tradition_ids())
+    # one finding per word and part, however often the part uses it: a word
+    # used twice in one answer is one thing out of reach, not two
+    counted: Dict[Tuple[str, str, str, str, str], int] = {}
     for q in graph.questions:
         for what, prose, wants in _prose(graph, q):
             for word, form in _words_used(senses, prose):
@@ -822,11 +826,58 @@ def reach(graph: Graph) -> Yield:
                         continue
                     if any(word in imports.get(other, set()) for other in seen):
                         continue
-                    where = "" if judged == q.id else ", which %s requires" % judged
-                    yield q.id, ("%s uses %r%s, and its sense is fixed on %s, "
-                                 "which %s cannot reach"
-                                 % (what, form, where,
-                                    " and ".join(sorted(senses[word])), judged))
+                    key = (q.id, what, form, judged, word)
+                    counted[key] = counted.get(key, 0) + 1
+    for (qid, what, form, judged, word), times in counted.items():
+        where = "" if judged == qid else ", which %s requires" % judged
+        fixed = sorted(senses[word])
+        # a party's notebook never stands above a question here, so no edge
+        # and no move of the definition can bring its word into reach: an
+        # import that names the party is the one remedy, and is named
+        remedy = ("; a party's word is brought in by an import that names the party"
+                  if all(owner in parties for owner in fixed) else "")
+        yield qid, ("%s uses %r%s%s, and its sense is fixed on %s, which %s "
+                    "cannot reach%s"
+                    % (what, form, _times(times), where, " and ".join(fixed),
+                       judged, remedy))
+
+
+def _times(n: int) -> str:
+    if n < 2:
+        return ""
+    return " (%s)" % ("twice" if n == 2 else "%d times" % n)
+
+
+@check("shadow-declared",
+       "a definition whose word is another question's id points at that question",
+       WARN)
+def shadow_declared(graph: Graph) -> Yield:
+    """A word that has earned a question of its own has its sense fixed by
+    that question's thesis, so a definition of it standing on any other
+    question is a shadow: the sense in a sentence, for the users of the word
+    that cannot reach the question over their ancestors, and a pointer to
+    where the argument is. Whether reach needs the shadow is judged by
+    reading. That the entry says what it is can be decided in the one case
+    where the word is a question's own id, and is decided here; a word that
+    earned a question under another name — `backlog` shadowing `priority` —
+    is still the reader's to see.
+
+    An entry on the question's own tab is that question's own definition and
+    not a shadow, and `term-target` keeps it from pointing at itself. An
+    import is a party's word in the party's sense, and shadows nothing.
+    """
+    ids = {text.fold(q.id): q.id for q in graph.questions}
+    for q in graph.questions:
+        for definition in q.definitions:
+            if definition.imported or definition.question:
+                continue
+            target = ids.get(text.fold(definition.word.strip()))
+            if target is None or target == q.id:
+                continue
+            yield q.id, ("definition %r is the word of the question %s and does "
+                         "not point at it; a definition standing for a "
+                         "question's word is a shadow, and says so"
+                         % (definition.word, target))
 
 
 @check("standing-honest",
