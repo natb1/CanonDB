@@ -11,7 +11,9 @@ principal entry point and not a canon one: a canon turn answers a question and m
 notebook. Never run this inside a turn that is answering a canon question.
 
 `<dictation>` is the principal's description of what should change in the notebook. It may be a
-correction, an addition, or a change to the specification the notebook is written in.
+correction, an addition, or a change to the specification the notebook is written in. It usually
+arrives from the project's docket: the principal writes it there as an inbox item's dictation, and
+when the docket's order brings the item up, the run is made with that prose as the argument.
 
 ## Ground rules
 
@@ -123,7 +125,10 @@ one is created holding exactly `STATES`, in order, the first time.
 The sealed envelope is committed, at the branch root, and is the one exception to the rule that
 nothing is committed for the notebook's content. It is an accepted exception and not a second
 source: the envelope is only ever a projection of the notebook, which stays the source of truth,
-and it is committed as a stopgap while the document cannot be shared between users. A party who
+and it is committed as a stopgap while the document cannot be shared between users. It is also
+what a docket reads: the project's docket takes the notebook's standing item (the next question to
+answer, and whether a dictation's question has landed) off the committed envelope, never off the
+document. A party who
 has it must be able to say which notebook they received, and when the document can be shared the
 stopgap goes. What it was sealed from — the graph file and the tab exports — stays a cache and
 stays uncommitted.
