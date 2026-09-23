@@ -265,7 +265,14 @@ a procedure rather than a script.
   write, and read what it says about that third class: a link applied by hand, or left behind
   by a definition that has moved, is invisible to everything else.
 - **Async edits are preserved.** The read-before-write discipline is not enforceable by a script
-  that cannot see the artifact.
+  that cannot see the artifact. And the cheap witness is not a witness: an `export` refused at
+  `maxBytes: 1` names the tab's exact size, which looks like a way to tell a moved page from a
+  still one without pulling the body back. It is not. The export writes a chip sometimes as a
+  link and sometimes as its bare label, so a tab can lose a hundred bytes and more with nothing
+  on the page having changed — and, the other way, an edit that trades one word for another of
+  the same length moves no byte at all. A size that differs is a reason to look; a size that
+  agrees is not a reason not to. What settles it is `verify.py` over a real export, which
+  compares at the label and is blind to the spelling.
 - **An outline is read for the write it is used in.** `apply` pairs a target's heading to a
   block id by position, and refuses when the outline's text has drifted from what the renderer
   makes — so an outline stale in the words is caught. The other way it goes stale cannot be:
