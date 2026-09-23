@@ -38,13 +38,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-try:  # a tool piped into head should stop, not traceback
-    import signal
-    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-except (ImportError, AttributeError, ValueError):  # pragma: no cover - not POSIX
-    pass
+from hypo import cli, model, portable, spec  # noqa: E402
 
-from hypo import model, portable, spec  # noqa: E402
+cli.quiet_pipe()
 
 
 def _write(payload, out) -> None:

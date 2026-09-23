@@ -296,6 +296,12 @@ a procedure rather than a script.
 - **A note is somebody's and stays theirs.** The renderer round-trips a note as a blockquote, so it
   survives a re-render. What it cannot tell you is that a blockquote someone wrote on the page has
   not yet been taken into the graph file: export before you write, always, or you will replace it.
+  The same mark cuts the other way: a blockquote is a note wherever it stands, so one inside an
+  answer's text is read back as a note on the section and the next render moves it out of the
+  answer. `text-unquoted` refuses such an answer rather than let that happen in silence. An answer
+  in canon is verbatim, so one that quotes cannot be reworded to pass: until the reader can tell a
+  quotation in an answer from a note beside it, it is an answer the notebook cannot hold, and the
+  refusal is where that is said.
 - **Pressure is the principal's, backlog is the tooling's.** Pressure is the one scheduling
   number set by hand — what work is actually waiting at this question — and it is his judgement,
   never invented to make a sum come out. The backlog is computed from it over what a question

@@ -33,6 +33,31 @@ class ChipKeyTest(unittest.TestCase):
         self.assertTrue(any("chip key" in f.message for f in findings))
 
 
+class LinkScopeTest(unittest.TestCase):
+    """A link is resolved in the tab's Thesis section, not in its own answer."""
+
+    def test_a_term_s_run_is_taken_from_the_section_in_page_order(self):
+        """The first run of the anchor on the page is on the answer above,
+        and that is the one the sidecar names — which is why
+        ``anchor-unique`` counts across the answers rather than within one."""
+        graph = load("valid")
+        q = graph.get("ti-esti")
+        q.theses.append(model.Thesis(
+            title="A series of errands has no memory",
+            text="A series of errands has no memory, and a relationship does.",
+            assent="none", state="held",
+            terms=[model.Term(title="Errands", to="party",
+                              anchors=["series of errands"])]))
+        entry = next(e for e in render.links(graph, "ti-esti")["links"]
+                     if e["kind"] == "term" and e["term"] == "Errands")
+        page = render.page_text(graph, "ti-esti")
+        runs = render.eligible(page, "term", "series of errands")
+        self.assertEqual(len(runs), 2)
+        self.assertEqual(entry["find"]["nth"], runs[0][1].nth)
+        self.assertLess(runs[0][1].at, page.index("◆ A series of errands"))
+        self.assertTrue(spec.run(graph, only=["anchor-unique"]))
+
+
 class RootLayoutTest(unittest.TestCase):
     def setUp(self):
         self.text = render.render(load("valid"), "ti-esti")
