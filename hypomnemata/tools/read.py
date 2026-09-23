@@ -7,12 +7,15 @@ parsed; what belongs to the document rather than the page — a tab's id, its
 body's id, and the order from which a tradition root is told — comes from that
 list.
 
-Every complete read re-seals the envelope committed at the branch root, because
-this is the only tool that learns what the notebook now says: the export cache
-moves with the notebook rather than in the runs somebody remembered to move it.
-It costs no extra call and one line of output, and it declines — out loud —
-rather than seal a partial read. `--no-seal` turns it off; `--envelope` seals
-over a named file instead of the committed one.
+Every complete read re-seals the committed envelope, because this is the only
+tool that learns what the notebook now says: the export cache moves with the
+notebook rather than in the runs somebody remembered to move it. The envelope
+is found at the root of the repository the run is made from, or else at the
+tooling's own branch root, so a notebook kept in another repository is
+re-sealed by a run from its checkout. It costs no extra call and one line of
+output, and it declines — out loud — rather than seal a partial read.
+`--no-seal` turns it off; `--envelope` seals over a named file instead of the
+committed one.
 
 The enum the states point at is in neither the document read nor the exports,
 so `--state-enum ID` names it, and a rebuild over an existing graph file keeps
@@ -217,7 +220,7 @@ def main(argv=None) -> int:
         return 1
 
     if not args.no_seal:
-        envelope = args.envelope or portable.committed(portable.root())
+        envelope = args.envelope or portable.committed(*portable.roots())
         if envelope:
             carry(built, envelope, uncovered(manifest, bodies))
     return 0
