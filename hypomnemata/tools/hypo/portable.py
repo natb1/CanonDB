@@ -275,17 +275,52 @@ def unseal(envelope: Dict[str, Any]) -> Dict[str, Any]:
 #: Where the committed envelope sits, from this file's own place: `hypo` is in
 #: `tools`, `tools` in `hypomnemata`, and `hypomnemata` at the branch root.
 def root() -> str:
-    """The branch root, derived rather than configured."""
+    """The tooling's own branch root, derived rather than configured."""
     here = os.path.dirname(os.path.abspath(__file__))
     return os.path.dirname(os.path.dirname(os.path.dirname(here)))
 
 
-def committed(where: str) -> str:
-    """The envelope committed at `where`, by its own `format`; "" if none is.
+def here() -> str:
+    """The root of the repository the run is made from; "" outside one.
+
+    The nearest ancestor of the working directory that holds a `.git` entry,
+    a directory or, in a worktree, a file. The tooling serves more than one
+    notebook: a party who raised their own from an envelope keeps it at the
+    root of their own repository, with this tooling somewhere else, and a
+    run made from that checkout is how their envelope is reached without
+    being named on every run.
+    """
+    cur = os.getcwd()
+    while True:
+        if os.path.exists(os.path.join(cur, ".git")):
+            return cur
+        parent = os.path.dirname(cur)
+        if parent == cur:
+            return ""
+        cur = parent
+
+
+def roots() -> List[str]:
+    """Where a committed envelope is looked for, in order.
+
+    The repository the run is made from first, then the tooling's own branch
+    root, so that a run from this branch finds this notebook's envelope as it
+    always did, and a run from another notebook's checkout finds that one.
+    """
+    out: List[str] = []
+    for where in (here(), root()):
+        if where and where not in out:
+            out.append(where)
+    return out
+
+
+def committed(*wheres: str) -> str:
+    """The envelope committed at the first of `wheres` that holds one, by its
+    own `format`; "" if none does.
 
     The envelope is found rather than named. A path retyped on every run is a
     path that drifts, and the file already says what it is: the one JSON file
-    at the branch root whose `format` is one of ours is the notebook that was
+    at a branch root whose `format` is one of ours is the notebook that was
     handed over. A directory holding two of them is a question this cannot
     answer, so it takes the first in name order and says nothing clever about
     the second.
@@ -294,20 +329,21 @@ def committed(where: str) -> str:
     version would find their own notebook invisible to `reseal` and `stale` —
     which is precisely the party who most needs the next re-seal to reach it.
     """
-    try:
-        entries = sorted(os.listdir(where))
-    except OSError:
-        return ""
-    for entry in entries:
-        if not entry.endswith(".json"):
-            continue
-        path = os.path.join(where, entry)
+    for where in wheres:
         try:
-            with open(path, encoding="utf-8") as fh:
-                if json.load(fh).get("format") in READS:
-                    return path
-        except (OSError, ValueError):
+            entries = sorted(os.listdir(where))
+        except OSError:
             continue
+        for entry in entries:
+            if not entry.endswith(".json"):
+                continue
+            path = os.path.join(where, entry)
+            try:
+                with open(path, encoding="utf-8") as fh:
+                    if json.load(fh).get("format") in READS:
+                        return path
+            except (OSError, ValueError):
+                continue
     return ""
 
 
@@ -387,6 +423,12 @@ def compare(graph: model.Graph, path: str) -> tuple:
         raise ValueError("not a %s envelope (found %r)"
                          % (FORMAT, previous.get("format")))
     current = seal(graph, **carried(previous))
+    if not graph.artifact:
+        # an unbound graph names no document, so nothing in it can be a link
+        # to one: the self-links the envelope recorded still stand, waiting
+        # to be bound, and a comparison made before the binding is not a
+        # drift in what is owed a link
+        current["rebind"] = previous.get("rebind", [])
     return current, drift(previous, current)
 
 

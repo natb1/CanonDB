@@ -16,8 +16,10 @@ Being the closing gate, it also says whether the committed envelope still holds
 this notebook. `read.py` re-seals it on every complete read, but it declines on
 a partial one, on a checker error and on a re-seal that would drop questions —
 so the last word on whether the export cache went out with the change belongs
-here, where the run ends. It reports the shape of the difference and never the
-notebook. `--no-envelope` leaves it out.
+here, where the run ends. The envelope is the one committed at the root of the
+repository the run is made from, or else at the tooling's own branch root. It
+reports the shape of the difference and never the notebook. `--no-envelope`
+leaves it out.
 """
 
 from __future__ import annotations
@@ -54,7 +56,7 @@ def stale(graph: model.Graph, args) -> bool:
     """
     if args.no_envelope:
         return False
-    envelope = args.envelope or portable.committed(portable.root())
+    envelope = args.envelope or portable.committed(*portable.roots())
     if not envelope:
         return False
     name = os.path.basename(envelope)
