@@ -475,6 +475,63 @@ class DetailTest(unittest.TestCase):
         self.assertEqual([f.question for f in findings], ["canon"])
         self.assertIn("attenuation", findings[0].message)
 
+    def test_reach_says_a_word_used_twice_once(self):
+        """A word out of reach is one thing out of reach, however often the
+        part uses it; the count rides on the one finding."""
+        graph = load("valid")
+        canon = graph.get("canon")
+        canon.notes.append(model.Note(section="thesis",
+                                      body="The grade is his, and the grade is read."))
+        findings = spec.run(graph, only=["reach"])
+        self.assertEqual(len(findings), 1)
+        self.assertIn("'grade' (twice)", findings[0].message)
+
+    def test_reach_names_the_import_a_party_s_word_wants(self):
+        """No edge and no move of the definition brings a party's word into
+        reach, so the one remedy there is gets named."""
+        graph = load("valid")
+        plato = graph.get("plato")
+        plato.theses[0].text += " What he grants is a homologia."
+        plato.definitions.append(model.Definition(
+            word="homologia", body="What the one questioned has granted."))
+        root = graph.get("ti-esti")
+        root.theses[0].traditions[0].note += "; the homologia is his"
+        findings = spec.run(graph, only=["reach"])
+        self.assertEqual(len(findings), 1)
+        self.assertIn("import that names the party", findings[0].message)
+        canon = graph.get("canon")
+        canon.notes.append(model.Note(section="thesis", body="The grade is his."))
+        own = [f for f in spec.run(graph, only=["reach"]) if f.question == "canon"]
+        self.assertNotIn("import", own[0].message)
+
+    def test_a_definition_of_a_question_s_word_says_it_is_a_shadow(self):
+        """The word of a question has its sense on that question's tab; an
+        entry for it anywhere else stands in for that tab, and points there."""
+        graph = load("valid")
+        canon = graph.get("canon")
+        canon.theses[0].text += " The party with standing is the one who marks."
+        canon.definitions.append(model.Definition(
+            word="party", body="Either side of the bond."))
+        findings = spec.run(graph, only=["shadow-declared"])
+        self.assertEqual([f.question for f in findings], ["canon"])
+        self.assertIn("shadow", findings[0].message)
+        self.assertEqual(findings[0].severity, spec.WARN)
+        canon.definitions[-1].question = "party"
+        self.assertEqual(spec.run(graph, only=["shadow-declared"]), [])
+        self.assertEqual(spec.run(graph, only=["term-target"]), [])
+
+    def test_a_question_s_own_definition_and_an_import_are_not_shadows(self):
+        graph = load("valid")
+        party = graph.get("party")
+        party.theses[0].text += " A party is either side."
+        party.definitions.append(model.Definition(
+            word="party", body="Either side of the bond."))
+        plato = graph.get("plato")
+        plato.theses[0].text += " The one questioned is a party to it."
+        plato.definitions.append(model.Definition(
+            word="party", body="", tradition=model.Borrowing(to="plato", note="")))
+        self.assertEqual(spec.run(graph, only=["shadow-declared"]), [])
+
     def test_an_inbox_item_is_judged_from_the_questions_that_require_it(self):
         """It is hoisted to a common ancestor to make a dashboard, so the tab
         it is displayed on is not the tab it was lifted from."""

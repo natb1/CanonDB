@@ -482,6 +482,30 @@ class ResealTest(unittest.TestCase):
     def test_nothing_is_dropped_by_a_graph_that_still_holds_them(self):
         self.assertEqual(portable.dropped(self.graph, self.envelope), [])
 
+    def test_an_unbound_graph_does_not_drift_on_what_is_owed_a_link(self):
+        """Opened from an envelope, a graph names no document, so nothing in
+        it links to one; the self-links the envelope recorded are waiting to
+        be bound, and are not a drift."""
+        def self_link(data):
+            app = data["questions"][0]["theses"][0]["applications"][0]
+            app["link"] = data["artifact"]
+        bound = self.moved(self_link)
+        sealed = portable.seal(bound, name="a notebook", tools="somewhere/tools")
+        self.assertEqual(len(sealed["rebind"]), 1)
+        with open(self.envelope, "w", encoding="utf-8") as fh:
+            fh.write(portable.dump(sealed))
+
+        def unbind(data):
+            self_link(data)
+            data["artifact"] = ""
+            data["questions"][0]["theses"][0]["applications"][0]["link"] = ""
+        unbound = self.moved(unbind)
+        current, changed = portable.compare(unbound, self.envelope)
+        self.assertEqual(changed, [])
+        self.assertEqual(current["rebind"], sealed["rebind"])
+        _, changed = portable.compare(bound, self.envelope)
+        self.assertEqual(changed, [])
+
     def test_a_file_that_is_not_an_envelope_is_told_apart_from_a_stale_one(self):
         with self.assertRaises(ValueError):
             portable.compare(self.graph, VALID)
@@ -497,6 +521,62 @@ class ResealTest(unittest.TestCase):
 
     def test_committed_says_so_where_there_is_none(self):
         self.assertEqual(portable.committed(scratch()), "")
+
+
+class WhereTest(unittest.TestCase):
+    """The committed envelope is found from where the run is made."""
+
+    def setUp(self):
+        self.cwd = os.getcwd()
+        self.repo = scratch()
+        os.mkdir(os.path.join(self.repo, ".git"))
+        self.inside = os.path.join(self.repo, "deep", "er")
+        os.makedirs(self.inside)
+
+    def tearDown(self):
+        os.chdir(self.cwd)
+
+    def envelope_at(self, where, name="carried.json"):
+        path = os.path.join(where, name)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(portable.dump(portable.seal(model.load(VALID), name="n",
+                                                 tools="t")))
+        return path
+
+    def test_here_is_the_repository_the_run_is_made_from(self):
+        os.chdir(self.inside)
+        self.assertEqual(os.path.realpath(portable.here()),
+                         os.path.realpath(self.repo))
+
+    def test_here_is_nothing_where_no_repository_holds_the_run(self):
+        outside = scratch()
+        os.chdir(outside)
+        self.assertNotEqual(os.path.realpath(portable.here() or "/"),
+                            os.path.realpath(outside))
+
+    def test_roots_put_the_run_s_repository_before_the_tooling_s(self):
+        os.chdir(self.inside)
+        found = [os.path.realpath(r) for r in portable.roots()]
+        self.assertEqual(found[0], os.path.realpath(self.repo))
+        self.assertIn(os.path.realpath(portable.root()), found)
+
+    def test_roots_fall_back_to_the_tooling_s_branch_root(self):
+        os.chdir(scratch())
+        self.assertEqual(portable.roots()[-1], portable.root())
+
+    def test_committed_takes_the_first_root_that_holds_an_envelope(self):
+        other = scratch()
+        mine = self.envelope_at(self.repo)
+        self.envelope_at(other)
+        self.assertEqual(portable.committed(scratch(), self.repo, other), mine)
+        self.assertEqual(portable.committed(scratch(), scratch()), "")
+
+    def test_a_run_from_another_notebook_s_checkout_reaches_its_envelope(self):
+        """The tooling serves more than one notebook: the one kept beside
+        it, and any raised from an envelope in a repository of its own."""
+        mine = self.envelope_at(self.repo)
+        os.chdir(self.inside)
+        self.assertEqual(portable.committed(*portable.roots()), mine)
 
 
 class ResealCommandTest(ResealTest):

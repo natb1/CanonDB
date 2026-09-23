@@ -19,8 +19,9 @@ An envelope that has been handed over once is not sealed again from scratch:
     portable.py reseal graph.json      # the committed envelope, brought up to date
     portable.py stale graph.json       # say whether it is current; exit 1 if not
 
-Both find the envelope at the branch root by its own `format` rather than being
-told where it is, and `reseal` takes the `name` and `tools` from the file it
+Both find the envelope by its own `format` rather than being told where it is —
+at the root of the repository the run is made from, or else at the tooling's
+own branch root — and `reseal` takes the `name` and `tools` from the file it
 replaces, so neither the path nor the naming can drift by being retyped. What
 they print is the shape of the difference and never the notebook: a handful of
 ids, bounded, whatever the notebook's size. `reseal` refuses a re-seal that
@@ -121,10 +122,10 @@ def _committed(args):
     """The envelope to work over: the one named, else the one committed."""
     if args.envelope:
         return args.envelope
-    found = portable.committed(portable.root())
+    found = portable.committed(*portable.roots())
     if not found:
         print("no envelope committed at %s: name one to seal over"
-              % portable.root(), file=sys.stderr)
+              % " or ".join(portable.roots()), file=sys.stderr)
     return found
 
 
