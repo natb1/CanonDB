@@ -12,6 +12,7 @@ from its reads of the document, and renders canonical markdown back from it.
     apply    the operations that put a rendered tab into the document
     verify   the page against the renderer, links included
     portable the notebook parted from its document, and the export cache
+    turn     which question a canon turn is put to, and the lineage it carries
     text     plain text from markdown, and where a run of it stands
     cli      what every command-line entry point does before its own work
 
@@ -28,4 +29,4 @@ which is exactly what happened.
 """
 
 __all__ = ["model", "spec", "project", "render", "read", "apply", "verify",
-           "portable", "text", "cli"]
+           "portable", "turn", "text", "cli"]

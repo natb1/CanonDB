@@ -517,11 +517,7 @@ def requires_discharged(graph: Graph) -> Yield:
                             "is" if len(pending) == 1 else "are"))
 
 
-def _put(q) -> bool:
-    """Whether a question has been put: a thread is open on it, or an answer
-    to it is in one or has landed."""
-    return (q.state == STATES[1]
-            or any(thesis.state in STATES[1:] for thesis in q.theses))
+_put = project.put
 
 
 @check("inbox-placement",

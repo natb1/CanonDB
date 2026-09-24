@@ -277,6 +277,14 @@ def landed(q: Question) -> bool:
     return any(thesis.state == STATES[-1] for thesis in q.theses)
 
 
+def put(q: Question) -> bool:
+    """Whether ``q`` has been put: a thread is open on it, or an answer to it
+    is in one or has landed. Landing alone does not say so — the root reached
+    main as the seed it was asked from, before anyone had put it."""
+    return (q.state == STATES[1]
+            or any(thesis.state in STATES[1:] for thesis in q.theses))
+
+
 def blocked_behind(graph: Graph, qid: str) -> Set[str]:
     """The questions that cannot be put until ``qid``'s answer has landed.
 

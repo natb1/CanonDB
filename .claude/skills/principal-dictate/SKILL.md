@@ -254,11 +254,13 @@ a procedure rather than a script.
   it is judged by reading. That the entry points at the question is decided in the one case a
   script can see, a word that is a question's own id, by `shadow-declared`; a word that earned
   its question under another name — `backlog` shadowing `priority` — is still read for.
-- **A deadlock is what no question reaches.** A clause you cannot accept is recorded as a
-  deadlock only where the point cannot be put as a question in the lineage. Where it can, suspend
-  acceptance of the clause, put the question, and settle it before the merge — and where selection
-  cannot reach the point at all, the deadlock is what says so, which is worth as much as reaching
-  it. Nothing computes which case you are in.
+- **A deadlock is what no line reaches.** A clause you cannot accept is recorded as a
+  deadlock only where the point cannot be put as a question in the lineage, and no other line
+  or thread could reach it either. Where one can, suspend acceptance of the clause, put the
+  question, and settle it before the merge. A dissent is aporia in the principal, and it stays
+  suspended while a line that could reach it remains to be drawn; only where selection cannot
+  reach the point at all is the deadlock what says so, which is worth as much as reaching it.
+  Nothing computes which case you are in, and nothing counts the lines still to be drawn.
 - **Reach is judged where a part is written.** `reach` holds the context rule over the notebook's
   vocabulary, and holds it on what you write: the question, its hinge, your answers and their
   headlines, glossary bodies, notes, tradition notes and counters, deadlocks and suspensions. An
@@ -271,29 +273,23 @@ a procedure rather than a script.
   definition on the wrong question, never an import.
 - **Two open threads must not depend on each other.** `put-in-order` holds the half a script can:
   nothing is put below a question that has not been. Which thread a question is on is not
-  recorded, so a turn carrying an answer from another open thread, or missing one it needs, is
-  yours to see.
+  recorded, so `next.py` and `lineage.py` are told it (`--thread`), and a turn carrying an
+  answer from another open thread, or missing one it needs, is yours to see.
 - **The clean-context rule.** Nothing of the notebook may reach a turn that answers a canon
-  question. There is no guard for this yet — it is recorded as an eventuality on the `context` tab —
-  so it holds by discipline: never invoke a canon entry point from a session that has run this one.
-  The committed envelope widens what the discipline has to cover. It puts the whole notebook on
-  disk at the root of every checkout of this branch, and of `main` once the branch lands, beside
-  the canon the answering turn is granted — so a canon turn no longer needs to have run this
-  entry point to reach the notebook; a file read, a grep, or a `git log` over the root is enough,
-  and nothing granted it. Until there is a guard, a turn that answers a canon question is composed
-  rather than opened: it is given the question and the canon above it, and it has no tool that
-  reads the checkout. The shape the `context` tab records for the guard is that: the principal
-  entry point, which holds notebook and canon together, selects the question and launches a
-  separate agent to answer it, and that agent's configuration is the grant. The packet it is
-  handed is the question and a reference to the lineage — canon above the question, written to a
-  file by the tooling, never transcribed by the selecting turn, which is the one that has read
-  the notebook. The agent reads and nothing else: no shell, no search, no git, and no `CLAUDE.md`
-  (`omitClaudeMd`), so the envelope on disk is out of its reach. That leaves two things to hold
-  by reading. The question's wording is the one thing of the selecting turn's that enters the
-  packet, and it is held as it always was, by the rule that the question is only the question.
-  And a read tool is not confined to a path by the agent's definition, so what keeps its reading
-  to canon — and canon above the question is what a clean context carries, not all of canon —
-  is a hook that refuses the rest, or, until there is one, the agent's brief.
+  question. The guard the `context` tab describes is built: `/principal:ask`, which holds
+  notebook and canon together, selects the question and launches `canon-answer`, whose
+  definition under `.claude/agents/` is the grant — Read and nothing else, no shell, no search,
+  no git, no `CLAUDE.md`, and a gate on Read (`.claude/hooks/canon-gate.py`) that lets through
+  canon and the packet and refuses the rest, the committed envelope at the branch root
+  included. The packet is the question and a reference to its lineage, which `tools/lineage.py`
+  writes out of the graph file and the selecting turn never transcribes. What is left to hold by
+  reading is what no configuration decides. The question's wording is the one thing of the
+  selecting turn's that enters the packet, held by the rule that the question is only the
+  question, and the prompt around it is read once more before it is sent. The gate's list of
+  canon is the root question alone until an answer lands, and it is the one place that list
+  lives. And the guard holds only where the agent is used: a canon question answered in any
+  other way — in this run, in a session that has read the notebook, by a turn composed by hand —
+  is answered in a context nobody vouched for, whatever it was given.
 - **The page is a second artifact.** A tab reaches the document in two calls, because a link
   needs a block id the document mints and a body write mints new ones. Nothing in the graph
   file records a link, so nothing that reads the graph can tell whether the second call was
@@ -365,7 +361,9 @@ conclusion but a latent conflict between two things the answerer has already sai
 where one of them runs out of coverage — that is where the answerer moves under his own power.
 If selection cannot reach a point, the point is a dictate, and knowing that is worth as much as
 reaching it. Two grains run at once: the target picks the admission, the admission picks the
-question.
+question. Which drawn question is put next is not drafting and is not steering: `next.py`
+reads it off the graph as the heaviest with nothing left to wait on, and `/principal:ask`
+puts it.
 
 **What ranks.** Four factors, ordered and not weighted. Step size is a **gate**, not a rank.
 Blocked action ranks first while anything is blocked — what does the answer unblock. Target
@@ -382,6 +380,24 @@ the question it presupposes. Ranking it lower only postpones an admission that w
 whenever it is made. The failure of a far question is not refusal — it is a step admitted out
 of politeness with a hollow chain built above it. Too open is also too far: a diffuse question
 is a distant one. An overreach is a disposition with a retreat, not an error.
+
+**Compaction.** The answering turn sees its lineage and nothing else, so a conflict between
+its answer and an admission on another line is the questioner's to see, and the notebook's
+`elenchus` answer says how it is met. Seen coming, the question is not put as drawn: put
+instead the question that carries the other line's admission with it, so the two are
+reconciled in one answer rather than admitted, collided and reconstructed over three. Seen
+only in the answer, withdraw the line to the admission it left and put the carrying question
+there. Either is a compaction, and it is open only because the one answering is the AI: a
+human cannot be asked to forget his first answer, and the AI, asked again in a fresh
+context, has not given it. What it buys is a shorter line, and a shorter line is one a turn
+carries without loss — so the retreat that predicts a thread will run too long is a
+compaction too, taken before the collision. It reaches past the thread: an answer in canon
+is withdrawn the same way, and gives way at the merge that replaces it. What compaction is
+not for is a conflict with the notebook alone. That is no aporia of the AI's; it is the
+principal's, suspended, and every line and thread that could reach the point is drawn before
+it is conceded as a dissent. `/principal:ask` looks for the collision before the question
+goes and after the answer comes; which line it is, and what question would carry the
+admission, is drafted here.
 
 **Framing.** Open on what the answerer is already doing. Presuppose only what the act of asking
 makes true; everything contested goes into the question. Minimise the hinges the other party is
