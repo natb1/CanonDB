@@ -8,7 +8,7 @@
     "in thread",
     "landed"
   ],
-  "digest": "86ce4fddacee4e7e",
+  "digest": "a3cf2221aecfd791",
   "questions": [
     {
       "id": "Anthropic",
@@ -1455,15 +1455,15 @@
           "applications": [
             {
               "name": "the context guard",
-              "what": "the canon agent: a separate agent the principal entry point launches to answer one question, whose configuration reads canon and nothing else — no shell, no search, no rules file — and which is handed the question and a reference to its lineage, written out of canon by a script",
-              "link": "not yet written",
+              "what": "the canon agent, `canon-answer`: a separate agent the principal entry point launches to answer one question, whose configuration reads canon and nothing else — the Read tool alone, no shell, no search, no rules file, and a gate on Read that admits canon and the packet — and which is handed the question and a reference to its lineage, written out of canon by a script",
+              "link": "https://github.com/natb1/CanonDB/blob/hypomnemata/.claude/agents/canon-answer.md",
               "standing": "postulate",
-              "note": "an eventuality, recorded so it is not forgotten; not a blocker"
+              "note": "what counts as canon on disk is listed in the gate, and is the root question alone until an answer lands"
             },
             {
               "name": "the entry points",
-              "what": "the skills and agents under `.claude/` that scope a turn, each granting what a turn may carry: the principal entry point that selects the question and launches the canon agent, and the canon agent it launches",
-              "link": "not yet written",
+              "what": "the skills and agents under `.claude/` that scope a turn, each granting what a turn may carry: `/principal:ask`, which selects the question and launches the canon agent, `/principal:dictate`, which changes the notebook, and `canon-answer`, which answers",
+              "link": "https://github.com/natb1/CanonDB/tree/hypomnemata/.claude",
               "standing": "postulate"
             }
           ],
@@ -2722,9 +2722,9 @@
           "id": "write-entry-point",
           "title": "Write the entry point that answers a question",
           "kind": "provide",
-          "what": "`/canon:answer <question>`: a skill that materialises CLAUDE.local.md with the question and its whole lineage up to the root, gives the turn canon alone, and leaves it to write the answer and nothing else — the clauses that raise the next questions are drawn by the human, not by the answering turn.",
+          "what": "the ask entry point under `.claude/skills/`, which selects the question that waits heaviest with nothing left to wait on and launches the canon agent, `canon-answer`, to answer it; the agent's configuration is what it may carry: it reads canon and the packet — the question, and a reference to its lineage written out of canon by `tools/lineage.py` — and nothing else, and it writes the answer and nothing else. The clauses that raise the next questions are drawn by the human, not by the answering turn.",
           "obligation": "say what matters",
-          "done": false
+          "done": true
         }
       ],
       "hinge": {
