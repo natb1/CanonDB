@@ -81,13 +81,18 @@ ack, or a read with `projection: outline`:
    printed.
 3. `tools/apply.py … --unlink <the tab's export>` where the page carries a link the sidecar no
    longer names — a definition that has moved tabs leaves its own behind.
+4. Once every rewritten tab has its links, `tools/relink.py $SCRATCH/graph.json <rewritten
+   tabs> --tabs <exports> --outlines $SCRATCH/outlines` → send what it prints, per tab: the
+   links into the rewritten tabs from every other tab, which the body writes retired (see
+   **Attenuation**).
 
 When a run writes more than one tab, write every body before any link: a link into a tab whose
 body is written after it points at a block that write retires, and nothing can see that it
 does. Then `tools/project.py $SCRATCH/graph.json` for the tab-placement patch, and send it. The
 tab tree is computed, never chosen.
 
-**5 — Re-check.** Export every tab you touched as markdown, then run both:
+**5 — Re-check.** Export every tab you touched as markdown, the relinked ones included, then
+run both:
 
 - `tools/read.py` to rebuild the graph file and `tools/check.py` on it — no ERROR may stand, and
   the rebuilt file must match the one you sent;
@@ -299,6 +304,18 @@ a procedure rather than a script.
   and the links the page carries that the sidecar does not name. Run it at the end of every
   write, and read what it says about that third class: a link applied by hand, or left behind
   by a definition that has moved, is invisible to everything else.
+- **A body write retires what other tabs point at.** A link into a tab carries the id of a
+  block on it, and a body write mints new ids for every block on the tab it writes, so every
+  link into a rewritten tab from a tab outside the run points, from that write on, at a block
+  that no longer exists. Nothing in the run can see it: the graph file never held a link, and
+  `verify.py` resolves an href to the tab it is on and no further. Seventeen tabs pointed at
+  retired blocks of the root tab after one rewrite of it, and two had pointed at retired
+  blocks since the run before. So after the bodies and their own links are written, run
+  `tools/relink.py $SCRATCH/graph.json <the rewritten tabs> --tabs <exports> --outlines
+  $SCRATCH/outlines` over the exports the run began from: it prints, per other tab, the format
+  operations that repoint the links into the rewritten tabs, resolved against the outlines
+  the writes acknowledged. Send them, and export those tabs too before the re-check. A format
+  operation on a linked run of text replaces its href, so nothing is unlinked first.
 - **Async edits are preserved.** The read-before-write discipline is not enforceable by a script
   that cannot see the artifact. And the cheap witness is not a witness: an `export` refused at
   `maxBytes: 1` names the tab's exact size, which looks like a way to tell a moved page from a
