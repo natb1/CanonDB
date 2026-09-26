@@ -38,8 +38,9 @@ scratch directory.
 
 ## Procedure
 
-**1 — Read.** Read the artifact's tab list and the tabs in place, and build the graph file with
-`tools/read.py <document read> <directory of tab markdown> -o $SCRATCH/graph.json`. Run
+**1 — Read.** Read the artifact's tab list and each tab's body whole, spell the reads with
+`tools/page.py`, and build the graph file with `tools/read.py <document read> $SCRATCH/tabs -o
+$SCRATCH/graph.json`, as `/principal:dictate` step 1 says. Run
 `tools/check.py` over it: no ERROR may stand, since a lineage written out of a faulted graph
 is not one anybody vouched for.
 

@@ -39,10 +39,12 @@ project.
 **1 — Read.** Read the artifact's tab list, then the tabs the dictation could touch, in place:
 each tab's outline, and in full, block by block, the blocks the dictation bears on. Read them
 yourself: a read tells you what the page holds, not what it means. Where the run needs the
-whole notebook as a graph file — a change to the specification, a check over every tab — build
-it with `tools/read.py <document read> <directory of tab markdown>` (`$SCRATCH/graph.json`,
-schema in `tools/hypo/model.py`); that markdown is read off the page, never exported (see
-**Attenuation**).
+whole notebook as a graph file — a change to the specification, a check over every tab — read
+each tab's body whole (`view` with `sinceRev` 0), save the reads as `$SCRATCH/views/<question>.json`,
+spell them with `tools/page.py $SCRATCH/views/*.json -o $SCRATCH/tabs`, and build the graph with
+`tools/read.py <document read> $SCRATCH/tabs` (`$SCRATCH/graph.json`, schema in
+`tools/hypo/model.py`). Nothing is exported: `page.py` spells the read as the export did, so the
+reader, the page check and the relink tool take the directory unchanged.
 
 **2 — Plan.** Enter plan mode and write the plan before any write. The plan is a table, one row per
 edit:
@@ -290,11 +292,12 @@ a procedure rather than a script.
 - **The document is read in place, and nothing is exported.** The document is shared, so the
   copy a run works from is the page itself: the outline for the shape, a `view` of a block for
   its words, the hash of the block as the guard on the write. An export was the cache a party
-  who could not read the document needed, and nothing needs it now. What still takes a tab's
-  markdown — `read.py`, `verify.py`, `relink.py`, `--unlink` — takes it as read back off the
-  page; a reader over the document's own view, so that the graph file is built without a
-  markdown step at all, is owed, and until it lands a run that needs the whole graph says which
-  tabs it built it from.
+  who could not read the document needed, and nothing needs it now. What takes a tab's
+  markdown — `read.py`, `verify.py`, `relink.py`, `--unlink` — takes what `tools/page.py`
+  spells from a whole-body `view` read, in the export's own spelling, so a page read and an
+  export are the same file to them. What the read keeps and the export lost is each block's
+  id beside its text (`page.blocks`), which is what would let the page check tell which block
+  a link leads to; that use is not built.
 - **Async edits are preserved.** The read-before-write discipline is not enforceable by a script
   that cannot see the artifact. And the cheap witness is not a witness: an `export` refused at
   `maxBytes: 1` names the tab's exact size, which looks like a way to tell a moved page from a
