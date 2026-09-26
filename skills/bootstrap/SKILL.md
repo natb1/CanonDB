@@ -55,8 +55,9 @@ scratch directory.
 
 ## Procedure
 
-**1 — Read.** Read the artifact's tab list, export every tab, and build the graph file with
-`tools/read.py <document read> <directory of exports> -o $SCRATCH/graph.json`; run
+**1 — Read.** Read the artifact's tab list and each tab's body whole, spell the reads with
+`tools/page.py`, and build the graph file with `tools/read.py <document read> $SCRATCH/tabs -o
+$SCRATCH/graph.json`, as `/principal:dictate` step 1 says; run
 `tools/check.py` over it. Then `git fetch origin main` and start the round's branch from
 `origin/main` — `bootstrap/<what the round is for>` — or check out the branch of the pull
 request the feedback came in on. Read `.principal/bootstrap.json`.

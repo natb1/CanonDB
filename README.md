@@ -17,7 +17,7 @@ project's root question, and `.principal/` is this project's configuration.
 | `skills/bootstrap/` | `/principal:bootstrap [dictation]` — reconcile application from the notebook ahead of canon |
 | `agents/canon-answer.md` | the canon agent: Read and nothing else, launched only by `/principal:ask` |
 | `hooks/canon-gate.py` | a PreToolUse gate on Read that fires for the canon agent alone and admits canon and the packet |
-| `tools/` | the notebook tooling: model, spec, renderer, reader, writer, page check, projections, frontier, lineage |
+| `tools/` | the notebook tooling: model, spec, renderer, page read, reader, writer, page check, projections, frontier, lineage |
 
 Two flows reach `main`:
 

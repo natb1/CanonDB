@@ -27,17 +27,24 @@ project.
    artifact asynchronously, outside any session.
 2. **Never revert or overwrite a prior you did not write.** A block you have not read is a block you
    do not touch. On a hash or find mismatch, his words win: keep them, and say what you kept.
-3. **Never hand-write tab markdown.** `tools/render.py` is the only sanctioned producer of a tab
-   body. Hand-written markdown is how the layout drifts.
-4. **Every export and every graph file is a cache.** Nothing on disk is authoritative over the
-   artifact, and no cache is committed.
+3. **Never hand-write a tab body.** `tools/render.py` is the only sanctioned producer of one. A
+   line changed in place follows the shape the renderer writes for that line, because the next
+   read of the page parses that shape and no other; hand-written layout is how it drifts.
+4. **Every graph file is a cache.** Nothing on disk is authoritative over the artifact, and no
+   cache is committed. Nothing is exported: the document is shared, and it is read where it
+   stands.
 
 ## Procedure
 
-**1 — Read.** Read the artifact's tab list, then export every tab as markdown and build the graph
-file with `tools/read.py <document read> <directory of exports>` (`$SCRATCH/graph.json`, schema in
-`tools/hypo/model.py`). Read the tabs the dictation could touch yourself as well: the reader tells
-you what the page holds, not what it means.
+**1 — Read.** Read the artifact's tab list, then the tabs the dictation could touch, in place:
+each tab's outline, and in full, block by block, the blocks the dictation bears on. Read them
+yourself: a read tells you what the page holds, not what it means. Where the run needs the
+whole notebook as a graph file — a change to the specification, a check over every tab — read
+each tab's body whole (`view` with `sinceRev` 0), save the reads as `$SCRATCH/views/<question>.json`,
+spell them with `tools/page.py $SCRATCH/views/*.json -o $SCRATCH/tabs`, and build the graph with
+`tools/read.py <document read> $SCRATCH/tabs` (`$SCRATCH/graph.json`, schema in
+`tools/hypo/model.py`). Nothing is exported: `page.py` spells the read as the export did, so the
+reader, the page check and the relink tool take the directory unchanged.
 
 **2 — Plan.** Enter plan mode and write the plan before any write. The plan is a table, one row per
 edit:
@@ -92,8 +99,8 @@ body is written after it points at a block that write retires, and nothing can s
 does. Then `tools/project.py $SCRATCH/graph.json` for the tab-placement patch, and send it. The
 tab tree is computed, never chosen.
 
-**5 — Re-check.** Export every tab you touched as markdown, the relinked ones included, then
-run both:
+**5 — Re-check.** Read every tab you touched back off the page, the relinked ones included,
+then run both:
 
 - `tools/read.py` to rebuild the graph file and `tools/check.py` on it — no ERROR may stand, and
   the rebuilt file must match the one you sent;
@@ -282,6 +289,15 @@ a procedure rather than a script.
   operations that repoint the links into the rewritten tabs, resolved against the outlines
   the writes acknowledged. Send them, and export those tabs too before the re-check. A format
   operation on a linked run of text replaces its href, so nothing is unlinked first.
+- **The document is read in place, and nothing is exported.** The document is shared, so the
+  copy a run works from is the page itself: the outline for the shape, a `view` of a block for
+  its words, the hash of the block as the guard on the write. An export was the cache a party
+  who could not read the document needed, and nothing needs it now. What takes a tab's
+  markdown — `read.py`, `verify.py`, `relink.py`, `--unlink` — takes what `tools/page.py`
+  spells from a whole-body `view` read, in the export's own spelling, so a page read and an
+  export are the same file to them. What the read keeps and the export lost is each block's
+  id beside its text (`page.blocks`), which is what would let the page check tell which block
+  a link leads to; that use is not built.
 - **Async edits are preserved.** The read-before-write discipline is not enforceable by a script
   that cannot see the artifact. And the cheap witness is not a witness: an `export` refused at
   `maxBytes: 1` names the tab's exact size, which looks like a way to tell a moved page from a
@@ -309,7 +325,7 @@ a procedure rather than a script.
   after anyone edits the enum.
 - **A note is somebody's and stays theirs.** The renderer round-trips a note as a blockquote, so it
   survives a re-render. What it cannot tell you is that a blockquote someone wrote on the page has
-  not yet been taken into the graph file: export before you write, always, or you will replace it.
+  not yet been taken into the graph file: read before you write, always, or you will replace it.
   The same mark cuts the other way: a blockquote is a note wherever it stands, so one inside an
   answer's text is read back as a note on the section and the next render moves it out of the
   answer. `text-unquoted` refuses such an answer rather than let that happen in silence. An answer

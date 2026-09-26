@@ -32,13 +32,15 @@ scratch directory.
 3. **The answer is verbatim.** What the agent replies is recorded word for word, and never
    edited, trimmed or reflowed. An answer the notebook cannot hold as it stands is said so and
    left, not reworded.
-4. **Every export and every graph file is a cache**, and the packet is one more. The committed
+4. **Every graph file is a cache**, and the packet is one more. Nothing is exported: the
+   document is read in place, as `/principal:dictate` says. The committed
    file is the transcript, as step 8 says.
 
 ## Procedure
 
-**1 — Read.** Read the artifact's tab list, export every tab, and build the graph file with
-`tools/read.py <document read> <directory of exports> -o $SCRATCH/graph.json`. Run
+**1 — Read.** Read the artifact's tab list and each tab's body whole, spell the reads with
+`tools/page.py`, and build the graph file with `tools/read.py <document read> $SCRATCH/tabs -o
+$SCRATCH/graph.json`, as `/principal:dictate` step 1 says. Run
 `tools/check.py` over it: no ERROR may stand, since a lineage written out of a faulted graph
 is not one anybody vouched for.
 

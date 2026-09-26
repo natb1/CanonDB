@@ -39,7 +39,7 @@
     {
       "question": "docs-encoding",
       "application": "the reader",
-      "files": ["tools/hypo/read.py", "tools/read.py"],
+      "files": ["tools/hypo/read.py", "tools/read.py", "tools/hypo/page.py", "tools/page.py"],
       "pull_request": "https://github.com/natb1/CanonDB/pull/24",
       "rounds": 1
     },
