@@ -1,0 +1,12 @@
+{
+  "name": "canondb",
+  "description": "Plugins from natb1/CanonDB",
+  "owner": { "name": "natb1", "url": "https://github.com/natb1" },
+  "plugins": [
+    {
+      "name": "principal",
+      "source": "./",
+      "description": "The principal's entry points over a hypomnemata notebook and canon: /principal:dictate, /principal:ask, /principal:bootstrap, and the canon-answer agent with its read gate."
+    }
+  ]
+}
