@@ -7,7 +7,7 @@ definition, so this is what keeps its reading to what a clean context
 carries. It reads the tool call from stdin and answers with a permission
 decision: allow for a path this notebook counts as canon, or for the packet
 the principal entry point wrote for this turn; deny for everything else, the
-committed envelope at the branch root and the notebook's tooling included.
+notebook's tooling included.
 
 What counts as canon on disk is listed here, in one place, and is short:
 the root question at the branch root. It grows when an answer is promulgated,

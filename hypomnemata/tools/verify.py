@@ -11,15 +11,6 @@ This is the closing gate of a write. Every other check reads the graph file,
 and a graph file never held a link, so nothing else can see whether the links
 reached the page. Exits 1 on any finding — a tab with no export to read
 included, since a tab this could not read is a tab this did not verify.
-
-Being the closing gate, it also says whether the committed envelope still holds
-this notebook. `read.py` re-seals it on every complete read, but it declines on
-a partial one, on a checker error and on a re-seal that would drop questions —
-so the last word on whether the export cache went out with the change belongs
-here, where the run ends. The envelope is the one committed at the root of the
-repository the run is made from, or else at the tooling's own branch root. It
-reports the shape of the difference and never the notebook. `--no-envelope`
-leaves it out.
 """
 
 from __future__ import annotations
@@ -30,7 +21,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from hypo import cli, model, portable, verify as check  # noqa: E402
+from hypo import cli, model, verify as check  # noqa: E402
 
 cli.quiet_pipe()
 
@@ -44,41 +35,12 @@ def pages(directory: str) -> dict:
     return found
 
 
-def stale(graph: model.Graph, args) -> bool:
-    """Whether the committed envelope no longer holds this notebook.
-
-    A finding like any other here, and printed like the rest of them: what
-    changed, by id and by key, in lines that do not grow with the notebook.
-    """
-    if args.no_envelope:
-        return False
-    envelope = args.envelope or portable.committed(*portable.roots())
-    if not envelope:
-        return False
-    name = os.path.basename(envelope)
-    try:
-        _, changed = portable.compare(graph, envelope)
-    except (OSError, ValueError) as exc:
-        print("ERROR envelope %s: %s" % (name, exc))
-        return True
-    if not changed:
-        return False
-    print("%s is stale — `portable.py reseal` puts this graph in it:" % name)
-    for line in changed:
-        print("  " + line)
-    return True
-
-
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("graph", help="the graph file")
     ap.add_argument("tabs", help="a directory of <question id>.md exports")
     ap.add_argument("--only", action="append", metavar="ID",
                     help="verify only this question (repeatable)")
-    ap.add_argument("--envelope", metavar="FILE",
-                    help="check this envelope instead of the committed one")
-    ap.add_argument("--no-envelope", action="store_true", dest="no_envelope",
-                    help="do not ask whether the export cache is current")
     args = ap.parse_args(argv)
 
     try:
@@ -117,7 +79,7 @@ def main(argv=None) -> int:
              sum(len(r.misplaced) for r in reports),
              sum(len(r.astray) for r in reports),
              sum(len(r.extra) for r in reports)))
-    return 1 if (bad or absent or stale(graph, args)) else 0
+    return 1 if (bad or absent) else 0
 
 
 if __name__ == "__main__":

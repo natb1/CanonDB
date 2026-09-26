@@ -11,7 +11,7 @@ from its reads of the document, and renders canonical markdown back from it.
     read     the inverse of the renderer: an exported tab back into a question
     apply    the operations that put a rendered tab into the document
     verify   the page against the renderer, links included
-    portable the notebook parted from its document, and the export cache
+    portable the notebook parted from its document, for a party raising its own
     turn     which question a canon turn is put to, and the lineage it carries
     text     plain text from markdown, and where a run of it stands
     cli      what every command-line entry point does before its own work

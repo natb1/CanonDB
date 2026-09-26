@@ -27,11 +27,6 @@ def fixture(name):
     return os.path.join(FIXTURES, name + ".json")
 
 
-def slurp(path):
-    with open(path, encoding="utf-8") as fh:
-        return fh.read()
-
-
 def document(where):
     """A document read plus its tab exports, built from fixtures/valid.json.
 
@@ -163,92 +158,28 @@ class RenderCliTest(unittest.TestCase):
 class ReadCliTest(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
         self.manifest, self.tabs = document(self.dir)
-        self.envelope = os.path.join(self.dir, "envelope.json")
-        sealed = run("portable.py", "seal", fixture("valid"), "-o", self.envelope,
-                     "--name", "a notebook", "--tools", "somewhere/tools")
-        self.assertEqual(sealed.returncode, 0, sealed.stderr)
-
-    def read(self, tabs=None, envelope=None, no_seal=False):
-        args = [self.manifest, tabs or self.tabs,
-                "-o", os.path.join(self.dir, "graph.json")]
-        if envelope is not None:
-            args += ["--envelope", envelope]
-        if no_seal:
-            args.append("--no-seal")
-        return run("read.py", *args)
-
-    def test_a_complete_read_re_seals_a_named_envelope(self):
-        before = json.loads(slurp(self.envelope))
-        done = self.read(envelope=self.envelope)
-        self.assertEqual(done.returncode, 0, done.stderr)
-        self.assertTrue("re-sealed" in done.stderr or "is current" in done.stderr,
-                        done.stderr)
-        after = json.loads(slurp(self.envelope))
-        self.assertEqual(after["format"], before["format"])
-        self.assertEqual(after["name"], before["name"])
-        self.assertEqual(after["tools"], before["tools"])
-        rebuilt = model.load(os.path.join(self.dir, "graph.json"))
-        self.assertEqual(sorted(q["id"] for q in after["questions"]),
-                         sorted(q.id for q in rebuilt.questions))
-
-    def test_what_the_re_seal_says_is_ids_and_not_the_notebook(self):
-        done = self.read(envelope=self.envelope)
-        self.assertEqual(done.returncode, 0, done.stderr)
-        said = [line for line in done.stderr.splitlines()
-                if "sealed" in line or "is current" in line]
-        self.assertEqual(len(said), 1, done.stderr)  # one line, whatever moved
-        graph = model.load(fixture("valid"))
-        for q in graph.questions:
-            for thesis in q.theses:
-                self.assertNotIn(thesis.title, said[0])
-
-    def test_no_seal_leaves_the_envelope_byte_identical(self):
-        before = slurp(self.envelope)
-        done = self.read(envelope=self.envelope, no_seal=True)
-        self.assertEqual(done.returncode, 0, done.stderr)
-        self.assertEqual(slurp(self.envelope), before)
-
-    def test_a_read_that_leaves_out_a_tab_does_not_seal(self):
-        partial = os.path.join(self.dir, "partial")
-        os.makedirs(partial)
-        for entry in os.listdir(self.tabs):
-            if entry != "attenuation.md":
-                shutil.copy(os.path.join(self.tabs, entry), partial)
-        before = slurp(self.envelope)
-        done = self.read(tabs=partial, envelope=self.envelope)
-        self.assertEqual(done.returncode, 0, done.stderr)
-        self.assertIn("not sealed over", done.stderr)
-        self.assertEqual(slurp(self.envelope), before)
-
-    def test_re_sealing_is_idempotent(self):
-        first = self.read(envelope=self.envelope)
-        self.assertEqual(first.returncode, 0, first.stderr)
-        after_first = slurp(self.envelope)
-
-        second = self.read(envelope=self.envelope)
-        self.assertEqual(second.returncode, 0, second.stderr)
-        self.assertIn("is current", second.stderr)
-        self.assertEqual(slurp(self.envelope), after_first)
 
     def test_the_enum_the_states_point_at_is_kept_across_a_rebuild(self):
         """The document read names the tabs and the exports carry the words;
         the enum is in neither, so a rebuild that took only those rendered
         every state as a word rather than a dropdown, and no gate saw it."""
         out = os.path.join(self.dir, "graph.json")
-        first = run("read.py", self.manifest, self.tabs, "-o", out, "--no-seal",
+        first = run("read.py", self.manifest, self.tabs, "-o", out,
                     "--state-enum", "enum-1")
         self.assertEqual(first.returncode, 0, first.stderr)
         self.assertEqual(model.load(out).state_enum, "enum-1")
-        second = run("read.py", self.manifest, self.tabs, "-o", out, "--no-seal")
+        second = run("read.py", self.manifest, self.tabs, "-o", out)
         self.assertEqual(second.returncode, 0, second.stderr)
         self.assertEqual(model.load(out).state_enum, "enum-1")
         self.assertIn("state_enum kept", second.stdout)
 
     def test_a_first_read_has_no_enum_to_keep(self):
-        done = self.read(no_seal=True)
+        out = os.path.join(self.dir, "graph.json")
+        done = run("read.py", self.manifest, self.tabs, "-o", out)
         self.assertEqual(done.returncode, 0, done.stderr)
-        self.assertIsNone(model.load(os.path.join(self.dir, "graph.json")).state_enum)
+        self.assertIsNone(model.load(out).state_enum)
 
 
 class VerifyCliTest(unittest.TestCase):
@@ -267,7 +198,7 @@ class VerifyCliTest(unittest.TestCase):
                 fh.write(test_verify.page_of(self.graph, q.id, entries))
 
     def verify(self, *args):
-        return run("verify.py", fixture("valid"), self.tabs, "--no-envelope", *args)
+        return run("verify.py", fixture("valid"), self.tabs, *args)
 
     def test_every_tab_written_properly_exits_zero(self):
         done = self.verify()

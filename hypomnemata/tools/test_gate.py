@@ -34,10 +34,11 @@ class GateTest(unittest.TestCase):
         self.assertEqual(self.decision(call(os.path.join(self.root, "ti-esti.md"),
                                             cwd=self.root)), "allow")
 
-    def test_the_envelope_is_not(self):
+    def test_a_file_beside_it_at_the_root_is_not(self):
         for name in os.listdir(self.root):
-            if name.endswith(".json"):
+            if name not in ("ti-esti.md",) and os.path.isfile(os.path.join(self.root, name)):
                 self.assertEqual(self.decision(call(name, cwd=self.root)), "deny", name)
+        self.assertEqual(self.decision(call("notebook.json", cwd=self.root)), "deny")
 
     def test_the_notebook_s_tooling_and_the_entry_points_are_not(self):
         for rel in ("hypomnemata/tools/hypo/model.py",

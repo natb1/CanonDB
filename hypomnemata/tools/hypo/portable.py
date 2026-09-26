@@ -1,8 +1,9 @@
 """Part the notebook from its document, so another party can raise its own.
 
-A live document cannot be handed to anyone. What can be handed over is the
-notebook: the questions, their theses, their edges — everything the graph file
-holds that is not a name for *this* document. Four values are such names: the
+A share of the live document is a share of *this* notebook. A party who wants
+one of their own is handed the notebook instead: the questions, their theses,
+their edges — everything the graph file holds that is not a name for *this*
+document. Four values are such names: the
 ``artifact`` the file caches, the ``state_enum`` the tabs' state field points at,
 and each question's ``tab`` and ``body`` ids — and one more wears content's
 clothes, the link of an application whose link is this document
@@ -25,23 +26,14 @@ turning it away leaves its holder with a notebook and no way to raise it, and
 read forward in the open rather than quietly, because what comes out is then
 not the shape the file says it is.
 
-An envelope goes stale the moment the notebook moves, and a party holding a
-stale one holds a notebook nobody has. So re-sealing is not a thing to
-remember: ``reseal`` puts the current graph over the committed envelope, taking
-its ``name`` and ``tools`` from the file it replaces, and ``drift`` says what
-that changed in a few lines of ids rather than in the notebook's own words.
-
-Two things make the committed file's history readable. The questions are
-sealed by id, not in the order the document's tray happens to hold the tabs:
-that order is a projection too, recomputed whenever a sibling is inserted or a
-group of tabs grows past ten, so a diff over it showed questions moving that
-had not changed. Ordered by id, a question moves in the file only when its id
-does, and a diff is the content that moved and nothing else. And the envelope
-carries a ``digest`` of its questions, which is how a party says which notebook
-they received: the same questions seal to the same digest wherever they are
-sealed, and a copy in the wild is matched to the commit that wrote it with
-``git log -S<digest>``. The name and the file's name carry no version; the
-format has one, and the digest is what says which state of the notebook this is.
+The questions are sealed by id, not in the order the document's tray happens to
+hold the tabs: that order is a projection too, recomputed whenever a sibling is
+inserted or a group of tabs grows past ten, so the same notebook sealed twice
+came out in two orders. And the envelope carries a ``digest`` of its
+questions, which is how a party says which notebook they received: the same
+questions seal to the same digest wherever they are sealed. The name and the
+file's name carry no version; the format has one, and the digest is what says
+which state of the notebook this is.
 """
 
 from __future__ import annotations
@@ -49,7 +41,6 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
-import os
 from typing import Any, Dict, Iterator, List, Tuple
 
 from . import model, project
@@ -72,15 +63,10 @@ READS = ("hypomnemata-export/1", FORMAT)
 GRAPH_KEYS = ("artifact", "state_enum")
 QUESTION_KEYS = ("tab", "body")
 
-#: How much of the digest is kept. It has to be said and typed — in a message,
-#: after `git log -S` — so it is short, and the notebooks that could collide
+#: How much of the digest is kept. It has to be said and typed — in a message —
+#: so it is short, and the notebooks that could collide
 #: on sixteen hex digits do not exist.
 DIGEST = 16
-
-#: How many ids a report names before it stops naming them and counts instead.
-#: Re-sealing happens on every run, so what it prints is read on every run; a
-#: report whose length follows the notebook's is a report that will be skimmed.
-NAMED = 8
 
 #: How to raise the notebook again in a document that does not have it. Carried
 #: inside the envelope: the party who receives the file receives the procedure
@@ -306,200 +292,6 @@ def unseal(envelope: Dict[str, Any]) -> Dict[str, Any]:
     return opened(envelope)[0]
 
 
-#: Where the committed envelope sits, from this file's own place: `hypo` is in
-#: `tools`, `tools` in `hypomnemata`, and `hypomnemata` at the branch root.
-def root() -> str:
-    """The tooling's own branch root, derived rather than configured."""
-    here = os.path.dirname(os.path.abspath(__file__))
-    return os.path.dirname(os.path.dirname(os.path.dirname(here)))
-
-
-def here() -> str:
-    """The root of the repository the run is made from; "" outside one.
-
-    The nearest ancestor of the working directory that holds a `.git` entry,
-    a directory or, in a worktree, a file. The tooling serves more than one
-    notebook: a party who raised their own from an envelope keeps it at the
-    root of their own repository, with this tooling somewhere else, and a
-    run made from that checkout is how their envelope is reached without
-    being named on every run.
-    """
-    cur = os.getcwd()
-    while True:
-        if os.path.exists(os.path.join(cur, ".git")):
-            return cur
-        parent = os.path.dirname(cur)
-        if parent == cur:
-            return ""
-        cur = parent
-
-
-def roots() -> List[str]:
-    """Where a committed envelope is looked for, in order.
-
-    The repository the run is made from first, then the tooling's own branch
-    root, so that a run from this branch finds this notebook's envelope as it
-    always did, and a run from another notebook's checkout finds that one.
-    """
-    out: List[str] = []
-    for where in (here(), root()):
-        if where and where not in out:
-            out.append(where)
-    return out
-
-
-def committed(*wheres: str) -> str:
-    """The envelope committed at the first of `wheres` that holds one, by its
-    own `format`; "" if none does.
-
-    The envelope is found rather than named. A path retyped on every run is a
-    path that drifts, and the file already says what it is: the one JSON file
-    at a branch root whose `format` is one of ours is the notebook that was
-    handed over. A directory holding two of them is a question this cannot
-    answer, so it takes the first in name order and says nothing clever about
-    the second.
-
-    An older format counts as ours, or a party whose envelope predates a
-    version would find their own notebook invisible to `reseal` and `stale` —
-    which is precisely the party who most needs the next re-seal to reach it.
-    """
-    for where in wheres:
-        try:
-            entries = sorted(os.listdir(where))
-        except OSError:
-            continue
-        for entry in entries:
-            if not entry.endswith(".json"):
-                continue
-            path = os.path.join(where, entry)
-            try:
-                with open(path, encoding="utf-8") as fh:
-                    if json.load(fh).get("format") in READS:
-                        return path
-            except (OSError, ValueError):
-                continue
-    return ""
-
-
-def carried(previous: Dict[str, Any]) -> Dict[str, str]:
-    """The `name` and `tools` a re-seal takes from the envelope it replaces.
-
-    A re-seal is not a fresh naming. The notebook is the same notebook, and the
-    name it went out under is the receiving party's handle for it — so both
-    values keep one home, the envelope itself, rather than being retyped on
-    every run and silently renaming the thing on the run someone typed it
-    differently.
-    """
-    return {"name": previous.get("name", ""), "tools": previous.get("tools", "")}
-
-
 def dump(envelope: Dict[str, Any]) -> str:
     """The envelope as it is written: one JSON file, newline-terminated."""
     return json.dumps(envelope, indent=2, ensure_ascii=False) + "\n"
-
-
-def named(ids: List[str]) -> str:
-    """`ids` as a phrase of bounded length: the first `NAMED`, then a count.
-
-    The point of naming them at all is to say which part of the notebook moved,
-    and a reader has that from a few. Naming all of them makes the report grow
-    with the notebook, which is the one thing a report that prints every run
-    must not do.
-    """
-    shown = sorted(ids)
-    if len(shown) <= NAMED:
-        return ", ".join(shown)
-    return "%s and %d more" % (", ".join(shown[:NAMED]), len(shown) - NAMED)
-
-
-def drift(previous: Dict[str, Any], current: Dict[str, Any]) -> List[str]:
-    """What re-sealing would change — by id and by key, never by content.
-
-    Staleness has to be reportable inside the turn that caused it, and the
-    envelope is by far the largest file this tooling touches: printing the
-    difference would put the notebook back into the context the tooling exists
-    to keep it out of. So what is printed is the *shape* of the difference —
-    which questions came, went or moved, and which header values no longer
-    agree — and it is bounded twice over: never a value, and never more than
-    `NAMED` ids of the ones that moved. It is at most ten short lines for a
-    notebook of any size. Whoever wants the text has `git diff`.
-
-    The digest is not a header that drifts on its own: it moves exactly when
-    a question does, and the question is named. An envelope whose questions
-    stand in another order than by id is stale by that alone — one sealed
-    before the order was fixed, or written by hand — and is said in a line,
-    since re-sealing it rewrites the file without moving a question.
-    """
-    lines: List[str] = []
-    for key in ("format", "name", "tools", "mode", "states"):
-        if previous.get(key) != current.get(key):
-            lines.append("~ %s" % key)
-    was = {q.get("id", "?"): q for q in previous.get("questions", [])}
-    now = {q.get("id", "?"): q for q in current.get("questions", [])}
-    for mark, ids in (("-", [q for q in was if q not in now]),
-                      ("+", [q for q in now if q not in was]),
-                      ("~", [q for q in now if q in was and now[q] != was[q]])):
-        if ids:
-            lines.append("%s %d question(s): %s" % (mark, len(ids), named(ids)))
-    if [q for q in was if q in now] != [q for q in now if q in was]:
-        lines.append("~ order (the questions stand by id)")
-    for key, gloss in (("rebind", "the applications owed a link"),
-                       ("expect", "the shape a rebuild must come out to"),
-                       ("rebuild", "the steps that ride inside")):
-        if previous.get(key) != current.get(key):
-            lines.append("~ %s (%s)" % (key, gloss))
-    return lines
-
-
-def compare(graph: model.Graph, path: str) -> tuple:
-    """`(the envelope this graph would seal to, what that would change)`.
-
-    Raises `ValueError` where `path` is not one of ours, so a stale-looking
-    envelope and a file that was never an envelope are told apart. An envelope
-    in an older format is stale by that fact and `drift` says so under
-    `~ format`: re-sealing is how a party's copy comes forward.
-    """
-    with open(path, encoding="utf-8") as fh:
-        previous = json.load(fh)
-    if previous.get("format") not in READS:
-        raise ValueError("not a %s envelope (found %r)"
-                         % (FORMAT, previous.get("format")))
-    current = seal(graph, **carried(previous))
-    if not graph.artifact:
-        # an unbound graph names no document, so nothing in it can be a link
-        # to one: the self-links the envelope recorded still stand, waiting
-        # to be bound, and a comparison made before the binding is not a
-        # drift in what is owed a link
-        current["rebind"] = previous.get("rebind", [])
-    return current, drift(previous, current)
-
-
-def dropped(graph: model.Graph, path: str) -> List[str]:
-    """The questions the envelope holds that this graph does not.
-
-    A re-seal that drops questions is a notebook shrinking, which a dictation
-    may well intend and a partial read looks exactly like. It is the one drift
-    that cannot be undone by re-reading, so it is the one the automatic path
-    refuses and leaves to a deliberate one.
-    """
-    try:
-        with open(path, encoding="utf-8") as fh:
-            previous = json.load(fh)
-    except (OSError, ValueError):
-        return []
-    here = {q.id for q in graph.questions}
-    return sorted(q.get("id", "?") for q in previous.get("questions", [])
-                  if q.get("id", "?") not in here)
-
-
-def reseal(graph: model.Graph, path: str) -> List[str]:
-    """Seal `graph` over the envelope at `path`; return what moved.
-
-    The file is written only when something moved, so a run that changed
-    nothing leaves the envelope — and its diff — alone.
-    """
-    current, changed = compare(graph, path)
-    if changed:
-        with open(path, "w", encoding="utf-8") as fh:
-            fh.write(dump(current))
-    return changed

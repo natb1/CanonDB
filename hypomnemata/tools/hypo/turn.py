@@ -14,7 +14,7 @@ relation ``project.blocked_behind`` reads — has an answer that has landed, or
 stands earlier in the thread the question is being put on. Which thread a
 question is on is not recorded, so the caller names the thread. ``select``
 is the heaviest of them by backlog, ties by id, which is what the docket's
-standing item reads off the envelope as the next question.
+standing item reads as the next question.
 
 ``lineage`` is the canon above a question, written out as text: for each
 question the AI answers above it, the question and the one answer a turn may

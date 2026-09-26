@@ -25,18 +25,14 @@ when the docket's order brings the item up, the run is made with that prose as t
 3. **Never hand-write tab markdown.** `tools/render.py` is the only sanctioned producer of a tab
    body. Hand-written markdown is how the layout drifts.
 4. **Every file under `hypomnemata/` is a cache**, including any graph file you export. Nothing on
-   disk is authoritative over the artifact, and no cache is committed. The one committed file of
-   the notebook's content is the sealed envelope at the branch root, which is a projection like
-   the rest and committed as a stopgap (see **Carrying**).
+   disk is authoritative over the artifact, and no cache is committed.
 
 ## Procedure
 
 **1 — Read.** Read the artifact's tab list, then export every tab as markdown and build the graph
 file with `tools/read.py <document read> <directory of exports>` (`$SCRATCH/graph.json`, schema in
 `tools/hypo/model.py`). Read the tabs the dictation could touch yourself as well: the reader tells
-you what the page holds, not what it means. A complete read also re-seals the committed envelope
-(see **Carrying**), which is how an edit the principal made asynchronously reaches it: that read is
-the first moment anything here knows the notebook moved.
+you what the page holds, not what it means.
 
 **2 — Plan.** Enter plan mode and write the plan before any write. The plan is a table, one row per
 edit:
@@ -103,18 +99,14 @@ The second is not a repetition of the first. A graph file never held a link, so 
 blind to every one of them: it passed green over a page that had lost all 192. Report WARN
 findings rather than fixing them silently.
 
-The rebuild re-seals the committed envelope as it goes, and `verify.py` reports it where it did
-not. Both say so in a line; neither prints the notebook. Read that line — it is the whole of what
-this run costs you for the export cache being current.
-
-**6 — Commit** the tooling and skill changes on the `hypomnemata` branch, and the re-sealed
-envelope with them: it is the one file here that carries the notebook's content, and step 5 has
-already written it. Nothing else is committed for that content: it lives in the artifact.
+**6 — Commit** the tooling and skill changes on the `hypomnemata` branch. Nothing is committed for
+the notebook's content: it lives in the artifact, which is shared between users as it stands.
 
 ## Carrying
 
-A live document cannot be shared between users, so a party who wants this notebook raises their
-own from its graph. `tools/portable.py seal $SCRATCH/graph.json -o <file> --name "<notebook>" --tools "<repo>"`
+The live document is shared between users as it stands, so a party who wants to read this notebook
+reads the document. A party who wants a notebook of their own raises it from the graph.
+`tools/portable.py seal $SCRATCH/graph.json -o <file> --name "<notebook>" --tools "<repo>"`
 empties the values that name *this* document — the `artifact`, the `state_enum`, each question's
 `tab` and `body`, and the link of any application whose link is this document, recorded under
 `rebind` — and says on stderr how many it dropped, or which, with `--verbose`.
@@ -127,50 +119,15 @@ The tab tree does not travel, because `project.py` derives it; the envelope reco
 only its options do, since an enum id is this document's. A document enum only grows, so the new
 one is created holding exactly `STATES`, in order, the first time.
 
-The sealed envelope is committed, at the branch root, and is the one exception to the rule that
-nothing is committed for the notebook's content. It is an accepted exception and not a second
-source: the envelope is only ever a projection of the notebook, which stays the source of truth,
-and it is committed as a stopgap while the document cannot be shared between users. It is also
-what a docket reads: the project's docket takes the notebook's standing item (the next question to
-answer, and whether a dictation's question has landed) off the committed envelope, never off the
-document. A party who
-has it must be able to say which notebook they received, and when the document can be shared the
-stopgap goes. What it was sealed from — the graph file and the tab exports — stays a cache and
-stays uncommitted.
-
 What a party says is the envelope's `name` and its `digest`. The name is the notebook's handle and
-never a version of it: the file is re-sealed in place, so a version in the name or the filename
-versions nothing, and the `format` carries the one version the tooling has. The digest is of the
-questions alone, in one canonical spelling, so the same notebook seals to the same digest wherever
-it is sealed, and a copy in the wild is matched to the commit that wrote it with `git log -S` on
-the digest. The questions stand in the file by id, not in the tray's order — that order is a
-projection, recomputed when a sibling is inserted or a group grows past ten, and a diff over it
-showed questions moving that had not changed. By id, a diff of the envelope is the content that
-moved and nothing else, and a tree that moved is under `expect`, where it is the shape and not
-the notebook. Being committed at the root, the envelope is also on disk in every checkout of this
-branch, which is a matter for the clean-context rule below.
+never a version of it, and the `format` carries the one version the tooling has. The digest is of
+the questions alone, in one canonical spelling, so the same notebook seals to the same digest
+wherever it is sealed. The questions stand in the file by id, not in the tray's order, which is a
+projection recomputed when a sibling is inserted or a group grows past ten.
 
-An envelope goes stale the moment the notebook moves, so it is not left to be remembered.
-`tools/read.py` seals the rebuilt graph over it on every complete read, taking the `name` and the
-`tools` from the file it replaces — nothing is retyped, so nothing drifts, and the envelope is
-found by its own `format` rather than named: at the root of the repository the run is made from,
-or else at this tooling's own branch root. A party who raised their own notebook from an envelope
-keeps it at the root of their own repository, and a run made from that checkout re-seals theirs;
-a run made from this one re-seals this one. It costs no call of its own and one line of output.
-
-That line is the shape of the difference and never the notebook: which questions came, went or
-moved, by id, at most eight of them named before it counts instead, and which header values no
-longer agree. It is a handful of lines for a notebook of any size. The words are in `git diff`,
-which is the right place for them — putting a diff of the export into a turn puts the whole
-notebook back into the context this tooling exists to keep it out of.
-
-It declines rather than seal something partial, and says which: a read that left tabs out, a graph
-the checker faults, or a re-seal that would drop questions — a partial read is indistinguishable
-from a notebook that lost them, and that drift is the one re-reading cannot undo. Where the drop is
-the change, `tools/portable.py reseal $SCRATCH/graph.json --force` says so deliberately, and
-`tools/portable.py stale $SCRATCH/graph.json` asks the question without answering it. `verify.py`
-asks it at the close of every write, so a run cannot end green over an export cache that went out
-of date.
+An envelope is sealed when a party asks for one, never on every change, and nothing sealed is
+committed: what it was sealed from — the graph file and the tab exports — stays a cache, and the
+envelope is a projection of the notebook like the rest.
 
 ## Attenuation
 
@@ -285,8 +242,7 @@ a procedure rather than a script.
   notebook and canon together, selects the question and launches `canon-answer`, whose
   definition under `.claude/agents/` is the grant — Read and nothing else, no shell, no search,
   no git, no `CLAUDE.md`, and a gate on Read (`.claude/hooks/canon-gate.py`) that lets through
-  canon and the packet and refuses the rest, the committed envelope at the branch root
-  included. The packet is the question and a reference to its lineage, which `tools/lineage.py`
+  canon and the packet and refuses the rest. The packet is the question and a reference to its lineage, which `tools/lineage.py`
   writes out of the graph file and the selecting turn never transcribes. What is left to hold by
   reading is what no configuration decides. The question's wording is the one thing of the
   selecting turn's that enters the packet, held by the rule that the question is only the

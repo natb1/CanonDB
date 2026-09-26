@@ -29,14 +29,14 @@ put, and says what it waits on otherwise.
    edited, trimmed or reflowed. An answer the notebook cannot hold as it stands is said so and
    left, not reworded.
 4. **Every file under `hypomnemata/` is a cache**, and the packet is one more. The committed
-   files are the envelope and the transcript, as **Recording** says.
+   file is the transcript, as step 8 says.
 
 ## Procedure
 
 **1 — Read.** Read the artifact's tab list, export every tab, and build the graph file with
 `tools/read.py <document read> <directory of exports> -o $SCRATCH/graph.json`. Run
 `tools/check.py` over it: no ERROR may stand, since a lineage written out of a faulted graph
-is not one anybody vouched for. The read re-seals the committed envelope as it goes.
+is not one anybody vouched for.
 
 **2 — Select.** `tools/next.py $SCRATCH/graph.json` prints the question the frontier puts
 first: the AI's, not yet put, every inbox item it requires done, and every question the AI
@@ -103,8 +103,8 @@ it stands; an answer is verbatim, so the refusal is reported and the answer is k
 transcript until the reader can hold it.
 
 **8 — Persist and commit.** `tools/persist.py` copies this session's log and the agent's under
-`transcripts/`, which is what the provenance line cites. Commit the re-sealed envelope and
-the transcript on the `hypomnemata` branch. What the thread is on disk beyond that — the
+`transcripts/`, which is what the provenance line cites. Commit the transcript on the
+`hypomnemata` branch. What the thread is on disk beyond that — the
 branch the answer sits on and the file it takes — is the `canon` question's to answer, and it
 is held; until then a thread is the notebook's record and the transcript, as the root's is.
 
