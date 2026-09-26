@@ -1,0 +1,9 @@
+{
+  "name": "principal",
+  "description": "The principal's entry points over a hypomnemata notebook and the canon it feeds: dictate a change to the notebook, put the next question to the AI in a clean context, or reconcile application directly from the notebook ahead of canon.",
+  "version": "0.1.0",
+  "author": { "name": "natb1", "url": "https://github.com/natb1" },
+  "repository": "https://github.com/natb1/CanonDB",
+  "license": "MIT",
+  "keywords": ["hypomnemata", "canon", "elenchus", "notebook"]
+}

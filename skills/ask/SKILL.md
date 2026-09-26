@@ -1,5 +1,5 @@
 ---
-name: principal-ask
+name: ask
 description: The principal puts the next question to the AI. Read the notebook, select the question that waits heaviest with nothing left to wait on, write its lineage out of canon, launch the canon agent to answer it in a clean context, test the answer against canon and the notebook, and record it in thread. Invoke as /principal:ask [question].
 disable-model-invocation: true
 ---
@@ -16,6 +16,10 @@ other.
 frontier puts first. With it, the run puts that question only if the frontier says it can be
 put, and says what it waits on otherwise.
 
+The notebook is the document `.principal/notebook.json` names at the project's root. `tools/`
+below is the plugin's own, at `${CLAUDE_PLUGIN_ROOT}/tools/`, and `$SCRATCH` is the session's
+scratch directory.
+
 ## Ground rules
 
 1. **The artifact is the source of truth.** Read it before anything else, as `/principal:dictate`
@@ -28,7 +32,7 @@ put, and says what it waits on otherwise.
 3. **The answer is verbatim.** What the agent replies is recorded word for word, and never
    edited, trimmed or reflowed. An answer the notebook cannot hold as it stands is said so and
    left, not reworded.
-4. **Every file under `hypomnemata/` is a cache**, and the packet is one more. The committed
+4. **Every export and every graph file is a cache**, and the packet is one more. The committed
    file is the transcript, as step 8 says.
 
 ## Procedure
@@ -48,8 +52,8 @@ with another open thread's answer in its lineage is what the rule against depend
 forbids.
 
 When nothing can be put, stop and say what the frontier waits on. What it waits on is either an
-inbox item, which is the principal's action and is taken up in his docket, or an answer above
-that has not landed, which is his merge. Neither is this run's to supply.
+inbox item, which is the principal's action and his to take up where he keeps his work, or an
+answer above that has not landed, which is his merge. Neither is this run's to supply.
 
 **3 — Test the question before it is put.** The wording is the notebook's and is not rewritten
 here, but it is read against the drafting rules of `/principal:dictate` before it goes: it
@@ -103,10 +107,12 @@ it stands; an answer is verbatim, so the refusal is reported and the answer is k
 transcript until the reader can hold it.
 
 **8 — Persist and commit.** `tools/persist.py` copies this session's log and the agent's under
-`transcripts/`, which is what the provenance line cites. Commit the transcript on the
-`hypomnemata` branch. What the thread is on disk beyond that — the
-branch the answer sits on and the file it takes — is the `canon` question's to answer, and it
-is held; until then a thread is the notebook's record and the transcript, as the root's is.
+`transcripts/` at the project's root, which is what the provenance line cites. Commit the
+transcript on a branch of its own and open a pull request against `main`: the thread's
+branch, since there is one standing branch and every other is a pull request's. What the
+thread is on disk beyond that — the file the answer takes when it lands — is the `canon`
+question's to answer, and it is held; until then a thread is the notebook's record and the
+transcript, as the root's is.
 
 **9 — Report.** The tab the answer is on, the disposition the answer awaits — assent, deadlock,
 gloss, suspend, retreat — and what step 6 found. Not the answer: it is in the notebook, where
@@ -125,6 +131,6 @@ What this run holds by reading, because no script decides it.
   what an answer collides with elsewhere is found here or not at all. It is found before the
   question is put where it can be, which is the cheaper compaction, and after where it cannot.
 - **The answer is the AI's.** Verbatim, and never reflowed to pass a check.
-- **The gate's list of canon is short, and grows only at promulgation.** `.claude/hooks/canon-gate.py`
-  names what counts as canon on disk. When an answer lands, the file it lands in is added there,
-  and nowhere else.
+- **The gate's list of canon is short, and grows only at promulgation.** `.principal/canon` at
+  the project's root names what counts as canon on disk, and the plugin's `hooks/canon-gate.py`
+  reads it. When an answer lands, the file it lands in is added there, and nowhere else.

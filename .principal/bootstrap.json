@@ -1,0 +1,75 @@
+{
+  "description": "What /principal:bootstrap built from the notebook ahead of canon, and still owns. An entry is dropped when canon reconciles the application; the files are then canon's.",
+  "applications": [
+    {
+      "question": "context",
+      "application": "the context guard",
+      "files": ["agents/canon-answer.md", "hooks/canon-gate.py", "hooks/hooks.json", ".principal/canon"],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/24",
+      "rounds": 1
+    },
+    {
+      "question": "context",
+      "application": "the entry points",
+      "files": [".claude-plugin/plugin.json", ".claude-plugin/marketplace.json", "skills/ask/SKILL.md", "skills/dictate/SKILL.md", "skills/bootstrap/SKILL.md", ".principal/notebook.json"],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/24",
+      "rounds": 1
+    },
+    {
+      "question": "dictate",
+      "application": "/principal:dictate",
+      "files": ["skills/dictate/SKILL.md"],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/24",
+      "rounds": 1
+    },
+    {
+      "question": "wording",
+      "application": "the drafting rules",
+      "files": ["skills/dictate/SKILL.md"],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/24",
+      "rounds": 1
+    },
+    {
+      "question": "priority",
+      "application": "the scheduling projections",
+      "files": ["tools/hypo/project.py", "tools/hypo/turn.py", "tools/next.py"],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/24",
+      "rounds": 1
+    },
+    {
+      "question": "docs-encoding",
+      "application": "the reader",
+      "files": ["tools/hypo/read.py", "tools/read.py"],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/24",
+      "rounds": 1
+    },
+    {
+      "question": "docs-encoding",
+      "application": "the writer",
+      "files": ["tools/hypo/apply.py", "tools/apply.py", "tools/relink.py"],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/24",
+      "rounds": 1
+    },
+    {
+      "question": "docs-encoding",
+      "application": "the page check",
+      "files": ["tools/hypo/verify.py", "tools/verify.py"],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/24",
+      "rounds": 1
+    },
+    {
+      "question": "docs-encoding",
+      "application": "the envelope",
+      "files": ["tools/hypo/portable.py", "tools/portable.py"],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/24",
+      "rounds": 1
+    },
+    {
+      "question": "hypomnemata",
+      "application": "hypomnemata tooling",
+      "files": ["tools/hypo/model.py", "tools/hypo/spec.py", "tools/hypo/render.py", "tools/hypo/project.py", "tools/hypo/cli.py", "tools/hypo/text.py", "tools/check.py", "tools/project.py", "tools/render.py", "tools/lineage.py", "tools/persist.py"],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/24",
+      "rounds": 1
+    }
+  ]
+}

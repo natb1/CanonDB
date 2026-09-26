@@ -1,5 +1,5 @@
 ---
-name: principal-dictate
+name: dictate
 description: The principal dictates a change to the hypomnemata. Plan every edit, map each to the clause of the dictation that motivates it, apply it through the tooling, and — when the dictation changes the spec — tool the new rule, attenuate what cannot be tooled, and bring the whole notebook up to it. Invoke as /principal:dictate <dictation>.
 disable-model-invocation: true
 ---
@@ -11,9 +11,14 @@ principal entry point and not a canon one: a canon turn answers a question and m
 notebook. Never run this inside a turn that is answering a canon question.
 
 `<dictation>` is the principal's description of what should change in the notebook. It may be a
-correction, an addition, or a change to the specification the notebook is written in. It usually
-arrives from the project's docket: the principal writes it there as an inbox item's dictation, and
-when the docket's order brings the item up, the run is made with that prose as the argument.
+correction, an addition, or a change to the specification the notebook is written in. Where he
+keeps it before it is run, and what brings it up, is that place's own concern and none of this
+skill's: the run is made with the prose as its argument, and that is the whole of the interface.
+
+The notebook is the document `.principal/notebook.json` names at the project's root, with the
+enum its states point at. `tools/` below is the plugin's own, at `${CLAUDE_PLUGIN_ROOT}/tools/`;
+`$SCRATCH` is the session's scratch directory, and nothing of the notebook is written under the
+project.
 
 ## Ground rules
 
@@ -24,8 +29,8 @@ when the docket's order brings the item up, the run is made with that prose as t
    do not touch. On a hash or find mismatch, his words win: keep them, and say what you kept.
 3. **Never hand-write tab markdown.** `tools/render.py` is the only sanctioned producer of a tab
    body. Hand-written markdown is how the layout drifts.
-4. **Every file under `hypomnemata/` is a cache**, including any graph file you export. Nothing on
-   disk is authoritative over the artifact, and no cache is committed.
+4. **Every export and every graph file is a cache.** Nothing on disk is authoritative over the
+   artifact, and no cache is committed.
 
 ## Procedure
 
@@ -99,8 +104,12 @@ The second is not a repetition of the first. A graph file never held a link, so 
 blind to every one of them: it passed green over a page that had lost all 192. Report WARN
 findings rather than fixing them silently.
 
-**6 — Commit** the tooling and skill changes on the `hypomnemata` branch. Nothing is committed for
-the notebook's content: it lives in the artifact, which is shared between users as it stands.
+**6 — Commit** the tooling and skill changes on a branch of their own and open a pull request
+against `main`. There is one standing branch, `main`, and every other is a pull request's, so
+nothing waits on a branch that is not going to be merged. Nothing is committed for the
+notebook's content: it lives in the artifact, which is shared between users as it stands. What
+a turn may carry is decided by the configuration of the entry point that runs it — a skill, an
+agent, a gate — and never by which branch is checked out.
 
 ## Carrying
 
@@ -240,15 +249,16 @@ a procedure rather than a script.
 - **The clean-context rule.** Nothing of the notebook may reach a turn that answers a canon
   question. The guard the `context` tab describes is built: `/principal:ask`, which holds
   notebook and canon together, selects the question and launches `canon-answer`, whose
-  definition under `.claude/agents/` is the grant — Read and nothing else, no shell, no search,
-  no git, no `CLAUDE.md`, and a gate on Read (`.claude/hooks/canon-gate.py`) that lets through
-  canon and the packet and refuses the rest. The packet is the question and a reference to its lineage, which `tools/lineage.py`
+  definition under the plugin's `agents/` is the grant — Read and nothing else, no shell, no
+  search, no git, no `CLAUDE.md`, and a gate on Read (the plugin's `hooks/canon-gate.py`) that
+  lets through canon and the packet and refuses the rest. The packet is the question and a reference to its lineage, which `tools/lineage.py`
   writes out of the graph file and the selecting turn never transcribes. What is left to hold by
   reading is what no configuration decides. The question's wording is the one thing of the
   selecting turn's that enters the packet, held by the rule that the question is only the
   question, and the prompt around it is read once more before it is sent. The gate's list of
-  canon is the root question alone until an answer lands, and it is the one place that list
-  lives. And the guard holds only where the agent is used: a canon question answered in any
+  canon is `.principal/canon` at the project's root: the root question alone until an answer
+  lands, and the one place that list lives. A checkout is not a context: the same files are on
+  every branch, and what a turn may read is the gate's decision, not the branch's. And the guard holds only where the agent is used: a canon question answered in any
   other way — in this run, in a session that has read the notebook, by a turn composed by hand —
   is answered in a context nobody vouched for, whatever it was given.
 - **The page is a second artifact.** A tab reaches the document in two calls, because a link

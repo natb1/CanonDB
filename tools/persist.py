@@ -5,7 +5,7 @@ Usage: persist.py [--session-id ID] [--source DIR] [--dest DIR] [--dry-run]
 
 The notebook's theses cite the session that produced them ("this design session, claude.ai/code,
 session_..."). This copies that session's log, and every subagent log the harness wrote under it, into
-`transcripts/` at the branch root, and records what it copied in `transcripts/index.json` with sha256
+`transcripts/` at the project's root, and records what it copied in `transcripts/index.json` with sha256
 hashes so a citation can be resolved and a copy can be checked.
 
 The session is resolved by id -- --session-id, else $CLAUDE_CODE_SESSION_ID, else the single log under
@@ -26,9 +26,14 @@ import os
 import shutil
 import sys
 
-DEFAULT_SOURCE = os.path.expanduser("~/.claude/projects/-home-user-CanonDB")
-HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_DEST = os.path.abspath(os.path.join(HERE, "..", "..", "transcripts"))
+#: the project the session ran in: the harness's, else the working directory
+PROJECT = os.path.realpath(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
+#: where the harness keeps that project's logs: the path with its separators
+#: turned to dashes, under ~/.claude/projects
+DEFAULT_SOURCE = os.path.expanduser(os.path.join("~", ".claude", "projects",
+                                                 PROJECT.replace(os.sep, "-")))
+#: the transcripts live with the project whose notebook cites them, not with the plugin
+DEFAULT_DEST = os.path.join(PROJECT, "transcripts")
 
 
 def sha256(path):

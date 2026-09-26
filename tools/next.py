@@ -2,7 +2,7 @@
 """next.py <graph.json> [--thread ID ...] [--all] — the next question to put.
 
 Prints the question the AI answers that waits heaviest with nothing left to
-wait on, which is what the docket's standing item reads. With `--all`, every
+wait on, which is what a caller outside this plugin reads off the notebook. With `--all`, every
 question not yet put, heaviest first, with what each still waits on. A
 question's answer that stands earlier on the thread being continued is
 carried without having landed, so `--thread` names that thread's questions.
