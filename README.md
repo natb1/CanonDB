@@ -85,38 +85,35 @@ new commits updates the plugin on disk; the next session loads it, or `/reload-p
 A cloud session clones the repository fresh and never shows the trust dialog, so it does not
 install plugins from `.claude/settings.json`, and nothing installed on your machine reaches it.
 What it can load comes from the cloud environment: its setup script, which runs before Claude
-Code starts and whose result is snapshotted, and its environment variables.
+Code starts and whose result is snapshotted, and its environment variables. The setup goes in
+the environment, once, and serves every repository the environment is used with. Edit the
+environment from the cloud environment menu in a session's title bar.
 
-While this repository is private, the marketplace cannot be fetched from GitHub at session
-start: the setup script runs before the session's GitHub proxy is attached, and Claude Code's
-own startup fetch of a declared marketplace runs `git` without the proxy configuration the
-session gives its shells, so both fail with `could not read Username for 'https://github.com'`.
-A public repository would fetch without credentials and would need only the user-settings
-declaration below. Until then, a cloud environment used with this repository loads the plugin
-from the checkout itself, in one of two ways:
+Claude Code clones a marketplace its user settings declare but the machine has not fetched at
+session start, installs the enabled plugins from it, and loads them. So the setup script
+declares the marketplace, and every new session clones `main` as it is that day: there is no
+lag to manage. Two facts about the environment shape the rest of the script:
 
-- **An environment variable**, which loads the checkout in place at startup, so the session
-  runs the branch it checked out:
+- **Environment variables are not set while the setup script runs**, so anything the script
+  needs must be in the script itself.
+- **Claude Code's own `git` does not use the session proxy** that authenticates the shells'
+  GitHub traffic, so a private marketplace needs credentials `git` can find on its own. The
+  system git config is read without any environment, and the setup script can write it.
 
-  ```
-  CLAUDE_CODE_PLUGIN_DIRS=/home/user/CanonDB
-  ```
-
-- **The setup script**, which registers the checkout as a local marketplace and installs the
-  plugin from it, in place, with no network:
-
-  ```sh
-  claude plugin marketplace add /home/user/CanonDB
-  claude plugin install principal@canondb
-  ```
-
-Neither works on an environment used with other repositories, where the path is absent.
-
-For a public repository, or once cloud sessions fetch through the proxy, the setup script
-declares the marketplace and nothing more, and Claude Code clones `main` at every session
-start:
+For a private repository, create a fine-grained personal access token scoped to the plugin
+repository alone, with Contents set to read-only, and put it in the setup script where the
+placeholder is. The script is readable by anyone who can use the environment, exactly as an
+environment variable would be, so the token's narrow scope is what makes this acceptable:
 
 ```sh
+# Read-only token for natb1/CanonDB. Claude Code's own git fetches the
+# marketplace at session start and does not use the session proxy.
+printf 'https://x-access-token:%s@github.com\n' 'PASTE_TOKEN_HERE' > /etc/git-credentials
+chmod 600 /etc/git-credentials
+git config --system credential.helper 'store --file /etc/git-credentials'
+git config --system 'http.https://github.com/natb1/CanonDB.git.proxy' ''
+
+# Declare the marketplace and the plugin; Claude Code clones main at every session start.
 mkdir -p ~/.claude
 [ -f ~/.claude/settings.json ] || echo '{}' > ~/.claude/settings.json
 tmp=$(mktemp)
@@ -125,11 +122,31 @@ jq '.extraKnownMarketplaces.canondb = {"source": {"source": "github", "repo": "n
 mv "$tmp" ~/.claude/settings.json
 ```
 
-Cloud sessions also load the plugins enabled on the claude.ai account they run under, synced
-at session start as `principal@synced`: **Customize > Plugins**, then **Add > Add
-marketplace**, `natb1/CanonDB`, then add the `principal` plugin from the listing. In testing, a
-marketplace added that way did not reach the account's enabled plugins, so this route is
-recorded but not relied on.
+The per-URL proxy line keeps that one clone direct even where a proxy variable is present; it
+is scoped to the plugin repository so the session's own pushes, which rely on the proxy, are
+untouched. For a public repository, the first four lines are unnecessary. Under the
+environment's variables, set
+
+```
+CLAUDE_CODE_SYNC_PLUGIN_INSTALL=1
+```
+
+so the first turn waits for the install rather than racing it. A new session then lists
+`principal@canondb`, at the commit `main` was at when it started, with the three `principal:`
+skills and the canon-answer agent available.
+
+If the clone is rejected, `git`'s `store` helper erases the credential line it sent, so an empty
+`/etc/git-credentials` in a session means the token was refused and the reason is in the
+session's debug log at `/tmp/claude-code.log`, on the line beginning `[reconcile] failed to
+install marketplace`.
+
+Two other routes exist and are recorded here for completeness. An environment used only with
+this repository can load the checkout in place with the environment variable
+`CLAUDE_CODE_PLUGIN_DIRS=/home/user/CanonDB`, where the path is where the cloud runner clones the
+session's repository; it fails on any other repository. And cloud sessions load the plugins
+enabled on the claude.ai account they run under, as `principal@synced`, via **Customize >
+Plugins**, **Add > Add marketplace**; in testing, a marketplace added that way did not reach the
+account's enabled plugins.
 
 ### Working on the plugin itself
 
