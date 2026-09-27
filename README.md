@@ -84,27 +84,35 @@ new commits updates the plugin on disk; the next session loads it, or `/reload-p
 
 A cloud session clones the repository fresh and never shows the trust dialog, so it does not
 install plugins from `.claude/settings.json`, and nothing installed on your machine reaches it.
-It does read the user settings of the environment it runs in, so the install goes in the cloud
-environment's **setup script**, which runs before Claude Code starts and whose result is
-snapshotted for later sessions. Edit the environment from the cloud environment menu in a
-session's title bar, and add:
+It does read the user settings of the environment it runs in, and a marketplace those settings
+declare but the machine has not fetched is cloned at session start, its enabled plugins
+installed, and the plugin set reloaded. So the cloud environment's **setup script** declares
+the marketplace and nothing more. Edit the environment from the cloud environment menu in a
+session's title bar:
 
 ```sh
-claude plugin marketplace add natb1/CanonDB
-claude plugin install principal@canondb
+mkdir -p ~/.claude
+[ -f ~/.claude/settings.json ] || echo '{}' > ~/.claude/settings.json
 tmp=$(mktemp)
-jq '.extraKnownMarketplaces.canondb.autoUpdate = true' ~/.claude/settings.json > "$tmp"
+jq '.extraKnownMarketplaces.canondb = {"source": {"source": "github", "repo": "natb1/CanonDB"}, "autoUpdate": true}
+    | .enabledPlugins["principal@canondb"] = true' ~/.claude/settings.json > "$tmp"
 mv "$tmp" ~/.claude/settings.json
 ```
 
-The marketplace is cloned through the environment's GitHub proxy, so a private repository
-works without credentials in the script. The plugin's version is the commit it was installed
-from. The snapshot is rebuilt when the setup script or the environment's network hosts change
-and after about seven days, so a cloud session can trail `main` by that long; any edit to the
-setup script forces a rebuild.
+and, under the environment's variables, so the first turn waits for the install:
 
-For an environment used only with this repository, an environment variable does the same with
-no lag, loading the checkout in place at startup:
+```
+CLAUDE_CODE_SYNC_PLUGIN_INSTALL=1
+```
+
+The script must not run `claude plugin marketplace add` itself: the setup script runs before
+the session's GitHub proxy is attached, so a private repository cannot be cloned there. Inside
+the session the proxy authenticates the clone, and because the setup snapshot holds only the
+declaration, every new session clones `main` as it is that day and installs the plugin at that
+commit. There is no lag to manage.
+
+For an environment used only with this repository, an environment variable loads the checkout
+in place at startup instead, so the session runs the branch it checked out:
 
 ```
 CLAUDE_CODE_PLUGIN_DIRS=/home/user/CanonDB
