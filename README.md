@@ -84,20 +84,40 @@ new commits updates the plugin on disk; the next session loads it, or `/reload-p
 
 A cloud session clones the repository fresh and never shows the trust dialog, so it does not
 install plugins from `.claude/settings.json`, and nothing installed on your machine reaches it.
-What it does load are the plugins enabled on the claude.ai account it runs under, synced at
-session start as `principal@synced`. So the setup is on claude.ai, once per account:
+It does read the user settings of the environment it runs in, so the install goes in the cloud
+environment's **setup script**, which runs before Claude Code starts and whose result is
+snapshotted for later sessions. Edit the environment from the cloud environment menu in a
+session's title bar, and add:
 
-1. Open **Customize > Plugins**, then **Add > Add marketplace**, and enter `natb1/CanonDB`.
-   For a private repository, connect GitHub when asked and give the Claude GitHub App access
-   to the repository.
-2. Turn on **Sync automatically** for the marketplace, so a push to `main` re-syncs it. Without
-   it, **Check for updates** pulls the latest by hand.
-3. Add the `principal` plugin from the marketplace's listing.
+```sh
+claude plugin marketplace add natb1/CanonDB
+claude plugin install principal@canondb
+tmp=$(mktemp)
+jq '.extraKnownMarketplaces.canondb.autoUpdate = true' ~/.claude/settings.json > "$tmp"
+mv "$tmp" ~/.claude/settings.json
+```
 
-On a Team or Enterprise plan an Owner can instead sync the repository for the whole
-organization under **Organization settings > Plugins & skills**, with the same automatic sync;
-that route requires a private or internal repository. A synced plugin updates from its source
-with nothing to accept; a session already running picks up a change with `/reload-plugins`.
+The marketplace is cloned through the environment's GitHub proxy, so a private repository
+works without credentials in the script. The plugin's version is the commit it was installed
+from. The snapshot is rebuilt when the setup script or the environment's network hosts change
+and after about seven days, so a cloud session can trail `main` by that long; any edit to the
+setup script forces a rebuild.
+
+For an environment used only with this repository, an environment variable does the same with
+no lag, loading the checkout in place at startup:
+
+```
+CLAUDE_CODE_PLUGIN_DIRS=/home/user/CanonDB
+```
+
+Do not set it on an environment used with other repositories: the path is absent there and
+Claude Code reports a plugin that did not load at every start.
+
+Cloud sessions also load the plugins enabled on the claude.ai account they run under, synced
+at session start as `principal@synced`, which would make the setup unnecessary: **Customize >
+Plugins**, then **Add > Add marketplace**, `natb1/CanonDB`, with **Sync automatically** on, then
+add the `principal` plugin from the listing. In testing, a marketplace added that way did not
+reach the account's enabled plugins, so this route is recorded but not relied on.
 
 ### Working on the plugin itself
 
