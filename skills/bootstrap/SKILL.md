@@ -55,20 +55,28 @@ scratch directory.
 
 ## Procedure
 
-**1 — Read.** Read the artifact's tab list and each tab's body whole, spell the reads with
-`tools/page.py`, and build the graph file with `tools/read.py <document read> $SCRATCH/tabs -o
-$SCRATCH/graph.json`, as `/principal:dictate` step 1 says; run
-`tools/check.py` over it. Then `git fetch origin main` and start the round's branch from
-`origin/main` — `bootstrap/<what the round is for>` — or check out the branch of the pull
-request the feedback came in on. Read `.principal/bootstrap.json`.
+**1 — Read, in place.** The document is the reference, and it is read where it stands:
+nothing is exported, transcribed to disk or built into a graph file. Read the artifact's tab
+list. For each author tab (order `a…`; a tradition tab carries no application), `search` its
+body for `⚙` to find the application headings, then for ` · ◆ ` to get every application
+line with its block id and `h`, and keep the tab's `rev` as its bookmark. That is every
+application in the notebook, and all this entry point reads of it besides the blocks a
+dictation bears on, which a `search` for their words finds. Then `git fetch origin main` and
+start the round's branch from `origin/main` — `bootstrap/<what the round is for>` — or check
+out the branch of the pull request the feedback came in on. Read `.principal/bootstrap.json`.
 
 **2 — Take the dictation in.** With `[dictation]`, or with the author's feedback, run the
 `/principal:dictate` procedure over it first — plan, tool, attenuate, apply, re-check — so
 that the notebook holds what is about to be built. Its plan rows cite the prose; this run's
 rows, in step 4, cite the notebook. A dictation that changes nothing in the notebook but
 names what to focus on is still recorded: as the pressure or the inbox item it bears on.
+A dictation that bears only on applications, or on the words of a paragraph, is applied in
+place — `tools/application.py` for an application, a hash-guarded `replace` for prose. One
+that changes the notebook's structure — a question, a term, a state, a definition — is
+`/principal:dictate`'s, with its graph and its checks; until that runs, this round records
+the dictation verbatim as a note on the tab it bears on.
 
-**3 — Review for gaps.** For every application (⚙) of every thesis in the graph file, read
+**3 — Review for gaps.** For every application (⚙) read in step 1, read
 what it says and look at the checkout. Its `link` is where it says the thing lives; its
 `what` is what the thing is. Class each one:
 
@@ -82,6 +90,19 @@ what it says and look at the checkout. Its `link` is where it says the thing liv
 Without a dictation, every `diverged` and `missing` application is the round's. With one,
 only those the prose bears on are, and the rest are listed and left. Whether a `built`
 thing does what `what` says is read, not computed; say what you read.
+
+Then the other direction. Write the applications step 1 read as a JSON list, one
+`{"tab", "name", "link"}` each with the link as the read spells it, and run
+`tools/gaps.py <that file>`. It says per application whether its link's path is in the
+checkout, and lists every tracked file that no link, no manifest entry and no line of
+`.principal/canon` accounts for. A link to the repository's root accounts for nothing. Read
+each file it lists and class it:
+
+| class | meaning | what the round does |
+|---|---|---|
+| `justified` | an application's `what` describes it, though no link or entry names it | the manifest takes it, or its link is corrected in place |
+| `undocumented` | a requirement the notebook does not hold | proposes the dictation that would hold it; the file is not bootstrap's until that lands |
+| `stale` | nothing the notebook says wants it | proposes pruning it; it is deleted only on approval |
 
 **4 — Plan.** Enter plan mode and write the plan before any write. One row per edit:
 
@@ -107,8 +128,13 @@ can decide is tooled, as `/principal:dictate` step 3 says. Run the plugin's test
   the ones bootstrap now owns; a round that stops owning a file removes it.
 - The notebook: the application's `link` points at the thing on `main` — the path it will
   have once the pull request is merged — and its standing stays `postulate`, which the
-  renderer reads off the answer's state and this run never writes. Apply as
-  `/principal:dictate` steps 4 and 5 say: body, links, relink, tab patch, re-check.
+  renderer reads off the answer's state and this run never writes. Write each change with
+  `tools/application.py` over a saved read of the block — `replace` for a line, `insert` for
+  a new application, `delete` for one withdrawn — and send the ops it prints as one prose
+  `update` per tab. It refuses a read whose block does not hash to the `h` the document
+  printed, so a read copied by hand is checked before anything is built from it. No body is
+  written, so no other tab's links are retired and no relink is owed. Re-check by reading
+  each touched tab back with `sinceRev` at its bookmark.
 
 **7 — Publish.** Commit on the round's branch, push it, and open the pull request against
 `main`, ready for review, or push to the one already open. The body lists the applications
@@ -156,6 +182,16 @@ Rules of this entry point that no tool decides. Hold these by reading.
 - **Focus is the prose's, scope is the notebook's.** `[dictation]` narrows which gaps the
   round takes; it never widens what an application is. Where the prose asks for more than
   the application says, the notebook is dictated first, and the plan cites the new clause.
+- **The notebook is read in place, one block at a time.** A round reads application lines
+  and the blocks a dictation bears on, never a whole tab, and builds no graph file. Nothing
+  it writes changes a question, a term, a state or a definition, so the checks a graph feeds
+  have nothing to see; a round that finds it must change one has found a dictation for
+  `/principal:dictate`, and takes it no further than a note.
+- **An orphan's class is read.** `gaps.py` lists what nothing accounts for, and a tree link
+  covers a subtree by address alone. Whether a listed file is a requirement the notebook
+  lacks or a thing nobody wants any more, and whether a covering link's `what` really
+  describes a file under it, is judgement: the reverse table in step 3 is that reading,
+  written down before the plan.
 - **The link is the thing's address on `main`.** It is written before the merge, so it is a
   promise the merge keeps. A pull request the author closes leaves links at paths that do not
   exist, and the next round finds them as `missing`, which is right.
