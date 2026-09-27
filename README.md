@@ -30,27 +30,85 @@ Two flows reach `main`:
 There is one standing branch, `main`; every other branch is a pull request's. What a turn may
 carry is decided by the entry point that runs it — a skill, an agent, a gate — never by a branch.
 
+## Installing the plugin
+
+The plugin is a marketplace named `canondb`, hosted in this repository, listing one plugin,
+`principal`, by a relative path. Where a session runs decides how the plugin reaches it. The
+manifest pins no `version`, so every install below tracks commits on `main`: a new commit is a
+new version, and whatever refreshes the marketplace picks it up.
+
+### Local sessions, including Remote Control
+
+A Remote Control session runs on your machine with your machine's configuration, so it needs
+nothing beyond the local setup. Two ways, either of which is enough:
+
+- **User scope**, so the plugin is on in every project on the machine. Register the marketplace
+  and install once:
+
+  ```
+  claude plugin marketplace add natb1/CanonDB
+  claude plugin install principal@canondb
+  ```
+
+  Then turn on auto-update for `canondb` under **Marketplaces** in `/plugin`, or set it in
+  `~/.claude/settings.json` directly — this is also the declarative form, the whole of what
+  the two commands write:
+
+  ```json
+  {
+    "extraKnownMarketplaces": {
+      "canondb": {
+        "source": { "source": "github", "repo": "natb1/CanonDB" },
+        "autoUpdate": true
+      }
+    },
+    "enabledPlugins": { "principal@canondb": true }
+  }
+  ```
+
+  Claude Code clones a declared marketplace it has not seen and installs the enabled plugins
+  from it at the next start, so a configuration manager may write this block instead of
+  running the commands. Keep the file writable: Claude Code writes to it too.
+
+- **Project scope**, so every collaborator who trusts the folder gets it: the same block in the
+  project's `.claude/settings.json`, as this repository carries. Claude Code applies a
+  repository's marketplaces only after the workspace trust dialog, so this route is for
+  interactive terminal sessions; `-p` runs need the folder trusted beforehand, and cloud
+  sessions never show the dialog and ignore the block.
+
+Either way the marketplace is a clone under `~/.claude/plugins/marketplaces/`, and with
+`autoUpdate` on it is refreshed in the background after a session starts. A refresh that finds
+new commits updates the plugin on disk; the next session loads it, or `/reload-plugins` does.
+
+### Cloud sessions
+
+A cloud session clones the repository fresh and never shows the trust dialog, so it does not
+install plugins from `.claude/settings.json`, and nothing installed on your machine reaches it.
+What it does load are the plugins enabled on the claude.ai account it runs under, synced at
+session start as `principal@synced`. So the setup is on claude.ai, once per account:
+
+1. Open **Customize > Plugins**, then **Add > Add marketplace**, and enter `natb1/CanonDB`.
+   For a private repository, connect GitHub when asked and give the Claude GitHub App access
+   to the repository.
+2. Turn on **Sync automatically** for the marketplace, so a push to `main` re-syncs it. Without
+   it, **Check for updates** pulls the latest by hand.
+3. Add the `principal` plugin from the marketplace's listing.
+
+On a Team or Enterprise plan an Owner can instead sync the repository for the whole
+organization under **Organization settings > Plugins & skills**, with the same automatic sync;
+that route requires a private or internal repository. A synced plugin updates from its source
+with nothing to accept; a session already running picks up a change with `/reload-plugins`.
+
+### Working on the plugin itself
+
+`claude --plugin-dir /path/to/CanonDB` loads a checkout for one session and takes precedence
+over an installed copy of the same name. In a cloud session on this repository, the checkout is
+at `/home/user/CanonDB`, and the environment variable `CLAUDE_CODE_PLUGIN_DIRS=/home/user/CanonDB`,
+set on the cloud environment, does the same at startup.
+
 ## Using it in another project
 
-1. Add the marketplace and install the plugin:
-
-   ```
-   claude plugin marketplace add natb1/CanonDB
-   claude plugin install principal@canondb
-   ```
-
-   or, so every collaborator gets it, put in the project's `.claude/settings.json`:
-
-   ```json
-   {
-     "extraKnownMarketplaces": {
-       "canondb": { "source": { "source": "github", "repo": "natb1/CanonDB" } }
-     },
-     "enabledPlugins": { "principal@canondb": true }
-   }
-   ```
-
-   To work on the plugin itself, `claude --plugin-dir /path/to/CanonDB` loads it from a checkout.
+1. Install the plugin for the sessions you use, as above.
 
 2. Create the project's configuration under `.principal/` at its root:
 

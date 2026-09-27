@@ -1,6 +1,12 @@
 {
   "extraKnownMarketplaces": {
-    "canondb": { "source": { "source": "github", "repo": "natb1/CanonDB" } }
+    "canondb": {
+      "source": {
+        "source": "github",
+        "repo": "natb1/CanonDB"
+      },
+      "autoUpdate": true
+    }
   },
   "enabledPlugins": {
     "principal@canondb": true
