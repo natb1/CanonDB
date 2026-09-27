@@ -11,7 +11,7 @@
         ".principal/canon",
         "tools/test_gate.py"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/29",
       "rounds": 2
     },
     {
@@ -29,7 +29,7 @@
         "tools/hypo/gaps.py",
         "tools/test_gaps.py"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/29",
       "rounds": 2
     },
     {
@@ -39,7 +39,7 @@
         "README.md",
         ".claude/settings.json"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/29",
       "rounds": 1
     },
     {
@@ -70,7 +70,7 @@
         "tools/test_project.py",
         "tools/test_turn.py"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/29",
       "rounds": 2
     },
     {
@@ -81,7 +81,7 @@
         "tools/read.py",
         "tools/test_read.py"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/29",
       "rounds": 2
     },
     {
@@ -94,7 +94,7 @@
         "tools/fixtures/view-wording.md",
         "tools/fixtures/view-wording.xml"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/29",
       "rounds": 1
     },
     {
@@ -110,7 +110,7 @@
         "tools/test_apply.py",
         "tools/test_relink.py"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/29",
       "rounds": 2
     },
     {
@@ -121,7 +121,7 @@
         "tools/verify.py",
         "tools/test_verify.py"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/29",
       "rounds": 2
     },
     {
@@ -132,7 +132,7 @@
         "tools/portable.py",
         "tools/test_portable.py"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/29",
       "rounds": 2
     },
     {
@@ -201,7 +201,7 @@
         "tools/fixtures/invalid-vocabulary.json",
         "tools/fixtures/valid.json"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/29",
       "rounds": 2
     }
   ]
