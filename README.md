@@ -84,11 +84,37 @@ new commits updates the plugin on disk; the next session loads it, or `/reload-p
 
 A cloud session clones the repository fresh and never shows the trust dialog, so it does not
 install plugins from `.claude/settings.json`, and nothing installed on your machine reaches it.
-It does read the user settings of the environment it runs in, and a marketplace those settings
-declare but the machine has not fetched is cloned at session start, its enabled plugins
-installed, and the plugin set reloaded. So the cloud environment's **setup script** declares
-the marketplace and nothing more. Edit the environment from the cloud environment menu in a
-session's title bar:
+What it can load comes from the cloud environment: its setup script, which runs before Claude
+Code starts and whose result is snapshotted, and its environment variables.
+
+While this repository is private, the marketplace cannot be fetched from GitHub at session
+start: the setup script runs before the session's GitHub proxy is attached, and Claude Code's
+own startup fetch of a declared marketplace runs `git` without the proxy configuration the
+session gives its shells, so both fail with `could not read Username for 'https://github.com'`.
+A public repository would fetch without credentials and would need only the user-settings
+declaration below. Until then, a cloud environment used with this repository loads the plugin
+from the checkout itself, in one of two ways:
+
+- **An environment variable**, which loads the checkout in place at startup, so the session
+  runs the branch it checked out:
+
+  ```
+  CLAUDE_CODE_PLUGIN_DIRS=/home/user/CanonDB
+  ```
+
+- **The setup script**, which registers the checkout as a local marketplace and installs the
+  plugin from it, in place, with no network:
+
+  ```sh
+  claude plugin marketplace add /home/user/CanonDB
+  claude plugin install principal@canondb
+  ```
+
+Neither works on an environment used with other repositories, where the path is absent.
+
+For a public repository, or once cloud sessions fetch through the proxy, the setup script
+declares the marketplace and nothing more, and Claude Code clones `main` at every session
+start:
 
 ```sh
 mkdir -p ~/.claude
@@ -99,33 +125,11 @@ jq '.extraKnownMarketplaces.canondb = {"source": {"source": "github", "repo": "n
 mv "$tmp" ~/.claude/settings.json
 ```
 
-and, under the environment's variables, so the first turn waits for the install:
-
-```
-CLAUDE_CODE_SYNC_PLUGIN_INSTALL=1
-```
-
-The script must not run `claude plugin marketplace add` itself: the setup script runs before
-the session's GitHub proxy is attached, so a private repository cannot be cloned there. Inside
-the session the proxy authenticates the clone, and because the setup snapshot holds only the
-declaration, every new session clones `main` as it is that day and installs the plugin at that
-commit. There is no lag to manage.
-
-For an environment used only with this repository, an environment variable loads the checkout
-in place at startup instead, so the session runs the branch it checked out:
-
-```
-CLAUDE_CODE_PLUGIN_DIRS=/home/user/CanonDB
-```
-
-Do not set it on an environment used with other repositories: the path is absent there and
-Claude Code reports a plugin that did not load at every start.
-
 Cloud sessions also load the plugins enabled on the claude.ai account they run under, synced
-at session start as `principal@synced`, which would make the setup unnecessary: **Customize >
-Plugins**, then **Add > Add marketplace**, `natb1/CanonDB`, with **Sync automatically** on, then
-add the `principal` plugin from the listing. In testing, a marketplace added that way did not
-reach the account's enabled plugins, so this route is recorded but not relied on.
+at session start as `principal@synced`: **Customize > Plugins**, then **Add > Add
+marketplace**, `natb1/CanonDB`, then add the `principal` plugin from the listing. In testing, a
+marketplace added that way did not reach the account's enabled plugins, so this route is
+recorded but not relied on.
 
 ### Working on the plugin itself
 
