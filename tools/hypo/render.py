@@ -433,12 +433,21 @@ def _application_blocks(q: Question) -> List[str]:
         clause = discharge_clause(q, thesis, app)
         if clause:
             standing = "%s (%s)" % (standing, clause)
-        line = "%s · ◆ %s · %s · %s" % (app.what, thesis.title, app.link,
-                                        standing)
-        if app.note.strip():
-            line += " · %s" % app.note.strip()
-        blocks.append(line)
+        blocks.append(application_line(app, thesis.title, standing))
     return blocks
+
+
+def application_line(app: Application, thesis_title: str, standing: str) -> str:
+    """An application's one line, as a tab carries it under its heading.
+
+    ``standing`` is the whole standing as the page shows it, the discharge
+    clause included. The line is written here and nowhere else, so that a run
+    changing one application in place writes what a body render would have.
+    """
+    line = "%s · ◆ %s · %s · %s" % (app.what, thesis_title, app.link, standing)
+    if app.note.strip():
+        line += " · %s" % app.note.strip()
+    return line
 
 
 def discharge_clause(q: Question, thesis: Thesis, app: Application) -> str:

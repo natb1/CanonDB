@@ -31,13 +31,15 @@ class GateTest(unittest.TestCase):
         return self.gate.decide(c)["hookSpecificOutput"]["permissionDecision"]
 
     def test_the_root_question_is_canon(self):
-        self.assertEqual(self.decision(call("ti-esti.md", cwd=self.root)), "allow")
-        self.assertEqual(self.decision(call(os.path.join(self.root, "ti-esti.md"),
+        self.assertEqual(self.decision(call("canon/ti-esti.md", cwd=self.root)), "allow")
+        self.assertEqual(self.decision(call(os.path.join(self.root, "canon", "ti-esti.md"),
                                             cwd=self.root)), "allow")
+        # canon is what the list names, not a file of the same name elsewhere
+        self.assertEqual(self.decision(call("ti-esti.md", cwd=self.root)), "deny")
 
     def test_a_file_beside_it_at_the_root_is_not(self):
         for name in os.listdir(self.root):
-            if name not in ("ti-esti.md",) and os.path.isfile(os.path.join(self.root, name)):
+            if os.path.isfile(os.path.join(self.root, name)):
                 self.assertEqual(self.decision(call(name, cwd=self.root)), "deny", name)
         self.assertEqual(self.decision(call("notebook.json", cwd=self.root)), "deny")
 
@@ -88,7 +90,7 @@ class GateTest(unittest.TestCase):
         self.assertEqual(self.gate.decide({}), {})
 
     def test_the_plugin_s_name_may_stand_in_front(self):
-        self.assertEqual(self.decision(call("ti-esti.md", agent="principal:canon-answer")), "allow")
+        self.assertEqual(self.decision(call("canon/ti-esti.md", agent="principal:canon-answer")), "allow")
         self.assertEqual(self.decision(call("tools/next.py", agent="principal:canon-answer")), "deny")
         self.assertEqual(self.gate.decide(call("ti-esti.md", agent="my-canon-answer")), {})
 
@@ -97,7 +99,7 @@ class GateTest(unittest.TestCase):
         self.assertNotIn("json", out["hookSpecificOutput"]["permissionDecisionReason"])
 
     def test_the_output_is_the_hook_s_shape(self):
-        out = self.gate.decide(call("ti-esti.md", cwd=self.root))
+        out = self.gate.decide(call("canon/ti-esti.md", cwd=self.root))
         self.assertEqual(out["hookSpecificOutput"]["hookEventName"], "PreToolUse")
         self.assertIn("permissionDecisionReason", out["hookSpecificOutput"])
 

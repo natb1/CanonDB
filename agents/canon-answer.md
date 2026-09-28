@@ -18,7 +18,7 @@ It does not restate the question, it does not gloss what the asker meant by it, 
 not draw the questions that follow from it: those are the asker's to draw.
 
 The answer should need nothing beyond the lineage. If it does, you may read what this
-checkout counts as canon — the root question at its root, and whatever has landed since;
+checkout counts as canon — the root question under `canon/`, and whatever has landed since;
 you have no other tool, and a read outside canon is refused without telling you what is
 there. Do not try to work around a refusal.
 
