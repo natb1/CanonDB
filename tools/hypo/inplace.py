@@ -157,6 +157,24 @@ def reworded(runs: Sequence[Piece], new: str) -> List[Piece]:
             raise Refused("the new words carry %r, which the page reads back as "
                           "a mark; write it as a body write instead"
                           % MARKUP.search(new[b:b + size]).group())
+    # The document does not align words: it keeps the letters the old and the
+    # new share at the front and at the back, and writes everything between as
+    # one run, which takes the marks of what it covered. New words beside a
+    # link came back linked from the first change to the last. So no marked
+    # run and no chip may meet that stretch, not even an in-page link the
+    # reader drops; a block whose changes reach one is written as markdown.
+    s0, e0 = _span(old, new)
+    at = 0
+    for p in runs:
+        end = at + len(p.text)
+        if (p.chip is not None or (p.marks and p.text)) and s0 <= end and e0 >= at:
+            what = ("a chip to %s" % p.chip.get("label", "?") if p.chip is not None
+                    else "the marked run %r" % p.text)
+            raise Refused("%s stands in or against the stretch the document rewrites "
+                          "(from the first changed letter to the last), and would lose "
+                          "its mark or carry it onto the new words; write the block as "
+                          "markdown instead" % what)
+        at = end
     kept: List[Tuple[int, int, Piece]] = []
     at = 0
     for p in runs:
@@ -180,6 +198,19 @@ def reworded(runs: Sequence[Piece], new: str) -> List[Piece]:
     if cursor < len(new):
         out.append(Piece((), new[cursor:]))
     return out
+
+
+def _span(old: str, new: str) -> Tuple[int, int]:
+    """The stretch of ``old`` the document rewrites: after the letters the
+    two share at the front, before those they share at the back."""
+    front = 0
+    while front < min(len(old), len(new)) and old[front] == new[front]:
+        front += 1
+    back = 0
+    while (back < min(len(old), len(new)) - front
+           and old[len(old) - 1 - back] == new[len(new) - 1 - back]):
+        back += 1
+    return front, len(old) - back
 
 
 def _changes(old: str, new: str, same) -> List[Tuple[int, int, int]]:

@@ -15,7 +15,7 @@ import sys
 import unittest
 import xml.etree.ElementTree as ET
 
-from hypo import appline, inplace, model, read, render
+from hypo import appline, inplace, model, page, read, render
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURES = os.path.join(HERE, "fixtures")
@@ -296,6 +296,29 @@ class ThesisTest(unittest.TestCase):
         new = self.old().replace("a file", "a *file*")
         with self.assertRaises(appline.Refused):
             inplace.thesis_replace(self.view, self.bid, new)
+
+
+class SpanTest(unittest.TestCase):
+    """The document rewrites one stretch, first changed letter to last, and
+    the stretch takes the marks it covered; a link beside new words once came
+    back spread over all of them."""
+
+    RUNS = [inplace.Piece((), "it is never a "),
+            inplace.Piece(((page.LINK, "#mg8a8pjx8b4.1"),), "work item"),
+            inplace.Piece((), " competing for the slot, and more words here.")]
+
+    def test_a_change_clear_of_every_mark_is_written(self):
+        inplace.reworded(self.RUNS, "it is never a work item competing for the slot, "
+                                    "and more words there.")
+
+    def test_a_stretch_that_covers_a_link_is_refused(self):
+        with self.assertRaises(appline.Refused):
+            inplace.reworded(self.RUNS, "It is a work item like any other, and more words here.")
+
+    def test_a_change_against_a_link_is_refused(self):
+        with self.assertRaises(appline.Refused):
+            inplace.reworded(self.RUNS, "it is never a work item, competing for the slot, "
+                                        "and more words here.")
 
 
 class HingeTest(unittest.TestCase):
