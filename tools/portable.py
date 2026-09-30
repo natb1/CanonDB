@@ -45,6 +45,13 @@ def _seal(args) -> int:
         for problem in exc.problems:
             print("ERROR shape: %s" % problem, file=sys.stderr)
         return 1
+    if graph.partial:
+        # a few tabs and their ancestors are not a notebook, and --force does
+        # not make them one: what is handed over is the whole or nothing
+        print("refusing to seal %s: it was read for %s alone, not the whole "
+              "notebook" % (os.path.basename(args.file), ", ".join(graph.scope)),
+              file=sys.stderr)
+        return 1
 
     blocking = spec.errors(spec.run(graph))
     if blocking and not args.force:

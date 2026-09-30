@@ -228,7 +228,7 @@ class EntryPointTest(unittest.TestCase):
     """What every script does before its own work, held in one place."""
 
     SCRIPTS = ("apply.py", "check.py", "portable.py", "project.py",
-               "read.py", "render.py", "verify.py")
+               "read.py", "render.py", "verify.py", "inplace.py", "frontier.py")
 
     def into_a_closed_pipe(self, *command):
         """Run a command whose reader has gone: the pipe closes before the

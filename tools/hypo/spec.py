@@ -4,6 +4,17 @@ Each check is a function registered with a stable id, a one-line description and
 a severity. ERROR blocks a render of the questions it names; WARN is reported and
 does not block. A check yields ``(question id or None, message)`` pairs; the
 runner turns them into Findings.
+
+A graph may be **partial**: the tabs a dictation touches and their ancestors,
+read for a check over those alone (``Graph.scope``). Every rule runs over it.
+What a rule does not report there is only what could be owed to a tab outside
+it — a term leading to a question below, whose tab was not read; an inbox item
+that some question below may require. Nothing that reads up the lineage is
+spared, because the ancestors are in the graph or the graph is refused:
+``scope-closed`` says where one is missing. What a partial check cannot do is
+see a fault that stands wholly outside it, or between a tab in it and one out
+of it — a word defined twice, an id used twice — and a change that could
+make one is the whole notebook's to check.
 """
 
 from __future__ import annotations
@@ -170,19 +181,24 @@ def term_target(graph: Graph) -> Yield:
     thesis already fixes the sense, and a definition saying it again is the
     same datum in a second home."""
     known = {q.id for q in graph.questions}
+    # a partial graph holds what stands above its questions and not what
+    # stands below: a target it does not hold is a tab that was not read
+    elsewhere = graph.partial
     for q in graph.questions:
         for term in q.terms():
-            if term.to not in known:
+            if term.to not in known and not elsewhere:
                 yield q.id, "term %r leads to %r, which is no question" % (
                     term.title, term.to)
         for mention in q.mentions():
-            if mention.to not in known:
+            if mention.to not in known and not elsewhere:
                 yield q.id, "mention %r points at %r, which is no question" % (
                     mention.title, mention.to)
         for definition in q.definitions:
             if not definition.question:
                 continue
             if definition.question not in known:
+                if elsewhere:
+                    continue
                 yield q.id, "definition %r shadows %r, which is no question" % (
                     definition.word, definition.question)
             elif definition.question == q.id:
@@ -208,7 +224,8 @@ def tradition_target(graph: Graph) -> Yield:
                   for d in q.definitions if d.tradition]
         for what, to in edges:
             if to not in known:
-                yield q.id, "%s %r, which is no question" % (what, to)
+                if not graph.partial:  # a party's tab this read did not take
+                    yield q.id, "%s %r, which is no question" % (what, to)
             elif to not in traditions:
                 yield q.id, ("%s %r, which is a question "
                              "of this graph and not a tradition" % (what, to))
@@ -235,6 +252,36 @@ def one_root(graph: Graph) -> Yield:
         yield None, "no question is a root: every non-tradition question has an incoming term edge"
     else:
         yield None, "%d roots, expected one: %s" % (len(roots), ", ".join(roots))
+
+
+@check("scope-closed",
+       "a partial graph holds every question it was read for, and their ancestors")
+def scope_closed(graph: Graph) -> Yield:
+    """A partial graph is checked as if what stands above its questions were
+    all there, so it has to be. A question with no term edge leading to it is
+    a root, or a tradition's head, or a question whose raiser's tab was not
+    read — and the kind says which of those it can be: only a root is asked
+    as one. Nothing below a question is needed; everything above it is.
+
+    The reader holds the same rule from the other side, where it can: a tab
+    whose header list names a raiser whose tab was not read is refused before
+    the graph is written. This is the half a graph file can decide alone. A
+    question with two raisers, one read and one not, has an edge leading to
+    it here and looks whole; only the header list shows the other, which is
+    why a partial graph is built by ``read.py --scope`` and not by hand.
+    """
+    if not graph.partial:
+        return
+    known = {q.id for q in graph.questions}
+    for qid in graph.scope:
+        if qid not in known:
+            yield qid, "the graph was read for %s, and holds no such question" % qid
+    ins = project.in_edges(graph)
+    for q in graph.questions:
+        if not ins.get(q.id) and q.kind != "root":
+            yield q.id, ("nothing in the graph raises it, and it is not a root: "
+                         "the tab of whatever raises it was not read, so every "
+                         "rule over its lineage would read over a gap")
 
 
 @check("tradition-isolated",
@@ -524,6 +571,8 @@ _put = project.put
        "an inbox item sits on the most descendant common ancestor of its requirers",
        WARN)
 def inbox_placement(graph: Graph) -> Yield:
+    if graph.partial:
+        return  # its requirers are below it, and below is not in a partial graph
     dist = project.distances(graph)
     requirers: Dict[str, List[str]] = {}
     for q in graph.questions:
@@ -568,6 +617,8 @@ def inbox_required(graph: Graph) -> Yield:
     so. `inbox-placement` asks a different question of the same field and skips
     this case, which is why it is a rule of its own.
     """
+    if graph.partial:
+        return  # what requires an item stands below it, outside a partial graph
     wanted: Set[str] = set()
     for q in graph.questions:
         wanted.update(q.requires)
@@ -835,8 +886,12 @@ def reach(graph: Graph) -> Yield:
     counted: Dict[Tuple[str, str, str, str, str], int] = {}
     for q in graph.questions:
         for what, prose, wants in _prose(graph, q):
+            if graph.partial and what.startswith("inbox item") and not wants:
+                continue  # judged from its requirers, which may all be below
             for word, form in _words_used(senses, prose):
                 for judged in (wants or [q.id]):
+                    if graph.partial and judged in parties:
+                        continue  # a party reaches over what cites it, from anywhere
                     seen = above.get(judged, {judged})
                     if senses[word] & seen:
                         continue
@@ -1144,6 +1199,8 @@ def inbox_history(graph: Graph) -> Yield:
     stays while a question still names it, since that is how the question
     shows its wait is over; when none does, the item is a record of an act,
     and the notebook keeps states rather than a log."""
+    if graph.partial:
+        return  # as inbox-required: who names it may be below
     wanted: Set[str] = set()
     for q in graph.questions:
         wanted.update(q.requires)

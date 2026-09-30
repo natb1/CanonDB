@@ -2,6 +2,7 @@
 name: dictate
 description: The principal dictates a change to the hypomnemata. Plan every edit, map each to the clause of the dictation that motivates it, apply it through the tooling, and — when the dictation changes the spec — tool the new rule, attenuate what cannot be tooled, and bring the whole notebook up to it. Invoke as /principal:dictate <dictation>.
 disable-model-invocation: true
+allowed-tools: mcp__claude_ai_Claude_Docs__read, mcp__claude_ai_Claude_Docs__update, mcp__claude_ai_Claude_Docs__batch
 ---
 
 # /principal:dictate \<dictation\>
@@ -18,7 +19,9 @@ skill's: the run is made with the prose as its argument, and that is the whole o
 The notebook is the document `.principal/notebook.json` names at the project's root, with the
 enum its states point at. `tools/` below is the plugin's own, at `${CLAUDE_PLUGIN_ROOT}/tools/`;
 `$SCRATCH` is the session's scratch directory, and nothing of the notebook is written under the
-project.
+project. The document tools this run reads and writes the notebook with are granted in its
+frontmatter under `allowed-tools`: invoking the entry point is the grant, and no other turn
+holds one.
 
 ## Ground rules
 
@@ -46,6 +49,13 @@ spell them with `tools/page.py $SCRATCH/views/*.json -o $SCRATCH/tabs`, and buil
 `tools/hypo/model.py`). Nothing is exported: `page.py` spells the read as the export did, so the
 reader, the page check and the relink tool take the directory unchanged.
 
+Where the dictation changes only line-shaped parts of a few tabs — step 4 names them — the run
+reads only those blocks, a `search` or a `view` of each saved as
+`$SCRATCH/reads/<question>.<part>.json`, and for the check the touched tabs and their ancestors
+whole, spelled as above into `$SCRATCH/tabs` and read with `tools/read.py <document read>
+$SCRATCH/tabs --scope <touched questions>`. It refuses a tab whose header list names a raiser
+whose tab was not read: the ancestors are supplied, never assumed.
+
 **2 — Plan.** Enter plan mode and write the plan before any write. The plan is a table, one row per
 edit:
 
@@ -71,9 +81,22 @@ this order:
 - **Bring the whole notebook up to it.** Not only the tab the dictation named. Run
   `tools/check.py` over the whole graph and fix every finding the new rule produces.
 
-**4 — Apply.** Writing a tab is **two calls**, and the second is not optional: an in-page link
-needs a block id, only the document mints one, and a body write mints new ones. Both payloads
-come from the tooling, so neither is composed by hand.
+**4 — Apply.** A dictation that changes only line-shaped parts of a few tabs is written **in
+place**, block by block: an application with `tools/application.py`; a glossary entry, a term
+and its item on the header list of the tab it raises, the words of an answer, or an amendment
+to a hinge's provenance with `tools/inplace.py`. Each takes the saved read of its blocks and
+prints the ops of one prose `update` for that tab, every whole-block op guarded by the block's
+`h` and the read's `rev`; send them as printed. A refusal is a block that moved or a part the
+reader would not take back, and either is read again, never forced. No body is written, so no
+link into the tab is retired and nothing is relinked. What a write leaves owed — a new term's
+chip in the answer, and the links a new term or entry wants — it names on stderr, and those go
+as format operations once the insert's ack has given the new heading its id.
+
+Everything else is written whole: a change to the specification, a new question, a state, or a
+change to a question's or a term's structure the in-place tools refuse. Writing a tab whole is
+**two calls**, and the second is not optional: an in-page link needs a block id, only the
+document mints one, and a body write mints new ones. Both payloads come from the tooling, so
+neither is composed by hand.
 
 For each tab, with its outline in `$SCRATCH/outlines/<question>.xml` — the `xml` of a write's
 ack, or a read with `projection: outline`:
@@ -110,6 +133,12 @@ then run both:
 The second is not a repetition of the first. A graph file never held a link, so the rebuild is
 blind to every one of them: it passed green over a page that had lost all 192. Report WARN
 findings rather than fixing them silently.
+
+After an in-place write, read each touched block back with `sinceRev` at the read's `rev`, then
+re-read the touched tabs and their ancestors as step 1 does and run `tools/check.py` on that
+graph: it records its scope, every rule runs over it, and one that needs a tab outside it — what
+a term leads to below, what requires an inbox item — says nothing there. A missing ancestor is
+an ERROR (`scope-closed`), not a gap read over.
 
 **6 — Commit** the tooling and skill changes on a branch of their own and open a pull request
 against `main`. There is one standing branch, `main`, and every other is a pull request's, so
@@ -268,8 +297,10 @@ a procedure rather than a script.
   every branch, and what a turn may read is the gate's decision, not the branch's. And the guard holds only where the agent is used: a canon question answered in any
   other way — in this run, in a session that has read the notebook, by a turn composed by hand —
   is answered in a context nobody vouched for, whatever it was given.
-- **The page is a second artifact.** A tab reaches the document in two calls, because a link
-  needs a block id the document mints and a body write mints new ones. Nothing in the graph
+- **The page is a second artifact.** A tab written whole reaches the document in two calls,
+  because a link needs a block id the document mints and a body write mints new ones. A part
+  written in place is one call and retires nothing, but a part it inserts is a block no link
+  can name until the ack is back, so its links are owed the same way, and the tool says which. Nothing in the graph
   file records a link, so nothing that reads the graph can tell whether the second call was
   made: the rebuild, the checks and the tab patch all passed green over a page that had lost
   every one of its 192 links. What sees it is `verify.py`, which reads the page back — the
@@ -277,7 +308,13 @@ a procedure rather than a script.
   and the links the page carries that the sidecar does not name. Run it at the end of every
   write, and read what it says about that third class: a link applied by hand, or left behind
   by a definition that has moved, is invisible to everything else.
-- **A body write retires what other tabs point at.** A link into a tab carries the id of a
+- **A scoped check sees its scope.** Over the touched tabs and their ancestors every rule
+  runs, and the ones that need a tab below say nothing. What no scoped check can see is a
+  fault between a touched tab and one it did not read — a word defined twice, an id used twice,
+  a word used below that a changed definition no longer reaches. A dictation that could make
+  one — a definition's word, a question's id, a term's target — is checked over the whole graph.
+- **A body write retires what other tabs point at.** Only a body write: a part written in place
+  keeps every id on the tab it did not insert. A link into a tab carries the id of a
   block on it, and a body write mints new ids for every block on the tab it writes, so every
   link into a rewritten tab from a tab outside the run points, from that write on, at a block
   that no longer exists. Nothing in the run can see it: the graph file never held a link, and
