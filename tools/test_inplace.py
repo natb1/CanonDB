@@ -313,7 +313,7 @@ class HingeTest(unittest.TestCase):
         self.assertEqual(parsed(rewrite(self.by_id, self.bid, new=after), self.graph),
                          parsed(render.body(self.graph, "canon"), self.graph))
         self.assertTrue(ops[0]["with"]["from"]["content"].endswith(
-            "· amended 2026-09-30 by the principal from a dictation"))
+            "· amended 2026-09-30 by the principal, from a dictation"))
 
     def test_a_line_that_is_not_the_provenance_is_refused(self):
         other = block_of(self.by_id, "that a mark of assent")

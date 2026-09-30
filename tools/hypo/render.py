@@ -509,7 +509,7 @@ HINGE_THESIS = "⚓ thesis: what the answer was drawn from"
 #: the day, who amended it, and from what. Appended to the provenance and
 #: never written over it, because the provenance is what the answer was
 #: drawn from and the amendment is one more thing it now stands on.
-AMENDED = "amended %s by %s from %s"
+AMENDED = "amended %s by %s, from %s"
 
 
 def amended(provenance: str, day: str, by: str, source: str) -> str:
