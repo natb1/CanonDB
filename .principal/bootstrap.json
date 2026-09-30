@@ -29,7 +29,7 @@
         "tools/hypo/gaps.py",
         "tools/test_gaps.py"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/30",
       "rounds": 3
     },
     {
@@ -48,7 +48,7 @@
       "files": [
         "skills/dictate/SKILL.md"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/30",
       "rounds": 2
     },
     {
@@ -81,7 +81,7 @@
         "tools/hypo/frontier.py",
         "tools/test_frontier.py"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/30",
       "rounds": 1
     },
     {
@@ -92,7 +92,7 @@
         "tools/read.py",
         "tools/test_read.py"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/30",
       "rounds": 3
     },
     {
@@ -124,7 +124,7 @@
         "tools/inplace.py",
         "tools/test_inplace.py"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/30",
       "rounds": 3
     },
     {
@@ -146,7 +146,7 @@
         "tools/portable.py",
         "tools/test_portable.py"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/30",
       "rounds": 3
     },
     {
@@ -217,7 +217,7 @@
         "tools/fixtures/valid.json",
         "tools/test_scope.py"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/30",
       "rounds": 3
     }
   ]
