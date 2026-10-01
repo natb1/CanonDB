@@ -141,12 +141,10 @@ set on the cloud environment, does the same at startup.
    - `notebook.json` — `{"artifact": "<Claude Docs artifact id>", "state_enum": "<enum id>"}`,
      the notebook the skills read and write. Make the document first; the enum holds the
      states `held · in thread · landed`, in that order, and its id is the document's.
-   - `canon` — the paths that count as canon on disk, one per line relative to the root. Start
-     with the root question's file alone; the list grows only when an answer is promulgated.
    - `bootstrap.json` — `{"applications": []}`, the manifest `/principal:bootstrap` keeps.
 
-3. Write the root question under `canon/` and list it in `.principal/canon`. It is the only
-   file a canon turn may read until an answer lands.
+3. Write the root question under `canon/`. Canon is what is under that directory, and nothing
+   lists it; a canon turn reads none of it, only the lineage it is handed.
 
 4. Open a session and run `/principal:dictate` with the first dictation. The skills call the
    plugin's tools by `${CLAUDE_PLUGIN_ROOT}/tools/…`; Python 3 is the only requirement.

@@ -4,8 +4,8 @@
 APPS is a JSON list of the applications the round read off the page, each
 {"tab", "name", "link"} with the link as the page read spells it. Prints, per
 application, whether its link's path is in the checkout; then every tracked
-file that no link, no entry of `.principal/bootstrap.json` and no line of
-`.principal/canon` accounts for. Paths and verdicts only; what the files are
+file that no link and no entry of `.principal/bootstrap.json` accounts for,
+and that is not canon, which is what is under `canon/`. Paths and verdicts only; what the files are
 is for the round to read.
 """
 
@@ -47,7 +47,7 @@ def main(argv=None) -> int:
         capture_output=True, text=True).stdout) or ""
     apps = json.loads(_read(args.apps, "[]"))
     manifest = json.loads(_read(os.path.join(root, ".principal", "bootstrap.json"), "{}"))
-    canon = gaps.canon_list(_read(os.path.join(root, ".principal", "canon")))
+    canon = gaps.canon_files(files)
 
     print("applications (%s):" % (repo or "no origin"))
     for app in apps:

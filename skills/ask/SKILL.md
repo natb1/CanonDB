@@ -85,7 +85,7 @@ Lineage: <absolute path of the packet>
 ```
 
 Wait for the reply. The agent has Read and nothing else, no rules file, and a gate that
-refuses every path but canon and the packet; the harness loads its definition at session
+refuses every path but the packet; the harness loads its definition at session
 start, so a session that began before it existed cannot launch it and says so.
 
 **6 — Test the answer.** The agent checked it against its lineage. This run holds the rest.
@@ -136,6 +136,7 @@ What this run holds by reading, because no script decides it.
   what an answer collides with elsewhere is found here or not at all. It is found before the
   question is put where it can be, which is the cheaper compaction, and after where it cannot.
 - **The answer is the AI's.** Verbatim, and never reflowed to pass a check.
-- **The gate's list of canon is short, and grows only at promulgation.** `.principal/canon` at
-  the project's root names what counts as canon on disk, and the plugin's `hooks/canon-gate.py`
-  reads it. When an answer lands, the file it lands in is added there, and nowhere else.
+- **The agent reads its packet and nothing behind it.** The plugin's `hooks/canon-gate.py`
+  admits the lineage this run wrote and refuses the rest, canon on disk included, and nothing
+  lists what counts as canon: it is what is under `canon/`. So the lineage must be whole, and
+  what the answer collides with outside it is this run's to find, as the entry above says.

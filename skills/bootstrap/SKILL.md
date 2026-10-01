@@ -51,8 +51,8 @@ turn holds one.
    back. See **Supersession**.
 4. **A file is bootstrap's to write only if it is new or already bootstrap's.** The manifest
    lists what bootstrap owns. A file that exists and is not listed there is canon's, or the
-   principal's own hand's, and this run does not change it. What the gate lists as canon
-   (`.principal/canon`) is never written here, and the list itself grows only at promulgation.
+   principal's own hand's, and this run does not change it. Canon is what is under `canon/`,
+   and nothing there is written here: a file enters it at promulgation and no other way.
 5. **The author merges.** This run opens the pull request ready for review and stops. It never
    merges, never pushes to `main`, and never marks its own work as canon.
 
@@ -99,8 +99,8 @@ thing does what `what` says is read, not computed; say what you read.
 Then the other direction. Write the applications step 1 read as a JSON list, one
 `{"tab", "name", "link"}` each with the link as the read spells it, and run
 `tools/gaps.py <that file>`. It says per application whether its link's path is in the
-checkout, and lists every tracked file that no link, no manifest entry and no line of
-`.principal/canon` accounts for. A link to the repository's root accounts for nothing. Read
+checkout, and lists every tracked file that no link and no manifest entry accounts for
+and that is not under `canon/`. A link to the repository's root accounts for nothing. Read
 each file it lists and class it:
 
 | class | meaning | what the round does |

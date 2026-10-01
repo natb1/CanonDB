@@ -1,5 +1,5 @@
 {
-  "description": "The canon agent's read gate. It fires on every Read and decides nothing unless the reading turn is canon-answer; for that agent it admits what the project lists as canon and the packet, and refuses the rest.",
+  "description": "The canon agent's read gate. It fires on every Read and decides nothing unless the reading turn is canon-answer; for that agent it admits the packet, and refuses the rest.",
   "hooks": {
     "PreToolUse": [
       {

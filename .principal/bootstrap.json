@@ -8,11 +8,10 @@
         "agents/canon-answer.md",
         "hooks/canon-gate.py",
         "hooks/hooks.json",
-        ".principal/canon",
         "tools/test_gate.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/29",
-      "rounds": 2
+      "pull_request": "PENDING",
+      "rounds": 3
     },
     {
       "question": "context",
@@ -29,8 +28,8 @@
         "tools/hypo/gaps.py",
         "tools/test_gaps.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/30",
-      "rounds": 3
+      "pull_request": "PENDING",
+      "rounds": 4
     },
     {
       "question": "context",
@@ -39,8 +38,8 @@
         "README.md",
         ".claude/settings.json"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/29",
-      "rounds": 1
+      "pull_request": "PENDING",
+      "rounds": 2
     },
     {
       "question": "dictate",
@@ -48,8 +47,8 @@
       "files": [
         "skills/dictate/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/30",
-      "rounds": 2
+      "pull_request": "PENDING",
+      "rounds": 3
     },
     {
       "question": "wording",
