@@ -10,9 +10,12 @@ from its reads of the document, and renders canonical markdown back from it.
     render   the markdown renderer and the links sidecar
     read     the inverse of the renderer: an exported tab back into a question
     apply    the operations that put a rendered tab into the document
+    appline  one application written where it stands on the page
+    inplace  a glossary entry, a term, an answer's words, a hinge's provenance, in place
     verify   the page against the renderer, links included
     portable the notebook parted from its document, for a party raising its own
     turn     which question a canon turn is put to, and the lineage it carries
+    frontier what could be put, read off the page without a graph file
     page     a tab as the document reads it, spelled as the reader takes it
     text     plain text from markdown, and where a run of it stands
     cli      what every command-line entry point does before its own work
@@ -30,4 +33,5 @@ which is exactly what happened.
 """
 
 __all__ = ["model", "spec", "project", "render", "read", "apply", "verify",
-           "portable", "turn", "text", "cli", "page"]
+           "portable", "turn", "text", "cli", "page", "appline", "inplace",
+           "frontier"]

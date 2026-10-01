@@ -7,7 +7,10 @@ it — a new link, a reworded description, a new application, one withdrawn —
 touches those two blocks and nothing else. This writes that change as the
 operations of one prose ``update``: a ``replace`` of the line, an ``insert``
 of a heading and its line after a block, or the ``delete`` of both, each
-guarded by the hash the document printed for the block.
+guarded by the hash the document printed for the block and by the ``rev`` of
+the read that printed it. The document takes a whole-block ``replace`` or
+``delete`` only with both: the hash says the block is the one read, the rev
+says which read that was.
 
 The line is the renderer's (``render.application_line``), and an existing
 line is read with the reader's own pattern (``read.APPLICATION_LINE``), so
@@ -41,15 +44,15 @@ class Refused(Exception):
 
 def _text(node: ET.Element) -> str:
     """The characters a block's hash is taken over: every run of text, with a
-    mention contributing nothing."""
+    chip contributing nothing — a mention, and a dropdown too, whose word is
+    the enum's and not the block's letters. The question line hashes as
+    ``question:  · …``, the state's word left out."""
     out: List[str] = []
     if node.text and node.tag not in _BLOCKS[:7]:
         out.append(node.text)
     for child in node:
-        if child.tag == "mention":
+        if child.tag in ("mention", "dropdown"):
             pass
-        elif child.tag == "dropdown":
-            out.append(child.text or "")
         else:
             out.append(_text(child))
         if child.tail:
@@ -82,20 +85,34 @@ def _unhit(node: ET.Element) -> None:
             parent.remove(child)
 
 
+def rev(source) -> int:
+    """The ``rev`` of the read: what a whole-block write names as ``ifRev``."""
+    found = ET.fromstring(page.view_xml(source)).get("rev", "")
+    if not found.isdigit():
+        raise Refused("the read carries no rev; a whole-block write needs the "
+                      "rev of the read that showed the block")
+    return int(found)
+
+
 def blocks(source) -> Dict[str, ET.Element]:
-    """Every block of a read by its full id, short ids resolved."""
+    """Every block of a read by its full id, short ids resolved. A list's
+    items are blocks of their own: one can be written or dropped without the
+    rest of its list."""
     root = ET.fromstring(page.view_xml(source))
     out: Dict[str, ET.Element] = {}
     session = ""
     for node in root.iter():
         bid = node.get("id", "")
-        if not bid or node.tag not in ("paragraph", "list", "table", "blockquote"):
-            continue
+        # the session prefix is printed once, on whatever carries an id
+        # first — a retired block's ``gone`` as often as not — so it is
+        # taken from every id and not only from a block's
         if bid.startswith("."):
             bid = session + bid
         elif "." in bid:
             session = bid.split(".")[0]
-        out[bid] = node
+        if bid and node.tag in ("paragraph", "list", "listItem", "table",
+                                "blockquote"):
+            out[bid] = node
     return out
 
 
@@ -105,10 +122,14 @@ def block(source, bid: str) -> ET.Element:
     if found is None:
         raise Refused("the read holds no block %s" % bid)
     _unhit(found)
-    if found.get("h") and digest(found) != found.get("h"):
-        raise Refused("block %s does not hash to the h the document printed "
-                      "(%s, read %s): the read is not the page" %
-                      (bid, found.get("h"), digest(found)))
+    # a paragraph's h is over its letters; a list's, an item's or a table's is
+    # over its shape, which a read does not print, so what is checked there is
+    # every paragraph inside it
+    for node in found.iter("paragraph"):
+        if node.get("h") and digest(node) != node.get("h"):
+            raise Refused("block %s does not hash to the h the document printed "
+                          "(%s, read %s): the read is not the page" %
+                          (node.get("id", bid), node.get("h"), digest(node)))
     return found
 
 
@@ -144,7 +165,7 @@ def read_line(source, bid: str) -> Dict[str, str]:
     if line(fields) != text:
         raise Refused("block %s does not round-trip through the renderer; "
                       "change it by a body write instead" % bid)
-    fields.update({"id": bid, "h": node.get("h", "")})
+    fields.update({"id": bid, "h": node.get("h", ""), "rev": rev(source)})
     return fields
 
 
@@ -154,7 +175,8 @@ def _markdown(content: str) -> dict:
 
 def replace_op(fields: Dict[str, str]) -> dict:
     return {"op": "replace", "target": {"kind": "blocks", "ids": [fields["id"]]},
-            "ifHash": fields["h"], "with": _markdown(line(fields))}
+            "ifHash": fields["h"], "ifRev": fields["rev"],
+            "with": _markdown(line(fields))}
 
 
 def insert_op(after: str, name: str, fields: Dict[str, str]) -> dict:
@@ -173,6 +195,7 @@ def delete_ops(source, heading: str, line_id: str) -> List[dict]:
         raise Refused("block %s is not an application heading" % heading)
     read_line(source, line_id)
     body = block(source, line_id)
+    at = rev(source)
     return [{"op": "delete", "target": {"kind": "blocks", "ids": [bid]},
-             "ifHash": node.get("h", "")}
+             "ifHash": node.get("h", ""), "ifRev": at}
             for bid, node in ((heading, head), (line_id, body))]

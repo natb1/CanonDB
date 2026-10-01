@@ -1,0 +1,49 @@
+{
+  "artifact": "https://claude.ai/artifact/47d8730e-0bb8-4995-b3fb-8310665c1528",
+  "scope": [
+    "attenuation"
+  ],
+  "questions": [
+    {
+      "id": "attenuation",
+      "tab": "tab-04",
+      "body": "body-04",
+      "question": "How is authority to act graded, and what is never done under a low grade?",
+      "state": "held",
+      "kind": "consistency",
+      "answerer": "principal",
+      "requires": [],
+      "theses": [
+        {
+          "title": "Authority to act is graded by how settled the question is.",
+          "assent": "none",
+          "state": "held",
+          "text": "A settled entry acts silently. An unsettled one may act only if it says so, and never irreversibly. The grade is read off the state of the entry and is not stored twice.",
+          "terms": [],
+          "traditions": [],
+          "applications": [
+            {
+              "name": "the shape gate",
+              "what": "the one synchronous check every write passes",
+              "link": "tools/check.py",
+              "standing": "postulate"
+            }
+          ]
+        }
+      ],
+      "definitions": [
+        {
+          "word": "grade",
+          "body": "How much authority to act an entry carries, read off its state.",
+          "tradition": null
+        }
+      ],
+      "inbox": [],
+      "hinge": {
+        "question": "that authority admits of degree, which the asking already presumes",
+        "thesis": "model: an unnamed assistant · harness: the same repository · canon: the opening entry"
+      },
+      "pressure": 5
+    }
+  ]
+}

@@ -315,7 +315,7 @@ def _glossary_blocks(q: Question) -> List[str]:
     """
     blocks: List[str] = []
     for definition in q.definitions:
-        blocks.append("### ≡ %s" % definition.word)
+        blocks.append("### %s" % glossary_heading(definition.word))
         if definition.body.strip():
             blocks.append(definition.body)
         if definition.tradition:
@@ -330,6 +330,15 @@ def _glossary_blocks(q: Question) -> List[str]:
             # reach that question, and a pointer to where the argument is
             blocks.append("%s %s" % (SHADOW, chip(definition.question)))
     return blocks
+
+
+def glossary_heading(word: str) -> str:
+    """A definition's heading without its level: the glyph and the word.
+
+    Named because two things spell it — the glossary, and the link a thesis
+    carries to the entry — and a run writing one entry in place is a third.
+    """
+    return "≡ %s" % word
 
 
 def _inbox_order(graph: Graph, q: Question) -> List[Term]:
@@ -387,12 +396,30 @@ def term_heading(term: Term) -> str:
     return "▸ %s" % term.title
 
 
+def term_line(term: Term) -> str:
+    """A term's whole heading without its level: the stable part and the chip
+    to the question it raises."""
+    return "%s → %s" % (term_heading(term), chip(term.to))
+
+
+def anchor_line(anchor: str) -> str:
+    """An anchor as its own block under a term or a mention: the clause,
+    italicised, and nothing else — one layer, which the reader takes off."""
+    return "*%s*" % anchor
+
+
+def incoming_item(anchor: str, source: str) -> str:
+    """One item of a tab's header list: an anchor of a term that leads here,
+    and the chip back to the tab whose term section holds it."""
+    return "- %s %s" % (anchor, chip(source))
+
+
 def _term_blocks(graph: Graph, q: Question) -> List[str]:
     blocks: List[str] = []
     for term in q.terms():
-        blocks.append("### %s → %s" % (term_heading(term), chip(term.to)))
+        blocks.append("### %s" % term_line(term))
         for anchor in term.anchors:
-            blocks.append("*%s*" % anchor)
+            blocks.append(anchor_line(anchor))
         if term.suspended:
             # acceptance withheld while the thread is open, and what it waits
             # on; a paragraph of its own for the reason a deadlock has two
@@ -412,7 +439,7 @@ def _term_blocks(graph: Graph, q: Question) -> List[str]:
         # a term on the page at all, and the next export would read it as one.
         blocks.append("### ↗ %s → %s" % (mention.title, chip(mention.to)))
         for anchor in mention.anchors:
-            blocks.append("*%s*" % anchor)
+            blocks.append(anchor_line(anchor))
         if q.id in project.reachable_from(graph, mention.to):
             blocks.append(CYCLE_NOTE)
     return blocks
@@ -477,6 +504,18 @@ HINGE_QUESTION = "⚓ question: what the asking presupposes"
 
 #: the heading of a hinge's thesis half, which every answer's provenance names
 HINGE_THESIS = "⚓ thesis: what the answer was drawn from"
+
+#: what a hinge's thesis half says when a run amends the answer it records:
+#: the day, who amended it, and from what. Appended to the provenance and
+#: never written over it, because the provenance is what the answer was
+#: drawn from and the amendment is one more thing it now stands on.
+AMENDED = "amended %s by %s, from %s"
+
+
+def amended(provenance: str, day: str, by: str, source: str) -> str:
+    """A hinge's thesis half with one amendment clause appended."""
+    return "%s · %s" % (provenance.rstrip(), AMENDED % (day, by, source))
+
 
 #: the words on an answer's metadata line that carry its provenance link
 PROVENANCE_ANCHOR = "thesis hinge"
@@ -564,7 +603,7 @@ def body(graph: Graph, qid: str) -> str:
         # section holds it, so a question with several parents names them all
         # and the reader can get back to any of them
         blocks.append("\n".join(
-            "- %s %s" % (anchor, chip(src))
+            incoming_item(anchor, src)
             for src, term in _incoming_terms(graph, qid)
             for anchor in term.anchors))
 
@@ -723,7 +762,7 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
                 "target": "#%s.%s" % (q.tab, term_heading(term)),
             })
     for definition in q.definitions:
-        heading = "≡ %s" % definition.word
+        heading = glossary_heading(definition.word)
         out.append({
             "kind": "definition",
             "word": definition.word,

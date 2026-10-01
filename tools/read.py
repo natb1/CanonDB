@@ -7,6 +7,17 @@ parsed; what belongs to the document rather than the page — a tab's id, its
 body's id, and the order from which a tradition root is told — comes from that
 list.
 
+A dictation that touches a few tabs need not read the rest. With `--scope`
+naming the questions it touches, the directory holds those tabs and their
+ancestors and nothing else, and the graph file says so: it records the scope,
+and `check.py` holds over it every rule that does not need a tab outside it.
+The ancestors are supplied, never assumed — a tab whose header list names a
+raiser whose tab is not in the directory is refused, since every rule that
+reads over the lineage would read over a gap. A `requires` title that names no
+inbox item among the tabs read is kept as the title, as it is over the whole
+notebook: the item is on the question or an ancestor, both of which are here,
+so `requires-exist` is right to say so.
+
 The enum the states point at is in neither the document read nor the exports,
 so `--state-enum ID` names it, and a rebuild over an existing graph file keeps
 the one that file holds rather than dropping it — dropped, every state would
@@ -19,7 +30,7 @@ import argparse
 import json
 import os
 import sys
-from typing import Dict, Optional, Set
+from typing import Optional, Sequence
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -28,32 +39,28 @@ from hypo import cli, model, read, render  # noqa: E402
 cli.quiet_pipe()
 
 
-def assemble(manifest: dict, bodies: dict) -> dict:
-    """The graph file, from a document read and a question id to markdown map."""
+class OutOfScope(Exception):
+    """A scoped read that is missing a tab it cannot do without."""
+
+
+def assemble(manifest: dict, bodies: dict, scope: Sequence[str] = ()) -> dict:
+    """The graph file, from a document read and a question id to markdown map.
+
+    ``scope`` names the questions a partial read is for; every one of them,
+    and every raiser a read tab's header list names, must be among
+    ``bodies``, or ``OutOfScope`` says which is not.
+    """
     value = manifest.get("value", manifest)
     tabs = value.get("tabs", {})
     files = {f["id"]: f for f in manifest.get("files", [])}
     names = {tab_id: meta.get("name", tab_id) for tab_id, meta in tabs.items()}
     ids = {render.chip_key(name): name for name in names.values()}
+    party = read.parties(tabs)
 
-    # A question belongs to a party. The author's are the main tree; another
-    # party's is that party's own notebook, placed at top level in the b
-    # series, and anything nested under it is theirs too — a reconstruction
-    # may raise its own questions and answer them.
-    party_of: Dict[str, str] = {}
-    for tab_id, meta in tabs.items():
-        if not meta.get("subtabOf") and str(meta.get("order", "")).startswith("b"):
-            party_of[tab_id] = str(meta.get("name", tab_id)).lower()
-
-    def party(tab_id: str, seen: Optional[Set[str]] = None) -> str:
-        seen = seen or set()
-        if tab_id in party_of:
-            return party_of[tab_id]
-        parent = tabs.get(tab_id, {}).get("subtabOf")
-        if not parent or parent in seen:
-            return model.AUTHOR
-        return party(parent, seen | {tab_id})
-
+    missing = [qid for qid in scope if qid not in bodies]
+    if missing:
+        raise OutOfScope("no tab read for %s, which the scope names"
+                         % ", ".join(missing))
     questions = []
     for tab_id, meta in sorted(tabs.items(), key=lambda kv: (kv[1].get("order", ""),
                                                              kv[1].get("name", ""))):
@@ -61,10 +68,18 @@ def assemble(manifest: dict, bodies: dict) -> dict:
         if name not in bodies:
             continue
         q = read.parse_tab(bodies[name], ids)
-        q.pop("incoming", None)  # projected from the parents' terms, never stored
+        # projected from the parents' terms, never stored; over a scope it is
+        # what says an ancestor's tab is missing, which nothing else can
+        incoming = q.pop("incoming", None) or []
+        if scope:
+            absent = sorted({src for _, src in incoming if src and src not in bodies})
+            if absent:
+                raise OutOfScope("%s is raised on %s, whose tab was not read; a "
+                                 "scoped read takes the ancestors of every tab it "
+                                 "reads" % (q["id"], ", ".join(absent)))
         q["tab"] = tab_id
         q["body"] = files.get(tab_id, {}).get("content", {}).get("id", "")
-        q["party"] = party(tab_id)
+        q["party"] = party.get(tab_id, model.AUTHOR)
         questions.append(q)
 
     # requires is rendered as the title a reader sees; the id it names is found
@@ -76,6 +91,8 @@ def assemble(manifest: dict, bodies: dict) -> dict:
 
     graph = {"artifact": manifest.get("frame", {}).get("artifactUrl", "")}
     graph["questions"] = questions
+    if scope:
+        graph["scope"] = list(scope)
     return graph
 
 
@@ -104,6 +121,9 @@ def main(argv=None) -> int:
     ap.add_argument("--state-enum", metavar="ID", dest="state_enum",
                     help="the document enum the states point at (else kept "
                          "from the graph file being rewritten)")
+    ap.add_argument("--scope", nargs="+", metavar="QUESTION", default=[],
+                    help="the questions a dictation touches; the directory holds "
+                         "their tabs and their ancestors'")
     args = ap.parse_args(argv)
 
     try:
@@ -123,9 +143,12 @@ def main(argv=None) -> int:
         return 1
 
     try:
-        graph = assemble(manifest, bodies)
+        graph = assemble(manifest, bodies, args.scope)
     except read.ParseError as exc:
         print("ERROR parse: %s" % exc, file=sys.stderr)
+        return 1
+    except OutOfScope as exc:
+        print("ERROR scope: %s" % exc, file=sys.stderr)
         return 1
 
     held = "" if args.state_enum else kept(args.out)

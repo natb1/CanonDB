@@ -19,7 +19,7 @@ from __future__ import annotations
 import re
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
-from .model import SECTIONS
+from .model import AUTHOR, SECTIONS
 from . import render
 from .render import INSTEAD, SEPARATOR, SHADOW, chip_key
 
@@ -82,6 +82,32 @@ CRUMB_TAIL = re.compile(r"[\s›.]+$")
 
 class ParseError(Exception):
     """The markdown is not in the grammar the renderer writes."""
+
+
+def parties(tabs: Dict[str, dict]) -> Dict[str, str]:
+    """tab id -> the party whose notebook the tab is in, from the tab list.
+
+    A question belongs to a party. The author's are the main tree; another
+    party's is that party's own notebook, placed at top level in the b
+    series, and anything nested under it is theirs too — a reconstruction
+    may raise its own questions and answer them. Read off the document's tab
+    list alone, so a caller that has not read a single body can tell whose a
+    tab is.
+    """
+    heads: Dict[str, str] = {}
+    for tab_id, meta in tabs.items():
+        if not meta.get("subtabOf") and str(meta.get("order", "")).startswith("b"):
+            heads[tab_id] = str(meta.get("name", tab_id)).lower()
+
+    def party(tab_id: str, seen: Set[str]) -> str:
+        if tab_id in heads:
+            return heads[tab_id]
+        parent = tabs.get(tab_id, {}).get("subtabOf")
+        if not parent or parent in seen:
+            return AUTHOR
+        return party(parent, seen | {tab_id})
+
+    return {tab_id: party(tab_id, set()) for tab_id in tabs}
 
 
 def _label_run(line: str, labels: Iterable[str]) -> Optional[Tuple[int, List[str]]]:

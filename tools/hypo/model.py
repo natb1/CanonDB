@@ -581,6 +581,15 @@ class Graph:
     state_enum: Optional[str] = None
     questions: List[Question] = field(default_factory=list)
     path: Optional[str] = None
+    #: The questions a partial graph was read for, where it is one: the tabs
+    #: a dictation touches, read with their ancestors and nothing else. A
+    #: rule that needs a tab outside that set cannot be held over it, and
+    #: ``spec`` says which; empty is the whole notebook.
+    scope: List[str] = field(default_factory=list)
+
+    @property
+    def partial(self) -> bool:
+        return bool(self.scope)
 
     # -- lookups -------------------------------------------------------
     def by_id(self) -> Dict[str, Question]:
@@ -612,6 +621,7 @@ class Graph:
             state_enum=r.opt_text(d, "state_enum", where),
             questions=[Question.read(r, v, "questions[%d]" % i)
                        for i, v in enumerate(r.seq(d, "questions", where))],
+            scope=r.strings(d, "scope", where),
         )
 
 

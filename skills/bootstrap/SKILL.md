@@ -2,6 +2,7 @@
 name: bootstrap
 description: The principal reconciles application directly from the hypomnemata, ahead of canon. Review the notebook's applications against the checkout for gaps, plan the round for approval, build it on a branch of its own, record what was built as bootstrap, and publish a pull request the author merges. Invoke as /principal:bootstrap [dictation].
 disable-model-invocation: true
+allowed-tools: mcp__claude_ai_Claude_Docs__read, mcp__claude_ai_Claude_Docs__update, mcp__claude_ai_Claude_Docs__batch
 ---
 
 # /principal:bootstrap \[dictation\]
@@ -31,7 +32,9 @@ notebook has not first taken in.
 
 The notebook is the document `.principal/notebook.json` names at the project's root. `tools/`
 below is the plugin's own, at `${CLAUDE_PLUGIN_ROOT}/tools/`, and `$SCRATCH` is the session's
-scratch directory.
+scratch directory. The document tools this run reads and writes the notebook with are granted
+in its frontmatter under `allowed-tools`: invoking the entry point is the grant, and no other
+turn holds one.
 
 ## Ground rules
 
@@ -71,10 +74,12 @@ that the notebook holds what is about to be built. Its plan rows cite the prose;
 rows, in step 4, cite the notebook. A dictation that changes nothing in the notebook but
 names what to focus on is still recorded: as the pressure or the inbox item it bears on.
 A dictation that bears only on applications, or on the words of a paragraph, is applied in
-place — `tools/application.py` for an application, a hash-guarded `replace` for prose. One
-that changes the notebook's structure — a question, a term, a state, a definition — is
-`/principal:dictate`'s, with its graph and its checks; until that runs, this round records
-the dictation verbatim as a note on the tab it bears on.
+place — `tools/application.py` for an application, `tools/inplace.py` for the words of an
+answer, a definition's body or an amendment to a hinge's provenance. One that adds or drops a
+term or a glossary entry is `/principal:dictate`'s in-place path, with its scoped check over
+the touched tabs and their ancestors; one that changes a question, a state or the
+specification is `/principal:dictate`'s whole, with its graph and its checks, and until that
+runs this round records the dictation verbatim as a note on the tab it bears on.
 
 **3 — Review for gaps.** For every application (⚙) read in step 1, read
 what it says and look at the checkout. Its `link` is where it says the thing lives; its
@@ -183,10 +188,11 @@ Rules of this entry point that no tool decides. Hold these by reading.
   round takes; it never widens what an application is. Where the prose asks for more than
   the application says, the notebook is dictated first, and the plan cites the new clause.
 - **The notebook is read in place, one block at a time.** A round reads application lines
-  and the blocks a dictation bears on, never a whole tab, and builds no graph file. Nothing
-  it writes changes a question, a term, a state or a definition, so the checks a graph feeds
-  have nothing to see; a round that finds it must change one has found a dictation for
-  `/principal:dictate`, and takes it no further than a note.
+  and the blocks a dictation bears on, never a whole tab, and builds no graph file of its
+  own. What it writes by itself — an application, the words of a paragraph — changes no
+  question, term, state or definition, so the checks a graph feeds have nothing to see; a
+  round that finds it must change one has found a dictation for `/principal:dictate`, whose
+  in-place path and scoped check take a term or an entry, and whose whole path the rest.
 - **An orphan's class is read.** `gaps.py` lists what nothing accounts for, and a tree link
   covers a subtree by address alone. Whether a listed file is a requirement the notebook
   lacks or a thing nobody wants any more, and whether a covering link's `what` really

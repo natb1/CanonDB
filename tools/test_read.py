@@ -22,7 +22,7 @@ def chip_ids(graph):
 #: as the chip that closes it, so it is compared like everything else.
 UNCARRIED = {
     "Question": ("tab", "body", "party", "requires"),
-    "Graph": ("path", "questions", "artifact", "mode", "state_enum"),
+    "Graph": ("path", "questions", "artifact", "mode", "state_enum", "scope"),
 }
 
 

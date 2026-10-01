@@ -55,12 +55,34 @@ class ReadTest(unittest.TestCase):
         self.assertEqual(appline.digest(node), h("see "))
 
 
+class PageTest(unittest.TestCase):
+    """A real read of a tab, as the document printed it."""
+
+    def setUp(self):
+        with open(os.path.join(HERE, "fixtures", "view-wording.xml"), encoding="utf-8") as fh:
+            self.view = fh.read()
+
+    def test_every_block_hashes_as_the_document_printed(self):
+        """A dropdown's word is the enum's and not the block's letters: the
+        question line and an answer's line hash without it."""
+        for bid in appline.blocks(self.view):
+            appline.block(self.view, bid)
+
+    def test_the_session_is_taken_from_whatever_prints_it_first(self):
+        """Here a retired block's ``gone`` prints it, and every id after is
+        short."""
+        self.assertIn("mg8a8pjx8b4.1421", appline.blocks(self.view))
+        fields = appline.read_line(self.view, "mg8a8pjx8b4.1421")
+        self.assertEqual((fields["h"], fields["rev"]), ("3b254abd", 6))
+
+
 class OpsTest(unittest.TestCase):
     def test_replace_is_guarded_by_the_hash_read(self):
         fields = appline.read_line(view(), "abc.9")
         fields["what"] = "`tools/x.py`, a better tool"
         op = appline.replace_op(fields)
         self.assertEqual(op["ifHash"], h(LINE_TEXT))
+        self.assertEqual(op["ifRev"], 3)  # the read's, which the document asks for too
         self.assertEqual(op["target"]["ids"], ["abc.9"])
         self.assertTrue(op["with"]["from"]["content"].startswith("`tools/x.py`, a better tool · ◆"))
 
@@ -77,6 +99,11 @@ class OpsTest(unittest.TestCase):
         ops = appline.delete_ops(view(), "abc.0", "abc.9")
         self.assertEqual([o["target"]["ids"][0] for o in ops], ["abc.0", "abc.9"])
         self.assertEqual(ops[0]["ifHash"], h("⚙ the tool"))
+        self.assertEqual([o["ifRev"] for o in ops], [3, 3])
+
+    def test_a_read_with_no_rev_is_refused(self):
+        with self.assertRaises(appline.Refused):
+            appline.read_line(view().replace(" rev='3'", ""), "abc.9")
 
     def test_delete_refuses_a_heading_that_is_not_an_application(self):
         bad = view().replace("⚙ the tool", "Thesis").replace(h("⚙ the tool"), h("Thesis"))

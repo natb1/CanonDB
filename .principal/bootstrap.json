@@ -29,8 +29,8 @@
         "tools/hypo/gaps.py",
         "tools/test_gaps.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/29",
-      "rounds": 2
+      "pull_request": "https://github.com/natb1/CanonDB/pull/30",
+      "rounds": 3
     },
     {
       "question": "context",
@@ -48,8 +48,8 @@
       "files": [
         "skills/dictate/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/24",
-      "rounds": 1
+      "pull_request": "https://github.com/natb1/CanonDB/pull/30",
+      "rounds": 2
     },
     {
       "question": "wording",
@@ -74,6 +74,17 @@
       "rounds": 2
     },
     {
+      "question": "priority",
+      "application": "the frontier read",
+      "files": [
+        "tools/frontier.py",
+        "tools/hypo/frontier.py",
+        "tools/test_frontier.py"
+      ],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/30",
+      "rounds": 1
+    },
+    {
       "question": "docs-encoding",
       "application": "the reader",
       "files": [
@@ -81,8 +92,8 @@
         "tools/read.py",
         "tools/test_read.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/29",
-      "rounds": 2
+      "pull_request": "https://github.com/natb1/CanonDB/pull/30",
+      "rounds": 3
     },
     {
       "question": "docs-encoding",
@@ -108,10 +119,13 @@
         "tools/hypo/appline.py",
         "tools/test_appline.py",
         "tools/test_apply.py",
-        "tools/test_relink.py"
+        "tools/test_relink.py",
+        "tools/hypo/inplace.py",
+        "tools/inplace.py",
+        "tools/test_inplace.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/29",
-      "rounds": 2
+      "pull_request": "https://github.com/natb1/CanonDB/pull/30",
+      "rounds": 3
     },
     {
       "question": "docs-encoding",
@@ -132,8 +146,8 @@
         "tools/portable.py",
         "tools/test_portable.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/29",
-      "rounds": 2
+      "pull_request": "https://github.com/natb1/CanonDB/pull/30",
+      "rounds": 3
     },
     {
       "question": "hypomnemata",
@@ -187,6 +201,7 @@
         "tools/fixtures/invalid-requires-exist.json",
         "tools/fixtures/invalid-requires-put.json",
         "tools/fixtures/invalid-shadow-declared.json",
+        "tools/fixtures/invalid-scope-closed.json",
         "tools/fixtures/invalid-standing-honest.json",
         "tools/fixtures/invalid-state-order.json",
         "tools/fixtures/invalid-suspension-open.json",
@@ -199,10 +214,11 @@
         "tools/fixtures/invalid-unique-ids.json",
         "tools/fixtures/invalid-verbatim-collision.json",
         "tools/fixtures/invalid-vocabulary.json",
-        "tools/fixtures/valid.json"
+        "tools/fixtures/valid.json",
+        "tools/test_scope.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/29",
-      "rounds": 2
+      "pull_request": "https://github.com/natb1/CanonDB/pull/30",
+      "rounds": 3
     }
   ]
 }
