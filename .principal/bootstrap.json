@@ -10,7 +10,7 @@
         "hooks/hooks.json",
         "tools/test_gate.py"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/31",
       "rounds": 3
     },
     {
@@ -28,7 +28,7 @@
         "tools/hypo/gaps.py",
         "tools/test_gaps.py"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/31",
       "rounds": 4
     },
     {
@@ -38,7 +38,7 @@
         "README.md",
         ".claude/settings.json"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/31",
       "rounds": 2
     },
     {
@@ -47,7 +47,7 @@
       "files": [
         "skills/dictate/SKILL.md"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/31",
       "rounds": 3
     },
     {
