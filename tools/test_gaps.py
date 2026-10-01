@@ -37,7 +37,8 @@ class OrphanTest(unittest.TestCase):
         self.assertEqual(gaps.orphans(FILES, why), ["README.md", ".gitignore"])
 
     def test_canon_list_and_remote(self):
-        self.assertEqual(gaps.canon_list("# c\ncanon/ti-esti.md\n\n"), ["canon/ti-esti.md"])
+        self.assertEqual(gaps.canon_files(["canon/ti-esti.md", "canonical.md", "tools/canon/x"]),
+                         ["canon/ti-esti.md"])
         self.assertEqual(gaps.repo_of("git@github.com:natb1/CanonDB.git"), REPO)
         self.assertEqual(gaps.repo_of("https://github.com/natb1/CanonDB"), REPO)
 

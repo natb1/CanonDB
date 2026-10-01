@@ -1,4 +1,4 @@
-"""The canon agent's read gate lets canon and the packet through, and nothing else."""
+"""The canon agent's read gate lets the packet through, and nothing else."""
 
 import importlib.util
 import os
@@ -30,11 +30,12 @@ class GateTest(unittest.TestCase):
     def decision(self, c):
         return self.gate.decide(c)["hookSpecificOutput"]["permissionDecision"]
 
-    def test_the_root_question_is_canon(self):
-        self.assertEqual(self.decision(call("canon/ti-esti.md", cwd=self.root)), "allow")
+    def test_canon_on_disk_is_not_read(self):
+        # the turn carries canon above its question in the packet, and there
+        # is no reading past it: not the root question, not a landed answer
+        self.assertEqual(self.decision(call("canon/ti-esti.md", cwd=self.root)), "deny")
         self.assertEqual(self.decision(call(os.path.join(self.root, "canon", "ti-esti.md"),
-                                            cwd=self.root)), "allow")
-        # canon is what the list names, not a file of the same name elsewhere
+                                            cwd=self.root)), "deny")
         self.assertEqual(self.decision(call("ti-esti.md", cwd=self.root)), "deny")
 
     def test_a_file_beside_it_at_the_root_is_not(self):
@@ -46,25 +47,22 @@ class GateTest(unittest.TestCase):
     def test_the_notebook_s_tooling_and_the_entry_points_are_not(self):
         for rel in ("tools/hypo/model.py", "skills/dictate/SKILL.md",
                     "agents/canon-answer.md", "hooks/canon-gate.py",
-                    ".principal/canon", ".principal/notebook.json",
+                    ".principal/bootstrap.json", ".principal/notebook.json",
                     "transcripts/index.json"):
             self.assertEqual(self.decision(call(rel, cwd=self.root)), "deny", rel)
 
-    def test_the_list_is_the_project_s(self):
+    def test_no_list_makes_a_file_readable(self):
+        # a list of canon was once the project's to keep; one left behind
+        # admits nothing now
         with tempfile.TemporaryDirectory() as tmp:
             os.mkdir(os.path.join(tmp, ".principal"))
             with open(os.path.join(tmp, ".principal", "canon"), "w") as fh:
-                fh.write("# canon on disk\n\ncanon/root.md\ncanon/second.md\n")
-            self.assertEqual(self.decision(call("canon/root.md", cwd=tmp)), "allow")
-            self.assertEqual(self.decision(call("canon/second.md", cwd=tmp)), "allow")
-            self.assertEqual(self.decision(call("ti-esti.md", cwd=tmp)), "deny")
-            self.assertEqual(self.decision(call("canon", cwd=tmp)), "deny")
-
-    def test_a_project_with_no_list_has_no_canon(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            with open(os.path.join(tmp, "ti-esti.md"), "w") as fh:
+                fh.write("canon/root.md\n")
+            os.mkdir(os.path.join(tmp, "canon"))
+            with open(os.path.join(tmp, "canon", "root.md"), "w") as fh:
                 fh.write("x\n")
-            self.assertEqual(self.decision(call("ti-esti.md", cwd=tmp)), "deny")
+            self.assertEqual(self.decision(call("canon/root.md", cwd=tmp)), "deny")
+            self.assertEqual(self.decision(call("canon", cwd=tmp)), "deny")
 
     def test_the_packet_is_the_one_file_outside(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -90,7 +88,7 @@ class GateTest(unittest.TestCase):
         self.assertEqual(self.gate.decide({}), {})
 
     def test_the_plugin_s_name_may_stand_in_front(self):
-        self.assertEqual(self.decision(call("canon/ti-esti.md", agent="principal:canon-answer")), "allow")
+        self.assertEqual(self.decision(call("/tmp/x/packet/lineage.md", agent="principal:canon-answer")), "allow")
         self.assertEqual(self.decision(call("tools/next.py", agent="principal:canon-answer")), "deny")
         self.assertEqual(self.gate.decide(call("ti-esti.md", agent="my-canon-answer")), {})
 
@@ -99,7 +97,7 @@ class GateTest(unittest.TestCase):
         self.assertNotIn("json", out["hookSpecificOutput"]["permissionDecisionReason"])
 
     def test_the_output_is_the_hook_s_shape(self):
-        out = self.gate.decide(call("canon/ti-esti.md", cwd=self.root))
+        out = self.gate.decide(call("/tmp/x/packet/lineage.md", cwd=self.root))
         self.assertEqual(out["hookSpecificOutput"]["hookEventName"], "PreToolUse")
         self.assertIn("permissionDecisionReason", out["hookSpecificOutput"])
 

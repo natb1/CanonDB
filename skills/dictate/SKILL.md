@@ -287,13 +287,13 @@ a procedure rather than a script.
   notebook and canon together, selects the question and launches `canon-answer`, whose
   definition under the plugin's `agents/` is the grant — Read and nothing else, no shell, no
   search, no git, no `CLAUDE.md`, and a gate on Read (the plugin's `hooks/canon-gate.py`) that
-  lets through canon and the packet and refuses the rest. The packet is the question and a reference to its lineage, which `tools/lineage.py`
+  lets through the packet and refuses the rest, canon on disk included. The packet is the question and a reference to its lineage, which `tools/lineage.py`
   writes out of the graph file and the selecting turn never transcribes. What is left to hold by
   reading is what no configuration decides. The question's wording is the one thing of the
   selecting turn's that enters the packet, held by the rule that the question is only the
-  question, and the prompt around it is read once more before it is sent. The gate's list of
-  canon is `.principal/canon` at the project's root: the root question alone until an answer
-  lands, and the one place that list lives. A checkout is not a context: the same files are on
+  question, and the prompt around it is read once more before it is sent. Nothing lists
+  canon on disk: it is what is under `canon/`, the agent reads none of it, and what its answer
+  collides with outside its lineage is the selecting run's to find. A checkout is not a context: the same files are on
   every branch, and what a turn may read is the gate's decision, not the branch's. And the guard holds only where the agent is used: a canon question answered in any
   other way — in this run, in a session that has read the notebook, by a turn composed by hand —
   is answered in a context nobody vouched for, whatever it was given.

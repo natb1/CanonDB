@@ -2,8 +2,9 @@
 
 From the notebook to the checkout: for each application, whether the path its
 link names is there. From the checkout to the notebook: every tracked file
-that no application's link, no manifest entry and no line of the canon list
-accounts for. Whether a present thing does what its application says, and
+that no application's link and no manifest entry accounts for, and that is
+not canon. Canon on disk is what is under ``canon/``; nothing lists it.
+Whether a present thing does what its application says, and
 whether an unaccounted file is an undocumented requirement or stale, is read
 and never computed; this only says where to look.
 
@@ -87,9 +88,12 @@ def orphans(files: Iterable[str], why: Dict[str, str]) -> List[str]:
     return [f for f in files if f not in why]
 
 
-def canon_list(text: str) -> List[str]:
-    return [l.strip() for l in text.splitlines()
-            if l.strip() and not l.strip().startswith("#")]
+#: where canon lives on disk; nothing lists it, the directory says it
+CANON_DIR = "canon"
+
+
+def canon_files(files: Iterable[str]) -> List[str]:
+    return [f for f in files if f.startswith(CANON_DIR + "/")]
 
 
 def repo_of(remote: str) -> Optional[str]:
