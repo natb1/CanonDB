@@ -28,8 +28,8 @@
         "tools/hypo/gaps.py",
         "tools/test_gaps.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/31",
-      "rounds": 4
+      "pull_request": "https://github.com/natb1/CanonDB/pull/32",
+      "rounds": 5
     },
     {
       "question": "context",
@@ -162,14 +162,12 @@
         "tools/project.py",
         "tools/render.py",
         "tools/lineage.py",
-        "tools/persist.py",
         "tools/hypo/__init__.py",
         "tools/test_model.py",
         "tools/test_spec.py",
         "tools/test_render.py",
         "tools/test_text.py",
         "tools/test_cli.py",
-        "tools/test_persist.py",
         "tools/fixtures/invalid-acyclic.json",
         "tools/fixtures/invalid-anchor-grain.json",
         "tools/fixtures/invalid-anchor-substring.json",

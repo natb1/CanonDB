@@ -36,8 +36,8 @@ grant, and no other turn holds one.
    edited, trimmed or reflowed. An answer the notebook cannot hold as it stands is said so and
    left, not reworded.
 4. **Every graph file is a cache**, and the packet is one more. Nothing is exported: the
-   document is read in place, as `/principal:dictate` says. The committed
-   file is the transcript, as step 8 says.
+   document is read in place, as `/principal:dictate` says. No file is
+   committed: the record is the notebook's, as step 8 says.
 
 ## Procedure
 
@@ -102,22 +102,20 @@ start, so a session that began before it existed cannot launch it and says so.
 - Against nothing: record it.
 
 **7 — Record.** The answer goes on the question's tab as a thesis, beside the principal's own:
-`assent: verbatim (AI)`, state `in thread`, provenance naming the model, this harness and
-session, and the canon commit the lineage was written at. The question's state becomes
+`assent: verbatim (AI)`, state `in thread`, provenance naming the model, this harness, the
+session by its id, and the canon commit the lineage was written at. The question's state becomes
 `in thread`. No term is drawn from it — the clauses that raise the next questions are the
 principal's to draw, in a dictation. Edit the graph file, then apply exactly as
 `/principal:dictate` steps 4 and 5 say: body, then links, then the tab patch, then the re-check
 with `check.py` and `verify.py`. `text-unquoted` and `text-unwrapped` may refuse the answer as
-it stands; an answer is verbatim, so the refusal is reported and the answer is kept in the
-transcript until the reader can hold it.
+it stands; an answer is verbatim, so the refusal is reported with the answer as the agent gave
+it, and nothing is recorded until the reader can hold it.
 
-**8 — Persist and commit.** `tools/persist.py` copies this session's log and the agent's under
-`transcripts/` at the project's root, which is what the provenance line cites. Commit the
-transcript on a branch of its own and open a pull request against `main`: the thread's
-branch, since there is one standing branch and every other is a pull request's. What the
-thread is on disk beyond that — the file the answer takes when it lands — is the `canon`
-question's to answer, and it is held; until then a thread is the notebook's record and the
-transcript, as the root's is.
+**8 — The session, and no transcript.** The session an answer came from is recorded by its
+id, in the provenance line step 7 writes, and that is the whole of what this run keeps of it:
+no log of this session or of the agent's is copied into the project, and nothing is committed.
+What the thread is on disk — the file the answer takes when it lands — is the `canon`
+question's to answer, and it is held; until then a thread is the notebook's record.
 
 **9 — Report.** The tab the answer is on, the disposition the answer awaits — assent, deadlock,
 gloss, suspend, retreat — and what step 6 found. Not the answer: it is in the notebook, where
