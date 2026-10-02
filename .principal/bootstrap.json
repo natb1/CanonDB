@@ -38,8 +38,8 @@
         "README.md",
         ".claude/settings.json"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/31",
-      "rounds": 2
+      "pull_request": "PENDING",
+      "rounds": 3
     },
     {
       "question": "dictate",
@@ -214,10 +214,21 @@
         "tools/fixtures/invalid-verbatim-collision.json",
         "tools/fixtures/invalid-vocabulary.json",
         "tools/fixtures/valid.json",
-        "tools/test_scope.py"
+        "tools/test_scope.py",
+        ".gitignore"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/30",
-      "rounds": 3
+      "pull_request": "PENDING",
+      "rounds": 4
+    },
+    {
+      "question": "recognition",
+      "application": "the merge rule",
+      "files": [
+        ".github/rulesets/main.json",
+        "tools/test_ruleset.py"
+      ],
+      "pull_request": "PENDING",
+      "rounds": 1
     }
   ]
 }

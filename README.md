@@ -48,7 +48,7 @@ nothing beyond the local setup. Two ways, either of which is enough:
   running the commands. Keep the file writable: Claude Code writes to it too.
 
 - **Project scope**, so every collaborator who trusts the folder gets it: the same block in the
-  project's `.claude/settings.json`, as this repository carries. Claude Code applies a
+  project's `.claude/settings.json`. Claude Code applies a
   repository's marketplaces only after the workspace trust dialog, so this route is for
   interactive terminal sessions; `-p` runs need the folder trusted beforehand, and cloud
   sessions never show the dialog and ignore the block.
