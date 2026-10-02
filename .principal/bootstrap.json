@@ -38,7 +38,7 @@
         "README.md",
         ".claude/settings.json"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/32",
       "rounds": 3
     },
     {
@@ -217,7 +217,7 @@
         "tools/test_scope.py",
         ".gitignore"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/32",
       "rounds": 4
     },
     {
@@ -227,7 +227,7 @@
         ".github/rulesets/main.json",
         "tools/test_ruleset.py"
       ],
-      "pull_request": "PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/32",
       "rounds": 1
     }
   ]
