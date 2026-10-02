@@ -48,9 +48,9 @@ class SpellingTest(unittest.TestCase):
 
     def test_table_note_list_and_headings(self):
         xml = ("<doc node='n' rev='3'><gone id='s.0' rev='1'/>"
-               "<paragraph id='s.1' heading='2'><text id='.2'>Inbox</text></paragraph>"
+               "<paragraph id='s.1' heading='2'><text id='.2'>Cited by</text></paragraph>"
                "<table id='.3'><row id='.4'><cell id='.5' header='true'><paragraph id='.6'><text id='.7'>question</text></paragraph></cell>"
-               "<cell id='.8' header='true'><paragraph id='.9'><text id='.10'>requires</text></paragraph></cell></row>"
+               "<cell id='.8' header='true'><paragraph id='.9'><text id='.10'>waits on</text></paragraph></cell></row>"
                "<row id='.11'><cell id='.12'><paragraph id='.13'><mention id='.14' ref='file/x' label='canon'/></paragraph></cell>"
                "<cell id='.15'><paragraph id='.16'><text id='.17'><link href='#s.99'>Put it</link></text><text id='.18'>, </text>"
                "<text id='.19'><link href='#s.98'>Write it</link></text></paragraph></cell></row></table>"
@@ -62,8 +62,8 @@ class SpellingTest(unittest.TestCase):
                "<paragraph id='.32'><text id='.33'>state: </text><dropdown id='.34' enum='e' index='1'>in thread</dropdown></paragraph>"
                "</doc>")
         self.assertEqual(page.markdown(xml), "\n\n".join([
-            "## Inbox",
-            "| question | requires |\n| --- | --- |\n| canon | [Put it](#s.99), [Write it](#s.98) |",
+            "## Cited by",
+            "| question | waits on |\n| --- | --- |\n| canon | [Put it](#s.99), [Write it](#s.98) |",
             "> Consider `x` too.",
             "**Support**",
             "- Polus concedes. Plato",

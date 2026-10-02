@@ -1,6 +1,7 @@
 """render then read is the identity on everything the markdown carries."""
 
 import os
+import re
 import unittest
 
 from hypo import model, read, render
@@ -21,7 +22,7 @@ def chip_ids(graph):
 #: ``party`` is derived from the tab order; a definition's tradition is on the page,
 #: as the chip that closes it, so it is compared like everything else.
 UNCARRIED = {
-    "Question": ("tab", "body", "party", "requires"),
+    "Question": ("tab", "body", "party"),
     "Graph": ("path", "questions", "artifact", "mode", "state_enum", "scope"),
 }
 
@@ -111,11 +112,30 @@ class DetailTest(unittest.TestCase):
         incoming = self.parse("attenuation")["incoming"]
         self.assertEqual([src for _, src in incoming], ["canon", "party"])
 
-    def test_requires_comes_back_as_the_rendered_title(self):
-        """The page shows titles; ids are resolved against the inbox items of
-        every tab, which is why assembling a graph needs all of them."""
-        self.assertEqual(self.parse("canon")["requires"],
-                         ["promulgate the root answer"])
+    def test_a_page_that_still_has_an_inbox_is_refused(self):
+        """Read on, the section would leave the page in silence at the next
+        body write. The page is brought up to the grammar first."""
+        body = render.body(self.graph, "canon")
+        stale = body.replace("## Terms", "## Inbox\n\n### put it where both can "
+                             "see it\n\npromulgate · the act · instances once · "
+                             "not done · id put-it\n\n## Terms", 1)
+        self.assertNotEqual(stale, body)
+        with self.assertRaises(read.ParseError) as caught:
+            read.parse_tab(stale, self.ids)
+        self.assertIn("the inbox was removed", str(caught.exception))
+        self.assertIn("Inbox section", str(caught.exception))
+
+    def test_a_question_line_that_still_says_requires_is_refused(self):
+        body = render.body(self.graph, "canon")
+        for tail in ("nothing", "put it where both can see it"):
+            stale = re.sub(r"(?m)^(question: .*)$", r"\1 · requires: " + tail,
+                           body, count=1)
+            self.assertNotEqual(stale, body)
+            with self.subTest(requires=tail), \
+                    self.assertRaises(read.ParseError) as caught:
+                read.parse_tab(stale, self.ids)
+            self.assertIn("the inbox was removed", str(caught.exception))
+            self.assertIn("requires:", str(caught.exception))
 
     def test_a_tab_that_is_not_a_tab_is_refused(self):
         with self.assertRaises(read.ParseError):
@@ -127,15 +147,6 @@ class DetailTest(unittest.TestCase):
         self.graph.get("canon").question = "What makes an entry *binding*"
         parsed = read.parse_tab(render.body(self.graph, "canon"), self.ids)
         self.assertEqual(parsed["question"], "What makes an entry *binding*")
-
-    def test_an_inbox_line_that_does_not_parse_is_refused(self):
-        """Skipped, the item would leave the graph in silence and the page on
-        the next body write — a prior overwritten without a word."""
-        body = render.body(self.graph, "ti-esti")
-        self.assertIn(" · not done · ", body)
-        with self.assertRaises(read.ParseError):
-            read.parse_tab(body.replace(" · not done · ", " · pending · ", 1),
-                           self.ids)
 
     def test_a_term_on_a_second_answer_comes_back_on_it(self):
         """The page files every term under one section; which answer raised

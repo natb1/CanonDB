@@ -43,12 +43,11 @@ RELATIONS = ("support", "divergence")
 
 #: Who answers a question: the AI, by a turn in a clean context, or the
 #: principal, from his own priors. A question the principal answers is not
-#: put. It is stored rather than read off `requires`, which only blocks: a
+#: put. It is stored rather than read off what the question waits on: a
 #: question with nothing left to wait on is not thereby his, and one he means
-#: to put later changes its answerer, not its requires. A tradition names
+#: to put later changes its answerer and nothing else. A tradition names
 #: none, because its party answers it.
 ANSWERERS = ("ai", "principal")
-INBOX_KINDS = ("promulgate", "provide", "dispose", "build")
 
 #: The party whose notebook a question belongs to, where none is named. A
 #: question whose party is someone else is a tradition: a root of its own,
@@ -56,9 +55,13 @@ INBOX_KINDS = ("promulgate", "provide", "dispose", "build")
 #: of the term at deadlock, which is a role in a bond and not a field here.
 AUTHOR = "author"
 
+#: The keys a question carried while a tab had an inbox. Task tracking lives
+#: outside the notebook, and a graph file that still holds one is refused.
+REMOVED = ("inbox", "requires")
+
 #: The section a note may be attached to, as the renderer names them.
-SECTIONS = ("thesis", "glossary", "inbox", "terms", "applications",
-            "cited by", "hinge")
+SECTIONS = ("thesis", "glossary", "terms", "applications", "cited by",
+            "hinge")
 
 NOTEBOOK = "notebook"
 CANON = "canon"
@@ -411,37 +414,6 @@ class Thesis:
 
 
 @dataclass
-class InboxItem:
-    """A human action a question requires before it can be asked.
-
-    ``id`` is what a question's ``requires`` names, and ``title`` is what a
-    reader is shown. They are separate because they change for different
-    reasons: the title is a summary and may be reworded at any time, while the
-    id is a handle and may not. Naming items by title is what let a rename
-    strand twenty-four requires entries pointing at nothing.
-    """
-
-    id: str
-    title: str
-    kind: str
-    what: str
-    obligation: str = ""
-    done: bool = False
-
-    @staticmethod
-    def read(r: _Reader, data: Any, where: str) -> "InboxItem":
-        d = r.obj(data, where)
-        return InboxItem(
-            id=r.text(d, "id", where),
-            title=r.text(d, "title", where),
-            kind=r.text(d, "kind", where),
-            what=r.text(d, "what", where),
-            obligation=r.text(d, "obligation", where, required=False),
-            done=r.flag(d, "done", where),
-        )
-
-
-@dataclass
 class Note:
     """Something a human wrote on a tab for their own use.
 
@@ -493,14 +465,12 @@ class Question:
     state: str
     kind: str
     pressure: int
-    requires: List[str] = field(default_factory=list)
     party: str = AUTHOR
     answerer: str = ""
     theses: List[Thesis] = field(default_factory=list)
     #: the glossary: the words this question brings in, through an answer or
     #: through the question half of its hinge
     definitions: List[Definition] = field(default_factory=list)
-    inbox: List[InboxItem] = field(default_factory=list)
     notes: List[Note] = field(default_factory=list)
     hinge: Optional[Hinge] = None
 
@@ -544,6 +514,13 @@ class Question:
         hinge = Hinge.read(r, d["hinge"], here + ".hinge") if isinstance(d.get("hinge"), dict) else None
         if "hinge" in d and d["hinge"] is not None and not isinstance(d["hinge"], dict):
             r.fail(here + ".hinge", "expected an object or null")
+        for key in REMOVED:
+            if key in d:
+                # nothing else refuses a key it does not know, so a stale
+                # file would be read as though it had never held one
+                r.fail("%s.%s" % (here, key), "the inbox was removed: a "
+                       "question carries no inbox items and requires none, "
+                       "so drop the key")
         return Question(
             id=qid,
             tab=r.text(d, "tab", here),
@@ -552,15 +529,12 @@ class Question:
             state=r.text(d, "state", here),
             kind=r.text(d, "kind", here),
             pressure=r.number(d, "pressure", here),
-            requires=r.strings(d, "requires", here),
             party=r.text(d, "party", here, required=False, default=AUTHOR) or AUTHOR,
             answerer=r.text(d, "answerer", here, required=False),
             theses=[Thesis.read(r, v, "%s.theses[%d]" % (here, i))
                     for i, v in enumerate(r.seq(d, "theses", here))],
             definitions=[Definition.read(r, v, "%s.definitions[%d]" % (here, i))
                          for i, v in enumerate(r.seq(d, "definitions", here))],
-            inbox=[InboxItem.read(r, v, "%s.inbox[%d]" % (here, i))
-                   for i, v in enumerate(r.seq(d, "inbox", here))],
             notes=[Note.read(r, v, "%s.notes[%d]" % (here, i))
                    for i, v in enumerate(r.seq(d, "notes", here))],
             hinge=hinge,

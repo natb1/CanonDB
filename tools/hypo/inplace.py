@@ -6,7 +6,9 @@ write mints new ids for every block on the tab and so retires every link into
 it, while the part itself touches two or three blocks. A glossary entry is a
 heading and a paragraph; a term is a heading, its anchors, and one item on the
 header list of the tab it raises; a paragraph of an answer is one block of
-words; a hinge's provenance is one line that an amendment lengthens. Each is
+words; an answer's headline is a heading, said again on every application
+that derives from it; a hinge's provenance is one line that an amendment
+lengthens. Each is
 written here as the operations of one prose ``update``, from a read of the page
 checked against the hash the document printed, so a dictation that changes
 only these reaches the page without a body write and without a relink.
@@ -32,6 +34,12 @@ would read back as a mark of its own. What comes out is the block as the page
 will spell it afterwards, chips as the renderer's tokens, and that is what is
 read back.
 
+A paragraph of an answer whose change does reach a mark is written a third
+way, when the caller asks for it: whole, as **markdown**, in the renderer's
+spelling of it. The caller then says where every link and every mark goes,
+so nothing is left for the document to place; the chips are not his to
+drop, and each one the block held must stand in what he wrote.
+
 Every whole-block ``replace`` and ``delete`` carries both guards the document
 asks for: the block's ``h`` and the ``rev`` of the read that showed it.
 
@@ -49,11 +57,17 @@ import re
 import xml.etree.ElementTree as ET
 from typing import Dict, List, NamedTuple, Optional, Sequence, Tuple
 
-from . import page, read, render, spec
+from . import appline, page, read, render, spec
 from .appline import Refused, block, blocks, rev
 
 #: the glyphs that open each part's heading, as the renderer writes them
-GLOSSARY, TERM = "≡", "▸"
+GLOSSARY, TERM, THESIS = "≡", "▸", "◆"
+
+#: the section an application line stands in, as the page heads it
+APPLICATIONS = "Applications"
+
+#: a link as the renderer's markdown spells one: its words and where it leads
+LINKED = re.compile(r"\[([^\]]*)\]\(([^)]*)\)")
 
 #: marks the page reads back as markup, and so must not arrive as letters
 MARKUP = re.compile(r"[*`\[\]]")
@@ -173,7 +187,7 @@ def reworded(runs: Sequence[Piece], new: str) -> List[Piece]:
             raise Refused("%s stands in or against the stretch the document rewrites "
                           "(from the first changed letter to the last), and would lose "
                           "its mark or carry it onto the new words; write the block as "
-                          "markdown instead" % what)
+                          "markdown instead (--markdown)" % what)
         at = end
     kept: List[Tuple[int, int, Piece]] = []
     at = 0
@@ -273,7 +287,7 @@ def _heading(source, bid: str, glyph: str) -> Tuple[ET.Element, str]:
 def _tab(*sections: Tuple[str, List[str]]) -> str:
     """The least tab the reader takes: its lineage, its id, and sections."""
     blocks_ = ["⌂ root", "# here", "question: held · case · pressure 0 · backlog 0 "
-               "· load 0 · requires: nothing"]
+               "· load 0"]
     for name, body in sections:
         blocks_.append("## %s" % name)
         blocks_.extend(body)
@@ -529,6 +543,133 @@ def thesis_replace(source, bid: str, new: str,
     if [t["text"] for t in got["theses"]] != [now]:
         raise Refused("the paragraph does not read back as written")
     return [_words_op(bid, node, rev(source), new)], old_md, new_md
+
+
+def thesis_markdown(source, bid: str, new: str, anchors: Sequence[str] = ()
+                    ) -> Tuple[List[dict], str, str, List[Tuple[str, str]],
+                               List[Tuple[str, str]]]:
+    """A paragraph of an answer written whole, as the markdown the renderer
+    would spell it: what ``thesis_replace`` sends a caller to when the change
+    reaches a link, a chip or a marked run.
+
+    ``new`` is the paragraph in that spelling — a link as ``[words](target)``,
+    a chip as its token. A chip is an edge and not the paragraph's to lose, so
+    every chip the block held must stand in ``new``, and none it did not hold
+    may. The links are the caller's to place, and the ones the new words drop
+    and add are returned, each as its words and its target, to be said.
+    """
+    node = _paragraph(source, bid)
+    if node.get("heading"):
+        raise Refused("block %s is a heading" % bid)
+    runs = pieces(node)
+    if any(p.chip is not None and p.chip.tag == "dropdown" for p in runs):
+        raise Refused("block %s carries a dropdown, which markdown cannot spell" % bid)
+    old_md, chips = spelled(runs)
+    new_md = new.strip()
+    if "\n" in new_md:
+        raise Refused("the words break a line, which the document would read "
+                      "as a second block")
+    written = read.CHIP.findall(new_md)
+    for key in chips:
+        if key not in written:
+            raise Refused("the chip to %s stood in the paragraph and is not in "
+                          "the new words; write it where it belongs, as "
+                          "<?claude block %s?>" % (key[2:], key))
+    for key in written:
+        if key not in chips:
+            raise Refused("the new words carry a chip the paragraph did not "
+                          "hold (%s); a new chip is a term's or a mention's to "
+                          "bring" % key)
+    _plain_block(read.PLACED_CHIP.sub("", new_md), "the answer's paragraph")
+    before = _reader_text(runs)
+    now = read.PLACED_CHIP.sub("", read.IN_PAGE_LINK.sub(r"\1", new_md)).strip()
+    for anchor in anchors:
+        if anchor not in now:
+            raise Refused("the anchor %s in the paragraph: %r"
+                          % ("no longer stands" if anchor in before
+                             else "does not stand", anchor[:60]))
+    got = _read_back(_tab(("Thesis", ["### ◆ answer",
+                                      "assent: none · held · provenance: thesis hinge",
+                                      new_md])))
+    if [t["text"] for t in got["theses"]] != [now]:
+        raise Refused("the paragraph does not read back as written")
+    had, has = LINKED.findall(old_md), LINKED.findall(new_md)
+    dropped = [link for link in had if link not in has]
+    added = [link for link in has if link not in had]
+    op = {"op": "replace", "target": {"kind": "blocks", "ids": [bid]},
+          "ifHash": node.get("h", ""), "ifRev": rev(source),
+          "with": _markdown(new_md, chips)}
+    return [op], old_md, new_md, dropped, added
+
+
+# -- an answer's headline ---------------------------------------------------
+
+def _whole(source) -> None:
+    """Refuse a read that is not the tab whole: a search, or a view since a
+    later rev, shows some blocks and says nothing of the rest."""
+    root = ET.fromstring(page.view_xml(source))
+    if root.get("sinceRev") != "0" or root.find(".//gap") is not None:
+        raise Refused("the read is not the whole tab, so an application that "
+                      "says the headline may stand outside it; a whole view is "
+                      "needed (sinceRev 0)")
+
+
+def _application_lines(source) -> List[str]:
+    """The id of every application's line on the tab: the block under each
+    ``⚙`` heading of the Applications section."""
+    out: List[str] = []
+    inside = headed = False
+    for bid, markdown in page.blocks(source):
+        if markdown.startswith("## "):
+            inside, headed = markdown[3:].strip() == APPLICATIONS, False
+        elif inside and markdown.startswith("### "):
+            headed = markdown.startswith("### %s " % appline.MARK)
+        elif inside and headed and not markdown.startswith(">"):
+            out.append(bid)
+            headed = False
+    return out
+
+
+def thesis_headline(source, heading: str, title: str) -> Tuple[List[dict], str, str]:
+    """An answer's headline re-worded, and with it every application line on
+    the tab that says it.
+
+    The headline stands once as the answer's heading and again on each
+    application that derives from the answer, which is how the reader tells
+    whose the application is: a heading re-worded alone would leave those
+    lines naming an answer the tab no longer has. So the read must be the tab
+    whole, and each line is rebuilt as ``application.py replace --thesis``
+    would write it.
+    """
+    title = title.strip()
+    if not title or "\n" in title or MARKUP.search(title):
+        raise Refused("an answer's headline is one line of plain letters: %r" % title)
+    _whole(source)
+    node, old = _heading(source, heading, THESIS)
+    for bid, other in blocks(source).items():
+        if (bid != heading and other.tag == "paragraph" and other.get("heading") == "3"
+                and page.inline(other) == "%s %s" % (THESIS, title)):
+            raise Refused("another answer on the tab is already headed %r, and an "
+                          "application could not say which it derives from" % title)
+    new = "%s %s" % (THESIS, title)
+    after, _ = spelled(reworded(pieces(node), new))
+    got = _read_back(_tab(("Thesis", ["### %s" % after,
+                                      "assent: none · held · provenance: thesis hinge",
+                                      "words"])))
+    if [t["title"] for t in got["theses"]] != [title]:
+        raise Refused("the headline does not read back as written: %r"
+                      % [t["title"] for t in got["theses"]])
+    ops = [_words_op(heading, node, rev(source), new)]
+    for bid in _application_lines(source):
+        fields = appline.read_line(source, bid)
+        if fields["thesis"] != old:
+            continue
+        fields["thesis"] = title
+        if appline.parse(appline.line(fields))["thesis"] != title:
+            raise Refused("the headline does not read back off an application "
+                          "line as written: %r" % title)
+        ops.append(appline.replace_op(fields))
+    return ops, "%s %s" % (THESIS, old), after
 
 
 # -- a hinge's provenance ---------------------------------------------------

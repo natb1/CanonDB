@@ -82,17 +82,21 @@ def _hashed(node):
     return node
 
 
-def view_of(graph, qid, rev=REV):
+def view_of(graph, qid, rev=REV, edit=None):
     """A tab's ``view`` read, as the document would print the rendered body:
-    and the markdown of each block, by id, to put writes back into."""
+    and the markdown of each block, by id, to put writes back into. ``edit``
+    is applied to each block's markdown first: the sidecar's links are on the
+    page and not in the body, so a test that wants one puts it there."""
     chips = render.mention_blocks(graph, qid)
     for key, chip in chips.items():
         if chip.get("type") == "mention":  # the label is the question it names
             chip["label"] = key[2:]
-    doc = ET.Element("doc", rev=str(rev))
+    doc = ET.Element("doc", rev=str(rev), sinceRev="0")
     new_id = _Ids()
     by_id = {}
     for markdown in render.body(graph, qid).strip().split(render.SEPARATOR):
+        if edit is not None:
+            markdown = edit(markdown)
         if all(line.startswith("- ") for line in markdown.splitlines()):
             node = ET.SubElement(doc, "list", id=new_id(), kind="bullet")
             for line in markdown.splitlines():
@@ -298,6 +302,200 @@ class ThesisTest(unittest.TestCase):
             inplace.thesis_replace(self.view, self.bid, new)
 
 
+class MarkdownTest(unittest.TestCase):
+    """A paragraph whose change reaches a link or a chip, written whole. The
+    link is the sidecar's — the term's anchor, linked to the term's heading —
+    and the chip is the one that stands after it."""
+
+    LINK = "#%s.40" % SESSION
+    LINKED = "[held down, never removed.](%s)" % LINK
+    CHIP = "<?claude block m_attenuation?>"
+
+    def setUp(self):
+        self.graph = load()
+        self.view, self.by_id = view_of(
+            self.graph, "canon",
+            edit=lambda md: md.replace("held down, never removed.", self.LINKED))
+        self.bid = block_of(self.by_id, "An entry is a file")
+        self.old = self.by_id[self.bid]
+
+    def text(self):
+        return self.graph.get("canon").theses[0].text
+
+    def test_the_view_holds_the_link_and_the_chip(self):
+        self.assertIn(self.LINKED + " " + self.CHIP, self.old)
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.thesis_replace(self.view, self.bid, inplace.letters(inplace.pieces(
+                appline.block(self.view, self.bid))).replace("held down, never", "never"))
+        self.assertIn("--markdown", str(caught.exception))
+
+    def test_a_linked_word_removed_reads_back_as_the_graph_holding_it(self):
+        new = self.old.replace("[held down, never removed.]", "[never removed.]")
+        ops, old, after, dropped, added = inplace.thesis_markdown(self.view, self.bid, new)
+        # the term's own anchor line is another block, and another write
+        got = parsed(rewrite(self.by_id, self.bid, new=after), self.graph)
+        self.assertEqual(got["theses"][0]["text"], self.text().replace(
+            "held down, never removed.", "never removed."))
+        self.assertEqual(old, self.old)
+        self.assertEqual(dropped, [("held down, never removed.", self.LINK)])
+        self.assertEqual(added, [("never removed.", self.LINK)])
+        self.assertEqual((ops[0]["op"], ops[0]["target"]["ids"]), ("replace", [self.bid]))
+        self.assertEqual((ops[0]["ifHash"], ops[0]["ifRev"]),
+                         (appline.block(self.view, self.bid).get("h"), REV))
+        self.assertEqual(ops[0]["with"]["as"], "markdown")
+        self.assertEqual(ops[0]["with"]["from"], {"kind": "inline", "content": new})
+
+    def test_a_link_dropped_whole_is_said(self):
+        new = self.old.replace(self.LINKED, "held down, never removed.")
+        _, _, _, dropped, added = inplace.thesis_markdown(self.view, self.bid, new)
+        self.assertEqual((dropped, added),
+                         ([("held down, never removed.", self.LINK)], []))
+
+    def test_a_link_added_is_said_and_the_words_read_back_without_it(self):
+        there = "#%s.77" % SESSION
+        new = self.old.replace("a file in the repository",
+                               "[a file](%s) in the repository" % there)
+        ops, _, after, dropped, added = inplace.thesis_markdown(
+            self.view, self.bid, new,
+            ["Authority to act on an unassented entry is held down, never removed."])
+        self.assertEqual((dropped, added), ([], [("a file", there)]))
+        self.assertEqual(parsed(rewrite(self.by_id, self.bid, new=after), self.graph),
+                         parsed(render.body(self.graph, "canon"), self.graph))
+
+    def test_a_chip_kept_is_carried_in_the_blocks_map(self):
+        new = self.old.replace("not a message in a thread", "never a chat message")
+        ops, _, after, _, _ = inplace.thesis_markdown(self.view, self.bid, new)
+        self.assertIn(self.CHIP, ops[0]["with"]["from"]["content"])
+        self.assertEqual(ops[0]["with"]["blocks"],
+                         {"m_attenuation": {"type": "mention", "ref": "file/tab-04"}})
+
+    def test_a_chip_dropped_is_refused_by_name(self):
+        new = self.old.replace(" " + self.CHIP, "")
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.thesis_markdown(self.view, self.bid, new)
+        self.assertIn("attenuation", str(caught.exception))
+
+    def test_a_chip_the_paragraph_never_held_is_refused(self):
+        with self.assertRaises(appline.Refused):
+            inplace.thesis_markdown(self.view, self.bid,
+                                    self.old + " <?claude block m_party?>")
+
+    def test_an_anchor_that_no_longer_stands_is_refused(self):
+        new = self.old.replace("never removed", "sometimes removed")
+        with self.assertRaises(appline.Refused):
+            inplace.thesis_markdown(
+                self.view, self.bid, new,
+                ["Authority to act on an unassented entry is held down, never removed."])
+
+    def test_words_the_reader_would_take_for_something_else_are_refused(self):
+        for bad in ("> " + self.old, self.old + "\n\nand a second block",
+                    "assent: " + self.old):
+            with self.subTest(text=bad[:12]), self.assertRaises(appline.Refused):
+                inplace.thesis_markdown(self.view, self.bid, bad)
+
+    def test_a_read_that_is_not_the_page_is_refused(self):
+        stale = self.view.replace("An entry is a file", "An entry is one file", 1)
+        with self.assertRaises(appline.Refused):
+            inplace.thesis_markdown(stale, self.bid, self.old)
+
+
+class HeadlineTest(unittest.TestCase):
+    """The headline stands on the answer's heading and again on every
+    application that derives from the answer; all of them move together."""
+
+    OLD = "Each side owes the other what only it can give."
+    NEW = "Each side owes what only it can give"
+
+    def setUp(self):
+        self.graph = load()
+        thesis = self.graph.get("ti-esti").theses[0]
+        thesis.applications.append(model.Application(
+            name="the second entry", what="the file that followed it",
+            link="[entries/second.md](https://example.org/second.md)",
+            standing="postulate", note="kept beside `opening.md`"))
+        self.view, self.by_id = view_of(self.graph, "ti-esti")
+        self.heading = block_of(self.by_id, "### ◆ ")
+        self.lines = [bid for bid, md in self.by_id.items() if " · ◆ " in md]
+
+    def written(self, ops):
+        """The page after the ops: each block as the op spells it."""
+        by_id = dict(self.by_id)
+        for op in ops:
+            bid = op["target"]["ids"][0]
+            content = op["with"]["from"]["content"]
+            by_id[bid] = "### " + content if bid == self.heading else content
+        return render.SEPARATOR.join(by_id.values()) + "\n"
+
+    def test_the_heading_and_both_applications_read_back_as_the_graph(self):
+        self.assertEqual(len(self.lines), 2)
+        ops, old, new = inplace.thesis_headline(self.view, self.heading, self.NEW)
+        self.assertEqual((old, new), ("◆ " + self.OLD, "◆ " + self.NEW))
+        self.assertEqual([o["target"]["ids"][0] for o in ops],
+                         [self.heading] + self.lines)
+        self.assertEqual(ops[0]["with"], {"as": "text", "from": {
+            "kind": "inline", "content": "◆ " + self.NEW}})
+        self.assertTrue(all(o["with"]["as"] == "markdown" for o in ops[1:]))
+        self.assertTrue(all(o["ifRev"] == REV and o["ifHash"] for o in ops))
+        self.graph.get("ti-esti").theses[0].title = self.NEW
+        self.assertEqual(parsed(self.written(ops), self.graph),
+                         parsed(render.body(self.graph, "ti-esti"), self.graph))
+
+    def test_only_the_headline_moves_on_an_application_line(self):
+        ops, _, _ = inplace.thesis_headline(self.view, self.heading, self.NEW)
+        for op, bid in zip(ops[1:], self.lines):
+            self.assertEqual(op["with"]["from"]["content"],
+                             self.by_id[bid].replace(self.OLD, self.NEW))
+        self.assertIn("[entries/second.md](https://example.org/second.md)",
+                      ops[2]["with"]["from"]["content"])
+        self.assertIn("`opening.md`", ops[2]["with"]["from"]["content"])
+
+    def test_an_application_of_another_answer_is_left(self):
+        q = self.graph.get("ti-esti")
+        q.theses.append(model.Thesis(
+            title="The principal's own prior", text="He holds otherwise.",
+            assent="none", state="held",
+            applications=[model.Application(name="his note", what="a note of his",
+                                            link="notes/own.md", standing="postulate")]))
+        view, by_id = view_of(self.graph, "ti-esti")
+        ops, _, _ = inplace.thesis_headline(view, block_of(by_id, "### ◆ Each"), self.NEW)
+        self.assertEqual(len(ops), 3)
+        with self.assertRaises(appline.Refused):
+            inplace.thesis_headline(view, block_of(by_id, "### ◆ Each"),
+                                    "The principal's own prior")
+
+    def test_a_heading_that_is_not_an_answer_s_is_refused(self):
+        for starts in ("### ▸ ", "### ⚙ ", "## Thesis", "A relationship that"):
+            with self.subTest(block=starts), self.assertRaises(appline.Refused):
+                inplace.thesis_headline(self.view, block_of(self.by_id, starts), self.NEW)
+
+    def test_a_headline_that_is_not_plain_letters_is_refused(self):
+        for bad in ("Each side *owes*", "Each `side`", "[Each](#x) side", "one\ntwo", " "):
+            with self.subTest(title=bad), self.assertRaises(appline.Refused):
+                inplace.thesis_headline(self.view, self.heading, bad)
+
+    def test_a_headline_an_application_line_would_not_give_back_is_refused(self):
+        with self.assertRaises(appline.Refused):
+            inplace.thesis_headline(self.view, self.heading, "What is owed · and by whom")
+
+    def test_a_partial_read_is_refused(self):
+        """A search, or a view since a later rev, may not hold every
+        application that says the headline."""
+        search = self.view.replace(" sinceRev=\"0\"", "", 1)
+        since = self.view.replace("sinceRev=\"0\"", "sinceRev=\"5\"", 1)
+        folded = self.view.replace("</doc>", "<gap blocks=\"3\" /></doc>")
+        for read_ in (search, since, folded):
+            self.assertNotEqual(read_, self.view)
+            with self.subTest(read=read_[:40]), self.assertRaises(appline.Refused) as caught:
+                inplace.thesis_headline(read_, self.heading, self.NEW)
+            self.assertIn("whole view", str(caught.exception))
+
+    def test_a_read_that_is_not_the_page_is_refused(self):
+        stale = self.view.replace("the first file both", "the one file both", 1)
+        self.assertNotEqual(stale, self.view)
+        with self.assertRaises(appline.Refused):
+            inplace.thesis_headline(stale, self.heading, self.NEW)
+
+
 class SpanTest(unittest.TestCase):
     """The document rewrites one stretch, first changed letter to last, and
     the stretch takes the marks it covered; a link beside new words once came
@@ -360,6 +558,36 @@ class CliTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(json.loads(done.stdout)["ops"][0]["ifRev"], REV)
         self.assertIn("new: The mark that binds.", done.stderr)
+
+    def test_a_headline_prints_an_op_per_block_and_the_words(self):
+        graph = load()
+        view, by_id = view_of(graph, "ti-esti")
+        done = subprocess.run(
+            [sys.executable, os.path.join(HERE, "inplace.py"), "thesis", "headline", "-",
+             "--heading", block_of(by_id, "### ◆ "), "--title", "What each side owes"],
+            input=view, capture_output=True, text=True)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(len(json.loads(done.stdout)["ops"]), 2)
+        self.assertIn("old: ◆ Each side owes the other what only it can give.", done.stderr)
+        self.assertIn("new: ◆ What each side owes", done.stderr)
+
+    def test_a_markdown_replace_says_what_it_drops_and_adds(self):
+        graph = load()
+        view, by_id = view_of(
+            graph, "canon",
+            edit=lambda md: md.replace("An entry is a file", "An entry is [a file](#s.5)"))
+        bid = block_of(by_id, "An entry is ")
+        new = by_id[bid].replace("[a file](#s.5)", "a file").replace(
+            "the repository", "[the repository](#s.6)")
+        done = subprocess.run(
+            [sys.executable, os.path.join(HERE, "inplace.py"), "thesis", "replace", "-",
+             "--block", bid, "--text", new, "--markdown"],
+            input=view, capture_output=True, text=True)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(json.loads(done.stdout)["ops"][0]["with"]["as"], "markdown")
+        self.assertIn("dropped: the link on 'a file' to #s.5", done.stderr)
+        self.assertIn("owed: ", done.stderr)
+        self.assertIn("'the repository' lands on #s.6", done.stderr)
 
     def test_a_refusal_exits_one(self):
         done = subprocess.run(

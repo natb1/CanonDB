@@ -13,10 +13,7 @@ ancestors and nothing else, and the graph file says so: it records the scope,
 and `check.py` holds over it every rule that does not need a tab outside it.
 The ancestors are supplied, never assumed — a tab whose header list names a
 raiser whose tab is not in the directory is refused, since every rule that
-reads over the lineage would read over a gap. A `requires` title that names no
-inbox item among the tabs read is kept as the title, as it is over the whole
-notebook: the item is on the question or an ancestor, both of which are here,
-so `requires-exist` is right to say so.
+reads over the lineage would read over a gap.
 
 The enum the states point at is in neither the document read nor the exports,
 so `--state-enum ID` names it, and a rebuild over an existing graph file keeps
@@ -81,13 +78,6 @@ def assemble(manifest: dict, bodies: dict, scope: Sequence[str] = ()) -> dict:
         q["body"] = files.get(tab_id, {}).get("content", {}).get("id", "")
         q["party"] = party.get(tab_id, model.AUTHOR)
         questions.append(q)
-
-    # requires is rendered as the title a reader sees; the id it names is found
-    # among the inbox items of every tab, which is why this needs all of them
-    by_title = {item["title"]: item["id"]
-                for q in questions for item in q.get("inbox", [])}
-    for q in questions:
-        q["requires"] = [by_title.get(want, want) for want in q.get("requires", [])]
 
     graph = {"artifact": manifest.get("frame", {}).get("artifactUrl", "")}
     graph["questions"] = questions

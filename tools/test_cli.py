@@ -134,10 +134,9 @@ class RenderCliTest(unittest.TestCase):
         done = run("render.py", fixture("valid"), "ti-esti", "--links")
         head, _, tail = done.stdout.partition("=== links ===")
         self.assertIn("# ti-esti", head)
-        # two term anchors, one definition, the answer's provenance, two inbox
-        # table term titles and the item each of those rows waits on; the root
-        # waits on nothing, so its own question line carries no link
-        self.assertEqual(len(json.loads(tail)["links"]), 8)
+        # two term anchors, one definition and the answer's provenance; the
+        # root has no parent, so no incoming anchor opens it
+        self.assertEqual(len(json.loads(tail)["links"]), 4)
 
     def test_it_refuses_on_an_error(self):
         done = run("render.py", fixture("invalid-anchor-substring"), "ti-esti")

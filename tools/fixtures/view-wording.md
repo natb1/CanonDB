@@ -6,7 +6,7 @@
 
 *How should a question be worded so that it does not lead the answer?*
 
-question: held · definitional · answerer: principal · pressure 0 · backlog 0 · load 0 · requires: nothing
+question: held · definitional · answerer: principal · pressure 0 · backlog 0 · load 0
 
 ## Thesis
 

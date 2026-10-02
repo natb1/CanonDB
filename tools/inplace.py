@@ -9,7 +9,8 @@
     inplace.py term delete READ --heading ID --block ID [--block ID ...]
     inplace.py incoming insert READ --list ID --anchor A --from Q --from-tab TAB [--after-item ID]
     inplace.py incoming delete READ --list ID --item ID
-    inplace.py thesis replace READ --block ID --text T [--anchor A ...]
+    inplace.py thesis replace READ --block ID --text T [--anchor A ...] [--markdown]
+    inplace.py thesis headline READ --heading ID --title T
     inplace.py hinge amend READ --block ID --date YYYY-MM-DD --by WHO --from WHAT
 
 READ is a saved ``search`` or ``view`` result of the tab (the tool's JSON, or
@@ -19,6 +20,14 @@ write leaves owed. Refuses (exit 1) a read whose block does not hash to the
 ``h`` the document printed, a part that would not read back as written, a
 re-wording that cuts a chip or a marked run, and a term whose anchor is not a
 verbatim run of the answer read with it. An application is ``application.py``'s.
+
+``thesis replace --markdown`` is for the re-wording that does reach a link, a
+chip or a marked run: ``--text`` is then the whole paragraph as the renderer
+spells it — a link as ``[words](#block)`` or ``[words](url)``, bold, italic
+and code as markdown, a chip as ``<?claude block KEY?>`` — and every chip the
+paragraph held must stand in it. ``thesis headline`` re-words an answer's
+``◆`` heading and the same words on every application line of the tab, so
+READ must be the tab's whole view.
 """
 
 from __future__ import annotations
@@ -100,6 +109,13 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--text", required=True)
     p.add_argument("--anchor", action="append", default=[],
                    help="an anchor of a term on this answer, which must still stand")
+    p.add_argument("--markdown", action="store_true",
+                   help="--text is the whole paragraph as markdown, links and "
+                        "chips spelled out")
+    p = thesis.add_parser("headline")
+    p.add_argument("read")
+    p.add_argument("--heading", required=True)
+    p.add_argument("--title", required=True)
 
     hinge = parts.add_parser("hinge").add_subparsers(dest="mode", required=True)
     p = hinge.add_parser("amend")
@@ -154,6 +170,22 @@ def _ops(args) -> list:
         return ops
     if part == "incoming" and mode == "delete":
         return inplace.incoming_delete(_source(args.read), args.header, args.item)
+    if part == "thesis" and mode == "replace" and args.markdown:
+        ops, old, new, dropped, added = inplace.thesis_markdown(
+            _source(args.read), args.block, args.text, args.anchor)
+        say("old: %s\nnew: %s" % (old, new))
+        for words, target in dropped:
+            say("dropped: the link on %r to %s" % (words, target))
+        for words, target in added:
+            say("owed: a read of the block, to see the new link on %r lands "
+                "on %s" % (words, target))
+        return ops
+    if part == "thesis" and mode == "headline":
+        ops, old, new = inplace.thesis_headline(_source(args.read), args.heading,
+                                                args.title)
+        say("old: %s\nnew: %s" % (old, new))
+        say("applications: %d line(s) rewritten with it" % (len(ops) - 1))
+        return ops
     if part == "thesis" and mode == "replace":
         ops, old, new = inplace.thesis_replace(_source(args.read), args.block,
                                                args.text, args.anchor)

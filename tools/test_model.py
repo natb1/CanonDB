@@ -32,7 +32,6 @@ class LoadTest(unittest.TestCase):
         self.assertIsInstance(root.theses[0].terms[0], model.Term)
         self.assertIsInstance(root.definitions[0], model.Definition)
         self.assertIsInstance(root.theses[0].traditions[0], model.TraditionEdge)
-        self.assertIsInstance(root.inbox[0], model.InboxItem)
         self.assertIsInstance(list(root.applications())[0][1], model.Application)
         self.assertIsInstance(root.hinge, model.Hinge)
 
@@ -119,10 +118,22 @@ class ShapeTest(unittest.TestCase):
             {"id": "a", "tab": "t", "body": "b", "question": "?",
              "state": "held", "kind": "case", "pressure": 0}]})
         q = graph.get("a")
-        self.assertEqual((q.requires, q.theses, q.inbox), ([], [], []))
+        self.assertEqual((q.theses, q.definitions, q.notes), ([], [], []))
         self.assertEqual(list(q.applications()), [])
         self.assertFalse(q.tradition)
         self.assertIsNone(q.hinge)
+
+    def test_a_graph_file_that_still_holds_an_inbox_is_refused(self):
+        """Nothing else refuses a key it does not know, so a file written
+        while a tab had an inbox would be read as though it never held one."""
+        q = {"id": "a", "tab": "t", "body": "b", "question": "?",
+             "state": "held", "kind": "case", "pressure": 0}
+        for key, value in (("inbox", []), ("requires", ["an-item"])):
+            with self.subTest(key=key), self.assertRaises(model.ShapeError) as caught:
+                self._load({"questions": [dict(q, **{key: value})]})
+            problems = " ".join(caught.exception.problems)
+            self.assertIn("(a).%s" % key, problems)
+            self.assertIn("the inbox was removed", problems)
 
     def test_invalid_json_is_a_shape_error(self):
         handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)

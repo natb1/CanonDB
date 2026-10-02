@@ -20,10 +20,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURES = os.path.join(HERE, "fixtures")
 
 #: the rules that need a tab outside a partial graph to say anything, and so
-#: say nothing over one: what requires an item, and what a term leads to,
-#: stand below
-QUIET = {"inbox-placement", "inbox-required", "inbox-history", "term-target",
-         "tradition-target"}
+#: say nothing over one: what a term or a tradition edge leads to stands
+#: below, or beside
+QUIET = {"term-target", "tradition-target"}
 
 
 def run(script, *args):

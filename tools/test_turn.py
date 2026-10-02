@@ -39,12 +39,6 @@ def land(data, qid):
         thesis["state"] = "landed"
 
 
-def discharge(data):
-    for q in data["questions"]:
-        for item in q.get("inbox", []):
-            item["done"] = True
-
-
 def ask_the_ai(data, qid):
     """The fixture's attenuation is the principal's; these tests put it."""
     by_id(data, qid)["answerer"] = "ai"
@@ -52,7 +46,6 @@ def ask_the_ai(data, qid):
 
 def ready(data):
     """Everything above attenuation landed, and attenuation the AI's to put."""
-    discharge(data)
     ask_the_ai(data, "attenuation")
     land(data, "ti-esti")
     land(data, "canon")
@@ -98,14 +91,8 @@ class FrontierTest(unittest.TestCase):
 
 
 class WaitsTest(unittest.TestCase):
-    def test_an_undone_inbox_item_is_owed(self):
-        graph = load("valid")
-        owed = " ".join(turn.waits(graph, "canon"))
-        self.assertIn("not done", owed)
-
     def test_an_answer_still_held_above_is_owed(self):
         def held_above(data):
-            discharge(data)
             ask_the_ai(data, "attenuation")
         graph = rewrite("valid", held_above)
         self.assertTrue(any("above it" in line for line in turn.waits(graph, "attenuation")))
@@ -115,7 +102,7 @@ class WaitsTest(unittest.TestCase):
         self.assertEqual(turn.waits(graph, "attenuation"), [])
 
     def test_a_question_the_principal_answers_is_not_put(self):
-        graph = rewrite("valid", discharge)
+        graph = load("valid")
         self.assertIn("the principal answers it, so it is never put",
                       turn.waits(graph, "attenuation"))
 
@@ -128,7 +115,6 @@ class WaitsTest(unittest.TestCase):
         # make party the principal's: attenuation then waits on nothing by way
         # of it, however its answer stands
         def principal_s(data):
-            discharge(data)
             ask_the_ai(data, "attenuation")
             land(data, "ti-esti")
             land(data, "canon")
@@ -147,7 +133,6 @@ class SelectTest(unittest.TestCase):
 
     def test_the_heaviest_ready_question(self):
         def root_landed(data):
-            discharge(data)
             land(data, "ti-esti")
         graph = rewrite("valid", root_landed)
         chosen = turn.select(graph)
@@ -172,7 +157,6 @@ class LineageTest(unittest.TestCase):
 
     def test_it_refuses_a_gap(self):
         def held_above(data):
-            discharge(data)
             ask_the_ai(data, "attenuation")
         with self.assertRaises(ValueError) as caught:
             turn.lineage(rewrite("valid", held_above), "attenuation")

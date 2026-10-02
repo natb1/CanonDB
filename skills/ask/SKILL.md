@@ -48,17 +48,16 @@ $SCRATCH/graph.json`, as `/principal:dictate` step 1 says. Run
 is not one anybody vouched for.
 
 **2 — Select.** `tools/next.py $SCRATCH/graph.json` prints the question the frontier puts
-first: the AI's, not yet put, every inbox item it requires done, and every question the AI
-answers above it carrying an answer that has landed. `--all` lists every question not yet put
+first: the AI's, not yet put, and every question the AI answers above it carrying an answer
+that has landed. `--all` lists every question not yet put
 with what each still waits on, and `--thread <ids>` names the open thread being continued, so
 that an answer earlier on it is carried without having landed. Which thread a question is on is
 not recorded anywhere, so that argument is yours to give and yours to get right: a question put
 with another open thread's answer in its lineage is what the rule against dependent threads
 forbids.
 
-When nothing can be put, stop and say what the frontier waits on. What it waits on is either an
-inbox item, which is the principal's action and his to take up where he keeps his work, or an
-answer above that has not landed, which is his merge. Neither is this run's to supply.
+When nothing can be put, stop and say what the frontier waits on. What it waits on is an
+answer above that has not landed, which is his merge and not this run's to supply.
 
 **3 — Test the question before it is put.** The wording is the notebook's and is not rewritten
 here, but it is read against the drafting rules of `/principal:dictate` before it goes: it

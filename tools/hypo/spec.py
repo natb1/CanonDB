@@ -8,9 +8,8 @@ runner turns them into Findings.
 A graph may be **partial**: the tabs a dictation touches and their ancestors,
 read for a check over those alone (``Graph.scope``). Every rule runs over it.
 What a rule does not report there is only what could be owed to a tab outside
-it — a term leading to a question below, whose tab was not read; an inbox item
-that some question below may require. Nothing that reads up the lineage is
-spared, because the ancestors are in the graph or the graph is refused:
+it — a term leading to a question below, whose tab was not read. Nothing
+that reads up the lineage is spared, because the ancestors are in the graph or the graph is refused:
 ``scope-closed`` says where one is missing. What a partial check cannot do is
 see a fault that stands wholly outside it, or between a tab in it and one out
 of it — a word defined twice, an id used twice — and a change that could
@@ -24,8 +23,8 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple
 
 from . import project, text
-from .model import (ANSWERERS, CANON, Graph, INBOX_KINDS, KINDS, MODES,
-                    RELATIONS, SECTIONS, STANDINGS, STATES)
+from .model import (ANSWERERS, CANON, Graph, KINDS, MODES, RELATIONS,
+                    SECTIONS, STANDINGS, STATES)
 
 ERROR = "ERROR"
 WARN = "WARN"
@@ -339,9 +338,8 @@ def acyclic(graph: Graph) -> Yield:
 
 
 @check("unique-ids",
-       "question ids, tab ids, body ids and inbox item ids are each unique")
+       "question ids, tab ids and body ids are each unique")
 def unique_ids(graph: Graph) -> Yield:
-    inbox = [(item.id, q.id) for q in graph.questions for item in q.inbox]
     # the chip key drops every character an id may carry and a key may not, so
     # two ids can collide on one key — and a chip is how a rendered tab names
     # another, so the reader could not tell which of them was meant. Asked of
@@ -352,8 +350,7 @@ def unique_ids(graph: Graph) -> Yield:
     for label, values in (("question id", [(q.id, q.id) for q in graph.questions]),
                           ("chip key", chips),
                           ("tab id", [(q.tab, q.id) for q in graph.questions]),
-                          ("body id", [(q.body, q.id) for q in graph.questions]),
-                          ("inbox item id", inbox)):
+                          ("body id", [(q.body, q.id) for q in graph.questions])):
         seen: Dict[str, List[str]] = {}
         for value, owner in values:
             seen.setdefault(value, []).append(owner)
@@ -437,7 +434,6 @@ def headline_not_identifier(graph: Graph) -> Yield:
         titled = [("thesis", t.title) for t in q.theses]
         titled += [("term", t.title) for t in q.terms()]
         titled += [("mention", m.title) for m in q.mentions()]
-        titled += [("inbox item", i.title) for i in q.inbox]
         titled += [("application", a.name) for _, a in q.applications()]
         for what, title in titled:
             bare = (title or "").strip()
@@ -449,13 +445,14 @@ def headline_not_identifier(graph: Graph) -> Yield:
 
 
 @check("verbatim-collision",
-       "no answer in the AI's words uses a word the notebook defines elsewhere", WARN)
+       "no landed answer uses a word the notebook defines elsewhere", WARN)
 def verbatim_collision(graph: Graph) -> Yield:
-    """The AI's words are canon's and cannot change; the notebook's defined
-    words can. So where an answer given in the AI's words — one in thread or
-    landed — uses, in any regular form, a word the notebook defines on another
-    question, the finding goes where the word is defined, since that is the
-    one that can give way. `priority` and `title` went that way once the
+    """An answer recorded in canon cannot change; the notebook's defined
+    words can. So where a landed answer uses, in any regular form, a word the
+    notebook defines on another question, the finding goes where the word is
+    defined, since that is the one that can give way. An answer held or in
+    thread is in the notebook only, and is reworded like any other part:
+    ``reach`` judges it where it stands. `priority` and `title` went that way once the
     root's answer turned out to say "priorities" and "titled".
 
     Only the word is decided here. Whether the answer uses it in the defined
@@ -463,7 +460,7 @@ def verbatim_collision(graph: Graph) -> Yield:
     definition fixed its sense against that very answer.
     """
     verbatim = [(q, thesis) for q in graph.questions for thesis in q.theses
-                if thesis.state in STATES[1:]]
+                if thesis.state == STATES[-1]]
     for owner in graph.questions:
         for definition in owner.definitions:
             for q, thesis in verbatim:
@@ -473,8 +470,8 @@ def verbatim_collision(graph: Graph) -> Yield:
                 used = [form for form in text.forms(definition.word)
                         if text.occurrences(body, form, True)]
                 if used:
-                    yield owner.id, ("%r is defined here, and the answer on %s, in "
-                                     "the AI's words, uses it as %s; those words "
+                    yield owner.id, ("%r is defined here, and the answer on %s, "
+                                     "landed in canon, uses it as %s; those words "
                                      "cannot change, so this one should"
                                      % (definition.word, q.id,
                                         ", ".join(repr(u) for u in used)))
@@ -524,109 +521,7 @@ def definition_anchorable(graph: Graph) -> Yield:
                              % definition.word)
 
 
-@check("requires-exist",
-       "every requires entry names an inbox item on that question or an ancestor")
-def requires_exist(graph: Graph) -> Yield:
-    by_id = graph.by_id()
-    for q in graph.questions:
-        if not q.requires:
-            continue
-        scope = {q.id} | project.ancestors(graph, q.id)
-        known = {item.id for qid in scope if qid in by_id for item in by_id[qid].inbox}
-        for want in q.requires:
-            if want not in known:
-                yield q.id, ("requires %r, which no inbox item on it or on an "
-                             "ancestor defines" % want)
-
-
-@check("requires-discharged",
-       "a question that has been put waits on nothing that is not done")
-def requires_discharged(graph: Graph) -> Yield:
-    """``requires`` names what must be done before a question can be put, so a
-    question that has been put waited on nothing still undone.
-
-    A question has been put when a thread is open on it, or when an answer to
-    it stands in one or has landed. Landing alone does not say so: a question
-    lands when it reaches main, and the root reached main as the seed it was
-    asked from, before anyone had put it. The root once carried its own
-    promulgation here, which is the act that follows its answer rather than
-    one that precedes it. An entry naming no item at all is
-    `requires-exist`'s to report, not this one's.
-    """
-    done = {item.id: item.done for q in graph.questions for item in q.inbox}
-    for q in graph.questions:
-        if not _put(q):
-            continue
-        pending = sorted(w for w in q.requires if w in done and not done[w])
-        if pending:
-            yield q.id, ("has been put but still waits on %s, which %s not done"
-                         % (", ".join(repr(p) for p in pending),
-                            "is" if len(pending) == 1 else "are"))
-
-
 _put = project.put
-
-
-@check("inbox-placement",
-       "an inbox item sits on the most descendant common ancestor of its requirers",
-       WARN)
-def inbox_placement(graph: Graph) -> Yield:
-    if graph.partial:
-        return  # its requirers are below it, and below is not in a partial graph
-    dist = project.distances(graph)
-    requirers: Dict[str, List[str]] = {}
-    for q in graph.questions:
-        for want in q.requires:
-            requirers.setdefault(want, []).append(q.id)
-    for q in graph.questions:
-        for item in q.inbox:
-            asked = sorted(set(requirers.get(item.id, [])))
-            if not asked:
-                continue
-            common: Optional[Set[str]] = None
-            for qid in asked:
-                scope = {qid} | project.ancestors(graph, qid)
-                common = scope if common is None else (common & scope)
-            common = common or set()
-            if not common:
-                yield q.id, ("inbox item %r is required by %s, which share no ancestor"
-                             % (item.id, ", ".join(asked)))
-                continue
-            def depth(i: str) -> float:
-                d = dist.get(i, project.INF)
-                return -d if d != project.INF else 1.0  # unreachable sorts last
-
-            home = sorted(common, key=lambda i: (depth(i), i))[0]
-            if home != q.id:
-                yield q.id, ("inbox item %r belongs on %s, the most descendant "
-                             "question that is an ancestor of every question "
-                             "requiring it (%s)" % (item.id, home, ", ".join(asked)))
-
-
-@check("inbox-required",
-       "an inbox item that is not done is required by at least one question")
-def inbox_required(graph: Graph) -> Yield:
-    """An action exists only as something a question requires, and a question is
-    scheduled only by what it requires. An item nothing waits on is either debt
-    with no bearing on any question, or the same debt written twice — once on an
-    application as a postulate, and again here.
-
-    A done item is exempt here: it blocks nothing, and it stays only while some
-    question still names it, which is how a question shows that what it waited
-    on is done. Once nothing names it, it is history, and `inbox-history` says
-    so. `inbox-placement` asks a different question of the same field and skips
-    this case, which is why it is a rule of its own.
-    """
-    if graph.partial:
-        return  # what requires an item stands below it, outside a partial graph
-    wanted: Set[str] = set()
-    for q in graph.questions:
-        wanted.update(q.requires)
-    for q in graph.questions:
-        for item in q.inbox:
-            if not item.done and item.id not in wanted:
-                yield q.id, ("inbox item %r is not done and no question requires "
-                             "it, so nothing waits on it" % item.id)
 
 
 @check("pressure-shape", "every question's pressure is a non-negative integer")
@@ -678,15 +573,6 @@ def provenance_complete(graph: Graph) -> Yield:
         missing = [mark[:-1] for mark in PROVENANCE if mark not in lowered]
         if missing:
             yield q.id, "the hinge thesis names no %s" % ", no ".join(missing)
-
-
-@check("inbox-kind", "every inbox item's kind is in its vocabulary")
-def inbox_kind(graph: Graph) -> Yield:
-    for q in graph.questions:
-        for item in q.inbox:
-            if item.kind not in INBOX_KINDS:
-                yield q.id, "inbox item %r: kind %r is not one of %s" % (
-                    item.title, item.kind, ", ".join(INBOX_KINDS))
 
 
 @check("definition-once", "a word is defined once in the whole graph")
@@ -819,45 +705,39 @@ def _words_used(senses: Dict[str, str], prose: str) -> List[Tuple[str, str]]:
     return [(word, form) for _, word, form in sorted(found)]
 
 
-def _prose(graph: Graph, q) -> Iterator[Tuple[str, str, Optional[List[str]]]]:
-    """What the principal writes on a question, and where each part is judged.
+def _prose(q) -> Iterator[Tuple[str, str]]:
+    """What the notebook writes on a question, each part judged on its tab.
 
     Not the rendered lines, which are the encoding's words and not his; not
     the answer's hinge, which records how the answer was drawn in those same
-    words; and not an answer in the AI's words, which cannot be reworded at
-    all. An inbox item is hoisted to a common ancestor to make a dashboard, so
-    it is judged from every question that requires it — the tabs it was
-    lifted from — and from its own only when nothing does.
+    words; and not an answer landed in canon, which cannot be reworded at
+    all. An answer held or in thread is in the notebook only, whoever gave
+    it, so it is judged like the rest.
     """
-    yield "the question", q.question, None
+    yield "the question", q.question
     if q.hinge is not None:
-        yield "the question's hinge", q.hinge.question, None
+        yield "the question's hinge", q.hinge.question
     for definition in q.definitions:
-        yield "≡ %s" % definition.word, definition.body, None
+        yield "≡ %s" % definition.word, definition.body
     for note in q.notes:
-        yield "a note", note.body, None
-    for item in q.inbox:
-        wants = [other.id for other in graph.questions if item.id in other.requires]
-        yield ("inbox item %r" % item.id,
-               "%s %s %s" % (item.title, item.what, item.obligation), wants or None)
+        yield "a note", note.body
     for thesis in q.theses:
-        yield "a headline", thesis.title, None
-        if thesis.state == STATES[0]:  # the AI's words are verbatim-collision's
-            yield "an answer", thesis.text, None
+        yield "a headline", thesis.title
+        if thesis.state != STATES[-1]:  # canon's words are verbatim-collision's
+            yield "an answer", thesis.text
         for term in thesis.terms:
-            yield "the term %r" % _clip(term.title), term.title, None
+            yield "the term %r" % _clip(term.title), term.title
             if term.deadlock:
                 yield ("the deadlock on %r" % _clip(term.title),
-                       "%s %s" % (term.deadlock.counter, term.deadlock.attenuation), None)
+                       "%s %s" % (term.deadlock.counter, term.deadlock.attenuation))
             if term.suspended:
-                yield "the suspension on %r" % _clip(term.title), term.suspended, None
+                yield "the suspension on %r" % _clip(term.title), term.suspended
         for mention in thesis.mentions:
-            yield "the mention %r" % _clip(mention.title), mention.title, None
+            yield "the mention %r" % _clip(mention.title), mention.title
         for edge in thesis.traditions:
-            yield ("the note on %s" % edge.to,
-                   "%s %s" % (edge.note, edge.counter), None)
+            yield "the note on %s" % edge.to, "%s %s" % (edge.note, edge.counter)
         for app in thesis.applications:
-            yield ("⚙ %s" % app.name, "%s %s" % (app.name, app.note), None)
+            yield "⚙ %s" % app.name, "%s %s" % (app.name, app.note)
 
 
 @check("reach", "a defined word is used where its sense can be reached")
@@ -874,8 +754,8 @@ def reach(graph: Graph) -> Yield:
 
     Which parts are his is the whole of what this turns on, and ``_prose``
     says. The rest is the encoding's own words: the rendered lines, the
-    answer's hinge, and an answer in the AI's words, which he cannot reword
-    and which ``verbatim-collision`` reports where the word is defined.
+    answer's hinge, and an answer landed in canon, which he cannot reword and
+    which ``verbatim-collision`` reports where the word is defined.
     """
     senses = _senses(graph)
     imports = _imported(graph)
@@ -883,34 +763,30 @@ def reach(graph: Graph) -> Yield:
     parties = set(graph.tradition_ids())
     # one finding per word and part, however often the part uses it: a word
     # used twice in one answer is one thing out of reach, not two
-    counted: Dict[Tuple[str, str, str, str, str], int] = {}
+    counted: Dict[Tuple[str, str, str, str], int] = {}
     for q in graph.questions:
-        for what, prose, wants in _prose(graph, q):
-            if graph.partial and what.startswith("inbox item") and not wants:
-                continue  # judged from its requirers, which may all be below
+        if graph.partial and q.id in parties:
+            continue  # a party reaches over what cites it, from anywhere
+        seen = above.get(q.id, {q.id})
+        for what, prose in _prose(q):
             for word, form in _words_used(senses, prose):
-                for judged in (wants or [q.id]):
-                    if graph.partial and judged in parties:
-                        continue  # a party reaches over what cites it, from anywhere
-                    seen = above.get(judged, {judged})
-                    if senses[word] & seen:
-                        continue
-                    if any(word in imports.get(other, set()) for other in seen):
-                        continue
-                    key = (q.id, what, form, judged, word)
-                    counted[key] = counted.get(key, 0) + 1
-    for (qid, what, form, judged, word), times in counted.items():
-        where = "" if judged == qid else ", which %s requires" % judged
+                if senses[word] & seen:
+                    continue
+                if any(word in imports.get(other, set()) for other in seen):
+                    continue
+                key = (q.id, what, form, word)
+                counted[key] = counted.get(key, 0) + 1
+    for (qid, what, form, word), times in counted.items():
         fixed = sorted(senses[word])
         # a party's notebook never stands above a question here, so no edge
         # and no move of the definition can bring its word into reach: an
         # import that names the party is the one remedy, and is named
         remedy = ("; a party's word is brought in by an import that names the party"
                   if all(owner in parties for owner in fixed) else "")
-        yield qid, ("%s uses %r%s%s, and its sense is fixed on %s, which %s "
+        yield qid, ("%s uses %r%s, and its sense is fixed on %s, which %s "
                     "cannot reach%s"
-                    % (what, form, _times(times), where, " and ".join(fixed),
-                       judged, remedy))
+                    % (what, form, _times(times), " and ".join(fixed),
+                       qid, remedy))
 
 
 def _times(n: int) -> str:
@@ -1079,9 +955,9 @@ def answer_cardinality(graph: Graph) -> Yield:
 @check("answerer-set",
        "an author question names who answers it; a tradition names no one")
 def answerer_set(graph: Graph) -> Yield:
-    """Who answers a question is stored, because `requires` only blocks: a
+    """Who answers a question is stored and not read off what it waits on: a
     question with nothing left to wait on is not thereby the principal's, and
-    one he means to put later changes its answerer rather than its requires. A
+    one he means to put later changes its answerer and nothing else. A
     tradition is answered by its own party, through a reconstruction, so it
     names none."""
     for q in graph.questions:
@@ -1118,21 +994,6 @@ def only_ai_put(graph: Graph) -> Yield:
             if thesis.state != STATES[0]:
                 yield q.id, ("answer %r is %r, but nothing %s answers lands"
                              % (_clip(thesis.title), thesis.state, who))
-
-
-@check("requires-put", "a question the AI does not answer waits on nothing")
-def requires_put(graph: Graph) -> Yield:
-    """``requires`` names what must be done before a question can be put, and
-    a question the AI does not answer is never put. The entry is not merely
-    idle: an item nothing else names stays alive on ``inbox-required``
-    because of it, and ``inbox-placement`` drags the item's home toward a
-    question that is not waiting for anything."""
-    for q in graph.questions:
-        if q.answerer == ANSWERERS[0] or not q.requires:
-            continue
-        who = "the principal" if q.answerer == ANSWERERS[1] else "another party"
-        yield q.id, ("waits on %s, but a question %s answers is never put"
-                     % (", ".join(repr(w) for w in q.requires), who))
 
 
 @check("put-in-order", "nothing is put below a question that has not been")
@@ -1192,25 +1053,6 @@ def anchor_grain(graph: Graph) -> Yield:
                                      "of term %r" % (outer, inner))
 
 
-@check("inbox-history",
-       "a done inbox item is named by some question's requires", WARN)
-def inbox_history(graph: Graph) -> Yield:
-    """An action exists only as something a question requires. A done item
-    stays while a question still names it, since that is how the question
-    shows its wait is over; when none does, the item is a record of an act,
-    and the notebook keeps states rather than a log."""
-    if graph.partial:
-        return  # as inbox-required: who names it may be below
-    wanted: Set[str] = set()
-    for q in graph.questions:
-        wanted.update(q.requires)
-    for q in graph.questions:
-        for item in q.inbox:
-            if item.done and item.id not in wanted:
-                yield q.id, ("inbox item %r is done and no question names it; it "
-                             "is history, so drop it" % item.id)
-
-
 #: a line break inside a paragraph. A single newline is the markdown's own only
 #: where the block is built out of lines — a list, a table, a quotation — so
 #: what opens the next line is what decides which it is.
@@ -1254,8 +1096,8 @@ def text_unquoted(graph: Graph) -> Yield:
     answer — the one edit to an answer's text that nothing else can see,
     since the local round trip agrees with itself.
 
-    An answer in canon is verbatim, so one that quotes cannot be reworded to
-    pass. Until the reader can tell a quotation in an answer from a note
+    An answer landed in canon is verbatim, so one that quotes cannot be
+    reworded to pass. Until the reader can tell a quotation in an answer from a note
     beside it, such an answer is refused here rather than altered in silence.
     """
     for q in graph.questions:

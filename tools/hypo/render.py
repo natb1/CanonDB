@@ -54,26 +54,6 @@ class RefusedError(Exception):
 
 # -- pieces -----------------------------------------------------------------
 
-def _inbox_titles(graph: Graph) -> Dict[str, str]:
-    """Every inbox item's id to the title a reader is shown."""
-    return {item.id: item.title for q in graph.questions for item in q.inbox}
-
-
-def _requires(graph: Graph, q: Optional[Question]) -> str:
-    """What a question waits on, named by title and never by handle.
-
-    The title is rendered and the id is stored, so rewording an item carries
-    everywhere it is mentioned without a single edit elsewhere — which is the
-    whole reason the two are separate.
-    """
-    if q is None:
-        return "?"
-    if not q.requires:
-        return "nothing"
-    titles = _inbox_titles(graph)
-    return ", ".join(titles.get(want, want) for want in q.requires)
-
-
 def _incoming_terms(graph: Graph, qid: str) -> List[Tuple[str, Term]]:
     """The term edges leading here, ordered by (parent id, term title)."""
     return sorted(((src.id, term) for src, term in graph.incoming(qid)),
@@ -341,52 +321,6 @@ def glossary_heading(word: str) -> str:
     return "≡ %s" % word
 
 
-def _inbox_order(graph: Graph, q: Question) -> List[Term]:
-    """The frontier, heaviest first, ties by question id.
-
-    The order is what the section is for: it answers what to do next, and a
-    table in file order answers nothing.
-    """
-    by_id = graph.by_id()
-
-    def weight(term: Term) -> Tuple[int, str]:
-        child = by_id.get(term.to)
-        return (-(project.backlog(graph, term.to) if child else 0), term.to)
-
-    def open_(term: Term) -> bool:
-        # the frontier is what is still to be put: a question the principal
-        # answers never is, and one whose answer has landed already was. A
-        # dangling target stays, so that the row shows what term-target says
-        child = by_id.get(term.to)
-        return child is None or (child.answerer == project.AI
-                                 and not project.landed(child))
-
-    return sorted((term for term in q.terms() if open_(term)), key=weight)
-
-
-def _inbox_blocks(graph: Graph, q: Question) -> List[str]:
-    by_id = graph.by_id()
-    rows = []
-    for term in _inbox_order(graph, q):
-        child = by_id.get(term.to)
-        rows.append("| %s | %s | %s | %s | %s |" % (
-            chip(term.to), term.title,
-            child.kind if child else "?",
-            project.backlog(graph, term.to) if child else "?",
-            _requires(graph, child)))
-    blocks: List[str] = []
-    if rows:
-        blocks.append("\n".join(
-            ["| question | term | kind | backlog | requires |",
-             "| --- | --- | --- | --- | --- |"] + rows))
-    for item in q.inbox:
-        blocks.append("### %s" % item.title)
-        blocks.append("%s · %s · instances %s · %s · id %s" % (
-            item.kind, item.what, item.obligation,
-            "done" if item.done else "not done", item.id))
-    return blocks
-
-
 def term_heading(term: Term) -> str:
     """The part of a term's heading that is stable text a link can name.
 
@@ -614,9 +548,8 @@ def body(graph: Graph, qid: str) -> str:
     meta = "question: %s · %s" % (_state(graph, q), q.kind)
     if q.answerer:
         meta += " · answerer: %s" % q.answerer
-    meta += " · pressure %d · backlog %d · load %d · requires: %s" % (
-        q.pressure, project.backlog(graph, qid), project.load(graph, qid),
-        _requires(graph, q))
+    meta += " · pressure %d · backlog %d · load %d" % (
+        q.pressure, project.backlog(graph, qid), project.load(graph, qid))
     blocks.append(meta)
 
     thesis_blocks: List[str] = []
@@ -625,7 +558,6 @@ def body(graph: Graph, qid: str) -> str:
         thesis_blocks.extend(_tradition_blocks(graph, thesis))
     for name, section in (("thesis", thesis_blocks),
                           ("glossary", _glossary_blocks(q)),
-                          ("inbox", _inbox_blocks(graph, q)),
                           ("terms", _term_blocks(graph, q)),
                           ("applications", _application_blocks(q)),
                           ("cited by", _cited_by_blocks(graph, q)),
@@ -721,9 +653,9 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
     Which run is meant is decided by where the link lives. An entry is
     eligible only for a run inside its own section (``_HOME``) and never for
     one inside a heading, and two entries sharing an anchor within a section
-    take successive runs. Without the first of those, an inbox row whose title
-    also opens a clause of the thesis linked the clause instead — the same
-    words, saying something else.
+    take successive runs. Without the first of those, words that stand in two
+    sections are linked in whichever comes first — the same words, saying
+    something else.
 
     A definition's anchor is a headword rather than a passage, so every
     regular form of it is looked for and ``find`` names the one that stands on
@@ -779,38 +711,6 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
                 "anchor": PROVENANCE_ANCHOR,
                 "target": "#%s.%s" % (q.tab, HINGE_THESIS),
             })
-    titles = _inbox_titles(graph)
-    homes = {item.id: home for home in graph.questions for item in home.inbox}
-    for term in _inbox_order(graph, q):
-        out.append({
-            "kind": "inbox-term",
-            "term": term.title,
-            "anchor": text.plain(term.title),
-            "target": "#%s.%s" % (q.tab, term_heading(term)),
-        })
-        child = by_id.get(term.to)
-        for want in (child.requires if child else []):
-            home = homes.get(want)
-            if home is None:  # requires-exist reports it
-                continue
-            # the table's requires cell names what the row's question waits on,
-            # and each name goes to the item it names, wherever that item lives
-            out.append({
-                "kind": "inbox-requires",
-                "item": want,
-                "anchor": text.plain(titles[want]),
-                "target": "#%s.%s" % (home.tab, titles[want]),
-            })
-    for want in q.requires:
-        home = homes.get(want)
-        if home is None:  # requires-exist reports it; there is nothing to point at
-            continue
-        out.append({
-            "kind": "requires",
-            "item": want,
-            "anchor": text.plain(titles[want]),
-            "target": "#%s.%s" % (home.tab, titles[want]),
-        })
     page = _as_the_page_holds_it(body(graph, qid))
     fixed = _fixed_spans(page)
     sections = _section_spans(page)
@@ -823,8 +723,8 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
         # successive runs are handed out per anchor within one section. The
         # key folds case for the same reason the counting does — a clause and
         # the title of the term it raises are often the same words — and it
-        # carries the section because the two draw from different pools: a
-        # thesis clause and an inbox row are each the first run of their own.
+        # carries the section because each draws from a pool of its own: an
+        # incoming anchor and a thesis clause are each the first run of theirs.
         home = _HOME[entry["kind"]]
         if (entry["kind"] == "definition" and runs
                 and not _inside(runs[0][1].at, sections.get(home))):
@@ -887,10 +787,8 @@ def page_text(graph: Graph, qid: str) -> str:
 #: which section of the page each kind of link is a link *in*. Every one of
 #: these is the encoding's own statement: a clause of the thesis is anchor
 #: text linked to its term section, the defined word is anchor text in the
-#: thesis text, each answer's metadata line links its provenance, the inbox
-#: table's term column is linked to the term section and its requires column
-#: to the items, and the incoming anchors and the question line's requires
-#: stand above the first heading. A link put anywhere else is a link on words
+#: thesis text, each answer's metadata line links its provenance, and the
+#: incoming anchors stand above the first heading. A link put anywhere else is a link on words
 #: that mean the same and say something else.
 #:
 #: The home is the section and not the one answer: a term's runs are handed
@@ -898,9 +796,8 @@ def page_text(graph: Graph, qid: str) -> str:
 #: second answer whose anchor the first answer also says would be linked on
 #: the first. ``anchor-unique`` counts across the answers on the tab for that
 #: reason, and stands between this scope and the wrong answer.
-_HOME = {"incoming": None, "requires": None,   # None: above the first section
-         "term": "Thesis", "definition": "Thesis", "provenance": "Thesis",
-         "inbox-term": "Inbox", "inbox-requires": "Inbox"}
+_HOME = {"incoming": None,   # None: above the first section
+         "term": "Thesis", "definition": "Thesis", "provenance": "Thesis"}
 
 
 def _candidates(kind: str, anchor: str) -> Tuple[List[str], bool]:

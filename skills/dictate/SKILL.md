@@ -83,11 +83,13 @@ this order:
 
 **4 — Apply.** A dictation that changes only line-shaped parts of a few tabs is written **in
 place**, block by block: an application with `tools/application.py`; a glossary entry, a term
-and its item on the header list of the tab it raises, the words of an answer, or an amendment
-to a hinge's provenance with `tools/inplace.py`. Each takes the saved read of its blocks and
+and its item on the header list of the tab it raises, the words of an answer, an answer's
+headline, or an amendment to a hinge's provenance with `tools/inplace.py`. Each takes the saved read of its blocks and
 prints the ops of one prose `update` for that tab, every whole-block op guarded by the block's
 `h` and the read's `rev`; send them as printed. A refusal is a block that moved or a part the
-reader would not take back, and either is read again, never forced. No body is written, so no
+reader would not take back, and either is read again, never forced; an answer's paragraph
+whose change reaches a link, a chip or a marked run is written whole with `--markdown`, which
+is the tool's own way and not a way round it. No body is written, so no
 link into the tab is retired and nothing is relinked. What a write leaves owed — a new term's
 chip in the answer, and the links a new term or entry wants — it names on stderr, and those go
 as format operations once the insert's ack has given the new heading its id.
@@ -137,7 +139,7 @@ findings rather than fixing them silently.
 After an in-place write, read each touched block back with `sinceRev` at the read's `rev`, then
 re-read the touched tabs and their ancestors as step 1 does and run `tools/check.py` on that
 graph: it records its scope, every rule runs over it, and one that needs a tab outside it — what
-a term leads to below, what requires an inbox item — says nothing there. A missing ancestor is
+a term leads to below — says nothing there. A missing ancestor is
 an ERROR (`scope-closed`), not a gap read over.
 
 **6 — Commit** the tooling and skill changes on a branch of their own and open a pull request
@@ -183,8 +185,11 @@ a procedure rather than a script.
   anchor. A paraphrase of the term, or a gloss that leaks the principal's reading of the clause, it
   cannot catch. Read every question you write against the term that raised it and cut anything that
   tells the answerer what was meant.
-- **A thesis in canon is verbatim.** No tool can compare a thesis against the session that produced
-  it. Where you did not witness the answer, do not edit its text.
+- **Canon alone is verbatim.** The recorded answer in canon is what cannot be modified. An answer
+  that has landed is canon's, and the notebook reflects it word for word. An answer held or in
+  thread is in the notebook only: it is dictation, and is reworded under the rules of dictation
+  like any other part. No script compares a landed answer with canon's text, so it is held by
+  reading: where an answer has landed, do not edit its text.
 - **A headline names its content.** It summarises what the section says. It need not be a sentence,
   and it may well be the handle a link points at — neither of those makes it wrong.
   `headline-not-identifier` catches the two shapes a script can decide: an opaque handle like
@@ -192,11 +197,9 @@ a procedure rather than a script.
   to read is whether the headline actually says what the thing says, rather than merely pointing
   at it.
 - **An identifier on the page must be earned.** Headlines are what a reader is given; an id is a
-  handle for a machine. An id earns its place either by having a machine that needs it — an
-  inbox item's, which a question's `requires` names, so the item may be reworded without
-  anything following — or by a named exception. There is one: a tab's top heading is the
-  question id, and so is its name in the navigation, because the two must agree and a tab is
-  addressed by it. Everywhere else the headline stands. `headline-not-identifier` catches the two
+  handle for a machine. An id earns its place only by a named exception, and there is one: a
+  tab's top heading is the question id, and so is its name in the navigation, because the two
+  must agree and a tab is addressed by it. Everywhere else the headline stands. `headline-not-identifier` catches the two
   shapes a script can decide in a *heading*; in prose nothing can, because most question ids
   here are ordinary words — `canon`, `context`, `party`, `priority`. Read every thesis for a
   bare id standing in for a name. Naming a file that happens to share an id is not one: the
@@ -213,8 +216,8 @@ a procedure rather than a script.
 - **Every datum has one home.** A question's metadata on its question line, an answer's on its
   own section, a term's on its term section — stated once and linked from wherever else it
   bears. No script can tell a second statement of one datum from two data, and the second one
-  is usually added in good faith: an inbox item for debt an application already carries as a
-  postulate, a note restating a field. Read for it whenever a field, a note or an item is added.
+  is usually added in good faith: a note restating a field. Read for it whenever a field or a
+  note is added.
   A note carries only what the renderer cannot say: eight application notes once restated the
   discharge condition, which is derived, and six went stale at once when the answerer field
   arrived.
@@ -241,18 +244,19 @@ a procedure rather than a script.
   assent, a gloss confirmed, acceptance withheld from the whole answer — so read it.
 - **Who answers is the principal's call.** `answerer` is stored, and `answerer-set` checks that
   every author question names one. Which one is right — a question he answers from his own
-  priors, or one to put to the AI — no script decides. `requires` only blocks: an empty one
-  says nothing about who answers. A question the principal answers is never put: it blocks
+  priors, or one to put to the AI — no script decides. A question with nothing
+  left to wait on is not thereby his. A question the principal answers is never put: it blocks
   nothing, waits on nothing and is never on the frontier, and `only-ai-put` keeps it and its
   answers held. Another party's is read, not asked, and is held the same way.
 - **A defined word is used only in its defined sense.** `definition-once` finds the word, not
   the sense. The notebook once used "line" for a run of the elenchus and for a line of text in
   the same breath. Where the ordinary sense of a defined word is wanted, use another word.
-- **A defined word yields to canon's words.** The AI's words in an answer in thread or landed
-  cannot change, so a word the notebook defines must not be one of them. `priority` and `title`
-  gave way to `backlog` and `headline` when the root's answer turned out to say "priorities" and
-  "titled". `verbatim-collision` finds a defined word in such an answer and reports it where the
-  word is defined, since that is the word that can change. It finds the word and not the sense,
+- **A defined word yields to canon's words.** The words of a landed answer cannot change, so a
+  word the notebook defines must not be one of them. `priority` and `title` gave way to
+  `backlog` and `headline` when the root's answer turned out to say "priorities" and "titled".
+  `verbatim-collision` finds a defined word in a landed answer and reports it where the word is
+  defined, since that is the word that can change. An answer held or in thread can change too,
+  so there the word is `reach`'s to judge, on the answer. It finds the word and not the sense,
   so a text the principal wrote using a defined word in another sense is still found by reading.
 - **A shadow only where reach needs it.** A definition may stand for a word that has earned a
   question of its own (`term-target` keeps it off that question's own tab) only when some user
@@ -269,10 +273,10 @@ a procedure rather than a script.
   reach the point at all is the deadlock what says so, which is worth as much as reaching it.
   Nothing computes which case you are in, and nothing counts the lines still to be drawn.
 - **Reach is judged where a part is written.** `reach` holds the context rule over the notebook's
-  vocabulary, and holds it on what you write: the question, its hinge, your answers and their
-  headlines, glossary bodies, notes, tradition notes and counters, deadlocks and suspensions. An
-  inbox item is hoisted to a common ancestor to make a dashboard, so it is judged from every
-  question that requires it and written plainly enough for all of them. What the check cannot
+  vocabulary, and holds it on what the notebook writes: the question, its hinge, every answer
+  that has not landed, every answer's headline, glossary bodies, notes, tradition notes and
+  counters, deadlocks and suspensions. Each is judged from the tab it is written on. What the
+  check cannot
   judge is whether a word in reach is used in the sense that was fixed for it.
 - **A party's word is imported, never assumed.** A party's notebook never stands above a question
   of yours, so its term of art is brought in by an entry that names the party and takes its sense
@@ -366,7 +370,7 @@ a procedure rather than a script.
   The same mark cuts the other way: a blockquote is a note wherever it stands, so one inside an
   answer's text is read back as a note on the section and the next render moves it out of the
   answer. `text-unquoted` refuses such an answer rather than let that happen in silence. An answer
-  in canon is verbatim, so one that quotes cannot be reworded to pass: until the reader can tell a
+  landed in canon is verbatim, so one that quotes cannot be reworded to pass: until the reader can tell a
   quotation in an answer from a note beside it, it is an answer the notebook cannot hold, and the
   refusal is where that is said.
 - **Pressure is the principal's, backlog is the tooling's.** Pressure is the one scheduling
