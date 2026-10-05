@@ -101,7 +101,7 @@ class ParentTest(unittest.TestCase):
                 data["questions"].append({
                     "id": "party-%02d" % n, "tab": "tab-p%02d" % n,
                     "body": "body-p%02d" % n, "question": "?", "state": "held",
-                    "kind": "definitional", "pressure": 0, "requires": [],
+                    "kind": "definitional", "pressure": 0,
                     "party": "party-%02d" % n, "theses": []})
         graph = rewrite("valid", many)
         orders = project.orders(graph)
@@ -167,7 +167,7 @@ class LoadTest(unittest.TestCase):
             data["questions"].append({
                 "id": "member", "tab": "tab-06", "body": "body-06",
                 "question": "What does flattery do to an examination?",
-                "state": "held", "kind": "case", "pressure": 0, "requires": [],
+                "state": "held", "kind": "case", "pressure": 0,
                 "party": "plato",
                 "theses": [{"title": "Flattery answers to please.",
                             "assent": "read, not agreed", "state": "held",

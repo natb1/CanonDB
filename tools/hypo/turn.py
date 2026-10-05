@@ -8,10 +8,10 @@ holds the notebook does not compose them by hand.
 
 ``frontier`` is which questions could be put now. A question is put only to
 the AI, only once, and only when nothing it waits on is still owed: every
-inbox item its ``requires`` names is done, and every question the AI answers
-above it — by a path through the AI's questions, which is the blocking
-relation ``project.blocked_behind`` reads — has an answer that has landed, or
-stands earlier in the thread the question is being put on. Which thread a
+question the AI answers above it — by a path through the AI's questions,
+which is the blocking relation ``project.blocked_behind`` reads — has an
+answer that has landed, or stands earlier in the thread the question is being
+put on. Which thread a
 question is on is not recorded, so the caller names the thread. ``select``
 is the heaviest of them by backlog, ties by id, which is what a caller
 outside this plugin reads off the notebook as the next question.
@@ -27,7 +27,7 @@ naming what is waited on, rather than write a lineage with a gap in it.
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
+from typing import Iterable, List, Optional, Sequence, Set, Tuple
 
 from . import project
 from .model import ANSWERERS, STATES, Graph, Question, Thesis
@@ -37,10 +37,6 @@ HELD, IN_THREAD, LANDED = STATES
 
 #: what separates one question's entry from the next in a lineage file
 RULE = "---"
-
-
-def _done(graph: Graph) -> Dict[str, bool]:
-    return {item.id: item.done for q in graph.questions for item in q.inbox}
 
 
 def carried(q: Question, thread: Iterable[str] = ()) -> Optional[Thesis]:
@@ -83,8 +79,8 @@ def above(graph: Graph, qid: str) -> List[str]:
 def waits(graph: Graph, qid: str, thread: Iterable[str] = ()) -> List[str]:
     """Why ``qid`` cannot be put now; empty when it can.
 
-    Each line names one thing owed: an inbox item not done, or a question
-    above it whose answer a turn could not carry.
+    Each line names one thing owed: a question above it whose answer a turn
+    could not carry.
     """
     by_id = graph.by_id()
     q = by_id.get(qid)
@@ -96,12 +92,6 @@ def waits(graph: Graph, qid: str, thread: Iterable[str] = ()) -> List[str]:
                    % ("principal" if q.answerer == ANSWERERS[1] else "party"))
     if project.put(q):
         out.append("it has been put already")
-    done = _done(graph)
-    for want in q.requires:
-        if want not in done:
-            out.append("requires %r, which names no inbox item" % want)
-        elif not done[want]:
-            out.append("requires %r, which is not done" % want)
     for other in above(graph, qid):
         if carried(by_id[other], thread) is None:
             state = _answer_state(by_id[other])

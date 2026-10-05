@@ -50,7 +50,7 @@ QUESTION_LINE = re.compile(
     r"^question: (?P<state>.+?) · (?P<kind>[^·]+?)"
     r"(?: · answerer: (?P<answerer>[^·]+?))?"
     r" · pressure (?P<pressure>-?\d+) · backlog -?\d+"
-    r" · load \d+ · requires: (?P<requires>.*)$")
+    r" · load \d+$")
 #: An answer's metadata: its assent, its own state, and its provenance.
 ASSENT_LINE = re.compile(
     r"^assent: (?P<assent>.*?) · (?P<state>[^·]+?)"
@@ -58,9 +58,6 @@ ASSENT_LINE = re.compile(
 DEADLOCK_LINE = re.compile(r"^deadlock: (?P<counter>.*)$", re.S)
 SUSPENDED_LINE = re.compile(r"^suspended: (?P<suspended>.*)$", re.S)
 ATTENUATION_LINE = re.compile(r"^attenuation: (?P<attenuation>.*)$", re.S)
-INBOX_LINE = re.compile(
-    r"^(?P<kind>[^·]+?) · (?P<what>.*) · instances (?P<obligation>.*)"
-    r" · (?P<done>done|not done) · id (?P<id>\S+)$")
 APPLICATION_LINE = re.compile(
     r"^(?P<what>.*?) · ◆ (?P<thesis>.*?) · (?P<link>[^·]*?) · "
     r"(?P<standing>[^·(]+?)(?: \((?P<clause>[^)]*)\))?(?: · (?P<note>.*))?$")
@@ -82,6 +79,15 @@ CRUMB_TAIL = re.compile(r"[\s›.]+$")
 
 class ParseError(Exception):
     """The markdown is not in the grammar the renderer writes."""
+
+
+#: what a page written while a tab had an inbox still carries, and what is
+#: said of it. Read on, such a page would lose the section in silence at the
+#: next body write, so it is refused until it has been brought up.
+REMOVED_SECTION = "inbox"
+REMOVED_FIELD = " · requires:"
+REMOVED = ("the inbox was removed, and this page still has %s: bring the "
+           "page up to the grammar the renderer writes before it is read")
 
 
 def parties(tabs: Dict[str, dict]) -> Dict[str, str]:
@@ -269,17 +275,6 @@ def _subsections(blocks: List[str], marker: str) -> List[Tuple[str, List[str]]]:
     return out
 
 
-def _named_subsections(blocks: List[str]) -> List[Tuple[str, List[str]]]:
-    """Every ``### `` subsection, whatever marker it carries."""
-    out: List[Tuple[str, List[str]]] = []
-    for block in blocks:
-        if block.startswith("### "):
-            out.append((block[4:].strip(), []))
-        elif out and not block.startswith(">"):
-            out[-1][1].append(block)
-    return out
-
-
 def _owner(theses: List[dict], anchors: List[str]) -> dict:
     """The answer a term or mention was read off.
 
@@ -390,6 +385,8 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     q: dict = {"id": blocks[at][2:].strip()}
 
     head, named = _sections(blocks[at + 1:])
+    if REMOVED_SECTION in named:
+        raise ParseError(REMOVED % "an Inbox section")
     incoming: List[Tuple[str, str]] = []
     for block in head:
         if block.startswith("- "):
@@ -404,6 +401,9 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
         elif block.startswith("⌂"):
             continue  # the breadcrumb is projected, never stored
         elif block.startswith("question: "):
+            if REMOVED_FIELD in block:
+                raise ParseError(REMOVED % "a `requires:` field on its "
+                                 "question line")
             line = QUESTION_LINE.match(block)
             if not line:
                 raise ParseError("the question line is malformed: %r" % block)
@@ -412,8 +412,6 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
             if line.group("answerer"):
                 q["answerer"] = line.group("answerer").strip()
             q["pressure"] = int(line.group("pressure"))
-            q["requires"] = ([] if line.group("requires") == "nothing"
-                             else [w.strip() for w in line.group("requires").split(",")])
     q["incoming"] = incoming
 
     theses = []
@@ -509,20 +507,6 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
             if thesis["title"] == line.group("thesis"):
                 thesis.setdefault("applications", []).append(app)
                 break
-
-    inbox = []
-    for title, body in _named_subsections(named.get("inbox", [])):
-        line = INBOX_LINE.match(body[0]) if body else None
-        if not line:
-            # skipped, the item would leave the graph in silence and the page
-            # on the next body write: a prior overwritten without a word
-            raise ParseError("an inbox item's line is malformed under %r" % title)
-        inbox.append({"id": line.group("id"), "title": title,
-                      "kind": line.group("kind").strip(),
-                      "what": line.group("what"),
-                      "obligation": line.group("obligation"),
-                      "done": line.group("done") == "done"})
-    q["inbox"] = inbox
 
     hinge: dict = {}
     for heading, body in _subsections(named.get("hinge", []), "⚓"):

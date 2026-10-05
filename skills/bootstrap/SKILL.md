@@ -72,7 +72,7 @@ out the branch of the pull request the feedback came in on. Read `.principal/boo
 `/principal:dictate` procedure over it first — plan, tool, attenuate, apply, re-check — so
 that the notebook holds what is about to be built. Its plan rows cite the prose; this run's
 rows, in step 4, cite the notebook. A dictation that changes nothing in the notebook but
-names what to focus on is still recorded: as the pressure or the inbox item it bears on.
+names what to focus on is still recorded: as the pressure it bears on.
 A dictation that bears only on applications, or on the words of a paragraph, is applied in
 place — `tools/application.py` for an application, `tools/inplace.py` for the words of an
 answer, a definition's body or an amendment to a hinge's provenance. One that adds or drops a

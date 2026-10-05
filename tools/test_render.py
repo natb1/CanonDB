@@ -82,17 +82,11 @@ class RootLayoutTest(unittest.TestCase):
         self.assertEqual(
             self.lines[3],
             "question: landed · root · answerer: ai · pressure 27 · backlog 48 · "
-            "load 3 · requires: nothing")
-
-    def test_a_question_line_names_what_it_waits_on(self):
-        """The root waits on nothing: its own promulgation follows its answer
-        rather than preceding it, and blocks only the questions above it."""
-        self.assertIn("requires: promulgate the root answer",
-                      render.body(load("valid"), "canon"))
+            "load 3")
 
     def test_section_order(self):
         self.assertEqual(sections(self.text),
-                         ["Thesis", "Glossary", "Inbox", "Terms", "Applications", "Hinge"])
+                         ["Thesis", "Glossary", "Terms", "Applications", "Hinge"])
 
     def test_thesis_heading_and_provenance(self):
         self.assertIn("### ◆ Each side owes the other what only it can give.", self.text)
@@ -119,28 +113,6 @@ class RootLayoutTest(unittest.TestCase):
             "the sense the dialogues put it to"
         self.assertIn("\n\nthe sense the dialogues put it to. "
                       "<?claude block m_plato?>", render.body(graph, "ti-esti"))
-
-    def test_the_inbox_table_lists_the_children(self):
-        self.assertIn("| question | term | kind | backlog | requires |", self.text)
-        self.assertIn("| <?claude block m_canon?> | The record between them | "
-                      "definitional | 12 | promulgate the root answer |", self.text)
-        self.assertIn("| <?claude block m_party?> | Two sides, two debts | case | 9 | "
-                      "promulgate the root answer |", self.text)
-
-    def test_the_table_is_the_frontier(self):
-        """What is still to be put. A question the principal answers never is,
-        and one whose answer has landed already was; the terms section still
-        lists both, so the table holding them too would be a second home."""
-        graph = load("valid")
-        row = "| <?claude block m_attenuation?> |"
-        self.assertNotIn(row, render.body(graph, "canon"))
-        self.assertIn("▸", render.body(graph, "canon"))
-        graph.get("attenuation").answerer = "ai"
-        self.assertIn(row, render.body(graph, "canon"))
-        graph.get("attenuation").theses[0].state = "in thread"
-        self.assertIn(row, render.body(graph, "canon"))
-        graph.get("attenuation").theses[0].state = "landed"
-        self.assertNotIn(row, render.body(graph, "canon"))
 
     def test_a_postulate_says_what_would_discharge_it(self):
         """Read off the answer and never written: eight notes wrote it, and six
@@ -182,23 +154,6 @@ class RootLayoutTest(unittest.TestCase):
         self.assertIn("**Support**", first)
         graph.questions.reverse()
         self.assertEqual(render.body(graph, "plato"), first)
-
-    def test_the_inbox_table_is_heaviest_first(self):
-        """The section answers what to do next; a table in file order answers
-        nothing. valid.json happens to be in backlog order already, so the
-        sort has to be shown by putting it out of order."""
-        graph = load("valid")
-        graph.get("canon").pressure = 1
-        graph.get("party").pressure = 99
-        rows = [l for l in render.body(graph, "ti-esti").splitlines()
-                if l.startswith("| <?claude")]
-        self.assertIn("m_party", rows[0])
-        self.assertIn("m_canon", rows[1])
-
-    def test_the_inbox_item(self):
-        self.assertIn("### promulgate the root answer", self.text)
-        self.assertIn("promulgate · put the opening answer where both sides can see it · "
-                      "instances once, before any descendant is asked · not done", self.text)
 
     def test_terms_and_applications_and_hinge(self):
         self.assertIn("### ▸ The record between them → <?claude block m_canon?>",
@@ -689,21 +644,6 @@ class FindTest(unittest.TestCase):
                             any(at <= run.at < end for at, end in fixed),
                             "%r links a line the encoding decides" % entry["anchor"][:40])
 
-    def test_each_requires_cell_links_every_item_it_names(self):
-        """The table's requires column names what each row's question waits on,
-        and every name goes to its item, row by row, wherever the item lives."""
-        graph = load("valid")
-        entries = [e for e in render.links(graph, "ti-esti")["links"]
-                   if e["kind"] == "inbox-requires"]
-        rows = [t.to for t in render._inbox_order(graph, graph.get("ti-esti"))]
-        wanted = [want for child in rows for want in graph.get(child).requires]
-        self.assertEqual([e["item"] for e in entries], wanted)
-        self.assertEqual([e["find"]["nth"] for e in entries],
-                         sorted(e["find"]["nth"] for e in entries))
-        home = graph.get("ti-esti").tab
-        self.assertTrue(all(e["target"] == "#%s.promulgate the root answer" % home
-                            for e in entries))
-
     def test_every_answer_links_its_provenance(self):
         graph = load("valid")
         for q in graph.questions:
@@ -827,13 +767,16 @@ class EligibleTest(unittest.TestCase):
 
     def test_a_run_outside_its_own_section_is_not_eligible(self):
         """A definition is linked on the word where the thesis uses it. The
-        same word in the inbox table belongs to the row that names it."""
-        page = ("## Thesis\n\nthe merge is his act.\n\n"
-                "## Inbox\n\n| the merge | x |\n")
+        same word under another heading is that section's, and an incoming
+        anchor stands above them all."""
+        page = ("- the merge is his act.\n\n"
+                "## Thesis\n\nthe merge is his act.\n\n"
+                "## Terms\n\n*the merge is his act.*\n")
         at = [run.at for _, run in render.eligible(page, "definition", "merge")]
-        self.assertEqual(at, [page.index("merge is his act")])
-        rows = [run.at for _, run in render.eligible(page, "inbox-term", "merge")]
-        self.assertEqual(rows, [page.index("| the merge")+ 6])
+        self.assertEqual(at, [page.index("merge is his act", page.index("## Thesis"))])
+        above = [run.at for _, run in
+                 render.eligible(page, "incoming", "the merge is his act.")]
+        self.assertEqual(above, [2])
 
 
 class RefusalTest(unittest.TestCase):

@@ -27,8 +27,8 @@ term — and never a whole-body view. Every block used is checked against the
 hash the document printed, as ``appline`` checks what it writes from.
 
 Where a question stands on the frontier and ``next.py`` would not put it, the
-difference is what the page does not say at a glance: whether its inbox items
-are done, and whether it is already in a thread. Pressure, not backlog, is the
+difference is what the page does not say at a glance: whether it is already
+in a thread. Pressure, not backlog, is the
 order here, because the backlog is a projection of the whole graph and the
 frontier's own members block nothing that is not below them.
 """
@@ -75,6 +75,9 @@ def question(name: str, tab: str, party: str, reads: Sequence,
                 continue
             if text.startswith("question: "):
                 found = read.QUESTION_LINE.match(text)
+                if read.REMOVED_FIELD in text:
+                    raise Refused("%s: %s" % (name, read.REMOVED % (
+                        "a `requires:` field on its question line")))
                 if not found:
                     raise Refused("%s: the question line is malformed" % name)
                 line = found

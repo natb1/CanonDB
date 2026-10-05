@@ -9,7 +9,6 @@
       "state": "held",
       "kind": "root",
       "answerer": "ai",
-      "requires": [],
       "theses": [
         {
           "title": "Each side owes the other what only it can give.",
@@ -59,16 +58,6 @@
           }
         }
       ],
-      "inbox": [
-        {
-          "id": "promulgate-the-root-answer",
-          "title": "promulgate the root answer",
-          "kind": "promulgate",
-          "what": "put the opening answer where both sides can see it",
-          "obligation": "once, before any descendant is asked",
-          "done": true
-        }
-      ],
       "hinge": {
         "question": "the addressee is a side of whom something can be required, which the asking already presumes",
         "thesis": "model: an unnamed assistant · harness: a repository holding one file · canon: empty"
@@ -83,9 +72,6 @@
       "state": "in thread",
       "kind": "definitional",
       "answerer": "ai",
-      "requires": [
-        "promulgate-the-root-answer"
-      ],
       "theses": [
         {
           "title": "An entry binds when the one with standing has marked it.",
@@ -111,7 +97,6 @@
           "tradition": null
         }
       ],
-      "inbox": [],
       "hinge": {
         "question": "that a mark of assent can be made at all, which the asking already presumes",
         "thesis": "model: an unnamed assistant · harness: the same repository · canon: the opening entry"
@@ -126,9 +111,6 @@
       "state": "held",
       "kind": "case",
       "answerer": "ai",
-      "requires": [
-        "promulgate-the-root-answer"
-      ],
       "theses": [
         {
           "title": "The two sides are asymmetric and neither substitutes for the other.",
@@ -151,7 +133,6 @@
           "traditions": []
         }
       ],
-      "inbox": [],
       "hinge": {
         "question": "that there are two sides and not one, which the asking already presumes",
         "thesis": "model: an unnamed assistant · harness: the same repository · canon: the opening entry"
@@ -166,7 +147,6 @@
       "state": "held",
       "kind": "consistency",
       "answerer": "principal",
-      "requires": [],
       "theses": [
         {
           "title": "Authority to act is graded by how settled the question is.",
@@ -192,7 +172,6 @@
           "tradition": null
         }
       ],
-      "inbox": [],
       "hinge": {
         "question": "that authority admits of degree, which the asking already presumes",
         "thesis": "model: an unnamed assistant · harness: the same repository · canon: the opening entry"
@@ -206,7 +185,6 @@
       "question": "What does testing a claim against its holder's own admissions require?",
       "state": "held",
       "kind": "root",
-      "requires": [],
       "theses": [
         {
           "title": "The one questioned must say what he believes.",
@@ -217,7 +195,6 @@
           "traditions": []
         }
       ],
-      "inbox": [],
       "hinge": {
         "question": "the reading presupposes that the text answers this question at all, and that what it says can be told apart from what the reader wants it to say",
         "thesis": "model: an unnamed assistant · harness: a reading of the dialogues · canon: empty"

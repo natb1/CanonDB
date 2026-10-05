@@ -175,21 +175,6 @@ class DetailTest(unittest.TestCase):
         self.assertIn("'grade'", findings[0].message)
         self.assertIn("attenuation", findings[0].message)
 
-    def test_renaming_an_inbox_item_leaves_requires_alone(self):
-        """The rename that stranded twenty-four requires entries in the live
-        notebook. Naming the handle rather than the summary makes it a
-        non-event: nothing else in the graph mentions the title."""
-        graph = load("valid")
-        item = graph.get("ti-esti").inbox[0]
-        item.title = "Put the opening answer where both can see it"
-        self.assertEqual(spec.run(graph, only=["requires-exist"]), [])
-
-    def test_requires_names_an_id_and_not_a_title(self):
-        graph = load("valid")
-        graph.get("ti-esti").requires = [graph.get("ti-esti").inbox[0].title]
-        findings = spec.run(graph, only=["requires-exist"])
-        self.assertTrue(findings)
-
     def test_definition_once_reaches_siblings(self):
         """Neither tab is under the other, so the old tab-tree scoping let this
         through — which is how one word came to carry two senses."""
@@ -242,47 +227,6 @@ class DetailTest(unittest.TestCase):
         findings = spec.run(graph, only=["vocabulary"])
         self.assertIsNone(findings[0].question)
         self.assertIn("ledger", findings[0].message)
-
-    def test_a_question_that_has_been_put_waits_on_nothing_undone(self):
-        """`requires` names what must be done before a question can be put.
-        The root's answer is in thread, so the root has been put, and it may
-        not still wait on its own promulgation, which is the act that follows
-        an answer."""
-        graph = load("valid")
-        self.assertEqual(spec.run(graph, only=["requires-discharged"]), [])
-        graph.get("ti-esti").requires = ["promulgate-the-root-answer"]
-        findings = spec.run(graph, only=["requires-discharged"])
-        self.assertEqual([f.question for f in findings], ["ti-esti"])
-        self.assertIn("has been put but still waits on", findings[0].message)
-        graph.get("ti-esti").inbox[0].done = True
-        self.assertEqual(spec.run(graph, only=["requires-discharged"]), [])
-
-    def test_landing_alone_is_not_being_put(self):
-        """A question lands when it reaches main, and the root reached main as
-        the seed it was asked from, before anyone put it. Until a thread is
-        open on it, what it waits on may still be undone."""
-        graph = load("valid")
-        root = graph.get("ti-esti")
-        root.requires = ["promulgate-the-root-answer"]
-        root.theses[0].state = "held"
-        self.assertEqual(root.state, "landed")
-        self.assertEqual(spec.run(graph, only=["requires-discharged"]), [])
-        root.state = "in thread"
-        self.assertTrue(spec.run(graph, only=["requires-discharged"]))
-
-    def test_an_undone_item_nothing_requires_is_reported(self):
-        """An action exists only as something a question requires. A done item
-        is exempt here: it blocks nothing, and while a question still names it
-        the name shows that the wait is over. `inbox-history` reports it once
-        nothing does."""
-        graph = load("valid")
-        self.assertEqual(spec.run(graph, only=["inbox-required"]), [])
-        for q in graph.questions:
-            q.requires = []
-        findings = spec.run(graph, only=["inbox-required"])
-        self.assertEqual([f.question for f in findings], ["ti-esti"])
-        graph.get("ti-esti").inbox[0].done = True
-        self.assertEqual(spec.run(graph, only=["inbox-required"]), [])
 
     def test_a_deadlock_carries_its_counter_and_once_landed_its_grading(self):
         """Dissent without a grading is half a record: what the principal holds
@@ -361,8 +305,6 @@ class DetailTest(unittest.TestCase):
         member.id, member.tab, member.body = "member", "tab-09", "body-09"
         member.party = "plato"
         member.theses[0].terms = []
-        member.inbox = []
-        member.requires = []
         graph.questions.append(member)
         graph.get("plato").theses[0].terms.append(model.Term(
             title="What the questioned owes", to="member",
@@ -442,24 +384,43 @@ class DetailTest(unittest.TestCase):
         self.assertEqual([f.question for f in findings], ["ti-esti"])
         self.assertIn("'Two sides, two debts'", findings[0].message)
 
-    def test_a_word_the_ai_uses_is_the_notebook_s_to_give_up(self):
+    def test_a_word_canon_uses_is_the_notebook_s_to_give_up(self):
         """The finding goes where the word is defined, since that is the word
-        that can change. A held answer is the principal's own, and can change
-        too; and a word the answer's own question defines had its sense fixed
-        against that very answer."""
+        that can change. An answer held or in thread is in the notebook only,
+        and can change too; and a word the answer's own question defines had
+        its sense fixed against that very answer."""
         graph = load("invalid-verbatim-collision")
         findings = spec.run(graph, only=["verbatim-collision"])
         self.assertEqual([f.question for f in findings], ["attenuation"])
         self.assertIn("'graded'", findings[0].message)
         root = graph.get("ti-esti")
-        root.theses[0].state = "held"
-        self.assertEqual(spec.run(graph, only=["verbatim-collision"]), [])
-        root.theses[0].state = "in thread"
+        for state in ("held", "in thread"):
+            root.theses[0].state = state
+            self.assertEqual(spec.run(graph, only=["verbatim-collision"]), [], state)
+        root.theses[0].state = "landed"
         owner = graph.get("attenuation")
         word = [d for d in owner.definitions if d.word == "grade"][0]
         owner.definitions.remove(word)
         root.definitions.append(word)
         self.assertEqual(spec.run(graph, only=["verbatim-collision"]), [])
+
+    def test_an_answer_is_the_notebook_s_until_it_lands(self):
+        """Only what canon records cannot be reworded. An answer in thread is
+        dictation like an answer held, so a word out of its reach is reported
+        on it, where it can be changed; once landed the words are canon's, and
+        the finding moves to where the word is defined."""
+        graph = load("invalid-verbatim-collision")
+        root = graph.get("ti-esti")
+        self.assertEqual(root.theses[0].state, "landed")
+        self.assertEqual(spec.run(graph, only=["reach"]), [])
+        for state in ("in thread", "held"):
+            root.theses[0].state = state
+            findings = spec.run(graph, only=["reach"])
+            # one finding per form of the word the answer uses
+            self.assertEqual({f.question for f in findings}, {"ti-esti"}, state)
+            said = " ".join(f.message for f in findings)
+            self.assertIn("an answer uses 'graded'", said)
+            self.assertIn("fixed on attenuation", said)
 
     def test_a_clause_is_suspended_only_on_an_open_thread(self):
         """Acceptance withheld while the thread runs. The merge settles every
@@ -478,17 +439,6 @@ class DetailTest(unittest.TestCase):
         term.deadlock = model.Deadlock(counter="the principal holds otherwise")
         self.assertIn("both suspended and deadlocked",
                       spec.run(graph, only=["suspension-open"])[0].message)
-
-    def test_a_done_item_is_history_once_nothing_names_it(self):
-        graph = load("valid")
-        item = graph.get("ti-esti").inbox[0]
-        item.done = True
-        # still named by the questions that waited on it: it shows they are ready
-        self.assertEqual(spec.run(graph, only=["inbox-history"]), [])
-        for q in graph.questions:
-            q.requires = []
-        self.assertEqual([f.question for f in spec.run(graph, only=["inbox-history"])],
-                         ["ti-esti"])
 
     def test_a_word_is_used_where_its_sense_can_be_reached(self):
         """The context rule over the notebook's own words: a turn carries
@@ -559,19 +509,6 @@ class DetailTest(unittest.TestCase):
             word="party", body="", tradition=model.Borrowing(to="plato", note="")))
         self.assertEqual(spec.run(graph, only=["shadow-declared"]), [])
 
-    def test_an_inbox_item_is_judged_from_the_questions_that_require_it(self):
-        """It is hoisted to a common ancestor to make a dashboard, so the tab
-        it is displayed on is not the tab it was lifted from."""
-        graph = load("valid")
-        graph.get("party").requires = []          # canon alone requires it now
-        item = graph.get("ti-esti").inbox[0]
-        item.what += " The assent is his to give."
-        self.assertEqual(spec.run(graph, only=["reach"]), [])
-        graph.get("party").requires = ["promulgate-the-root-answer"]
-        findings = spec.run(graph, only=["reach"])
-        self.assertEqual([f.question for f in findings], ["ti-esti"])
-        self.assertIn("which party requires", findings[0].message)
-
     def test_a_party_s_word_is_imported_rather_than_assumed(self):
         """A party's notebook never stands above a question here, so its word
         is brought in by an entry that says so, or it is out of reach."""
@@ -601,16 +538,6 @@ class DetailTest(unittest.TestCase):
         findings = spec.run(graph, only=["import-defined"])
         self.assertEqual([f.question for f in findings], ["ti-esti"])
         self.assertIn("does not define it", findings[0].message)
-
-    def test_a_question_the_ai_does_not_answer_waits_on_nothing(self):
-        """It is never put, so the entry says nothing — and it would keep an
-        item alive that nothing is actually waiting for."""
-        graph = load("valid")
-        self.assertEqual(spec.run(graph, only=["requires-put"]), [])
-        graph.get("attenuation").requires = ["promulgate-the-root-answer"]
-        findings = spec.run(graph, only=["requires-put"])
-        self.assertEqual([f.question for f in findings], ["attenuation"])
-        self.assertIn("never put", findings[0].message)
 
     def test_nothing_is_put_below_a_question_that_has_not_been(self):
         """A turn carries canon above its question; an answer that was never

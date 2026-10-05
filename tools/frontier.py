@@ -16,7 +16,7 @@ with no question line, and a block that does not hash to the ``h`` the
 document printed.
 
 `next.py` is the other reading of the same relation: the heaviest question
-with nothing left to wait on, inbox items and threads included, from a graph
+with nothing left to wait on, threads included, from a graph
 file built out of every tab read whole. This is what the page says at a
 glance; that is what a turn may be put to.
 """
