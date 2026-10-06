@@ -47,22 +47,10 @@ def main(argv=None) -> int:
         return 1
 
     patch = project.tabs_patch(graph)
-    parents = project.parents(graph)
-    distances = project.distances(graph)
 
     if args.as_json:
-        tree = []
-        orders = project.orders(graph)
-        for qid in project.walk(graph):
-            distance = distances.get(qid, project.INF)
-            tree.append({
-                "question": qid,
-                "parent": parents.get(qid),
-                "order": orders.get(qid),
-                "distance": None if distance == project.INF else int(distance),
-                "load": project.load(graph, qid),
-            })
-        print(json.dumps({"tabs": patch, "tree": tree}, indent=2, ensure_ascii=False))
+        print(json.dumps({"tabs": patch, "tree": project.tree_rows(graph)},
+                         indent=2, ensure_ascii=False))
         return 0
 
     for line in project.tree_listing(graph):

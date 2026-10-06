@@ -53,7 +53,7 @@ class FrontierTest(unittest.TestCase):
         return frontier.frontier(frontier.graph(self.manifest, reads(self.graph)))
 
     def test_the_searches_hold_no_body(self):
-        view, by_id = view_of(self.graph, "canon")
+        _, by_id = view_of(self.graph, "canon")
         found = [b for r in reads(self.graph)["canon"] for b in appline.blocks(r)]
         self.assertLess(len(found), len(by_id) // 3)
 

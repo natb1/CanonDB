@@ -46,9 +46,10 @@ from .model import AUTHOR, STATES, Graph, Question, Term, Thesis
 def _lines(source) -> List[Tuple[str, ET.Element]]:
     """(block id, node) for every paragraph of a read, each checked."""
     out = []
-    for bid, node in appline.blocks(source).items():
+    parsed = appline.blocks(source)
+    for bid, node in parsed.items():
         if node.tag == "paragraph":
-            out.append((bid, appline.block(source, bid)))
+            out.append((bid, appline.block(source, bid, parsed)))
     return out
 
 

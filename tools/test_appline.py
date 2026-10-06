@@ -65,7 +65,9 @@ class PageTest(unittest.TestCase):
     def test_every_block_hashes_as_the_document_printed(self):
         """A dropdown's word is the enum's and not the block's letters: the
         question line and an answer's line hash without it."""
-        for bid in appline.blocks(self.view):
+        ids = appline.blocks(self.view)
+        self.assertTrue(ids)
+        for bid in ids:
             appline.block(self.view, bid)
 
     def test_the_session_is_taken_from_whatever_prints_it_first(self):

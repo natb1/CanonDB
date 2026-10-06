@@ -355,7 +355,7 @@ class MarkdownTest(unittest.TestCase):
         there = "#%s.77" % SESSION
         new = self.old.replace("a file in the repository",
                                "[a file](%s) in the repository" % there)
-        ops, _, after, dropped, added = inplace.thesis_markdown(
+        _, _, after, dropped, added = inplace.thesis_markdown(
             self.view, self.bid, new,
             ["Authority to act on an unassented entry is held down, never removed."])
         self.assertEqual((dropped, added), ([], [("a file", there)]))
@@ -364,7 +364,7 @@ class MarkdownTest(unittest.TestCase):
 
     def test_a_chip_kept_is_carried_in_the_blocks_map(self):
         new = self.old.replace("not a message in a thread", "never a chat message")
-        ops, _, after, _, _ = inplace.thesis_markdown(self.view, self.bid, new)
+        ops, _, _, _, _ = inplace.thesis_markdown(self.view, self.bid, new)
         self.assertIn(self.CHIP, ops[0]["with"]["from"]["content"])
         self.assertEqual(ops[0]["with"]["blocks"],
                          {"m_attenuation": {"type": "mention", "ref": "file/tab-04"}})
@@ -553,8 +553,10 @@ class SpanTest(unittest.TestCase):
             inplace.Piece((), " competing for the slot, and more words here.")]
 
     def test_a_change_clear_of_every_mark_is_written(self):
-        inplace.reworded(self.RUNS, "it is never a work item competing for the slot, "
-                                    "and more words there.")
+        new = "it is never a work item competing for the slot, and more words there."
+        after = inplace.reworded(self.RUNS, new)
+        self.assertEqual(inplace.letters(after), new)
+        self.assertIn(self.RUNS[1], after)
 
     def test_a_stretch_that_covers_a_link_is_refused(self):
         with self.assertRaises(appline.Refused):

@@ -20,8 +20,9 @@ from __future__ import annotations
 import re
 from typing import List, NamedTuple
 
-#: ``[text](url)`` keeps its text and drops its target.
-_LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
+#: ``[text](url)``: the text, and the target. ``plain`` keeps the first and
+#: drops the second; what wants the target reads the second group.
+LINK = re.compile(r"\[([^\]]*)\]\(([^)]*)\)")
 
 #: `` `code` `` keeps what it wraps.
 _CODE = re.compile(r"`+([^`]*)`+")
@@ -38,7 +39,7 @@ _UNDERS = re.compile(r"(?<![0-9A-Za-z_])(_{1,3})(?=\S)(.+?)(?<=\S)\1(?![0-9A-Za-
 def plain(markdown: str) -> str:
     """``markdown`` with the inline markers removed and the characters kept."""
     out = markdown or ""
-    out = _LINK.sub(r"\1", out)
+    out = LINK.sub(r"\1", out)
     out = _CODE.sub(r"\1", out)
     for _ in range(3):  # ***both*** unwraps one layer per pass
         unwrapped = _UNDERS.sub(r"\2", _STARS.sub(r"\2", out))
@@ -76,7 +77,16 @@ def fold(words: str) -> str:
     becomes two — and an offset into the folded string has to be an offset into
     the original, so a character that will not fold in place is left alone.
     """
-    return "".join(c.lower() if len(c.lower()) == 1 else c for c in words or "")
+    words = words or ""
+    lowered = words.lower()
+    # ``str.lower`` is the same thing, character for character, for every
+    # string but two: one holding İ, which comes out two long, and one holding
+    # a capital sigma, which lowers by its place in the word. Where the length
+    # holds and no sigma stands, the fast path is this function; the rest take
+    # the slow one, which this used to be for every string
+    if len(lowered) == len(words) and "\u03a3" not in words:
+        return lowered
+    return "".join(c.lower() if len(c.lower()) == 1 else c for c in words)
 
 
 def occurrences(hay: str, needle: str, whole_word: bool = False) -> List[Run]:
@@ -118,7 +128,8 @@ def occurrences(hay: str, needle: str, whole_word: bool = False) -> List[Run]:
                 continue
         out.append(Run(nth=n, at=at))
 
-#: a final consonant, for the endings that want the vowel kept short.
+#: the vowels: a short vowel before a final consonant is what doubles it
+#: (stop -> stopped), and a consonant before a final y is what turns it to -ies.
 _VOWEL = "aeiou"
 
 

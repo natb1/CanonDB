@@ -189,7 +189,7 @@ def _chips(line: str, labels: Iterable[str] = ()) -> List[str]:
     return [chip_key(word) for word in run[1]] if run else []
 
 
-def _strip_chips(line: str, labels: Iterable[str] = ()) -> str:
+def strip_chips(line: str, labels: Iterable[str] = ()) -> str:
     """The line without its chips, in any spelling.
 
     A chip goes entirely, label and all. It is a token the renderer put there
@@ -375,7 +375,7 @@ def _citations(blocks: List[str],
                 # the crumb is a breadcrumb, so taking its chips out leaves the
                 # separators that stood between them; they belong to the path
                 # and not to the note that precedes it
-                text = CRUMB_TAIL.sub("", _strip_chips(line[2:], labels))
+                text = CRUMB_TAIL.sub("", strip_chips(line[2:], labels))
                 # only a divergence holds something instead; in a support's
                 # note the words are the note's own
                 note, _, counter = (text.partition(INSTEAD) if relation == "divergence"
@@ -440,7 +440,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
                     if not keys and labels:
                         raise ParseError("an item of the header list names no "
                                          "raiser: %r" % line[:60])
-                    incoming.append((_strip_chips(item.group("text"), labels),
+                    incoming.append((strip_chips(item.group("text"), labels),
                                      target(keys[0]) if keys else ""))
         elif block.startswith("*") and block.endswith("*"):
             q["question"] = _unwrap(block)  # one layer: the question's own
@@ -453,7 +453,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
             line = QUESTION_LINE.match(block)
             if not line:
                 raise ParseError("the question line is malformed: %r" % block)
-            q["state"] = _strip_chips(line.group("state"))
+            q["state"] = strip_chips(line.group("state"))
             if not q["state"]:
                 raise ParseError(CHIPPED_STATE)
             q["kind"] = line.group("kind")
@@ -480,7 +480,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
             line = ASSENT_LINE.match(block)
             if line and "assent" not in thesis:
                 thesis["assent"] = line.group("assent")
-                thesis["state"] = _strip_chips(line.group("state")).strip()
+                thesis["state"] = strip_chips(line.group("state")).strip()
                 if not thesis["state"]:
                     raise ParseError(CHIPPED_STATE)
             elif not block.startswith(">"):
@@ -541,7 +541,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
             borrowing, body = body[-1], body[:-1]
             here = _closing(borrowing, labels)
             definition["tradition"] = {"to": target(_chips(borrowing, here)[-1]),
-                                       "note": _strip_chips(borrowing, here).rstrip(".")}
+                                       "note": strip_chips(borrowing, here).rstrip(".")}
         definition["body"] = SEPARATOR.join(body)
         definitions.append(definition)
 

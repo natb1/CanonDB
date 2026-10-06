@@ -9,14 +9,14 @@ is the only place two kinds of defect can show:
     astray    a link leading to a tab other than the one its target names
     extra     a link the page carries that the sidecar does not name
 
-The middle one is why this exists. An in-page link needs a block id, so it is
+``missing`` is why this exists. An in-page link needs a block id, so it is
 applied after the body write, and ``read.py`` strips it again before parsing —
 by design, or a link on the assent line would take that line out of its own
 grammar. So a rebuilt graph is identical whether the links were applied or not,
 and every gate on the graph passes over a page that lost all of them. That is
 what happened: 192 links across 24 tabs, with the rebuild green.
 
-The third is the other half of the same blindness. A link applied by hand, or
+``extra`` is the other half of the same blindness. A link applied by hand, or
 one left behind by a definition that has since moved to another tab, is
 invisible to everything else; ten of them had accumulated.
 
@@ -24,7 +24,7 @@ Counting, not presence: an anchor may stand twice on a tab and be linked once,
 which a set comparison calls correct. And by span rather than by label, since a
 nested link cuts the outer one into pieces and no piece is the anchor.
 
-The third is the half neither the renderer nor the graph can hold. A target
+``misplaced`` is the half neither the renderer nor the graph can hold. A target
 names a run by a number and the document resolves that number itself, so the
 tool can name the run it meant and the document land on another — which is
 what a chip did: a token to the renderer, an atom to the document, and every
@@ -50,7 +50,6 @@ from __future__ import annotations
 
 import difflib
 import re
-from collections import Counter
 from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
 
 from . import read, render, text
@@ -160,11 +159,6 @@ def normalise(markdown: str, labels: Optional[Dict[str, str]] = None) -> List[st
         elif lines and lines[-1]:
             lines.append("")
     return lines
-
-
-def applied(page: str) -> Counter:
-    """The anchors the page carries an in-page link on, counted."""
-    return Counter(bare(m.group(1)) for m in read.IN_PAGE_LINK.finditer(page or ""))
 
 
 class Link(NamedTuple):
@@ -285,8 +279,9 @@ def _as_the_document_holds_it(plain: str, spans: List[Link], target: str,
     return "".join(out), [Link(moved(s.at), moved(s.end), s.href) for s in spans]
 
 
-def account(graph: Graph, qid: str, page: str) -> Tuple[
-        str, List[str], List[str], List[str], List[Link]]:
+def account(graph: Graph, qid: str, page: str,
+            entries: Optional[List[dict]] = None, rendered: Optional[str] = None
+            ) -> Tuple[str, List[str], List[str], List[str], List[Link]]:
     """The page as plain characters, what it does not carry, what it carries
     in the wrong place, and what it carries that nothing asked for.
 
@@ -305,11 +300,18 @@ def account(graph: Graph, qid: str, page: str) -> Tuple[
     Where a link leads is asked of the tab alone, and only of an entry the
     page can carry: one covered by a longer link has the outer one's
     destination by design, and reporting it would be reporting the design.
+
+    ``entries`` and ``rendered`` are the sidecar's links and the rendered
+    body, where the caller has them: ``verify`` has both, and rendering the
+    tab once rather than four times is most of what it costs.
     """
-    entries = render.links(graph, qid)["links"]
+    if rendered is None:
+        rendered = render.body(graph, qid)
+    if entries is None:
+        entries = render.links(graph, qid, rendered=rendered)["links"]
     plain, spans = _as_the_document_holds_it(
         *linked_spans(page, atoms=bool(graph.state_enum)),
-        render.page_text(graph, qid),
+        render.page_text(graph, qid, rendered),
         [q.id for q in graph.questions])
     own = graph.get(qid).tab if graph.get(qid) is not None else ""
     missing: List[str] = []
@@ -343,14 +345,15 @@ def account(graph: Graph, qid: str, page: str) -> Tuple[
 def verify(graph: Graph, qid: str, page: str) -> Report:
     """One tab's page against what the renderer and the sidecar say it holds."""
     labels = labels_of(graph)
+    rendered = render.body(graph, qid)
+    entries = render.links(graph, qid, rendered=rendered)["links"]
     diff = list(difflib.unified_diff(
-        normalise(page, labels), normalise(render.body(graph, qid), labels),
+        normalise(page, labels), normalise(rendered, labels),
         "page", "render", lineterm="", n=0))[2:]
-    plain, missing, misplaced, astray, extra = account(graph, qid, page)
+    plain, missing, misplaced, astray, extra = account(graph, qid, page, entries, rendered)
     # a link the page cannot carry because another already covers those words
     covered = {bare(entry["anchor"]): entry["covered_by"]
-               for entry in render.links(graph, qid)["links"]
-               if entry.get("covered_by")}
+               for entry in entries if entry.get("covered_by")}
     return Report(question=qid, diff=diff, missing=missing,
                   extra=sorted(plain[start:end].strip().lower()
                                for start, end, _ in extra),
@@ -375,7 +378,7 @@ def _where(plain: str, find) -> Optional[Tuple[int, int]]:
 
 
 def _whole(plain: str, want: Tuple[int, int],
-           under: List[Tuple[int, int]]) -> bool:
+           under: List[Link]) -> bool:
     """Whether the link spans between them cover the anchor end to end.
 
     Contiguity is what makes a split link one link again. Whitespace between

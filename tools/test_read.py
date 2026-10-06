@@ -416,7 +416,7 @@ class BareLabelTest(unittest.TestCase):
         at, found = read._label_run(line, self.LABELS)
         self.assertEqual(found, ["plato", "gorgias"])
         self.assertEqual(line[:at], "the opening move is asked.")
-        self.assertEqual(read._strip_chips(line, self.LABELS), "the opening move is asked.")
+        self.assertEqual(read.strip_chips(line, self.LABELS), "the opening move is asked.")
 
     def test_a_label_with_a_space_in_it_is_one_label(self):
         at, found = read._label_run("already doing. plato dialogues", self.LABELS)

@@ -27,7 +27,7 @@ import re
 from typing import Dict, List, NamedTuple, Optional, Tuple
 from xml.etree import ElementTree
 
-from . import render, text, verify
+from . import page, render, text, verify
 from .model import Graph
 
 #: the wrapper an outline comes in, and the one thing that must not be parsed.
@@ -95,18 +95,11 @@ def parse_outline(xml: str) -> List[Block]:
             if el.tag == "gap":  # a sinceRev read folds what did not change
                 out.append(Block(id="", kind="gap", heading=0, text=""))
             continue
-        bid, prefix = _expand(bid, prefix)
+        bid, prefix = page.expand_id(bid, prefix)
         out.append(Block(id=bid, kind=el.tag,
                          heading=int(el.get("heading", 0) or 0),
                          text=" ".join("".join(el.itertext()).split())))
     return out
-
-
-def _expand(bid: str, prefix: str) -> Tuple[str, str]:
-    """A short id against the session prefix of the last full one."""
-    if bid.startswith("."):
-        return prefix + bid, prefix
-    return bid, bid.split(".")[0]
 
 
 def _scan(body: str) -> List[Block]:
@@ -120,7 +113,7 @@ def _scan(body: str) -> List[Block]:
             if m.group("kind") == "gap":
                 out.append(Block(id="", kind="gap", heading=0, text=""))
             continue
-        bid, prefix = _expand(bid, prefix)
+        bid, prefix = page.expand_id(bid, prefix)
         words = _TAG.sub("", _CHIP.sub("", m.group("text") or ""))
         out.append(Block(id=bid, kind=m.group("kind"),
                          heading=int(attrs.get("heading", 0) or 0),
@@ -183,13 +176,21 @@ def headings(graph: Graph, tab: str, outline: List[Block]) -> Dict[str, str]:
 
 
 def resolve(graph: Graph, target: str, by_tab: Dict[str, List[Block]],
-             artifact: str, own_tab: str) -> Optional[str]:
-    """A sidecar target — ``#<tab>.<heading>`` — as an href the viewer follows."""
+            artifact: str, own_tab: str,
+            cache: Optional[Dict[str, Dict[str, str]]] = None) -> Optional[str]:
+    """A sidecar target — ``#<tab>.<heading>`` — as an href the viewer follows.
+    ``cache`` holds the headings of each tab already paired, so a tab with
+    many links renders once and not once per link."""
     tab, _, heading = target.lstrip("#").partition(".")
     outline = by_tab.get(tab)
     if outline is None:
         return None
-    found = headings(graph, tab, outline)
+    if cache is not None and tab in cache:
+        found = cache[tab]
+    else:
+        found = headings(graph, tab, outline)
+        if cache is not None:
+            cache[tab] = found
     # a target names the prefix the renderer could promise: a term heading goes
     # on to an arrow and a chip, which are a block id once the tab is written.
     # So the arrow is tried after the words themselves, and nothing looser: one
@@ -252,6 +253,7 @@ def link_ops(graph: Graph, qid: str, by_tab: Dict[str, List[Block]],
     own = q.tab if q is not None else ""
     ops: List[dict] = []
     missing: List[str] = []
+    paired: Dict[str, Dict[str, str]] = {}
     for entry in entries:
         find = entry.get("find")
         if not find:
@@ -265,7 +267,7 @@ def link_ops(graph: Graph, qid: str, by_tab: Dict[str, List[Block]],
             missing.append("%s: %s leaves the tab, and the graph names no "
                            "artifact to leave it by" % (entry["kind"], entry["target"]))
             continue
-        href = resolve(graph, entry["target"], by_tab, artifact, own)
+        href = resolve(graph, entry["target"], by_tab, artifact, own, paired)
         if href is None:
             missing.append("%s: %s" % (entry["kind"], entry["target"]))
             continue

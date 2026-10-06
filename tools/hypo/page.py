@@ -28,6 +28,18 @@ ITALIC, BOLD, CODE, LINK = "italic", "bold", "code", "link"
 SEPARATOR = "\n\n"
 
 
+def expand_id(bid: str, session: str) -> Tuple[str, str]:
+    """A block id as a read prints it, made whole, and the session as it then
+    stands. The session prefix is printed once, on whatever carries an id
+    first, and every id after it is short — ``.5`` for ``<session>.5``. An id
+    with no dot at all leaves the session as it was."""
+    if bid.startswith("."):
+        return session + bid, session
+    if "." in bid:
+        return bid, bid.split(".")[0]
+    return bid, session
+
+
 def view_xml(source) -> str:
     """The view's xml, from the tool's result (JSON, as text or parsed) or
     from the bare xml."""
@@ -89,7 +101,7 @@ def _wrap(mark: Tuple[str, str], inner: str) -> str:
     return "[%s](%s)" % (inner, arg)
 
 
-def _spell(runs: Sequence[Run], depth: int = 0) -> str:
+def spell(runs: Sequence[Run], depth: int = 0) -> str:
     """Adjacent runs that share a mark are spelled inside one pair of its
     delimiters, so a link split across two runs is one link on the page."""
     out: List[str] = []
@@ -104,14 +116,14 @@ def _spell(runs: Sequence[Run], depth: int = 0) -> str:
         j = i
         while j < len(runs) and len(runs[j][0]) > depth and runs[j][0][depth] == mark:
             j += 1
-        out.append(_wrap(mark, _spell(runs[i:j], depth + 1)))
+        out.append(_wrap(mark, spell(runs[i:j], depth + 1)))
         i = j
     return "".join(out)
 
 
 def inline(node: ET.Element) -> str:
     """A paragraph's text in the export's spelling."""
-    return _spell(_runs(node))
+    return spell(_runs(node))
 
 
 # --- blocks -------------------------------------------------------------
@@ -198,11 +210,7 @@ def blocks(source) -> List[Tuple[str, str]]:
     session = ""
     out: List[Tuple[str, str]] = []
     for node in root:
-        bid = node.get("id", "")
-        if bid.startswith("."):
-            bid = session + bid
-        elif "." in bid:
-            session = bid.split(".")[0]
+        bid, session = expand_id(node.get("id", ""), session)
         if node.tag == "gone":
             continue
         text = _block(node)

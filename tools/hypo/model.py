@@ -118,13 +118,6 @@ class _Reader:
             return None
         return v
 
-    def flag(self, d: Dict[str, Any], key: str, where: str, default: bool = False) -> bool:
-        v = d.get(key, default)
-        if not isinstance(v, bool):
-            self.fail(where, "%r must be true or false" % key)
-            return default
-        return v
-
     def number(self, d: Dict[str, Any], key: str, where: str) -> int:
         if key not in d:
             self.fail(where, "missing %r" % key)
@@ -515,9 +508,14 @@ class Question:
         d = r.obj(data, where)
         qid = r.text(d, "id", where)
         here = "%s (%s)" % (where, qid) if qid else where
-        hinge = Hinge.read(r, d["hinge"], here + ".hinge") if isinstance(d.get("hinge"), dict) else None
-        if "hinge" in d and d["hinge"] is not None and not isinstance(d["hinge"], dict):
+        raw = d.get("hinge")
+        if raw is None:
+            hinge = None
+        elif isinstance(raw, dict):
+            hinge = Hinge.read(r, raw, here + ".hinge")
+        else:
             r.fail(here + ".hinge", "expected an object or null")
+            hinge = None
         for key in REMOVED:
             if key in d:
                 # nothing else refuses a key it does not know, so a stale

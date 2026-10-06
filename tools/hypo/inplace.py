@@ -56,7 +56,7 @@ import re
 import xml.etree.ElementTree as ET
 from typing import Dict, List, NamedTuple, Optional, Sequence, Tuple
 
-from . import appline, page, read, render, spec
+from . import appline, page, read, render, spec, text
 from .appline import Refused, block, blocks, rev
 from .model import Term
 
@@ -67,7 +67,6 @@ GLOSSARY, TERM, THESIS = "≡", "▸", "◆"
 APPLICATIONS = "Applications"
 
 #: a link as the renderer's markdown spells one: its words and where it leads
-LINKED = re.compile(r"\[([^\]]*)\]\(([^)]*)\)")
 
 #: marks the page reads back as markup, and so must not arrive as letters
 MARKUP = re.compile(r"[*`\[\]]")
@@ -136,10 +135,10 @@ def spelled(runs: Sequence[Piece]) -> Tuple[str, Dict[str, dict]]:
         elif p.chip is not None:
             key = render.chip_key(p.chip.get("label", ""))
             chips[key] = {"type": "mention", "ref": p.chip.get("ref", "")}
-            runs_out.append((p.marks, "<?claude block %s?>" % key))
+            runs_out.append((p.marks, render.token(key)))
         else:
             runs_out.append((p.marks, p.text))
-    return page._spell(runs_out), chips
+    return page.spell(runs_out), chips
 
 
 def reworded(runs: Sequence[Piece], new: str,
@@ -242,20 +241,6 @@ def _words_op(bid: str, node: ET.Element, at: int, new: str) -> dict:
             "with": {"as": "text", "from": {"kind": "inline", "content": new}}}
 
 
-def _markdown(content: str, chips: Optional[Dict[str, dict]] = None) -> dict:
-    out = {"as": "markdown", "from": {"kind": "inline", "content": content}}
-    if chips:
-        out["blocks"] = chips
-    return out
-
-
-def _guarded_delete(source, ids: Sequence[str]) -> List[dict]:
-    at = rev(source)
-    return [{"op": "delete", "target": {"kind": "blocks", "ids": [bid]},
-             "ifHash": block(source, bid).get("h", ""), "ifRev": at}
-            for bid in ids]
-
-
 def _paragraph(source, bid: str) -> ET.Element:
     node = block(source, bid)
     if node.tag != "paragraph":
@@ -343,7 +328,7 @@ def glossary_insert(after: str, word: str, body: str,
     if open_section:
         content = "## Glossary" + render.SEPARATOR + content
     op = {"op": "insert", "target": {"kind": "blocks", "ids": [after]},
-          "side": "after", "source": _markdown(content)}
+          "side": "after", "source": appline.inline_markdown(content)}
     return [op], content
 
 
@@ -371,7 +356,7 @@ def glossary_delete(source, heading: str, body: Sequence[str]) -> List[dict]:
     if not body:
         raise Refused("name every block under the heading, or the entry's words "
                       "are left under whatever heading stands above them")
-    return _guarded_delete(source, [heading] + list(body))
+    return appline.guarded_delete(source, [heading] + list(body))
 
 
 # -- terms ------------------------------------------------------------------
@@ -424,7 +409,7 @@ def term_insert(after: str, title: str, to: str, to_tab: str,
         content = "## Terms" + render.SEPARATOR + content
     chips = {render.chip_key(to): {"type": "mention", "ref": "file/%s" % to_tab}}
     op = {"op": "insert", "target": {"kind": "blocks", "ids": [after]},
-          "side": "after", "source": _markdown(content, chips)}
+          "side": "after", "source": appline.inline_markdown(content, chips)}
     return [op], content
 
 
@@ -441,7 +426,7 @@ def term_delete(source, heading: str, under: Sequence[str]) -> List[dict]:
         if not (text.startswith("*") or text.startswith(("suspended: ", "deadlock: ",
                                                          "attenuation: "))):
             raise Refused("block %s is not a line of a term: %r" % (bid, text[:60]))
-    return _guarded_delete(source, [heading] + list(under))
+    return appline.guarded_delete(source, [heading] + list(under))
 
 
 def _items(source, header: str) -> List[Tuple[str, str]]:
@@ -485,7 +470,7 @@ def incoming_insert(source, header: str, anchor: str, raiser: str,
                       "list, or the read is partial" % header)
     line = render.incoming_item(_anchor(anchor), raiser)
     got = _read_back("⌂ root\n\n# here\n\n%s\n" % line, {render.chip_key(raiser): raiser})
-    if got["incoming"] != [(read._strip_chips(anchor), raiser)]:
+    if got["incoming"] != [(read.strip_chips(anchor), raiser)]:
         raise Refused("the item does not read back as written: %r" % got["incoming"])
     if after_item is None:
         if any(src == raiser for _, src in items):
@@ -500,7 +485,7 @@ def incoming_insert(source, header: str, anchor: str, raiser: str,
         target, side = after_item, "after"
     chips = {render.chip_key(raiser): {"type": "mention", "ref": "file/%s" % raiser_tab}}
     op = {"op": "insert", "target": {"kind": "blocks", "ids": [target]},
-          "side": side, "source": _markdown(line, chips)}
+          "side": side, "source": appline.inline_markdown(line, chips)}
     return [op], line
 
 
@@ -512,7 +497,7 @@ def incoming_delete(source, header: str, item: str) -> List[dict]:
     items = _items(source, header)
     if item not in [bid for bid, _ in items]:
         raise Refused("%s is not an item of the list %s" % (item, header))
-    return _guarded_delete(source, [header] if len(items) == 1 else [item])
+    return appline.guarded_delete(source, [header] if len(items) == 1 else [item])
 
 
 # -- an answer's words ------------------------------------------------------
@@ -591,12 +576,12 @@ def thesis_markdown(source, bid: str, new: str, anchors: Sequence[str] = ()
     got = _read_back(_thesis_tab("%s answer" % THESIS, new_md))
     if [t["text"] for t in got["theses"]] != [now]:
         raise Refused("the paragraph does not read back as written")
-    had, has = LINKED.findall(old_md), LINKED.findall(new_md)
+    had, has = text.LINK.findall(old_md), text.LINK.findall(new_md)
     dropped = [link for link in had if link not in has]
     added = [link for link in has if link not in had]
     op = {"op": "replace", "target": {"kind": "blocks", "ids": [bid]},
           "ifHash": node.get("h", ""), "ifRev": rev(source),
-          "with": _markdown(new_md, chips)}
+          "with": appline.inline_markdown(new_md, chips)}
     return [op], old_md, new_md, dropped, added
 
 

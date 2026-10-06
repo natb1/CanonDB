@@ -192,12 +192,5 @@ class LineageTest(unittest.TestCase):
         self.assertIn(graph.get("canon").theses[0].text.strip(), text)
 
 
-class SharedPutTest(unittest.TestCase):
-    def test_the_checker_and_the_turn_agree_on_what_has_been_put(self):
-        graph = load("valid")
-        for q in graph.questions:
-            self.assertEqual(spec._put(q), project.put(q))
-
-
 if __name__ == "__main__":
     unittest.main()

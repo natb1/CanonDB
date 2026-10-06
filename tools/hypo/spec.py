@@ -501,18 +501,19 @@ def verbatim_collision(graph: Graph) -> Yield:
     sense is a reading, and a word its own question defines is exempt: that
     definition fixed its sense against that very answer.
     """
-    verbatim = [(q, thesis) for q in graph.questions for thesis in q.theses
-                if thesis.state == STATES[-1]]
+    # the plain texts and the forms once each, not once per pair: there are
+    # as many pairs as definitions times landed answers
+    verbatim = [(q, thesis, text.plain(thesis.text)) for q in graph.questions
+                for thesis in q.theses if thesis.state == STATES[-1]]
     for owner in graph.questions:
         for definition in owner.definitions:
             if definition.imported:
                 continue  # it defines nothing here, and cannot give way
-            for q, thesis in verbatim:
+            forms = text.forms(definition.word)
+            for q, thesis, body in verbatim:
                 if q.id == owner.id:
                     continue
-                body = text.plain(thesis.text)
-                used = [form for form in text.forms(definition.word)
-                        if text.occurrences(body, form, True)]
+                used = [form for form in forms if text.occurrences(body, form, True)]
                 if used:
                     yield owner.id, ("%r is defined here, and the answer on %s, "
                                      "landed in canon, uses it as %s; those words "
@@ -565,7 +566,6 @@ def definition_anchorable(graph: Graph) -> Yield:
                              % definition.word)
 
 
-_put = project.put
 
 
 @check("pressure-shape", "every question's pressure is a non-negative integer")
@@ -736,7 +736,13 @@ def _above(graph: Graph, qid: str) -> Set[str]:
     return seen
 
 
-def _words_used(senses: Dict[str, str], prose: str) -> List[Tuple[str, str]]:
+def _vocabulary(senses: Dict[str, Set[str]]) -> List[Tuple[str, List[str]]]:
+    """The defined words longest first, each with its regular forms: computed
+    once for a run, since every part of every question is read against it."""
+    return [(word, text.forms(word)) for word in sorted(senses, key=lambda w: -len(w))]
+
+
+def _words_used(vocabulary: List[Tuple[str, List[str]]], prose: str) -> List[Tuple[str, str]]:
     """Every defined word standing in ``prose`` as a word, longest first.
 
     Longest first and once per run, so that a word inside a longer defined one
@@ -745,8 +751,8 @@ def _words_used(senses: Dict[str, str], prose: str) -> List[Tuple[str, str]]:
     plain = text.plain(prose or "")
     taken: List[Tuple[int, int]] = []
     found: List[Tuple[int, str, str]] = []
-    for word in sorted(senses, key=lambda w: -len(w)):
-        for form in text.forms(word):
+    for word, forms in vocabulary:
+        for form in forms:
             for run in text.occurrences(plain, form, True):
                 span = (run.at, run.at + len(form))
                 if any(a < span[1] and span[0] < b for a, b in taken):
@@ -811,6 +817,7 @@ def reach(graph: Graph) -> Yield:
     which ``verbatim-collision`` reports where the word is defined.
     """
     senses = _senses(graph)
+    vocabulary = _vocabulary(senses)
     imports = _imported(graph)
     above = {q.id: _above(graph, q.id) for q in graph.questions}
     parties = set(graph.tradition_ids())
@@ -820,9 +827,9 @@ def reach(graph: Graph) -> Yield:
     for q in graph.questions:
         if graph.partial and q.id in parties:
             continue  # a party reaches over what cites it, from anywhere
-        seen = above.get(q.id, {q.id})
+        seen = above[q.id]
         for what, prose in _prose(q):
-            for word, form in _words_used(senses, prose):
+            for word, form in _words_used(vocabulary, prose):
                 if senses[word] & seen:
                     continue
                 if any(word in imports.get(other, set()) for other in seen):
@@ -1060,13 +1067,13 @@ def put_in_order(graph: Graph) -> Yield:
     is how a thread runs on past one question — so what is held here is the
     half that stands either way: the question above has at least been put.
     """
+    held = [other for other in graph.questions if not project.put(other)]
+    behind = {other.id: project.blocked_behind(graph, other.id) for other in held}
     for q in graph.questions:
-        if not _put(q):
+        if not project.put(q):
             continue
-        for other in graph.questions:
-            if other.id == q.id or _put(other):
-                continue
-            if q.id in project.blocked_behind(graph, other.id):
+        for other in held:
+            if q.id in behind[other.id]:
                 yield q.id, ("is put, but %s, which the AI answers above it, is "
                              "still held" % other.id)
 
@@ -1079,9 +1086,10 @@ def mention_justified(graph: Graph) -> Yield:
     already stands above the clause, a term would close a cycle and the mention
     is the only honest encoding; the renderer says so under it. Anywhere else a
     term would do, and a better line is probably available."""
+    known = {x.id for x in graph.questions}
     for q in graph.questions:
         for mention in q.mentions():
-            if mention.to not in {x.id for x in graph.questions}:
+            if mention.to not in known:
                 continue  # term-target reports it
             if q.id not in project.reachable_from(graph, mention.to):
                 yield q.id, ("mention %r points at %s, which does not stand above "

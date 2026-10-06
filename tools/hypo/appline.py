@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import xml.etree.ElementTree as ET
-from typing import Dict, List
+from typing import Dict, List, Optional, Sequence
 
 from . import page, read, render
 from .model import STANDINGS, Application
@@ -103,23 +103,20 @@ def blocks(source) -> Dict[str, ET.Element]:
     out: Dict[str, ET.Element] = {}
     session = ""
     for node in root.iter():
-        bid = node.get("id", "")
         # the session prefix is printed once, on whatever carries an id
         # first — a retired block's ``gone`` as often as not — so it is
         # taken from every id and not only from a block's
-        if bid.startswith("."):
-            bid = session + bid
-        elif "." in bid:
-            session = bid.split(".")[0]
+        bid, session = page.expand_id(node.get("id", ""), session)
         if bid and node.tag in ("paragraph", "list", "listItem", "table",
                                 "blockquote"):
             out[bid] = node
     return out
 
 
-def block(source, bid: str) -> ET.Element:
-    """The block ``bid`` of a read, checked against its hash."""
-    found = blocks(source).get(bid)
+def block(source, bid: str, parsed: Optional[Dict[str, ET.Element]] = None) -> ET.Element:
+    """The block ``bid`` of a read, checked against its hash; ``parsed`` is
+    ``blocks(source)``, where the caller has parsed the read already."""
+    found = (blocks(source) if parsed is None else parsed).get(bid)
     if found is None:
         raise Refused("the read holds no block %s" % bid)
     _unhit(found)
@@ -184,14 +181,27 @@ def read_line(source, bid: str) -> Dict[str, str]:
     return fields
 
 
-def _markdown(content: str) -> dict:
-    return {"as": "markdown", "from": {"kind": "inline", "content": content}}
+def inline_markdown(content: str, chips: Optional[Dict[str, dict]] = None) -> dict:
+    """The source of an insert or a replace: markdown, and the blocks map its
+    chips are written against where it has any."""
+    out: dict = {"as": "markdown", "from": {"kind": "inline", "content": content}}
+    if chips:
+        out["blocks"] = chips
+    return out
+
+
+def guarded_delete(source, ids: Sequence[str]) -> List[dict]:
+    """A delete per block, each guarded by the block's hash and the read's rev."""
+    at = rev(source)
+    return [{"op": "delete", "target": {"kind": "blocks", "ids": [bid]},
+             "ifHash": block(source, bid).get("h", ""), "ifRev": at}
+            for bid in ids]
 
 
 def replace_op(fields: Dict[str, str]) -> dict:
     return {"op": "replace", "target": {"kind": "blocks", "ids": [fields["id"]]},
             "ifHash": fields["h"], "ifRev": fields["rev"],
-            "with": _markdown(line(fields))}
+            "with": inline_markdown(line(fields))}
 
 
 def insert_op(after: str, name: str, fields: Dict[str, str]) -> dict:
@@ -201,7 +211,7 @@ def insert_op(after: str, name: str, fields: Dict[str, str]) -> dict:
         raise Refused("an application's name is one line, its heading")
     content = "### %s %s\n\n%s" % (MARK, name.strip(), line(fields))
     return {"op": "insert", "target": {"kind": "blocks", "ids": [after]},
-            "side": "after", "source": _markdown(content)}
+            "side": "after", "source": inline_markdown(content)}
 
 
 def delete_ops(source, heading: str, line_id: str) -> List[dict]:
@@ -216,8 +226,4 @@ def delete_ops(source, heading: str, line_id: str) -> List[dict]:
         # another application's line under this one's heading: both would be
         # left half there, each hashing as it should
         raise Refused("block %s is not the line under the heading %s" % (line_id, heading))
-    body = block(source, line_id)
-    at = rev(source)
-    return [{"op": "delete", "target": {"kind": "blocks", "ids": [bid]},
-             "ifHash": node.get("h", ""), "ifRev": at}
-            for bid, node in ((heading, head), (line_id, body))]
+    return guarded_delete(source, [heading, line_id])

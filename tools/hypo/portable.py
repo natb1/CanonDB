@@ -172,12 +172,8 @@ def bindings(data: Dict[str, Any]) -> List[str]:
 
 def tree(graph: model.Graph) -> List[Dict[str, Any]]:
     """The projected tree, in walk order: what a rebuild must come out to."""
-    parents = project.parents(graph)
-    orders = project.orders(graph)
-    return [{"question": qid,
-             "parent": parents.get(qid),
-             "order": orders.get(qid)}
-            for qid in project.walk(graph)]
+    return [{key: row[key] for key in ("question", "parent", "order")}
+            for row in project.tree_rows(graph)]
 
 
 def digest(questions: List[Dict[str, Any]]) -> str:
@@ -285,11 +281,6 @@ def opened(envelope: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str]]:
         "state_enum": None,
         "questions": questions,
     }, notes
-
-
-def unseal(envelope: Dict[str, Any]) -> Dict[str, Any]:
-    """The graph file again, unbound: every document-local value empty."""
-    return opened(envelope)[0]
 
 
 def dump(envelope: Dict[str, Any]) -> str:

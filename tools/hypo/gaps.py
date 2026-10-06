@@ -18,8 +18,7 @@ import re
 from typing import Dict, Iterable, List, Optional, Tuple
 from urllib.parse import unquote, urlsplit
 
-#: ``[text](url)`` — the spelling a page read gives a link
-_MD_LINK = re.compile(r"\[[^\]]*\]\(([^)]*)\)")
+from . import text
 #: a GitHub address inside a repository: owner/repo, blob|tree, then the ref
 #: and the path, which only the checkout can part (a ref may carry a slash)
 _GITHUB = re.compile(r"^https://github\.com/([^/]+/[^/]+)/(blob|tree)/(.*)$")
@@ -29,8 +28,8 @@ PRESENT, ABSENT, ELSEWHERE, NONE, EVERYTHING = (
 
 
 def url_of(link: str) -> str:
-    match = _MD_LINK.search(link or "")
-    return match.group(1) if match else (link or "").strip()
+    match = text.LINK.search(link or "")
+    return match.group(2) if match else (link or "").strip()
 
 
 def address(link: str, repo: str, files: Iterable[str] = ()) -> Tuple[str, str]:
