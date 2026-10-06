@@ -38,29 +38,37 @@ def stale_links(graph: model.Graph, targets, pages: dict, by_tab: dict) -> dict:
     by_id = graph.by_id()
     target_tabs = {by_id[qid].tab for qid in targets if qid in by_id}
     out = {}
+    lost = []
     for q in graph.questions:
         if q.id in targets or q.id not in pages:
             continue
         page = pages[q.id]
+        if not any(("#%s." % tab) in page for tab in target_tabs):
+            continue  # nothing links into a rewritten tab, so nothing is stale
         ops = []
         for entry in render.links(graph, q.id)["links"]:
             tab = entry["target"].lstrip("#").partition(".")[0]
             if tab not in target_tabs:
                 continue
-            href = apply._resolve(graph, entry["target"], by_tab, graph.artifact, q.tab)
+            href = apply.resolve(graph, entry["target"], by_tab, graph.artifact, q.tab)
             if href is None:
+                lost.append("%s: %s" % (q.id, entry["target"]))
                 continue
             # stale: the page links into that tab, and not by the href the
             # tab's outline now resolves to. A page that linked one block twice,
             # once fresh and once stale, would hide the stale one; a run that
-            # repoints every link into a rewritten tab at once never leaves one
-            if ("#%s." % tab) in page and href not in page:
+            # repoints every link into a rewritten tab at once never leaves one.
+            # The href is looked for whole, in its brackets: one block's id
+            # opens another's, and .15 is inside .150
+            if ("#%s." % tab) in page and ("(%s)" % href) not in page:
                 find = entry["find"]
                 ops.append({"op": "format",
                             "target": {"kind": "find", "text": find["text"], "nth": find["nth"]},
                             "add": [{"type": "link", "href": href}]})
         if ops:
             out[q.id] = ops
+    if lost:
+        raise apply.Unresolved(lost)
     return out
 
 
@@ -74,11 +82,8 @@ def main(argv=None) -> int:
                          "read after its write")
     args = ap.parse_args(argv)
 
-    try:
-        graph = model.load(args.graph)
-    except model.ShapeError as exc:
-        for problem in exc.problems:
-            print("ERROR shape: %s" % problem, file=sys.stderr)
+    graph = cli.load_graph(args.graph)
+    if graph is None:
         return 1
     by_id = graph.by_id()
     by_tab = {}
@@ -93,13 +98,22 @@ def main(argv=None) -> int:
         except OSError as exc:
             print("ERROR outline: %s" % exc, file=sys.stderr)
             return 1
-    pages = {}
-    for entry in os.listdir(args.tabs):
-        if entry.endswith(".md"):
-            with open(os.path.join(args.tabs, entry), encoding="utf-8") as fh:
-                pages[entry[:-3]] = fh.read()
+    try:
+        pages = cli.exports(args.tabs)
+    except OSError as exc:
+        print("ERROR tabs: %s" % exc, file=sys.stderr)
+        return 1
 
-    out = stale_links(graph, args.questions, pages, by_tab)
+    try:
+        out = stale_links(graph, args.questions, pages, by_tab)
+    except apply.Unresolved as refusal:
+        # an outline that pairs with no render resolves nothing, and nothing
+        # repointed is not the same as nothing stale
+        print("ERROR %d link target(s) unresolved, so nothing can be said of "
+              "what is stale:" % len(refusal.args[0]), file=sys.stderr)
+        for target in refusal.args[0]:
+            print("  " + target, file=sys.stderr)
+        return 1
     print(json.dumps(out, indent=1, ensure_ascii=False))
     for qid, ops in sorted(out.items()):
         print("%s: %d link(s) to repoint" % (qid, len(ops)), file=sys.stderr)

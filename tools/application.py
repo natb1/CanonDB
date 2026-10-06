@@ -28,13 +28,6 @@ cli.quiet_pipe()
 FIELDS = ("what", "link", "note", "standing", "clause", "thesis")
 
 
-def _source(path: str) -> str:
-    if path == "-":
-        return sys.stdin.read()
-    with open(path, encoding="utf-8") as fh:
-        return fh.read()
-
-
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="mode", required=True)
@@ -55,7 +48,7 @@ def main(argv=None) -> int:
 
     try:
         if args.mode == "replace":
-            fields = appline.read_line(_source(args.read), args.block)
+            fields = appline.read_line(cli.source(args.read), args.block)
             old = appline.line(fields)
             for f in FIELDS:
                 if getattr(args, f) is not None:
@@ -71,9 +64,12 @@ def main(argv=None) -> int:
             ops = [appline.insert_op(args.after, args.name, fields)]
             print("new: %s" % appline.line(fields), file=sys.stderr)
         else:
-            ops = appline.delete_ops(_source(args.read), args.heading, args.line)
+            ops = appline.delete_ops(cli.source(args.read), args.heading, args.line)
     except appline.Refused as exc:
         print("REFUSED %s" % exc, file=sys.stderr)
+        return 1
+    except OSError as exc:
+        print("ERROR read: %s" % exc, file=sys.stderr)
         return 1
     print(json.dumps({"ops": ops}, ensure_ascii=False))
     return 0

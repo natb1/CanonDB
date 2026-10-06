@@ -163,5 +163,22 @@ class DeleteTest(unittest.TestCase):
             appline.blocks(json.dumps({"data": {"rev": 1}}))
 
 
+
+class ReadErrorTest(unittest.TestCase):
+    def test_a_read_that_is_not_there_is_said_not_tracebacked(self):
+        done = subprocess.run([sys.executable, os.path.join(HERE, "application.py"), "replace",
+                               os.path.join(HERE, "nope.xml"), "--block", "a.1"],
+                              capture_output=True, text=True)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("ERROR read", done.stderr)
+        self.assertNotIn("Traceback", done.stderr)
+        done = subprocess.run([sys.executable, os.path.join(HERE, "application.py"), "replace",
+                               "-", "--block", "a.1"],
+                              input="<doc rev='1'><paragraph id='a.1'>unclosed</doc>",
+                              capture_output=True, text=True)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("REFUSED", done.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

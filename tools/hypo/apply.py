@@ -182,7 +182,7 @@ def headings(graph: Graph, tab: str, outline: List[Block]) -> Dict[str, str]:
     return out
 
 
-def _resolve(graph: Graph, target: str, by_tab: Dict[str, List[Block]],
+def resolve(graph: Graph, target: str, by_tab: Dict[str, List[Block]],
              artifact: str, own_tab: str) -> Optional[str]:
     """A sidecar target — ``#<tab>.<heading>`` — as an href the viewer follows."""
     tab, _, heading = target.lstrip("#").partition(".")
@@ -265,7 +265,7 @@ def link_ops(graph: Graph, qid: str, by_tab: Dict[str, List[Block]],
             missing.append("%s: %s leaves the tab, and the graph names no "
                            "artifact to leave it by" % (entry["kind"], entry["target"]))
             continue
-        href = _resolve(graph, entry["target"], by_tab, artifact, own)
+        href = resolve(graph, entry["target"], by_tab, artifact, own)
         if href is None:
             missing.append("%s: %s" % (entry["kind"], entry["target"]))
             continue

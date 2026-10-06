@@ -40,16 +40,23 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
 
     root = os.path.abspath(args.root)
-    files = subprocess.run(["git", "-C", root, "ls-files"], capture_output=True,
-                           text=True, check=True).stdout.split()
+    # NUL-parted: a path with a space in it is one path, and one with a letter
+    # outside ASCII is spelled as itself and not in git's quoted form
+    files = [f for f in subprocess.run(["git", "-C", root, "ls-files", "-z"], capture_output=True,
+                                       text=True, check=True).stdout.split("\0") if f]
     repo = args.repo or gaps.repo_of(subprocess.run(
         ["git", "-C", root, "remote", "get-url", "origin"],
         capture_output=True, text=True).stdout) or ""
-    apps = json.loads(_read(args.apps, "[]"))
+    try:  # the manifest may be absent; the list this round wrote may not
+        with open(args.apps, encoding="utf-8") as fh:
+            apps = json.load(fh)
+    except (OSError, ValueError) as exc:
+        print("ERROR apps: %s" % exc, file=sys.stderr)
+        return 1
     manifest = json.loads(_read(os.path.join(root, ".principal", "bootstrap.json"), "{}"))
     canon = gaps.canon_files(files)
 
-    print("applications (%s):" % (repo or "no origin"))
+    print("applications (%s), against %s:" % (repo or "no origin", root))
     for app in apps:
         print("  %-22s %-30s %s" % (app.get("tab", ""), app.get("name", ""),
                                    gaps.status(app.get("link", ""), repo, files)))

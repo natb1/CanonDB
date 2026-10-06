@@ -208,7 +208,7 @@ class LinkTest(unittest.TestCase):
                                             anchors=["The record."]))
         by_tab = outlines(self.graph)
         found = apply.headings(self.graph, q.tab, by_tab[q.tab])
-        href = apply._resolve(self.graph, "#%s.▸ The record" % q.tab, by_tab,
+        href = apply.resolve(self.graph, "#%s.▸ The record" % q.tab, by_tab,
                               self.graph.artifact, q.tab)
         self.assertEqual(href, "#" + found["▸ The record →"])
         self.assertNotEqual(href, "#" + found["▸ The record between them →"])
@@ -295,7 +295,7 @@ class HeadingShapeTest(unittest.TestCase):
         by_tab = outlines(graph)
         found = apply.headings(graph, q.tab, by_tab[q.tab])
         self.assertEqual(found["▸ %s →" % first.title], apply.AMBIGUOUS)
-        self.assertIsNone(apply._resolve(graph, "#%s.▸ %s" % (q.tab, first.title), by_tab,
+        self.assertIsNone(apply.resolve(graph, "#%s.▸ %s" % (q.tab, first.title), by_tab,
                                          graph.artifact, q.tab))
 
 

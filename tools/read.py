@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Assemble a graph file from exported tabs and the document's file list.
 
 The document is the source of truth, and this is how it is read: export each
@@ -40,6 +41,11 @@ class OutOfScope(Exception):
     """A scoped read that is missing a tab it cannot do without."""
 
 
+class Stray(Exception):
+    """An export whose name is no tab's: misnamed, it would be left out of
+    the graph in silence, and the tab it was meant for with it."""
+
+
 def assemble(manifest: dict, bodies: dict, scope: Sequence[str] = ()) -> dict:
     """The graph file, from a document read and a question id to markdown map.
 
@@ -58,9 +64,14 @@ def assemble(manifest: dict, bodies: dict, scope: Sequence[str] = ()) -> dict:
     if missing:
         raise OutOfScope("no tab read for %s, which the scope names"
                          % ", ".join(missing))
+    stray = sorted(set(bodies) - set(names.values()))
+    if stray:
+        raise Stray("%s.md names no tab of the document" % ".md, ".join(stray))
     questions = []
-    for tab_id, meta in sorted(tabs.items(), key=lambda kv: (kv[1].get("order", ""),
-                                                             kv[1].get("name", ""))):
+    # as text, as ``read.parties`` takes the same fields: an order the document
+    # reports as a number would otherwise not sort beside the others
+    for tab_id, meta in sorted(tabs.items(), key=lambda kv: (str(kv[1].get("order", "")),
+                                                             str(kv[1].get("name", "")))):
         name = meta.get("name", tab_id)
         if name not in bodies:
             continue
@@ -86,6 +97,16 @@ def assemble(manifest: dict, bodies: dict, scope: Sequence[str] = ()) -> dict:
     return graph
 
 
+def notebook_enum(root: str = ".") -> str:
+    """The enum ``.principal/notebook.json`` names at the project's root,
+    which is where the tools are run from; empty where there is none."""
+    try:
+        with open(os.path.join(root, ".principal", "notebook.json"), encoding="utf-8") as fh:
+            return str(json.load(fh).get("state_enum") or "")
+    except (OSError, ValueError):
+        return ""
+
+
 def kept(path: Optional[str]) -> str:
     """The `state_enum` of the graph file this read is about to rewrite.
 
@@ -109,8 +130,9 @@ def main(argv=None) -> int:
     ap.add_argument("tabs", help="a directory of <question id>.md exports")
     ap.add_argument("-o", "--out", help="write here instead of stdout")
     ap.add_argument("--state-enum", metavar="ID", dest="state_enum",
-                    help="the document enum the states point at (else kept "
-                         "from the graph file being rewritten)")
+                    help="the document enum the states point at (else the one "
+                         ".principal/notebook.json names, else kept from the "
+                         "graph file being rewritten)")
     ap.add_argument("--scope", nargs="+", metavar="QUESTION", default=[],
                     help="the questions a dictation touches; the directory holds "
                          "their tabs and their ancestors'")
@@ -123,11 +145,11 @@ def main(argv=None) -> int:
         print("ERROR manifest: %s" % exc, file=sys.stderr)
         return 1
 
-    bodies = {}
-    for entry in sorted(os.listdir(args.tabs)):
-        if entry.endswith(".md"):
-            with open(os.path.join(args.tabs, entry), encoding="utf-8") as fh:
-                bodies[entry[:-3]] = fh.read()
+    try:
+        bodies = cli.exports(args.tabs)
+    except OSError as exc:
+        print("ERROR tabs: %s" % exc, file=sys.stderr)
+        return 1
     if not bodies:
         print("ERROR no .md exports in %s" % args.tabs, file=sys.stderr)
         return 1
@@ -140,28 +162,35 @@ def main(argv=None) -> int:
     except OutOfScope as exc:
         print("ERROR scope: %s" % exc, file=sys.stderr)
         return 1
+    except Stray as exc:
+        print("ERROR exports: %s" % exc, file=sys.stderr)
+        return 1
 
-    held = "" if args.state_enum else kept(args.out)
-    if args.state_enum or held:
-        graph["state_enum"] = args.state_enum or held
+    # the enum, from the flag, else from the project's notebook.json, else as
+    # the file being rewritten held it: a graph without one renders every
+    # state as a word, and a body write then puts words where the page had
+    # its dropdowns
+    enum, whence = args.state_enum, ""
+    if not enum:
+        enum, whence = notebook_enum(), " (state_enum from .principal/notebook.json)"
+    if not enum:
+        enum, whence = kept(args.out), " (state_enum kept)"
+    if enum:
+        graph["state_enum"] = enum
+    else:
+        whence = ""
 
     text = json.dumps(graph, indent=2, ensure_ascii=False) + "\n"
     if args.out:
         with open(args.out, "w", encoding="utf-8") as fh:
             fh.write(text)
-        print("%d questions -> %s%s" % (len(graph["questions"]), args.out,
-                                        " (state_enum kept)" if held else ""))
+        print("%d questions -> %s%s" % (len(graph["questions"]), args.out, whence))
     else:
         sys.stdout.write(text)
         return 0
 
-    try:  # a shape problem here is the parser's, and worth saying at once
-        model.load(args.out)
-    except model.ShapeError as exc:
-        for problem in exc.problems:
-            print("ERROR shape: %s" % problem, file=sys.stderr)
-        return 1
-    return 0
+    # a shape problem here is the parser's, and worth saying at once
+    return 0 if cli.load_graph(args.out) is not None else 1
 
 
 if __name__ == "__main__":

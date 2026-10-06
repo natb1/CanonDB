@@ -6,7 +6,10 @@ when the pipe closes, not print a traceback over the lines the reader asked
 for. That is one signal handler, and it stood as seven copies of the same
 block at the top of seven scripts until it was one function here — a copy
 drifts, and the eighth script would have started from whichever one its
-author opened.
+author opened. The same went for loading the graph file and saying what is
+wrong with its shape (nine copies, one of them already spelling the line
+another way), for taking a saved read from a file or stdin, for reading a
+directory of exports, and for the question a saved read's name is of.
 
 What cannot move here is the line before the import: a script finds this
 package by its own directory, and has to say so before it can import it.
@@ -14,7 +17,12 @@ package by its own directory, and has to say so before it can import it.
 
 from __future__ import annotations
 
+import os
 import signal
+import sys
+from typing import Dict, Optional
+
+from . import model
 
 
 def quiet_pipe() -> None:
@@ -28,3 +36,41 @@ def quiet_pipe() -> None:
         signal.signal(signal.SIGPIPE, signal.SIG_DFL)
     except (AttributeError, ValueError):  # pragma: no cover - not POSIX, not main thread
         pass
+
+
+def load_graph(path: str) -> Optional[model.Graph]:
+    """The graph file, or None once every problem with its shape is said on
+    stderr, one ``ERROR shape:`` line each — the one spelling, for every
+    tool and whatever greps them."""
+    try:
+        return model.load(path)
+    except model.ShapeError as exc:
+        for problem in exc.problems:
+            print("ERROR shape: %s" % problem, file=sys.stderr)
+        return None
+
+
+def source(path: str) -> str:
+    """A saved read, from its file or from stdin for ``-``."""
+    if path == "-":
+        return sys.stdin.read()
+    with open(path, encoding="utf-8") as fh:
+        return fh.read()
+
+
+def exports(directory: str) -> Dict[str, str]:
+    """question id -> its tab's markdown, from a directory of ``<question
+    id>.md`` files, in name order."""
+    found: Dict[str, str] = {}
+    for entry in sorted(os.listdir(directory)):
+        if entry.endswith(".md"):
+            with open(os.path.join(directory, entry), encoding="utf-8") as fh:
+                found[entry[:-3]] = fh.read()
+    return found
+
+
+def question_of(path: str) -> str:
+    """The question a saved read or view is of, by its file's name: up to
+    the first dot, so ``<question>.json`` and ``<question>.<part>.json``
+    name one tab."""
+    return os.path.basename(path).split(".", 1)[0]

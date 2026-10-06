@@ -48,7 +48,7 @@ def _reads(paths: List[str]) -> Dict[str, List[str]]:
             files.append(path)
     out: Dict[str, List[str]] = {}
     for path in files:
-        name = os.path.basename(path).rsplit(".", 1)[0].split(".", 1)[0]
+        name = cli.question_of(path)
         with open(path, encoding="utf-8") as fh:
             out.setdefault(name, []).append(fh.read())
     return out

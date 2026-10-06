@@ -18,7 +18,7 @@ def pages_with(graph, session):
     for q in graph.questions:
         out = render.body(graph, q.id)
         for entry in render.links(graph, q.id)["links"]:
-            href = apply._resolve(graph, entry["target"], by_tab, graph.artifact, q.tab)
+            href = apply.resolve(graph, entry["target"], by_tab, graph.artifact, q.tab)
             if href is None:
                 continue
             find = entry["find"]
@@ -78,6 +78,20 @@ class RelinkTest(unittest.TestCase):
         for ops in out.values():
             for op in ops:
                 self.assertIn(op["add"][0]["href"].rsplit("#", 1)[-1].split(".", 1)[1], ids)
+
+
+
+class UnresolvedTest(unittest.TestCase):
+    def test_an_outline_that_pairs_with_no_render_is_said_not_passed(self):
+        """Nothing repointed is not the same as nothing stale."""
+        graph = load("valid")
+        pages = pages_with(graph, "old")
+        tab = graph.get("canon").tab
+        self.assertTrue(any(("#%s." % tab) in page for page in pages.values()))
+        drifted = {tab: apply.parse_outline(test_apply.outline_of(graph, "canon", "new"))}
+        drifted[tab].append(apply.Block(id="new.99", kind="paragraph", heading=2, text="Another"))
+        with self.assertRaises(apply.Unresolved):
+            relink.stale_links(graph, ["canon"], pages, drifted)
 
 
 if __name__ == "__main__":

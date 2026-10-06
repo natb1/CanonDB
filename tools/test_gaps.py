@@ -43,5 +43,37 @@ class OrphanTest(unittest.TestCase):
         self.assertEqual(gaps.repo_of("https://github.com/natb1/CanonDB"), REPO)
 
 
+
+class AddressTest(unittest.TestCase):
+    """A link as GitHub spells one, in every spelling the checkout can answer for."""
+
+    def test_an_anchor_or_a_query_is_not_the_path(self):
+        for url in ("https://github.com/natb1/CanonDB/blob/main/tools/a.py#L10-L20",
+                    "https://github.com/natb1/CanonDB/blob/main/tools/a.py?plain=1"):
+            self.assertEqual(gaps.status("[a](%s)" % url, REPO, FILES), gaps.PRESENT, url)
+
+    def test_a_space_in_the_path_is_percent_encoded(self):
+        files = FILES + ["docs/with space/file one.md"]
+        link = "[f](https://github.com/natb1/CanonDB/blob/main/docs/with%20space/file%20one.md)"
+        self.assertEqual(gaps.status(link, REPO, files), gaps.PRESENT)
+
+    def test_a_ref_may_carry_a_slash(self):
+        self.assertEqual(gaps.status(
+            "[a](https://github.com/natb1/CanonDB/blob/release/1.0/tools/a.py)", REPO, FILES),
+            gaps.PRESENT)
+        self.assertEqual(gaps.status(
+            "[t](https://github.com/natb1/CanonDB/tree/feature/x/tools)", REPO, FILES),
+            gaps.PRESENT)
+        self.assertEqual(gaps.status(
+            "[b](https://github.com/natb1/CanonDB/blob/feature/x/b.py)", REPO, FILES),
+            gaps.ABSENT)
+
+    def test_the_repository_from_its_remote(self):
+        for remote in ("https://github.com/natb1/my.repo.git", "git@github.com:natb1/my.repo.git",
+                       "https://github.com/natb1/my.repo/", "https://github.com/natb1/my.repo"):
+            self.assertEqual(gaps.repo_of(remote), "natb1/my.repo", remote)
+        self.assertEqual(gaps.repo_of("https://github.com/natb1/CanonDB"), "natb1/CanonDB")
+
+
 if __name__ == "__main__":
     unittest.main()

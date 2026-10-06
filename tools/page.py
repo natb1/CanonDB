@@ -28,7 +28,7 @@ def main(argv=None) -> int:
     os.makedirs(args.out, exist_ok=True)
     failed = 0
     for path in args.views:
-        qid = os.path.splitext(os.path.basename(path))[0]
+        qid = cli.question_of(path)
         try:
             with open(path, encoding="utf-8") as fh:
                 text = page.markdown(fh.read())

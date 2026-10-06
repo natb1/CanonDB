@@ -45,13 +45,6 @@ from hypo.appline import Refused  # noqa: E402
 cli.quiet_pipe()
 
 
-def _source(path: str) -> str:
-    if path == "-":
-        return sys.stdin.read()
-    with open(path, encoding="utf-8") as fh:
-        return fh.read()
-
-
 def _parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parts = ap.add_subparsers(dest="part", required=True)
@@ -139,18 +132,18 @@ def _ops(args) -> list:
         say("owed: the links from the answer's uses of the word to the entry")
         return ops
     if part == "glossary" and mode == "replace":
-        ops, old, new = inplace.glossary_replace(_source(args.read), args.heading,
+        ops, old, new = inplace.glossary_replace(cli.source(args.read), args.heading,
                                                  args.block, args.body)
         say("old: %s\nnew: %s" % (old, new))
         return ops
     if part == "glossary" and mode == "delete":
-        return inplace.glossary_delete(_source(args.read), args.heading, args.block)
+        return inplace.glossary_delete(cli.source(args.read), args.heading, args.block)
     if part == "term" and mode == "insert":
         thesis = None
         if args.thesis:
             if not args.thesis_read:
                 raise Refused("--thesis names a block of --thesis-read")
-            thesis = inplace.thesis_text(_source(args.thesis_read), args.thesis)
+            thesis = inplace.thesis_text(cli.source(args.thesis_read), args.thesis)
         ops, content = inplace.term_insert(args.after, args.title, args.to, args.to_tab,
                                            args.anchor, thesis, args.open_section)
         say("new: %s" % content)
@@ -161,18 +154,18 @@ def _ops(args) -> list:
             "header list (incoming insert), and the links to the term" % args.to)
         return ops
     if part == "term" and mode == "delete":
-        return inplace.term_delete(_source(args.read), args.heading, args.block)
+        return inplace.term_delete(cli.source(args.read), args.heading, args.block)
     if part == "incoming" and mode == "insert":
-        ops, line = inplace.incoming_insert(_source(args.read), args.header, args.anchor,
+        ops, line = inplace.incoming_insert(cli.source(args.read), args.header, args.anchor,
                                             args.raiser, args.raiser_tab, args.after_item)
         say("new: %s" % line)
         say("owed: the link on the anchor back to the term on %s" % args.raiser)
         return ops
     if part == "incoming" and mode == "delete":
-        return inplace.incoming_delete(_source(args.read), args.header, args.item)
+        return inplace.incoming_delete(cli.source(args.read), args.header, args.item)
     if part == "thesis" and mode == "replace" and args.markdown:
         ops, old, new, dropped, added = inplace.thesis_markdown(
-            _source(args.read), args.block, args.text, args.anchor)
+            cli.source(args.read), args.block, args.text, args.anchor)
         say("old: %s\nnew: %s" % (old, new))
         for words, target in dropped:
             say("dropped: the link on %r to %s" % (words, target))
@@ -181,18 +174,18 @@ def _ops(args) -> list:
                 "on %s" % (words, target))
         return ops
     if part == "thesis" and mode == "headline":
-        ops, old, new = inplace.thesis_headline(_source(args.read), args.heading,
+        ops, old, new = inplace.thesis_headline(cli.source(args.read), args.heading,
                                                 args.title)
         say("old: %s\nnew: %s" % (old, new))
         say("applications: %d line(s) rewritten with it" % (len(ops) - 1))
         return ops
     if part == "thesis" and mode == "replace":
-        ops, old, new = inplace.thesis_replace(_source(args.read), args.block,
+        ops, old, new = inplace.thesis_replace(cli.source(args.read), args.block,
                                                args.text, args.anchor)
         say("old: %s\nnew: %s" % (old, new))
         return ops
     if part == "hinge" and mode == "amend":
-        ops, old, new = inplace.hinge_amend(_source(args.read), args.block, args.date,
+        ops, old, new = inplace.hinge_amend(cli.source(args.read), args.block, args.date,
                                             args.by, args.origin)
         say("old: %s\nnew: %s" % (old, new))
         return ops
@@ -205,6 +198,9 @@ def main(argv=None) -> int:
         ops = _ops(args)
     except Refused as exc:
         print("REFUSED %s" % exc, file=sys.stderr)
+        return 1
+    except OSError as exc:
+        print("ERROR read: %s" % exc, file=sys.stderr)
         return 1
     print(json.dumps({"ops": ops}, ensure_ascii=False))
     return 0

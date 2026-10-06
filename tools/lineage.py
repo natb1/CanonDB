@@ -20,7 +20,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from hypo import cli, model, turn  # noqa: E402
+from hypo import cli, turn  # noqa: E402
 
 cli.quiet_pipe()
 
@@ -34,11 +34,8 @@ def main(argv=None) -> int:
                     help="questions on the open thread being continued")
     args = ap.parse_args(argv)
 
-    try:
-        graph = model.load(args.graph)
-    except model.ShapeError as exc:
-        for problem in exc.problems:
-            print("ERROR shape: %s" % problem, file=sys.stderr)
+    graph = cli.load_graph(args.graph)
+    if graph is None:
         return 1
 
     try:
@@ -46,6 +43,7 @@ def main(argv=None) -> int:
     except ValueError as exc:
         print("not written: %s" % exc, file=sys.stderr)
         return 1
+    os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as fh:
         fh.write(text)
     print("%s: %d answer(s) above it -> %s"

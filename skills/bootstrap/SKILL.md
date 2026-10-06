@@ -60,7 +60,8 @@ turn holds one.
 
 **1 — Read, in place.** The document is the reference, and it is read where it stands:
 nothing is exported, transcribed to disk or built into a graph file. Read the artifact's tab
-list. For each author tab (order `a…`; a tradition tab carries no application), `search` its
+list. For each author tab — one whose top-level ancestor is the root, order `a0`, and not a
+tab under a tradition's, order `b…`; a tradition's tabs carry no application — `search` its
 body for `⚙` to find the application headings, then for ` · ◆ ` to get every application
 line with its block id and `h`, and keep the tab's `rev` as its bookmark. That is every
 application in the notebook, and all this entry point reads of it besides the blocks a
@@ -98,8 +99,11 @@ thing does what `what` says is read, not computed; say what you read.
 
 Then the other direction. Write the applications step 1 read as a JSON list, one
 `{"tab", "name", "link"}` each with the link as the read spells it, and run
-`tools/gaps.py <that file>`. It says per application whether its link's path is in the
-checkout, and lists every tracked file that no link and no manifest entry accounts for
+`tools/gaps.py <that file> --root <the project's root> --repo <owner/name>` (the root defaults
+to the working directory and the repository to `origin`'s; run from elsewhere, or without an
+`origin`, it would list every file as unaccounted for and say so of no link). It says per
+application whether its link's path is in the checkout, and lists every tracked file that no
+link and no manifest entry accounts for
 and that is not under `canon/`. A link to the repository's root accounts for nothing. Read
 each file it lists and class it:
 
@@ -132,8 +136,9 @@ can decide is tooled, as `/principal:dictate` step 3 says. Run the plugin's test
   "pull_request", "rounds"}`, added or updated in `.principal/bootstrap.json`. The files are
   the ones bootstrap now owns; a round that stops owning a file removes it.
 - The notebook: the application's `link` points at the thing on `main` — the path it will
-  have once the pull request is merged — and its standing stays `postulate`, which the
-  renderer reads off the answer's state and this run never writes. Write each change with
+  have once the pull request is merged — and its standing is written `postulate`
+  (`--standing postulate`), and stays so until a reconciliation writes `derived`; the discharge
+  clause beside it is what the renderer reads off the answer's state. Write each change with
   `tools/application.py` over a saved read of the block — `replace` for a line, `insert` for
   a new application, `delete` for one withdrawn — and send the ops it prints as one prose
   `update` per tab. It refuses a read whose block does not hash to the `h` the document
