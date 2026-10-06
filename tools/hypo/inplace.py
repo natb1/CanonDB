@@ -144,13 +144,17 @@ def spelled(runs: Sequence[Piece]) -> Tuple[str, Dict[str, dict]]:
     return page._spell(runs_out), chips
 
 
-def reworded(runs: Sequence[Piece], new: str) -> List[Piece]:
+def reworded(runs: Sequence[Piece], new: str,
+             remedy: str = "change the words around it, or write the tab whole"
+             ) -> List[Piece]:
     """The runs after a ``text`` write of ``new`` over them.
 
     The old letters and the new are aligned, and every chip and every marked
     run has to stand inside a stretch the two share — which is where the
     document keeps it. Where one does not, the document either refuses the
     write or puts the mark somewhere nobody chose, and this refuses first.
+    ``remedy`` is what the refusal then sends the caller to: only a paragraph
+    of an answer has a markdown way, so the caller that has one names it.
     """
     old = letters(runs)
     if "\n" in new:
@@ -186,8 +190,7 @@ def reworded(runs: Sequence[Piece], new: str) -> List[Piece]:
                     else "the marked run %r" % p.text)
             raise Refused("%s stands in or against the stretch the document rewrites "
                           "(from the first changed letter to the last), and would lose "
-                          "its mark or carry it onto the new words; write the block as "
-                          "markdown instead (--markdown)" % what)
+                          "its mark or carry it onto the new words; %s" % (what, remedy))
         at = end
     kept: List[Tuple[int, int, Piece]] = []
     at = 0
@@ -239,11 +242,15 @@ def _changes(old: str, new: str, same) -> List[Tuple[int, int, int]]:
     return out
 
 
-def _reader_text(runs: Sequence[Piece]) -> str:
-    """The block as the reader holds it in a thesis: chips off, and the
+def _reader_md(md: str) -> str:
+    """Markdown as the reader holds it in a thesis: chips off, and the
     sidecar's links reduced to their words."""
-    md, _ = spelled(runs)
     return read.PLACED_CHIP.sub("", read.IN_PAGE_LINK.sub(r"\1", md)).strip()
+
+
+def _reader_text(runs: Sequence[Piece]) -> str:
+    """The block as the reader holds it in a thesis."""
+    return _reader_md(spelled(runs)[0])
 
 
 def _words_op(bid: str, node: ET.Element, at: int, new: str) -> dict:
@@ -292,6 +299,16 @@ def _tab(*sections: Tuple[str, List[str]]) -> str:
         blocks_.append("## %s" % name)
         blocks_.extend(body)
     return render.SEPARATOR.join(blocks_) + "\n"
+
+
+#: the least metadata line an answer carries, for a read-back
+ASSENT = "assent: none · held · provenance: thesis hinge"
+
+
+def _thesis_tab(heading: str, text: str, *more: Tuple[str, List[str]]) -> str:
+    """The least tab holding one answer: its heading as it will stand, glyph
+    and all, its metadata line and one block of words; then any sections."""
+    return _tab(("Thesis", ["### %s" % heading, ASSENT, text]), *more)
 
 
 def _read_back(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
@@ -414,10 +431,9 @@ def term_insert(after: str, title: str, to: str, to_tab: str,
     term = Term(title=title, to=to, anchors=list(anchors))
     lines = ["### %s" % render.term_line(term)] + [render.anchor_line(a) for a in anchors]
     ids = {render.chip_key(to): to}
-    got = _read_back(_tab(("Thesis", ["### ◆ answer",
-                                      "assent: none · held · provenance: thesis hinge",
-                                      thesis if thesis is not None else " ".join(anchors)]),
-                          ("Terms", lines)), ids)
+    got = _read_back(_thesis_tab("%s answer" % THESIS,
+                                 thesis if thesis is not None else " ".join(anchors),
+                                 ("Terms", lines)), ids)
     read_terms = [t for th in got["theses"] for t in th["terms"]]
     if read_terms != [{"title": title, "to": to, "anchors": list(anchors)}]:
         raise Refused("the term does not read back as written: %r" % read_terms)
@@ -529,7 +545,7 @@ def thesis_replace(source, bid: str, new: str,
         raise Refused("block %s is a heading" % bid)
     runs = pieces(node)
     old_md, _ = spelled(runs)
-    after = reworded(runs, new)
+    after = reworded(runs, new, "write the block as markdown instead (--markdown)")
     new_md, _ = spelled(after)
     _plain_block(read.PLACED_CHIP.sub("", new_md), "the answer's paragraph")
     before, now = _reader_text(runs), _reader_text(after)
@@ -537,9 +553,7 @@ def thesis_replace(source, bid: str, new: str,
         if anchor in before and anchor not in now:
             raise Refused("the anchor no longer stands in the paragraph: %r"
                           % anchor[:60])
-    got = _read_back(_tab(("Thesis", ["### ◆ answer",
-                                      "assent: none · held · provenance: thesis hinge",
-                                      new_md])))
+    got = _read_back(_thesis_tab("%s answer" % THESIS, new_md))
     if [t["text"] for t in got["theses"]] != [now]:
         raise Refused("the paragraph does not read back as written")
     return [_words_op(bid, node, rev(source), new)], old_md, new_md
@@ -569,28 +583,27 @@ def thesis_markdown(source, bid: str, new: str, anchors: Sequence[str] = ()
     if "\n" in new_md:
         raise Refused("the words break a line, which the document would read "
                       "as a second block")
-    written = read.CHIP.findall(new_md)
-    for key in chips:
-        if key not in written:
+    # counted and not merely looked for: a chip said twice is one the
+    # paragraph did not hold, and the blocks map would carry it once
+    held, written = read.CHIP.findall(old_md), read.CHIP.findall(new_md)
+    for key in held:
+        if written.count(key) < held.count(key):
             raise Refused("the chip to %s stood in the paragraph and is not in "
                           "the new words; write it where it belongs, as "
                           "<?claude block %s?>" % (key[2:], key))
     for key in written:
-        if key not in chips:
+        if written.count(key) > held.count(key):
             raise Refused("the new words carry a chip the paragraph did not "
                           "hold (%s); a new chip is a term's or a mention's to "
                           "bring" % key)
     _plain_block(read.PLACED_CHIP.sub("", new_md), "the answer's paragraph")
-    before = _reader_text(runs)
-    now = read.PLACED_CHIP.sub("", read.IN_PAGE_LINK.sub(r"\1", new_md)).strip()
+    before, now = _reader_text(runs), _reader_md(new_md)
     for anchor in anchors:
         if anchor not in now:
             raise Refused("the anchor %s in the paragraph: %r"
                           % ("no longer stands" if anchor in before
                              else "does not stand", anchor[:60]))
-    got = _read_back(_tab(("Thesis", ["### ◆ answer",
-                                      "assent: none · held · provenance: thesis hinge",
-                                      new_md])))
+    got = _read_back(_thesis_tab("%s answer" % THESIS, new_md))
     if [t["text"] for t in got["theses"]] != [now]:
         raise Refused("the paragraph does not read back as written")
     had, has = LINKED.findall(old_md), LINKED.findall(new_md)
@@ -620,10 +633,12 @@ def _application_lines(source) -> List[str]:
     out: List[str] = []
     inside = headed = False
     for bid, markdown in page.blocks(source):
+        # as ``read._sections`` and ``read._subsections`` take them: the
+        # section's name with case folded, the heading by its glyph alone
         if markdown.startswith("## "):
-            inside, headed = markdown[3:].strip() == APPLICATIONS, False
+            inside, headed = markdown[3:].strip().lower() == APPLICATIONS.lower(), False
         elif inside and markdown.startswith("### "):
-            headed = markdown.startswith("### %s " % appline.MARK)
+            headed = markdown.startswith("### " + appline.MARK)
         elif inside and headed and not markdown.startswith(">"):
             out.append(bid)
             headed = False
@@ -644,6 +659,11 @@ def thesis_headline(source, heading: str, title: str) -> Tuple[List[dict], str, 
     title = title.strip()
     if not title or "\n" in title or MARKUP.search(title):
         raise Refused("an answer's headline is one line of plain letters: %r" % title)
+    if "·" in title:
+        # an application line parts its fields with it, and says the headline
+        # among them; one that carried it would read back as another answer's
+        raise Refused("an answer's headline carries no ·, which parts the fields "
+                      "of the application lines that say it: %r" % title)
     _whole(source)
     node, old = _heading(source, heading, THESIS)
     for bid, other in blocks(source).items():
@@ -653,17 +673,17 @@ def thesis_headline(source, heading: str, title: str) -> Tuple[List[dict], str, 
                           "application could not say which it derives from" % title)
     new = "%s %s" % (THESIS, title)
     after, _ = spelled(reworded(pieces(node), new))
-    got = _read_back(_tab(("Thesis", ["### %s" % after,
-                                      "assent: none · held · provenance: thesis hinge",
-                                      "words"])))
+    got = _read_back(_thesis_tab(after, "words"))
     if [t["title"] for t in got["theses"]] != [title]:
         raise Refused("the headline does not read back as written: %r"
                       % [t["title"] for t in got["theses"]])
     ops = [_words_op(heading, node, rev(source), new)]
     for bid in _application_lines(source):
-        fields = appline.read_line(source, bid)
-        if fields["thesis"] != old:
+        # whose the line is, before its shape is judged: another answer's line
+        # that would not round-trip is not a reason to refuse this headline
+        if appline.parse(page.inline(block(source, bid)))["thesis"] != old:
             continue
+        fields = appline.read_line(source, bid)
         fields["thesis"] = title
         if appline.parse(appline.line(fields))["thesis"] != title:
             raise Refused("the headline does not read back off an application "

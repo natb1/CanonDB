@@ -75,11 +75,11 @@ rows, in step 4, cite the notebook. A dictation that changes nothing in the note
 names what to focus on is still recorded: as the pressure it bears on.
 A dictation that bears only on applications, or on the words of a paragraph, is applied in
 place — `tools/application.py` for an application, `tools/inplace.py` for the words of an
-answer, a definition's body or an amendment to a hinge's provenance. One that adds or drops a
-term or a glossary entry is `/principal:dictate`'s in-place path, with its scoped check over
-the touched tabs and their ancestors; one that changes a question, a state or the
-specification is `/principal:dictate`'s whole, with its graph and its checks, and until that
-runs this round records the dictation verbatim as a note on the tab it bears on.
+answer, its headline, a definition's body or an amendment to a hinge's provenance. One that
+adds or drops a term or a glossary entry is `/principal:dictate`'s in-place path, with its
+scoped check over the touched tabs and their ancestors; one that changes a question, a state
+or the specification is `/principal:dictate`'s whole, with its graph and its checks, and until
+that runs this round records the dictation verbatim as a note on the tab it bears on.
 
 **3 — Review for gaps.** For every application (⚙) read in step 1, read
 what it says and look at the checkout. Its `link` is where it says the thing lives; its

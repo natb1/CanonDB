@@ -380,6 +380,14 @@ class MarkdownTest(unittest.TestCase):
             inplace.thesis_markdown(self.view, self.bid,
                                     self.old + " <?claude block m_party?>")
 
+    def test_a_chip_said_twice_is_refused(self):
+        """The blocks map carries the chip once; a second token is a chip the
+        paragraph did not hold."""
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.thesis_markdown(self.view, self.bid,
+                                    self.old.replace(self.CHIP, self.CHIP + " " + self.CHIP))
+        self.assertIn("did not hold", str(caught.exception))
+
     def test_an_anchor_that_no_longer_stands_is_refused(self):
         new = self.old.replace("never removed", "sometimes removed")
         with self.assertRaises(appline.Refused):
@@ -477,6 +485,45 @@ class HeadlineTest(unittest.TestCase):
         with self.assertRaises(appline.Refused):
             inplace.thesis_headline(self.view, self.heading, "What is owed · and by whom")
 
+    def test_the_separator_is_refused_before_any_application_says_the_headline(self):
+        """Accepted while no line says it, the headline would part the fields of
+        the first application line written for it, and the reader would file
+        that application under no answer."""
+        self.graph.get("ti-esti").theses[0].applications = []
+        view, by_id = view_of(self.graph, "ti-esti")
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.thesis_headline(view, block_of(by_id, "### ◆ "),
+                                    "What is owed · and by whom")
+        self.assertIn("·", str(caught.exception))
+
+    def test_the_section_is_found_as_the_reader_finds_it(self):
+        """The reader folds the case of a section's name; the lines under a
+        heading it would read must move with the headline all the same."""
+        view, by_id = view_of(self.graph, "ti-esti",
+                              edit=lambda md: md.replace("## Applications", "## applications"))
+        ops, _, _ = inplace.thesis_headline(view, block_of(by_id, "### ◆ "), self.NEW)
+        self.assertEqual(len(ops), 1 + len(self.lines))
+
+    def test_another_answer_s_line_that_does_not_round_trip_is_left_alone(self):
+        """Whose a line is comes before its shape: a line the renderer would not
+        have written, under another answer, is not this headline's to refuse."""
+        q = self.graph.get("ti-esti")
+        q.theses.append(model.Thesis(
+            title="The principal's own prior", text="He holds otherwise.",
+            assent="none", state="held",
+            applications=[model.Application(name="his note", what="a note of his",
+                                            link="notes/own.md", standing="postulate")]))
+        view, by_id = view_of(
+            self.graph, "ti-esti",
+            edit=lambda md: md.replace("notes/own.md · postulate (",
+                                       "notes/own.md · postulate  ("))
+        other = next(bid for bid, md in by_id.items() if "notes/own.md" in md)
+        with self.assertRaises(appline.Refused):
+            appline.read_line(view, other)
+        ops, _, _ = inplace.thesis_headline(view, block_of(by_id, "### ◆ Each"), self.NEW)
+        self.assertEqual(len(ops), 3)
+        self.assertNotIn(other, [op["target"]["ids"][0] for op in ops])
+
     def test_a_partial_read_is_refused(self):
         """A search, or a view since a later rev, may not hold every
         application that says the headline."""
@@ -544,6 +591,17 @@ class HingeTest(unittest.TestCase):
     def test_a_date_out_of_shape_is_refused(self):
         with self.assertRaises(appline.Refused):
             inplace.hinge_amend(self.view, self.bid, "30 Sept", "p", "d")
+
+    def test_a_refusal_names_no_flag_the_command_has_not(self):
+        """A provenance that ends in a link cannot take the amendment as text;
+        the remedy named is a body write, since ``hinge amend`` has no
+        ``--markdown``."""
+        view, by_id = view_of(self.graph, "canon", edit=lambda md: md.replace(
+            "canon: the opening entry", "canon: [the opening entry](https://example.org/c)"))
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.hinge_amend(view, block_of(by_id, "model:"), "2026-10-06", "p", "d")
+        self.assertNotIn("--markdown", str(caught.exception))
+        self.assertIn("write the tab whole", str(caught.exception))
 
 
 class CliTest(unittest.TestCase):
