@@ -52,13 +52,13 @@ would land nowhere.
 
 from __future__ import annotations
 
-import difflib
 import re
 import xml.etree.ElementTree as ET
 from typing import Dict, List, NamedTuple, Optional, Sequence, Tuple
 
 from . import appline, page, read, render, spec
 from .appline import Refused, block, blocks, rev
+from .model import Term
 
 #: the glyphs that open each part's heading, as the renderer writes them
 GLOSSARY, TERM, THESIS = "≡", "▸", "◆"
@@ -95,9 +95,7 @@ def pieces(node: ET.Element, marks: Tuple[Tuple[str, str], ...] = (),
         out.append(Piece(marks, node.text))
     for child in node:
         tag = child.tag
-        if tag == "mention":
-            out.append(Piece(marks, "", child))
-        elif tag == "dropdown":
+        if tag in ("mention", "dropdown"):
             out.append(Piece(marks, "", child))
         elif tag in (page.ITALIC, page.BOLD, page.CODE):
             out.extend(pieces(child, marks + ((tag, ""),), False))
@@ -160,28 +158,22 @@ def reworded(runs: Sequence[Piece], new: str,
     if "\n" in new:
         raise Refused("the words break a line, which the document would read "
                       "as a second block")
-    same = [(a, b, size) for a, b, size in
-            difflib.SequenceMatcher(None, old, new, autojunk=False).get_matching_blocks()
-            if size]
-
-    def where(at: int, end: int) -> Optional[int]:
-        for a, b, size in same:
-            if a <= at and end <= a + size:
-                return b + (at - a)
-        return None
-
-    for a, b, size in _changes(old, new, same):
-        if MARKUP.search(new[b:b + size]):
-            raise Refused("the new words carry %r, which the page reads back as "
-                          "a mark; write it as a body write instead"
-                          % MARKUP.search(new[b:b + size]).group())
     # The document does not align words: it keeps the letters the old and the
     # new share at the front and at the back, and writes everything between as
-    # one run, which takes the marks of what it covered. New words beside a
-    # link came back linked from the first change to the last. So no marked
-    # run and no chip may meet that stretch, not even an in-page link the
-    # reader drops; a block whose changes reach one is written as markdown.
+    # one run, which takes the marks of what it covered. That stretch is the
+    # one thing the placing follows: a run before it keeps its place, and one
+    # after it moves by the difference. (Aligned by a diff instead, a run the
+    # document left whole was refused as inside the changed words.)
     s0, e0 = _span(old, new)
+    e1 = len(new) - (len(old) - e0)  # where the stretch ends in the new letters
+    marked = MARKUP.search(new[s0:e1])
+    if marked:
+        raise Refused("the new words carry %r, which the page reads back as "
+                      "a mark; write it as a body write instead" % marked.group())
+    # New words beside a link came back linked from the first change to the
+    # last. So no marked run and no chip may meet that stretch, not even an
+    # in-page link the reader drops; a block whose changes reach one is
+    # written as markdown.
     at = 0
     for p in runs:
         end = at + len(p.text)
@@ -192,17 +184,15 @@ def reworded(runs: Sequence[Piece], new: str,
                           "(from the first changed letter to the last), and would lose "
                           "its mark or carry it onto the new words; %s" % (what, remedy))
         at = end
+    # every chip and every marked run stands clear of the stretch, so each
+    # keeps its letters and its marks — the in-page links too, so that what
+    # is said back is what the page will hold
     kept: List[Tuple[int, int, Piece]] = []
     at = 0
     for p in runs:
         end = at + len(p.text)
-        if p.chip is not None or (_fixed(p) and p.text):
-            moved = where(at, end)
-            if moved is None:
-                what = ("a chip to %s" % p.chip.get("label", "?") if p.chip is not None
-                        else "the marked run %r" % p.text)
-                raise Refused("%s stands inside the changed words; change the words "
-                              "around it, or write the tab whole" % what)
+        if p.chip is not None or (p.marks and p.text):
+            moved = at if end < s0 else at + len(new) - len(old)
             kept.append((moved, moved + len(p.text), p))
         at = end
     out: List[Piece] = []
@@ -230,22 +220,15 @@ def _span(old: str, new: str) -> Tuple[int, int]:
     return front, len(old) - back
 
 
-def _changes(old: str, new: str, same) -> List[Tuple[int, int, int]]:
-    """The stretches of ``new`` that are not the old letters: (old at, new at,
-    length in new)."""
-    out = []
-    a0 = b0 = 0
-    for a, b, size in list(same) + [(len(old), len(new), 0)]:
-        if b > b0:
-            out.append((a0, b0, b - b0))
-        a0, b0 = a + size, b + size
-    return out
-
-
 def _reader_md(md: str) -> str:
-    """Markdown as the reader holds it in a thesis: chips off, and the
-    sidecar's links reduced to their words."""
-    return read.PLACED_CHIP.sub("", read.IN_PAGE_LINK.sub(r"\1", md)).strip()
+    """Markdown as the reader holds it in a thesis: chips off, the sidecar's
+    links reduced to their words, and a backslash before punctuation off, as
+    ``read.parse_tab`` takes every tab."""
+    return _unescaped(read.PLACED_CHIP.sub("", read.IN_PAGE_LINK.sub(r"\1", md))).strip()
+
+
+def _unescaped(md: str) -> str:
+    return read.ESCAPE.sub(r"\1", md)
 
 
 def _reader_text(runs: Sequence[Piece]) -> str:
@@ -377,7 +360,7 @@ def glossary_replace(source, heading: str, body: str,
     after, _ = spelled(reworded(runs, new))
     _plain_block(after, "the definition")
     got = _read_back(_tab(("Glossary", ["### %s" % render.glossary_heading(word), after])))
-    if got["definitions"] != [{"word": word, "body": after}]:
+    if got["definitions"] != [{"word": word, "body": _unescaped(after)}]:
         raise Refused("the entry does not read back as written: %r" % got["definitions"])
     return [_words_op(body, node, rev(source), new)], old, after
 
@@ -427,7 +410,6 @@ def term_insert(after: str, title: str, to: str, to_tab: str,
             if anchor not in thesis:
                 raise Refused("the anchor is not a verbatim run of the answer's "
                               "words: %r" % anchor[:60])
-    from .model import Term  # the renderer's own shape, for its own spelling
     term = Term(title=title, to=to, anchors=list(anchors))
     lines = ["### %s" % render.term_line(term)] + [render.anchor_line(a) for a in anchors]
     ids = {render.chip_key(to): to}
@@ -498,6 +480,9 @@ def incoming_insert(source, header: str, anchor: str, raiser: str,
     if node.tag != "list":
         raise Refused("block %s is not the header list" % header)
     items = _items(source, header)
+    if not items:
+        raise Refused("the list %s holds no item in this read: it is not the header "
+                      "list, or the read is partial" % header)
     line = render.incoming_item(_anchor(anchor), raiser)
     got = _read_back("⌂ root\n\n# here\n\n%s\n" % line, {render.chip_key(raiser): raiser})
     if got["incoming"] != [(read._strip_chips(anchor), raiser)]:
@@ -719,6 +704,6 @@ def hinge_amend(source, bid: str, day: str, by: str,
     if new_md != render.amended(old_md, day, by.strip(), origin.strip()):
         raise Refused("the amendment does not land at the end of the line")
     got = _read_back(_tab(("Hinge", ["### %s" % render.HINGE_THESIS, new_md])))
-    if got.get("hinge", {}).get("thesis") != new_md:
+    if got.get("hinge", {}).get("thesis") != _unescaped(new_md):
         raise Refused("the provenance does not read back as written")
     return [_words_op(bid, node, rev(source), new)], old_md, new_md

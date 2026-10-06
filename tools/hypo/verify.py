@@ -151,7 +151,15 @@ def normalise(markdown: str, labels: Optional[Dict[str, str]] = None) -> List[st
     out = read.ESCAPE.sub(r"\1", out)
     out = _STATE.sub(r"\1 STATE ·", out)
     out = _ANSWER_STATE.sub(r"\1 STATE \2", out)
-    return [line.rstrip() for line in out.strip().splitlines() if line.strip()]
+    # a blank line parts two blocks, and one block with a soft break is not
+    # two: the parting is kept as one empty line, however many stood there
+    lines: List[str] = []
+    for line in out.strip().splitlines():
+        if line.strip():
+            lines.append(line.rstrip())
+        elif lines and lines[-1]:
+            lines.append("")
+    return lines
 
 
 def applied(page: str) -> Counter:

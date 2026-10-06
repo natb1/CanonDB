@@ -424,5 +424,12 @@ class ReportTest(unittest.TestCase):
         self.assertTrue(any("MISSING LINK" in line for line in lines))
 
 
+
+class BlockStructureTest(unittest.TestCase):
+    def test_one_block_with_a_soft_break_is_not_two_blocks(self):
+        self.assertNotEqual(verify.normalise("A.\n\nB."), verify.normalise("A.\nB."))
+        self.assertEqual(verify.normalise("A.\n\n\n\nB."), verify.normalise("A.\n\nB."))
+
+
 if __name__ == "__main__":
     unittest.main()

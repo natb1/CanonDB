@@ -120,5 +120,48 @@ class CliTest(unittest.TestCase):
         self.assertTrue(ops[0]["with"]["from"]["content"].endswith(" · n"))
 
 
+
+class LineTest(unittest.TestCase):
+    FIELDS = {"what": "a tool", "thesis": "A thesis", "link": "tools/x.py", "standing": "postulate"}
+
+    def test_a_field_carrying_the_separator_is_refused(self):
+        for field in ("what", "thesis", "link"):
+            with self.subTest(field=field), self.assertRaises(appline.Refused):
+                appline.line(dict(self.FIELDS, **{field: "a · b"}))
+
+    def test_the_note_may_carry_the_separator(self):
+        self.assertTrue(appline.line(dict(self.FIELDS, note="a · b")).endswith(" · a · b"))
+
+    def test_a_clause_with_a_bracket_does_not_read_back(self):
+        with self.assertRaises(appline.Refused):
+            appline.line(dict(self.FIELDS, clause="a) b"))
+
+    def test_a_note_breaking_a_line_is_refused(self):
+        with self.assertRaises(appline.Refused):
+            appline.line(dict(self.FIELDS, note="one\ntwo"))
+
+
+def two_applications():
+    return ("<doc rev='3'>"
+            "<paragraph id='abc.0' h='%s' heading='3'><text id='.1'>⚙ one</text></paragraph>"
+            "<paragraph id='.10' h='%s'>%s</paragraph>"
+            "<paragraph id='.11' h='%s' heading='3'><text id='.12'>⚙ two</text></paragraph>"
+            "<paragraph id='.13' h='%s'>%s</paragraph></doc>"
+            % (h("⚙ one"), h(LINE_TEXT), LINE_RUNS, h("⚙ two"), h(LINE_TEXT), LINE_RUNS))
+
+
+class DeleteTest(unittest.TestCase):
+    def test_the_line_deleted_is_the_heading_s_own(self):
+        self.assertEqual(len(appline.delete_ops(two_applications(), "abc.0", "abc.10")), 2)
+        with self.assertRaises(appline.Refused):
+            appline.delete_ops(two_applications(), "abc.0", "abc.13")
+
+    def test_a_read_that_is_not_one_is_refused(self):
+        with self.assertRaises(appline.Refused):
+            appline.blocks("<doc rev='1'><paragraph id='a.1'>unclosed</doc>")
+        with self.assertRaises(appline.Refused):
+            appline.blocks(json.dumps({"data": {"rev": 1}}))
+
+
 if __name__ == "__main__":
     unittest.main()

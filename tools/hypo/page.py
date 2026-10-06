@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import json
 import xml.etree.ElementTree as ET
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import List, Sequence, Tuple
 
 #: the marks a run of text may carry, outermost first as the export spells them
 ITALIC, BOLD, CODE, LINK = "italic", "bold", "code", "link"
@@ -33,7 +33,10 @@ def view_xml(source) -> str:
     from the bare xml."""
     if isinstance(source, dict):
         data = source.get("data", source)
-        return data["xml"] if isinstance(data, dict) else source["xml"]
+        try:
+            return data["xml"] if isinstance(data, dict) else source["xml"]
+        except KeyError:
+            raise ValueError("the read carries no xml: it is not a view or a search result")
     text = source.strip()
     if text.startswith("{"):
         return view_xml(json.loads(text))
@@ -45,44 +48,31 @@ def view_xml(source) -> str:
 Run = Tuple[Tuple[Tuple[str, str], ...], str]  # ((mark, arg), ...), text
 
 
-def _runs(node: ET.Element, marks: Tuple[Tuple[str, str], ...] = ()) -> List[Run]:
-    """The runs of text under a paragraph, each with its marks outermost first."""
+def _runs(node: ET.Element, marks: Tuple[Tuple[str, str], ...] = (),
+          top: bool = True) -> List[Run]:
+    """The runs of text under a paragraph, each with its marks outermost first.
+
+    A mention is its label and a dropdown the word it shows; the letters of
+    every other element, known or not, are kept — the one walk, as
+    ``inplace.pieces`` walks the tree and ``appline.digest`` hashes it. A
+    walker that skipped an element it did not know spelled a line without a
+    word the hash still counted, and the write put that line back.
+    """
     out: List[Run] = []
+    if not top and node.text:
+        out.append((marks, node.text))
     for child in node:
         tag = child.tag
-        if tag == "text":
-            out.extend(_text_runs(child, marks))
-        elif tag == "mention":
+        if tag == "mention":
             out.append((marks, child.get("label", "")))
         elif tag == "dropdown":
             out.append((marks, child.text or ""))
         elif tag in (ITALIC, BOLD, CODE):
-            out.extend(_text_runs(child, marks + ((tag, ""),)))
+            out.extend(_runs(child, marks + ((tag, ""),), False))
         elif tag == LINK:
-            out.extend(_text_runs(child, marks + ((LINK, child.get("href", "")),)))
+            out.extend(_runs(child, marks + ((LINK, child.get("href", "")),), False))
         else:
-            out.extend(_runs(child, marks))
-        if child.tail:
-            out.append((marks, child.tail))
-    return out
-
-
-def _text_runs(node: ET.Element, marks: Tuple[Tuple[str, str], ...]) -> List[Run]:
-    out: List[Run] = []
-    if node.text:
-        out.append((marks, node.text))
-    for child in node:
-        tag = child.tag
-        if tag in (ITALIC, BOLD, CODE):
-            out.extend(_text_runs(child, marks + ((tag, ""),)))
-        elif tag == LINK:
-            out.extend(_text_runs(child, marks + ((LINK, child.get("href", "")),)))
-        elif tag == "mention":
-            out.append((marks, child.get("label", "")))
-        elif tag == "dropdown":
-            out.append((marks, child.text or ""))
-        else:
-            out.extend(_text_runs(child, marks))
+            out.extend(_runs(child, marks, False))
         if child.tail:
             out.append((marks, child.tail))
     return out
@@ -161,7 +151,6 @@ def _blockquote(node: ET.Element) -> str:
 
 def _table(node: ET.Element) -> str:
     rows: List[List[str]] = []
-    header = False
     for row in node:
         if row.tag != "row":
             continue
@@ -169,16 +158,13 @@ def _table(node: ET.Element) -> str:
         for cell in row:
             if cell.tag != "cell":
                 continue
-            if cell.get("header") == "true" and not rows:
-                header = True
             cells.append(" ".join(inline(p) for p in cell if p.tag == "paragraph")
                          .replace("|", "\\|"))
         rows.append(cells)
     if not rows:
         return ""
-    lines = ["| " + " | ".join(rows[0]) + " |"]
-    if header or True:
-        lines.append("| " + " | ".join("---" for _ in rows[0]) + " |")
+    lines = ["| " + " | ".join(rows[0]) + " |",
+             "| " + " | ".join("---" for _ in rows[0]) + " |"]
     for cells in rows[1:]:
         lines.append("| " + " | ".join(cells) + " |")
     return "\n".join(lines)
@@ -196,13 +182,19 @@ def _block(node: ET.Element) -> str:
         return _table(node)
     if tag == "pending":
         return ""
-    return inline(node)
+    # spelled as nothing, a code block or a divider would be gone from the
+    # markdown and from everything downstream, and the next body write would
+    # take it off the page; a tab holding one is not rewritten from a read
+    raise ValueError("a block the tab's grammar does not hold: <%s>" % tag)
 
 
 def blocks(source) -> List[Tuple[str, str]]:
     """(block id, markdown) per block of the tab, in order; a ``gone`` block is
     not a block."""
     root = ET.fromstring(view_xml(source))
+    if root.get("sinceRev", "0") != "0" or root.find(".//gap") is not None:
+        raise ValueError("a partial view, since rev %s: it folds the blocks that did "
+                         "not change, and spells no whole tab" % root.get("sinceRev"))
     session = ""
     out: List[Tuple[str, str]] = []
     for node in root:

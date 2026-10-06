@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import hashlib
 import xml.etree.ElementTree as ET
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from . import page, read, render
 from .model import STANDINGS, Application
@@ -34,8 +34,8 @@ from .model import STANDINGS, Application
 MARK = "⚙"
 
 #: containers whose own text is not a block's text
-_BLOCKS = ("paragraph", "listItem", "cell", "row", "table", "list",
-           "blockquote", "gone", "pending", "gap", "hit")
+_CONTAINERS = ("paragraph", "listItem", "cell", "row", "table", "list",
+               "blockquote")
 
 
 class Refused(Exception):
@@ -48,12 +48,10 @@ def _text(node: ET.Element) -> str:
     the enum's and not the block's letters. The question line hashes as
     ``question:  · …``, the state's word left out."""
     out: List[str] = []
-    if node.text and node.tag not in _BLOCKS[:7]:
+    if node.text and node.tag not in _CONTAINERS:
         out.append(node.text)
     for child in node:
-        if child.tag in ("mention", "dropdown"):
-            pass
-        else:
+        if child.tag not in ("mention", "dropdown"):
             out.append(_text(child))
         if child.tail:
             out.append(child.tail)
@@ -98,7 +96,10 @@ def blocks(source) -> Dict[str, ET.Element]:
     """Every block of a read by its full id, short ids resolved. A list's
     items are blocks of their own: one can be written or dropped without the
     rest of its list."""
-    root = ET.fromstring(page.view_xml(source))
+    try:
+        root = ET.fromstring(page.view_xml(source))
+    except (ET.ParseError, ValueError) as exc:
+        raise Refused("the read is not a view or a search result: %s" % exc)
     out: Dict[str, ET.Element] = {}
     session = ""
     for node in root.iter():
@@ -145,15 +146,29 @@ def parse(line: str) -> Dict[str, str]:
 
 
 def line(fields: Dict[str, str]) -> str:
-    """The line the renderer writes for these fields."""
+    """The line the renderer writes for these fields — and reads back as
+    them: a field carrying the separator, or a line break, or a clause with
+    a bracket, would come back as other fields, under another answer, or not
+    at all."""
     standing = fields.get("standing", "").strip()
     if standing not in STANDINGS:
         raise Refused("standing %r is not one of %s" % (standing, ", ".join(STANDINGS)))
+    for field in ("what", "thesis", "link"):
+        if "·" in (fields.get(field) or ""):
+            raise Refused("the %s carries ·, which parts the fields of the line; "
+                          "the note alone may" % field)
     shown = "%s (%s)" % (standing, fields["clause"]) if fields.get("clause") else standing
     app = Application(name=fields.get("name", ""), what=fields["what"],
                       link=fields.get("link", ""), standing=standing,
                       note=fields.get("note", ""))
-    return render.application_line(app, fields["thesis"], shown)
+    out = render.application_line(app, fields["thesis"], shown)
+    if "\n" in out:
+        raise Refused("a field breaks a line, and the line is one block")
+    want = {k: (fields.get(k) or "") for k in ("what", "thesis", "link", "clause", "note")}
+    want.update(standing=standing, note=want["note"].strip())
+    if parse(out) != want:
+        raise Refused("the line does not read back as its fields: %r" % out)
+    return out
 
 
 def read_line(source, bid: str) -> Dict[str, str]:
@@ -182,6 +197,8 @@ def replace_op(fields: Dict[str, str]) -> dict:
 def insert_op(after: str, name: str, fields: Dict[str, str]) -> dict:
     if not name.strip():
         raise Refused("an application needs a name")
+    if "\n" in name:
+        raise Refused("an application's name is one line, its heading")
     content = "### %s %s\n\n%s" % (MARK, name.strip(), line(fields))
     return {"op": "insert", "target": {"kind": "blocks", "ids": [after]},
             "side": "after", "source": _markdown(content)}
@@ -194,6 +211,11 @@ def delete_ops(source, heading: str, line_id: str) -> List[dict]:
     if not page.inline(head).startswith(MARK + " "):
         raise Refused("block %s is not an application heading" % heading)
     read_line(source, line_id)
+    order = list(blocks(source))
+    if order.index(line_id) != order.index(heading) + 1:
+        # another application's line under this one's heading: both would be
+        # left half there, each hashing as it should
+        raise Refused("block %s is not the line under the heading %s" % (line_id, heading))
     body = block(source, line_id)
     at = rev(source)
     return [{"op": "delete", "target": {"kind": "blocks", "ids": [bid]},

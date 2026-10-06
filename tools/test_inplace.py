@@ -656,5 +656,32 @@ class CliTest(unittest.TestCase):
         self.assertIn("REFUSED", done.stderr)
 
 
+
+class RewordedTest(unittest.TestCase):
+    def test_a_mark_the_document_leaves_whole_is_kept(self):
+        """Aligned by a diff, the bold A was taken for part of the change; the
+        document keeps the letters shared at the front, and the mark on them."""
+        runs = [inplace.Piece((("bold", ""),), "A"), inplace.Piece((), " A B")]
+        after = inplace.reworded(runs, "A B")
+        self.assertEqual(inplace.letters(after), "A B")
+        self.assertEqual(after[0], runs[0])
+
+    def test_an_in_page_link_clear_of_the_change_is_said_back_linked(self):
+        runs = [inplace.Piece((), "see "), inplace.Piece(((page.LINK, "#abc.1"),), "the entry"),
+                inplace.Piece((), " here")]
+        after = inplace.reworded(runs, "see the entry there")
+        self.assertEqual(inplace.spelled(after)[0], "see [the entry](#abc.1) there")
+
+    def test_the_reader_s_unescaping_is_applied_on_this_side_too(self):
+        self.assertEqual(inplace._reader_md("session\\_01 [x](#a.1)"), "session_01 x")
+
+    def test_a_list_with_no_live_item_is_refused(self):
+        src = "<doc rev='1' sinceRev='0'><list id='a.3' kind='bullet' h='%s'><gone id='.4'/></list></doc>"
+        src = src % appline.digest(ET.fromstring("<list><gone/></list>"))
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.incoming_insert(src, "a.3", "an anchor", "ti-esti", "tab-01")
+        self.assertIn("no item", str(caught.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

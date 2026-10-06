@@ -939,7 +939,9 @@ def _fixed_spans(page: str) -> List[Tuple[int, int]]:
     out: List[Tuple[int, int]] = []
     at = 0
     for line in (page or "").splitlines(keepends=True):
-        if line.lstrip().startswith("#") or line.startswith("assent:"):
+        # a heading as the page takes one: the marks and then a space, so a
+        # paragraph opening ``#1`` is a paragraph
+        if re.match(r"[ \t]*#{1,6} ", line) or line.startswith("assent:"):
             out.append((at, at + len(line)))
         at += len(line)
     return out

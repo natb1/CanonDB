@@ -72,6 +72,14 @@ PLACED_CHIP = re.compile(r" ?(?:<\?claude block [0-9A-Za-z_]+\?>"
 #: stood between them, and the full stop that closed the note before it
 CRUMB_TAIL = re.compile(r"[\s›.]+$")
 
+#: the heading glyphs the renderer writes under each section; a ``### `` under
+#: a section with any other glyph is a heading the grammar does not hold
+MARKERS = {"thesis": ("◆",), "glossary": ("≡",), "terms": ("▸", "↗"),
+           "applications": ("⚙",), "hinge": ("⚓",)}
+
+CHIPPED_STATE = ("a state is a chip and not a word: this is the renderer's markdown, "
+                 "and the reader takes the page as the page spells it")
+
 
 class ParseError(Exception):
     """The markdown is not in the grammar the renderer writes."""
@@ -125,21 +133,35 @@ def _label_run(line: str, labels: Iterable[str]) -> Optional[Tuple[int, List[str
     or nothing. A bare id anywhere else is prose and is left alone, which is
     the whole reason this is a run at the end rather than a search for words.
     """
-    labels = set(labels)
+    labels = sorted(set(labels), key=len, reverse=True)
     if not labels:
         return None
-    at, found = len(line), []
+
+    def ends_with_label(text: str) -> Optional[str]:
+        # whole, and after a space or nothing: a label is a question id, and
+        # one may carry a space, so it is matched as itself and not as a word
+        for label in labels:
+            if text.endswith(label) and (len(text) == len(label)
+                                         or text[-len(label) - 1] == " "):
+                return label
+        return None
+
+    at, found = len(line.rstrip()), []
     while True:
-        head, sep, word = line[:at].rpartition(" › " if found else " ")
-        if not sep and found:
+        label = ends_with_label(line[:at])
+        if label is None:
             break
-        candidate = (word if sep else line[:at]).strip()
-        if candidate not in labels:
-            break
-        found.insert(0, candidate)
-        at = len(head)
-        if not sep:  # the run reaches the start of the line
-            break
+        found.insert(0, label)
+        at -= len(label)
+        before = line[:at]
+        # a step of the crumb, if the one before it is a label too; else the
+        # space that parted the run from the words
+        if before.endswith(" › ") and ends_with_label(before[:-3]):
+            at -= 3
+            continue
+        if before.endswith(" "):
+            at -= 1
+        break
     return (at, found) if found else None
 
 
@@ -227,8 +249,15 @@ def _unchip_prose(body_text: str, edges: List[Tuple[str, List[str]]],
     return out if render.anchored(out, edges, bare) == body_text else body_text
 
 
+#: what parts one block from the next: a blank line, whatever whitespace it
+#: carries and however many stand together. Split on the exact separator, an
+#: extra newline before ``## Thesis`` made that heading a prose block, and the
+#: section with every answer under it was dropped in silence.
+BLANK = re.compile(r"\n[ \t]*\n+")
+
+
 def _blocks(markdown: str) -> List[str]:
-    return [b for b in markdown.strip().split(SEPARATOR) if b.strip()]
+    return [b for b in BLANK.split(markdown.strip()) if b.strip()]
 
 
 def _sections(blocks: List[str]) -> Tuple[List[str], Dict[str, List[str]]]:
@@ -337,12 +366,20 @@ def _citations(blocks: List[str],
             for line in block.splitlines():
                 keys = _chips(line, labels)
                 if not keys:
+                    # with the file list in hand a bare label is readable, so a
+                    # citation that names nothing is malformed; without it the
+                    # label is not readable, and the item is left as it was
+                    if labels:
+                        raise ParseError("a citation names no question: %r" % line[:60])
                     continue
                 # the crumb is a breadcrumb, so taking its chips out leaves the
                 # separators that stood between them; they belong to the path
                 # and not to the note that precedes it
                 text = CRUMB_TAIL.sub("", _strip_chips(line[2:], labels))
-                note, _, counter = text.partition(INSTEAD)
+                # only a divergence holds something instead; in a support's
+                # note the words are the note's own
+                note, _, counter = (text.partition(INSTEAD) if relation == "divergence"
+                                    else (text, "", ""))
                 out.append((relation, note.strip().rstrip("."),
                             CRUMB_TAIL.sub("", counter).strip(), keys[-1]))
     return out
@@ -383,6 +420,16 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     head, named = _sections(blocks[at + 1:])
     if REMOVED_SECTION in named:
         raise ParseError(REMOVED % "an Inbox section")
+    foreign = sorted(set(named) - set(SECTIONS))
+    if foreign:
+        raise ParseError("a section the renderer does not write, whose blocks would "
+                         "be lost: %s" % ", ".join("## %s" % s for s in foreign))
+    for section, held in named.items():
+        for block in held:
+            if block.startswith("### ") and not any(
+                    block.startswith("### " + marker) for marker in MARKERS.get(section, ())):
+                raise ParseError("a heading the renderer does not write under %s, which "
+                                 "would end the text before it: %r" % (section, block[:50]))
     incoming: List[Tuple[str, str]] = []
     for block in head:
         if block.startswith("- "):
@@ -390,6 +437,9 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
                 item = ITEM.match(line)
                 if item:
                     keys = _chips(line, labels)
+                    if not keys and labels:
+                        raise ParseError("an item of the header list names no "
+                                         "raiser: %r" % line[:60])
                     incoming.append((_strip_chips(item.group("text"), labels),
                                      target(keys[0]) if keys else ""))
         elif block.startswith("*") and block.endswith("*"):
@@ -404,6 +454,8 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
             if not line:
                 raise ParseError("the question line is malformed: %r" % block)
             q["state"] = _strip_chips(line.group("state"))
+            if not q["state"]:
+                raise ParseError(CHIPPED_STATE)
             q["kind"] = line.group("kind")
             if line.group("answerer"):
                 q["answerer"] = line.group("answerer").strip()
@@ -429,9 +481,11 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
             if line and "assent" not in thesis:
                 thesis["assent"] = line.group("assent")
                 thesis["state"] = _strip_chips(line.group("state")).strip()
+                if not thesis["state"]:
+                    raise ParseError(CHIPPED_STATE)
             elif not block.startswith(">"):
-                rest.append(("text", block))
-        text = SEPARATOR.join(b for kind, b in rest if kind == "text")
+                rest.append(block)
+        text = SEPARATOR.join(rest)
         thesis["text"] = PLACED_CHIP.sub("", text)
         for relation, note, counter, key in _citations(cited, labels):
             thesis["traditions"].append({"to": target(key), "relation": relation,
@@ -491,6 +545,11 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
         definition["body"] = SEPARATOR.join(body)
         definitions.append(definition)
 
+    titles = [thesis["title"] for thesis in theses]
+    doubled = sorted({t for t in titles if titles.count(t) > 1})
+    if doubled:
+        raise ParseError("two answers carry one headline, and the page tells its answers "
+                         "apart by headline alone: %r" % doubled[0])
     for name, body in _subsections(named.get("applications", []), "⚙"):
         line = APPLICATION_LINE.match(body[0]) if body else None
         if not line:
@@ -499,10 +558,13 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
                "link": line.group("link"), "standing": line.group("standing")}
         if line.group("note"):
             app["note"] = line.group("note")
-        for thesis in theses:
-            if thesis["title"] == line.group("thesis"):
-                thesis.setdefault("applications", []).append(app)
-                break
+        owner = next((thesis for thesis in theses
+                      if thesis["title"].strip() == line.group("thesis").strip()), None)
+        if owner is None:
+            # dropped, it would be gone from the page at the next body write
+            raise ParseError("the application %r names an answer no heading on the tab "
+                             "carries: %r" % (name, line.group("thesis")))
+        owner["applications"].append(app)
 
     hinge: dict = {}
     for heading, body in _subsections(named.get("hinge", []), "⚓"):

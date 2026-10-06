@@ -404,5 +404,84 @@ class DetailTest(unittest.TestCase):
         self.assertIn(commit, parsed["hinge"]["thesis"])
 
 
+
+class BareLabelTest(unittest.TestCase):
+    """The page spells a chip as its bare label, so the reader finds the label
+    where the renderer put a chip — at the end of the line, alone or as the
+    tail of a crumb — and nowhere else."""
+    LABELS = {"plato", "gorgias", "canon", "plato dialogues"}
+
+    def test_every_step_of_a_crumb_is_read(self):
+        line = "the opening move is asked. plato › gorgias"
+        at, found = read._label_run(line, self.LABELS)
+        self.assertEqual(found, ["plato", "gorgias"])
+        self.assertEqual(line[:at], "the opening move is asked.")
+        self.assertEqual(read._strip_chips(line, self.LABELS), "the opening move is asked.")
+
+    def test_a_label_with_a_space_in_it_is_one_label(self):
+        at, found = read._label_run("already doing. plato dialogues", self.LABELS)
+        self.assertEqual(found, ["plato dialogues"])
+        self.assertEqual(at, len("already doing."))
+
+    def test_a_trailing_space_does_not_hide_the_label(self):
+        self.assertEqual(read._label_run("already doing. canon ", self.LABELS)[1], ["canon"])
+
+    def test_a_word_of_prose_that_is_an_id_is_prose(self):
+        self.assertIsNone(read._label_run("the canon is settled", self.LABELS))
+        self.assertIsNone(read._label_run("as the canon.", self.LABELS))
+
+
+class RefusedShapeTest(unittest.TestCase):
+    """What the reader cannot carry back it says, rather than dropping."""
+
+    def setUp(self):
+        self.graph = load("valid")
+        self.ids = chip_ids(self.graph)
+        self.body = render.body(self.graph, "ti-esti")
+        self.title = self.graph.get("ti-esti").theses[0].title
+
+    def test_an_application_under_no_answer_is_refused(self):
+        self.assertIn("· ◆ %s ·" % self.title, self.body)
+        with self.assertRaises(read.ParseError):
+            read.parse_tab(self.body.replace("· ◆ %s ·" % self.title, "· ◆ Nope ·"), self.ids)
+
+    def test_two_answers_at_one_headline_are_refused(self):
+        heading = "### ◆ %s" % self.title
+        doubled = self.body.replace(
+            heading, heading + "\n\nassent: none · held · provenance: thesis hinge"
+                               "\n\nSaid again.\n\n" + heading, 1)
+        with self.assertRaises(read.ParseError):
+            read.parse_tab(doubled, self.ids)
+
+    def test_an_extra_blank_line_parts_no_section(self):
+        self.assertIn("\n\n## Thesis", self.body)
+        self.assertEqual(read.parse_tab(self.body.replace("\n\n## Thesis", "\n\n \n\n## Thesis"),
+                                        self.ids),
+                         read.parse_tab(self.body, self.ids))
+
+    def test_a_section_the_renderer_does_not_write_is_refused(self):
+        with self.assertRaises(read.ParseError):
+            read.parse_tab(self.body.rstrip("\n") + "\n\n## Another\n\nLost.\n", self.ids)
+
+    def test_a_heading_the_renderer_does_not_write_is_refused(self):
+        parts = self.body.split("\n\n## ")
+        parts[1] = parts[1].rstrip("\n") + "\n\n### A sub-heading\n\nLost."
+        with self.assertRaises(read.ParseError):
+            read.parse_tab("\n\n## ".join(parts), self.ids)
+
+    def test_the_renderer_s_own_state_chips_are_refused(self):
+        self.graph.state_enum = "000e742f-9e41"
+        with self.assertRaises(read.ParseError):
+            read.parse_tab(render.body(self.graph, "ti-esti"), self.ids)
+
+    def test_a_support_s_note_keeps_its_own_words(self):
+        edge = next(e for t in self.graph.get("ti-esti").theses for e in t.traditions)
+        self.assertEqual(edge.relation, "support")
+        edge.note = "he asks first. Instead: of lecturing"
+        parsed = read.parse_tab(render.body(self.graph, "ti-esti"), self.ids)
+        trad = parsed["theses"][0]["traditions"][0]
+        self.assertEqual((trad["note"], trad.get("counter", "")), (edge.note, ""))
+
+
 if __name__ == "__main__":
     unittest.main()

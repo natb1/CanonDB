@@ -275,5 +275,29 @@ class UnlinkTest(unittest.TestCase):
         self.assertEqual(apply.unlink_ops(self.graph, self.qid, page), [])
 
 
+
+class HeadingShapeTest(unittest.TestCase):
+    def test_a_paragraph_opening_on_a_number_sign_is_not_a_heading(self):
+        self.assertEqual(apply.rendered_headings("# Title\n\n#1 on the list is the merge.\n\n## Thesis"),
+                         ["Title", "Thesis"])
+
+    def test_a_heading_s_whitespace_is_collapsed_as_the_outline_s_is(self):
+        self.assertEqual(apply.rendered_headings("### ▸ The record  between them → <?claude block m_canon?>"),
+                         ["▸ The record between them →"])
+
+    def test_two_headings_spelling_one_text_resolve_to_neither(self):
+        graph = load("valid")
+        q = graph.get("ti-esti")
+        thesis = q.theses[0]
+        first = thesis.terms[0]
+        tail = thesis.text.rstrip(".").rsplit(". ", 1)[-1]
+        thesis.terms.append(model.Term(title=first.title, to="party", anchors=[tail]))
+        by_tab = outlines(graph)
+        found = apply.headings(graph, q.tab, by_tab[q.tab])
+        self.assertEqual(found["▸ %s →" % first.title], apply.AMBIGUOUS)
+        self.assertIsNone(apply._resolve(graph, "#%s.▸ %s" % (q.tab, first.title), by_tab,
+                                         graph.artifact, q.tab))
+
+
 if __name__ == "__main__":
     unittest.main()

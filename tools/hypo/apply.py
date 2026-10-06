@@ -131,8 +131,15 @@ def _scan(body: str) -> List[Block]:
 #: what an outline puts where it stopped printing a block's words.
 _ELIDED = "…"
 
-#: a heading line of the rendered body, and the chip that closes one.
-_HEADING = re.compile(r"^(#+)\s*(.*)$")
+#: a heading line of the rendered body, and the chip that closes one. The
+#: marks and then a space, as the document and the reader take a heading; a
+#: paragraph opening ``#1`` is a paragraph, and counting it made the outline
+#: and the render disagree on every heading of the tab.
+_HEADING = re.compile(r"^(#{1,6}) (.*)$")
+
+#: what ``headings`` maps a text to when two headings of the tab spell it: a
+#: target naming it means neither, and resolves to nothing
+AMBIGUOUS = ""
 
 
 def rendered_headings(body: str) -> List[str]:
@@ -144,8 +151,8 @@ def rendered_headings(body: str) -> List[str]:
     out: List[str] = []
     for chunk in (body or "").split("\n\n"):
         m = _HEADING.match(chunk.strip())
-        if m:
-            out.append(_CHIP.sub("", m.group(2)).strip())
+        if m:  # whitespace collapsed, as ``parse_outline`` collapses the outline's
+            out.append(" ".join(_CHIP.sub("", m.group(2)).split()))
     return out
 
 
@@ -171,7 +178,7 @@ def headings(graph: Graph, tab: str, outline: List[Block]) -> Dict[str, str]:
         shown = block.text.rstrip(_ELIDED)
         if shown and not words.startswith(shown):
             return {}  # the page is not this render; nothing here can be trusted
-        out.setdefault(words, block.id)
+        out[words] = AMBIGUOUS if words in out else block.id
     return out
 
 
@@ -188,8 +195,10 @@ def _resolve(graph: Graph, target: str, by_tab: Dict[str, List[Block]],
     # So the arrow is tried after the words themselves, and nothing looser: one
     # term's title may open another's, and the first heading that merely began
     # with the words was taken for it
-    bid = found.get(heading) or found.get("%s →" % heading)
+    bid = found.get(heading)
     if bid is None:
+        bid = found.get("%s →" % heading)
+    if not bid:  # no heading spells it, or two do
         return None
     if tab == own_tab:
         return "#%s" % bid
