@@ -19,7 +19,7 @@ from __future__ import annotations
 import re
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
-from .model import AUTHOR, SECTIONS
+from .model import AUTHOR, CITATION_HEADINGS, SECTIONS
 from . import render
 from .render import INSTEAD, SEPARATOR, SHADOW, chip_key
 
@@ -62,10 +62,6 @@ APPLICATION_LINE = re.compile(
     r"^(?P<what>.*?) · ◆ (?P<thesis>.*?) · (?P<link>[^·]*?) · "
     r"(?P<standing>[^·(]+?)(?: \((?P<clause>[^)]*)\))?(?: · (?P<note>.*))?$")
 ITEM = re.compile(r"^- (?P<text>.*?)(?: (?P<chip><\?claude block [0-9A-Za-z_]+\?>))?$")
-
-#: what opens the tradition edges at the foot of a thesis subsection. Nothing
-#: the renderer writes follows them, which is what makes the split positional.
-CITATION_HEADINGS = ("**Support**", "**Divergence**")
 
 #: a chip with the space the renderer put before it, so removing one leaves the
 #: text as it was written rather than a gap where a token used to stand

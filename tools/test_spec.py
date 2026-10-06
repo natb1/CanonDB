@@ -589,5 +589,191 @@ class DetailTest(unittest.TestCase):
                          {"check", "severity", "question", "message"})
 
 
+class PlainWordsTest(unittest.TestCase):
+    """The checks that compare words compare them as the page holds them:
+    the characters, with the emphasis beside them and not among them."""
+
+    def test_an_anchor_said_once_in_bold_and_once_plain_is_said_twice(self):
+        """The sidecar resolves an anchor on the plain page, so the bold
+        occurrence and the plain one are two runs, and the link takes the
+        first; the marked-up count alone saw one."""
+        graph = load("valid")
+        thesis = graph.get("ti-esti").theses[0]
+        term = thesis.terms[0]
+        anchor = term.anchors[0]
+        self.assertEqual(thesis.text.count(anchor), 1)
+        thesis.text = thesis.text.replace(anchor, "**%s**" % anchor) + " " + anchor + "."
+        term.anchors[0] = "**%s**" % anchor
+        self.assertEqual(spec.run(graph, only=["anchor-substring"]), [])
+        findings = spec.run(graph, only=["anchor-unique"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+
+    def test_a_restatement_is_found_through_emphasis_and_a_closing_stop(self):
+        graph = load("valid")
+        src = graph.get("ti-esti")
+        term = next(t for t in src.terms())
+        anchor = term.anchors[0]
+        src.theses[0].text = src.theses[0].text.replace(anchor, "**%s**" % anchor, 1)
+        term.anchors[0] = "**%s**" % anchor
+        graph.get(term.to).question = "%s: what is it?" % anchor.rstrip(".")
+        findings = spec.run(graph, only=["no-restatement"])
+        self.assertEqual([f.question for f in findings], [term.to])
+
+
+class WholeGraphTest(unittest.TestCase):
+    def test_a_word_defined_twice_on_one_question_is_defined_twice(self):
+        graph = load("valid")
+        canon = graph.get("canon")
+        self.assertIn("assent", [d.word for d in canon.definitions])
+        canon.definitions.append(model.Definition(word="assent", body="A second sense."))
+        findings = spec.run(graph, only=["definition-once"])
+        self.assertEqual([f.question for f in findings], ["canon"])
+        self.assertIn("this same question", findings[0].message)
+
+    def test_the_shadowed_question_reaches_its_own_word(self):
+        """A shadow fixes nothing: the sense is the question's own, and the
+        question and what stands under it reach it."""
+        graph = load("valid")
+        graph.get("canon").definitions.append(
+            model.Definition(word="party", body="Either side of the bond.", question="party"))
+        graph.get("party").theses[0].text += " A party is either side."
+        findings = spec.run(graph, only=["reach"])
+        self.assertEqual([f.message for f in findings if f.question == "party"], [])
+
+    def test_an_import_is_not_where_a_word_is_defined(self):
+        graph = load("valid")
+        graph.get("canon").definitions.append(
+            model.Definition(word="grade", body="", tradition=model.Borrowing(to="plato")))
+        root = graph.get("ti-esti").theses[0]
+        root.state = "landed"
+        root.text += " The grade is settled."
+        findings = spec.run(graph, only=["verbatim-collision"])
+        self.assertEqual([f.question for f in findings], ["attenuation"])
+
+    def test_what_an_application_says_is_judged_for_reach(self):
+        graph = load("valid")
+        _, app = next(graph.get("ti-esti").applications())
+        app.what = "it reads the grade off the state"
+        findings = spec.run(graph, only=["reach"])
+        self.assertTrue([f for f in findings if f.question == "ti-esti" and "⚙" in f.message])
+
+    def test_a_mention_without_an_anchor_is_refused(self):
+        graph = load("valid")
+        graph.get("ti-esti").theses[0].mentions.append(
+            model.Mention(title="Where authority is settled", to="canon", anchors=[]))
+        findings = spec.run(graph, only=["term-total"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        self.assertIn("mention", findings[0].message)
+
+    def test_a_check_that_is_not_there_is_refused(self):
+        with self.assertRaises(ValueError):
+            spec.run(load("valid"), only=["acylic"])
+
+    def test_two_answers_at_one_headline_are_refused(self):
+        graph = load("valid")
+        q = graph.get("ti-esti")
+        q.theses.append(model.Thesis(title=q.theses[0].title, text="Said again.",
+                                     assent="none", state="held"))
+        findings = spec.run(graph, only=["unique-ids"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+
+    def test_two_anchors_that_overlap_are_refused(self):
+        graph = load("valid")
+        thesis = graph.get("ti-esti").theses[0]
+        thesis.text = "The record kept between them is the only thing both can point at."
+        thesis.terms = [model.Term(title="a", to="canon", anchors=["The record kept between them"]),
+                        model.Term(title="b", to="party", anchors=["between them is the only thing"])]
+        findings = spec.run(graph, only=["anchor-grain"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        self.assertIn("overlapping", findings[0].message)
+
+
+class RootKindTest(unittest.TestCase):
+    def test_a_question_of_kind_root_with_a_raiser_is_refused(self):
+        graph = load("valid")
+        graph.get("canon").kind = "root"
+        findings = spec.run(graph, only=["one-root"])
+        self.assertEqual([f.question for f in findings], ["canon"])
+
+    def test_a_party_s_tab_alone_is_a_graph_without_a_root(self):
+        """Its ancestors are none, so a scoped read of it holds no root, and
+        that is not a finding: the root stands above the scope."""
+        graph = load("valid")
+        graph.questions = [graph.get("plato")]
+        graph.scope = ["plato"]
+        self.assertEqual(spec.run(graph, only=["one-root"]), [])
+
+
+class PartedTextTest(unittest.TestCase):
+    def test_a_heading_inside_an_answer_is_refused(self):
+        graph = load("valid")
+        graph.get("ti-esti").theses[0].text += "\n\n### A sub-heading\n\nA closing paragraph."
+        findings = spec.run(graph, only=["text-unquoted"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        self.assertIn("heading", findings[0].message)
+
+    def test_a_citation_heading_inside_an_answer_is_refused(self):
+        graph = load("valid")
+        graph.get("ti-esti").theses[0].text += "\n\n**Support**\n\nA closing paragraph."
+        findings = spec.run(graph, only=["text-unquoted"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+
+    def test_a_blockquote_in_the_hinge_is_refused(self):
+        graph = load("valid")
+        q = graph.get("canon")
+        self.assertIsNotNone(q.hinge)
+        q.hinge.question = "> what the asking presumes"
+        findings = spec.run(graph, only=["text-unquoted"])
+        self.assertEqual([f.question for f in findings], ["canon"])
+        self.assertIn("hinge", findings[0].message)
+
+    def test_a_text_ending_in_a_line_break_is_said_so(self):
+        graph = load("valid")
+        graph.get("canon").theses[0].text += "\n"
+        findings = spec.run(graph, only=["text-unwrapped"])
+        self.assertEqual([f.question for f in findings], ["canon"])
+        self.assertIn("ends in a line break", findings[0].message)
+
+    def test_a_list_item_is_one_the_page_writes(self):
+        """A bullet wants its space: ``-b`` is a wrapped line, ``+ b`` and
+        ``1) b`` are items the renderer places a chip by."""
+        graph = load("valid")
+        thesis = graph.get("canon").theses[0]
+        kept = thesis.text
+        for text in ("Two things:\n+ the first\n+ the second", "Two:\n1) a\n2) b"):
+            thesis.text = text
+            self.assertEqual(spec.run(graph, only=["text-unwrapped"]), [], text)
+        thesis.text = "What it needs\n-b"
+        self.assertEqual([f.question for f in spec.run(graph, only=["text-unwrapped"])],
+                         ["canon"])
+        thesis.text = kept
+
+    def test_a_citation_s_note_is_one_line(self):
+        graph = load("valid")
+        edge = next(e for t in graph.get("ti-esti").theses for e in t.traditions)
+        edge.note = "first line\nsecond line"
+        findings = spec.run(graph, only=["text-unwrapped"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        self.assertIn("one", findings[0].message)
+
+
+class FieldsPartedTest(unittest.TestCase):
+    def test_a_headline_carrying_the_separator_is_refused_before_any_application_says_it(self):
+        graph = load("valid")
+        canon = graph.get("canon")
+        self.assertEqual(list(canon.applications()), [])
+        canon.theses[0].title = "An entry binds · when marked."
+        findings = spec.run(graph, only=["fields-parted"])
+        self.assertEqual([f.question for f in findings], ["canon"])
+
+    def test_an_application_s_link_carrying_it_is_refused(self):
+        graph = load("valid")
+        _, app = next(graph.get("ti-esti").applications())
+        app.link = "entries/a · b.md"
+        findings = spec.run(graph, only=["fields-parted"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        self.assertIn("link", findings[0].message)
+
+
 if __name__ == "__main__":
     unittest.main()

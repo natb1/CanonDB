@@ -179,6 +179,7 @@
         "tools/fixtures/invalid-definition-anchorable.json",
         "tools/fixtures/invalid-definition-once.json",
         "tools/fixtures/invalid-divergence-counter.json",
+        "tools/fixtures/invalid-fields-parted.json",
         "tools/fixtures/invalid-headline-not-identifier.json",
         "tools/fixtures/invalid-hinge-present.json",
         "tools/fixtures/invalid-import-defined.json",

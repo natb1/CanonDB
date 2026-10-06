@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple
 
 from . import project, text
-from .model import (ANSWERERS, CANON, Graph, KINDS, MODES, RELATIONS,
+from .model import (ANSWERERS, CANON, CITATION_HEADINGS, Graph, KINDS, MODES, RELATIONS,
                     SECTIONS, STANDINGS, STATES)
 
 ERROR = "ERROR"
@@ -150,17 +150,24 @@ def anchor_unique(graph: Graph) -> Yield:
     linked, and read back, on the wrong answer — with nothing said, since
     each answer on its own is fine. A citation's note under an answer stands
     in the same section, so it is counted too.
+
+    Counted plain, as the sidecar resolves an anchor: the page holds the
+    characters and keeps the emphasis beside them, so a clause said once in
+    bold and once plain is said twice where the link is placed, and the
+    link would take the first.
     """
     for q in graph.questions:
         section = "\n\n".join(
-            [thesis.text for thesis in q.theses]
-            + [part for thesis in q.theses for trad in thesis.traditions
+            [text.plain(thesis.text) for thesis in q.theses]
+            + [text.plain(part) for thesis in q.theses for trad in thesis.traditions
                for part in (trad.note, trad.counter) if part])
         for thesis in q.theses:
+            own_text = text.plain(thesis.text)
             for term in list(thesis.terms) + list(thesis.mentions):
                 for anchor in term.anchors:
-                    own = _overlapping(thesis.text, anchor) if anchor else 0
-                    found = _overlapping(section, anchor) if anchor else 0
+                    plain = text.plain(anchor)
+                    own = _overlapping(own_text, plain) if plain else 0
+                    found = _overlapping(section, plain) if plain else 0
                     if own > 1:
                         yield q.id, ("term %r: its anchor occurs %d times in the "
                                      "thesis text, so which occurrence carries "
@@ -230,24 +237,45 @@ def tradition_target(graph: Graph) -> Yield:
                              "of this graph and not a tradition" % (what, to))
 
 
-@check("term-total", "every term has at least one anchor and a target")
+@check("term-total", "every term and mention has at least one anchor and a target")
 def term_total(graph: Graph) -> Yield:
+    # a mention too: no edge, but placed by its anchor as a term is, and one
+    # with none has no place on the page and no answer to be read back under
     for q in graph.questions:
-        for term in q.terms():
+        for what, term in ([("term", t) for t in q.terms()]
+                           + [("mention", m) for m in q.mentions()]):
             if not [a for a in term.anchors if a.strip()]:
-                yield q.id, "term %r carries no anchor" % term.title
+                yield q.id, "%s %r carries no anchor" % (what, term.title)
             if not term.to.strip():
-                yield q.id, "term %r names no target" % term.title
+                yield q.id, "%s %r names no target" % (what, term.title)
 
 
 @check("one-root",
        "exactly one question has no incoming term edge, and it is not a tradition")
 def one_root(graph: Graph) -> Yield:
+    """The kind says what a question with no raiser may be, and
+    ``scope-closed`` leans on it over a partial graph, so a root's kind and
+    its place have to agree: a question of kind root has no raiser, and on a
+    whole graph a question with no raiser is of kind root.
+
+    A partial graph may stand wholly below the root — a party's tab alone,
+    which has no ancestors — so there the root's absence says nothing;
+    ``scope-closed`` vouches for the kind of every question read.
+    """
     ins = project.in_edges(graph)
+    for q in graph.questions:
+        if q.kind == "root" and ins.get(q.id) and not q.tradition:
+            # a tradition's head with a raiser is ``tradition-isolated``'s
+            yield q.id, ("its kind is root, and a term edge leads to it from %s"
+                         % ", ".join(sorted(ins[q.id])))
+        elif q.kind != "root" and not ins.get(q.id) and not graph.partial:
+            yield q.id, "nothing raises it, and its kind is %r rather than root" % q.kind
     roots = sorted(q.id for q in graph.questions if not q.tradition and not ins.get(q.id))
     if len(roots) == 1:
         return
     if not roots:
+        if graph.partial:
+            return
         yield None, "no question is a root: every non-tradition question has an incoming term edge"
     else:
         yield None, "%d roots, expected one: %s" % (len(roots), ", ".join(roots))
@@ -338,7 +366,7 @@ def acyclic(graph: Graph) -> Yield:
 
 
 @check("unique-ids",
-       "question ids, tab ids and body ids are each unique")
+       "question ids, tab ids and body ids are each unique, and a headline on its tab")
 def unique_ids(graph: Graph) -> Yield:
     # the chip key drops every character an id may carry and a key may not, so
     # two ids can collide on one key — and a chip is how a rendered tab names
@@ -358,21 +386,35 @@ def unique_ids(graph: Graph) -> Yield:
             if len(owners) > 1:
                 yield owners[0], "%s %r is used by %d questions: %s" % (
                     label, value, len(owners), ", ".join(owners))
+    # the page files an application under an answer by its headline alone,
+    # and reads two answers at one headline as one
+    for q in graph.questions:
+        titles: Dict[str, int] = {}
+        for thesis in q.theses:
+            titles[thesis.title.strip()] = titles.get(thesis.title.strip(), 0) + 1
+        for title, times in titles.items():
+            if times > 1:
+                yield q.id, ("headline %r stands on %d answers of this question, and "
+                             "the page tells its answers apart by headline alone"
+                             % (_clip(title), times))
 
 
 @check("no-restatement",
        "the question text restates no anchor of a term edge that leads to it")
 def no_restatement(graph: Graph) -> Yield:
+    # on the words and not on how they are drawn: an anchor keeps its
+    # emphasis and may close its sentence, and a question does neither
     for q in graph.questions:
-        target = _norm(q.question)
+        target = _norm(text.plain(q.question))
         for src, term in graph.incoming(q.id):
             for anchor in term.anchors:
-                normalised = _norm(anchor)
+                plain = text.plain(anchor)
+                normalised = _norm(plain).rstrip(".!?;:,")
                 if normalised and normalised in target:
                     yield q.id, ("the question restates the anchor of term %r on %s"
                                  % (term.title, src.id))
                     continue
-                run = _shared_run(anchor, q.question)
+                run = _shared_run(plain, q.question)
                 if run:
                     yield q.id, ("the question repeats 8+ words of the anchor of term "
                                  "%r on %s: %r" % (term.title, src.id, run))
@@ -463,6 +505,8 @@ def verbatim_collision(graph: Graph) -> Yield:
                 if thesis.state == STATES[-1]]
     for owner in graph.questions:
         for definition in owner.definitions:
+            if definition.imported:
+                continue  # it defines nothing here, and cannot give way
             for q, thesis in verbatim:
                 if q.id == owner.id:
                     continue
@@ -611,12 +655,12 @@ def definition_once(graph: Graph) -> Yield:
             if not key:
                 continue
             spelling.setdefault(key, definition.word)
-            if q.id not in where.setdefault(key, []):
-                where[key].append(q.id)
+            where.setdefault(key, []).append(q.id)  # every entry: two on one tab are two
     for key, owners in where.items():
         if len(owners) > 1:
             yield owners[0], "%r is defined here and again on %s" % (
-                spelling[key], ", ".join(owners[1:]))
+                spelling[key], ", ".join("this same question" if o == owners[0] else o
+                                         for o in owners[1:]))
 
 
 @check("import-defined", "an imported word is defined by the party it names")
@@ -649,8 +693,15 @@ def _senses(graph: Graph) -> Dict[str, Set[str]]:
     out: Dict[str, Set[str]] = {}
     for q in graph.questions:
         for d in q.definitions:
-            if not d.imported:
-                out.setdefault(text.fold(d.word), set()).add(q.id)
+            if d.imported:
+                continue
+            owners = out.setdefault(text.fold(d.word), set())
+            owners.add(q.id)
+            if d.question:
+                # a shadow: the sense is fixed by the question the word has
+                # earned, and the entry stands for the users that cannot reach
+                # it; that question, and what stands under it, reach the sense
+                owners.add(d.question)
     return out
 
 
@@ -719,6 +770,8 @@ def _prose(q) -> Iterator[Tuple[str, str]]:
         yield "the question's hinge", q.hinge.question
     for definition in q.definitions:
         yield "≡ %s" % definition.word, definition.body
+        if definition.tradition is not None and definition.tradition.note:
+            yield "the note on ≡ %s" % definition.word, definition.tradition.note
     for note in q.notes:
         yield "a note", note.body
     for thesis in q.theses:
@@ -737,7 +790,7 @@ def _prose(q) -> Iterator[Tuple[str, str]]:
         for edge in thesis.traditions:
             yield "the note on %s" % edge.to, "%s %s" % (edge.note, edge.counter)
         for app in thesis.applications:
-            yield "⚙ %s" % app.name, "%s %s" % (app.name, app.note)
+            yield "⚙ %s" % app.name, "%s %s %s" % (app.name, app.what, app.note)
 
 
 @check("reach", "a defined word is used where its sense can be reached")
@@ -1037,11 +1090,16 @@ def mention_justified(graph: Graph) -> Yield:
 
 
 @check("anchor-grain",
-       "no term's anchor contains the anchor of another term on the same thesis")
+       "no term's anchor contains or overlaps the anchor of another on the same thesis")
 def anchor_grain(graph: Graph) -> Yield:
     """One follow-up is one term. A clause that contains another clause's
     anchor raises the synthesis rather than the parts, and the two links over
-    one another are the ones the document skips in silence."""
+    one another are the ones the document skips in silence.
+
+    Two anchors that overlap without one containing the other are as bad on
+    the way back: the page spells a chip as its bare label where the anchor
+    ends, so the label of one stands inside the other, and the reader can
+    take neither off the words."""
     for q in graph.questions:
         for thesis in q.theses:
             anchors = [(term.title, text.plain(a)) for term in thesis.terms
@@ -1051,16 +1109,27 @@ def anchor_grain(graph: Graph) -> Yield:
                     if outer != inner and small != big and small in big:
                         yield q.id, ("term %r has an anchor containing the anchor "
                                      "of term %r" % (outer, inner))
+            plain_text = text.plain(thesis.text)
+            placed = [(title, a, plain_text.find(a))
+                      for title, a in anchors + [(m.title, text.plain(a)) for m in thesis.mentions
+                                                 for a in m.anchors if a.strip()]]
+            spans = [(title, a, at, at + len(a)) for title, a, at in placed if at >= 0]
+            for i, (one, a, s1, e1) in enumerate(spans):
+                for other, b, s2, e2 in spans[i + 1:]:
+                    if s1 < e2 and s2 < e1 and a not in b and b not in a:
+                        yield q.id, ("%r has an anchor overlapping the anchor of %r, "
+                                     "and the page could take neither chip off the words"
+                                     % (one, other))
 
 
 #: a line break inside a paragraph. A single newline is the markdown's own only
 #: where the block is built out of lines — a list, a table, a quotation — so
 #: what opens the next line is what decides which it is.
-_WRAPPED = re.compile(r"(?<!\n)\n(?!\n)(?! *(?:[-*>|#]|\d+\.))")
+_WRAPPED = re.compile(r"(?<!\n)\n(?!\n)(?! *(?:[>|#]|%s[ \t]))" % text.LIST_MARKER)
 
 
 @check("text-unwrapped",
-       "an answer's text has no line break inside a paragraph")
+       "an answer's text has no line break inside a paragraph, and a citation's note none")
 def text_unwrapped(graph: Graph) -> Yield:
     """The document joins a wrapped line back into its paragraph, so a text
     written with hard breaks can never be read back as it was stored: the page
@@ -1073,11 +1142,31 @@ def text_unwrapped(graph: Graph) -> Yield:
     for q in graph.questions:
         for thesis in q.theses:
             broken = _WRAPPED.search(thesis.text)
-            if broken:
+            if broken and broken.end() == len(thesis.text):
+                yield q.id, ("the answer's text ends in a line break, which the "
+                             "page does not keep")
+            elif broken:
                 at = broken.start()
                 yield q.id, ("the answer's text breaks a line inside a "
                              "paragraph, which the document will join: %r"
                              % thesis.text[max(0, at - 30):at + 30])
+        # a citation's note and counter, and a borrowing's note, are each one
+        # list item: a line break in one is read back as a second item, or as
+        # the item's first words lost
+        for what, held in _one_line(q):
+            if "\n" in held:
+                yield q.id, "%s breaks a line, and is written as one: %r" % (what, _clip(held))
+
+
+def _one_line(q) -> Iterator[Tuple[str, str]]:
+    """The parts the renderer writes as one line each."""
+    for thesis in q.theses:
+        for edge in thesis.traditions:
+            yield "the note on %s" % edge.to, edge.note
+            yield "the counter on %s" % edge.to, edge.counter
+    for definition in q.definitions:
+        if definition.tradition is not None:
+            yield "the note on ≡ %s" % definition.word, definition.tradition.note
 
 
 #: a block that opens with a quotation mark, at the start of the text or after
@@ -1085,8 +1174,25 @@ def text_unwrapped(graph: Graph) -> Yield:
 #: a character; one opening a block is a blockquote.
 _QUOTED = re.compile(r"(?:\A|\n[ \t]*\n)[ \t]*>")
 
+#: a block that opens on a heading mark: the reader takes it for a heading of
+#: the layout's, and what follows it as under that heading
+_HEADED = re.compile(r"(?:\A|\n[ \t]*\n)[ \t]*#")
 
-@check("text-unquoted", "an answer's text has no blockquote")
+
+def _parted(q) -> Iterator[Tuple[str, str]]:
+    """The texts the reader parts into blocks, each with what it is."""
+    for thesis in q.theses:
+        yield "the answer's text", thesis.text
+    for definition in q.definitions:
+        yield "the body of ≡ %s" % definition.word, definition.body
+    if q.hinge is not None:
+        yield "the hinge's question", q.hinge.question
+        yield "the hinge's thesis", q.hinge.thesis
+
+
+@check("text-unquoted",
+       "no text opens a block the reader takes for the layout's own: a blockquote, "
+       "a heading, a citation heading")
 def text_unquoted(graph: Graph) -> Yield:
     """A blockquote on the page is a note: somebody's own words on a section,
     kept apart from the prose the renderer wrote so that a re-render carries
@@ -1099,22 +1205,65 @@ def text_unquoted(graph: Graph) -> Yield:
     An answer landed in canon is verbatim, so one that quotes cannot be
     reworded to pass. Until the reader can tell a quotation in an answer from a note
     beside it, such an answer is refused here rather than altered in silence.
+
+    The same holds of a block opening on ``#``, which the reader takes for a
+    heading and ends the text at, and of a block that is one of the two
+    citation headings, which opens the citations; and it holds of every text
+    the reader parts into blocks — a definition's body and the hinge's two
+    halves as much as an answer's text.
+    """
+    for q in graph.questions:
+        for what, held in _parted(q):
+            quoted = _QUOTED.search(held)
+            if quoted:
+                at = quoted.end() - 1
+                yield q.id, ("%s holds a blockquote, which the page reads back "
+                             "as a note: %r" % (what, held[at:at + 60]))
+            headed = _HEADED.search(held)
+            if headed:
+                at = headed.end() - 1
+                yield q.id, ("%s opens a block on #, which the page reads back as "
+                             "a heading and ends the text at: %r" % (what, held[at:at + 60]))
+            for block in held.split("\n\n"):
+                if block.strip() in CITATION_HEADINGS:
+                    yield q.id, ("%s holds a block reading %s, which the page takes "
+                                 "for the heading that opens the citations"
+                                 % (what, block.strip()))
+
+
+@check("fields-parted",
+       "no headline, and no application's what or link, carries the · that parts "
+       "an application line's fields")
+def fields_parted(graph: Graph) -> Yield:
+    """An application is written as one line, ``what · ◆ headline · link ·
+    standing · note``, and read back by its separators; a field carrying one
+    is read as two, and the application is filed under no answer and dropped
+    at the next body write. The note is the last field and may say what it
+    likes. A headline is judged whether or not an application says it yet, as
+    the in-place writer judges it.
     """
     for q in graph.questions:
         for thesis in q.theses:
-            quoted = _QUOTED.search(thesis.text)
-            if quoted:
-                at = quoted.end() - 1
-                yield q.id, ("the answer's text holds a blockquote, which the "
-                             "page reads back as a note: %r"
-                             % thesis.text[at:at + 60])
+            if "·" in thesis.title:
+                yield q.id, ("the headline %r carries ·, which parts the fields of "
+                             "an application line" % _clip(thesis.title))
+            for app in thesis.applications:
+                for field, value in (("what", app.what), ("link", app.link)):
+                    if "·" in value:
+                        yield q.id, ("⚙ %s: its %s carries ·, which parts the fields "
+                                     "of its line" % (app.name, field))
 
 
 # -- the runner -------------------------------------------------------------
 
 def run(graph: Graph, only: Optional[Iterable[str]] = None) -> List[Finding]:
-    """Every finding, in check order."""
+    """Every finding, in check order; ``only`` naming no check is refused,
+    since running nothing and finding nothing would read as a pass."""
     wanted = set(only) if only else None
+    if wanted:
+        unknown = sorted(wanted - {spec.id for spec in CHECKS})
+        if unknown:
+            raise ValueError("no check is named %s" % ", ".join(unknown))
     findings: List[Finding] = []
     for spec in CHECKS:
         if wanted and spec.id not in wanted:

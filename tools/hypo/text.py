@@ -51,8 +51,15 @@ def plain(markdown: str) -> str:
 #: what counts as being inside a word, for ``whole_word``. An apostrophe is not
 #: one of these, so ``party`` is found in ``party's``, which is where a reader
 #: meets the word; ``prior`` is not found in ``priority``, which is the case
-#: this exists for.
-_WORD = re.compile(r"[0-9A-Za-z_]")
+#: this exists for. Any script's letters count, so ``merge`` is not found
+#: inside ``mergé`` either.
+_WORD = re.compile(r"\w")
+
+#: what opens a list item, as the page writes one and the renderer places a
+#: chip by one: a bullet or a number and its stop, and then a space. The
+#: renderer and the checks read the same pattern, so a line one takes for an
+#: item the other does not take for a wrapped paragraph.
+LIST_MARKER = r"(?:[-*+]|\d+[.)])"
 
 
 #: A run of the page that reads as the needle: where it begins, and the number

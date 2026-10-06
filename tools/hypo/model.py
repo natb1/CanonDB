@@ -24,6 +24,10 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 STATES = ("held", "in thread", "landed")
 KINDS = ("definitional", "case", "consistency", "root")
 
+#: the two headings that open an answer's citations, as the renderer writes
+#: them and the reader parts the answer's text from them
+CITATION_HEADINGS = ("**Support**", "**Divergence**")
+
 #: An application's standing: the artifact exists and its landed source has
 #: been diffed against it, or it was built ahead of that and owes the diff.
 STANDINGS = ("derived", "postulate")
@@ -304,7 +308,7 @@ class Definition:
             tradition = None
         entry = Definition(
             word=r.text(d, "word", where),
-            body=r.text(d, "body", where),
+            body=r.text(d, "body", where, required=False),
             tradition=tradition,
             question=r.text(d, "question", where, required=False),
         )

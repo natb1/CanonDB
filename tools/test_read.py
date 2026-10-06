@@ -67,10 +67,11 @@ class RoundTripTest(unittest.TestCase):
     def test_the_valid_graph(self):
         self.assert_round_trips("valid")
 
-    #: the one fixture whose mutation is a text the page cannot carry back:
-    #: a blockquote inside an answer, which the reader files as a note. That
-    #: it does not round-trip is the finding, and the test below holds it.
-    NOT_CARRIED = {"invalid-text-unquoted"}
+    #: the fixtures whose mutation is a text the page cannot carry back: a
+    #: blockquote inside an answer, which the reader files as a note, and a
+    #: headline carrying the separator of the application line that says it.
+    #: That they do not round-trip is the finding, and the tests below hold it.
+    NOT_CARRIED = {"invalid-text-unquoted", "invalid-fields-parted"}
 
     def test_every_invalid_fixture_too(self):
         """They are whole graphs with one mutation, so they exercise shapes the

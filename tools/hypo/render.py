@@ -170,7 +170,7 @@ def _cited_by_blocks(graph: Graph, q: Question) -> List[str]:
 
 
 #: a line that opens a list item, in either spelling markdown allows
-_LIST_ITEM = re.compile(r"^[ \t]*([-*+]|\d+[.)])[ \t]+")
+_LIST_ITEM = re.compile(r"^[ \t]*(%s)[ \t]+" % text.LIST_MARKER)
 
 #: what separates one paragraph block from the next
 BLANK_LINE = re.compile(r"\n[ \t]*\n")
