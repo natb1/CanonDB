@@ -53,6 +53,10 @@ def main(argv=None) -> int:
     except (OSError, ValueError) as exc:
         print("ERROR apps: %s" % exc, file=sys.stderr)
         return 1
+    if not isinstance(apps, list) or not all(isinstance(a, dict) for a in apps):
+        print("ERROR apps: %s is not a list of applications, each an object with its "
+              "tab, name and link" % args.apps, file=sys.stderr)
+        return 1
     manifest = json.loads(_read(os.path.join(root, ".principal", "bootstrap.json"), "{}"))
     canon = gaps.canon_files(files)
 

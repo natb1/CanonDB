@@ -1,9 +1,12 @@
 """The review's decidable half: links against the checkout, and the files
 nothing accounts for."""
 
+import os
+import tempfile
 import unittest
 
 from hypo import gaps
+from support import HERE, run
 
 REPO = "natb1/CanonDB"
 FILES = ["README.md", "canon/ti-esti.md", "tools/a.py", "tools/test_a.py",
@@ -42,6 +45,25 @@ class OrphanTest(unittest.TestCase):
         self.assertEqual(gaps.repo_of("git@github.com:natb1/CanonDB.git"), REPO)
         self.assertEqual(gaps.repo_of("https://github.com/natb1/CanonDB"), REPO)
 
+
+
+class CliTest(unittest.TestCase):
+    def test_an_applications_file_that_is_not_one_is_said(self):
+        """The manifest is an object and the applications list is a list; the
+        one handed in for the other tracebacked on the first entry."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "apps.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write('{"applications": []}')
+            done = run("gaps.py", path, "--root", os.path.dirname(HERE), "--repo", "o/r")
+            self.assertEqual(done.returncode, 1)
+            self.assertIn("ERROR apps", done.stderr)
+            self.assertNotIn("Traceback", done.stderr)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("[]")
+            done = run("gaps.py", path, "--root", os.path.dirname(HERE), "--repo", "o/r")
+            self.assertEqual(done.returncode, 0, done.stderr)
+            self.assertIn("files nothing accounts for: 0", done.stdout)
 
 
 class AddressTest(unittest.TestCase):
