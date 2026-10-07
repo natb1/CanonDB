@@ -1239,6 +1239,33 @@ def text_unquoted(graph: Graph) -> Yield:
                                  % (what, block.strip()))
 
 
+@check("note-unstopped",
+       "no citation's note or counter, and no borrowing's note, ends in a stop: the "
+       "renderer closes each with one, and the reader takes that one off")
+def note_unstopped(graph: Graph) -> Yield:
+    """A citation's note, a divergence's counter and a borrowing's note are
+    each closed on the page with one stop, which parts the words from the
+    crumb that follows them; the reader takes that one stop back off. A note
+    stored with a stop of its own renders as one without and reads back
+    without it, so ``etc.`` came back ``etc`` at every rebuild and ``...``
+    came back as nothing. The stop is the page's, and the stored note ends
+    before it.
+    """
+    for q in graph.questions:
+        for thesis in q.theses:
+            for trad in thesis.traditions:
+                for field, value in (("note", trad.note), ("counter", trad.counter)):
+                    if value.rstrip().endswith("."):
+                        yield q.id, ("the %s on the citation of %s ends in a stop, which "
+                                     "the renderer adds and the reader takes off: %r"
+                                     % (field, trad.to, _clip(value)))
+        for definition in q.definitions:
+            if definition.tradition and definition.tradition.note.rstrip().endswith("."):
+                yield q.id, ("the note on the borrowing of ≡ %s ends in a stop, which the "
+                             "renderer adds and the reader takes off: %r"
+                             % (definition.word, _clip(definition.tradition.note)))
+
+
 @check("fields-parted",
        "no headline, and no application's what or link, carries the · that parts "
        "an application line's fields")

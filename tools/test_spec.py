@@ -757,6 +757,24 @@ class PartedTextTest(unittest.TestCase):
         self.assertIn("one", findings[0].message)
 
 
+class NoteUnstoppedTest(unittest.TestCase):
+    def test_a_citation_s_note_ending_in_a_stop_is_refused(self):
+        findings = spec.run(load("invalid-note-unstopped"), only=["note-unstopped"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        self.assertIn("the note on the citation of plato", findings[0].message)
+        self.assertEqual(spec.run(load("valid"), only=["note-unstopped"]), [])
+
+    def test_a_counter_and_a_borrowing_s_note_are_judged_too(self):
+        graph = load("valid")
+        edge = graph.get("ti-esti").theses[0].traditions[0]
+        edge.relation, edge.counter = "divergence", "he asks first..."
+        graph.get("ti-esti").definitions[0].tradition.note = "a borrowed sense."
+        messages = [f.message for f in spec.run(graph, only=["note-unstopped"])]
+        self.assertEqual(len(messages), 2)
+        self.assertTrue(any("the counter on the citation" in m for m in messages))
+        self.assertTrue(any("the borrowing of" in m for m in messages))
+
+
 class FieldsPartedTest(unittest.TestCase):
     def test_a_headline_carrying_the_separator_is_refused_before_any_application_says_it(self):
         graph = load("valid")

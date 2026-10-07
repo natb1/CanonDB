@@ -62,9 +62,9 @@ ITEM = re.compile(r"^- (?P<text>.*?)(?: (?P<chip><\?claude block [0-9A-Za-z_]+\?
 PLACED_CHIP = re.compile(r" ?(?:<\?claude block [0-9A-Za-z_]+\?>"
                          r"|\[[^\]]*\]\(file/[^)]*\))")
 
-#: what a breadcrumb leaves behind once its chips are gone: the separators that
-#: stood between them, and the full stop that closed the note before it
-CRUMB_TAIL = re.compile(r"[\s›.]+$")
+#: what a breadcrumb leaves behind once its chips are gone: the separators
+#: that stood between them
+CRUMB_TAIL = re.compile(r"[\s›]+$")
 
 #: the heading glyphs the renderer writes under each section; a ``### `` under
 #: a section with any other glyph is a heading the grammar does not hold
@@ -343,6 +343,15 @@ def _edge(heading: str, labels: Iterable[str] = ()) -> Tuple[str, str]:
     return title.strip(), keys[0]
 
 
+def _unstopped(words: str) -> str:
+    """A note without the one stop the renderer closed it with. One and not
+    every trailing stop: ``note-unstopped`` holds that the stored note had
+    none of its own, so one off is the note as it was stored, and ``etc.``
+    is a finding on the graph rather than ``etc`` on the way back."""
+    words = words.strip()
+    return words[:-1].rstrip() if words.endswith(".") else words
+
+
 def _citations(blocks: List[str],
                labels: Iterable[str] = ()) -> List[Tuple[str, str, str, str]]:
     """(relation, note, counter, last chip key) from the Support/Divergence lists.
@@ -374,8 +383,8 @@ def _citations(blocks: List[str],
                 # note the words are the note's own
                 note, _, counter = (words.partition(INSTEAD) if relation == "divergence"
                                     else (words, "", ""))
-                out.append((relation, note.strip().rstrip("."),
-                            CRUMB_TAIL.sub("", counter).strip(), keys[-1]))
+                out.append((relation, _unstopped(note),
+                            _unstopped(CRUMB_TAIL.sub("", counter)), keys[-1]))
     return out
 
 
@@ -537,7 +546,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
             borrowing, body = body[-1], body[:-1]
             here = _closing(borrowing, labels)
             definition["tradition"] = {"to": target(_chips(borrowing, here)[-1]),
-                                       "note": strip_chips(borrowing, here).rstrip(".")}
+                                       "note": _unstopped(strip_chips(borrowing, here))}
         definition["body"] = SEPARATOR.join(body)
         definitions.append(definition)
 

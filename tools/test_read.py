@@ -71,7 +71,7 @@ class RoundTripTest(unittest.TestCase):
     #: blockquote inside an answer, which the reader files as a note, and a
     #: headline carrying the separator of the application line that says it.
     #: That they do not round-trip is the finding, and the tests below hold it.
-    NOT_CARRIED = {"invalid-text-unquoted", "invalid-fields-parted"}
+    NOT_CARRIED = {"invalid-text-unquoted", "invalid-fields-parted", "invalid-note-unstopped"}
 
     def test_every_invalid_fixture_too(self):
         """They are whole graphs with one mutation, so they exercise shapes the
@@ -80,6 +80,21 @@ class RoundTripTest(unittest.TestCase):
             if name.startswith("invalid-") and name.endswith(".json"):
                 if name[:-5] not in self.NOT_CARRIED:
                     self.assert_round_trips(name[:-5])
+
+    def test_a_note_s_own_stop_does_not_come_back(self):
+        """The renderer closes a note with one stop and the reader takes one
+        off, so a note stored with its own ends one stop short at every
+        rebuild. ``note-unstopped`` refuses the graph before it is written;
+        this is what it stands between, and the one stop that does come off
+        is the renderer's."""
+        graph = load("invalid-note-unstopped")
+        edge = graph.get("ti-esti").theses[0].traditions[0]
+        self.assertTrue(edge.note.endswith("doing."))
+        parsed = read.parse_tab(render.body(graph, "ti-esti"), chip_ids(graph))
+        self.assertEqual(parsed["theses"][0]["traditions"][0]["note"], edge.note[:-1])
+        edge.note = "asked of what the answerer is doing, etc"
+        parsed = read.parse_tab(render.body(graph, "ti-esti"), chip_ids(graph))
+        self.assertEqual(parsed["theses"][0]["traditions"][0]["note"], edge.note)
 
     def test_a_blockquote_in_an_answer_comes_back_as_a_note(self):
         """A blockquote is somebody's note wherever it stands, so one inside
