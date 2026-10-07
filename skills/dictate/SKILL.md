@@ -2,7 +2,7 @@
 name: dictate
 description: The principal dictates a change to the hypomnemata. Plan every edit, map each to the clause of the dictation that motivates it, apply it through the tooling, and — when the dictation changes the spec — tool the new rule, attenuate what cannot be tooled, and bring the whole notebook up to it. Invoke as /principal:dictate <dictation>.
 disable-model-invocation: true
-allowed-tools: mcp__claude_ai_Claude_Docs__read, mcp__claude_ai_Claude_Docs__update, mcp__claude_ai_Claude_Docs__batch
+allowed-tools: mcp__claude_ai_Claude_Docs__read, mcp__claude_ai_Claude_Docs__update, mcp__claude_ai_Claude_Docs__batch, mcp__Claude_Docs__read, mcp__Claude_Docs__update, mcp__Claude_Docs__batch
 ---
 
 # /principal:dictate \<dictation\>
@@ -21,7 +21,9 @@ enum its states point at. `tools/` below is the plugin's own, at `${CLAUDE_PLUGI
 `$SCRATCH` is the session's scratch directory, and nothing of the notebook is written under the
 project. The document tools this run reads and writes the notebook with are granted in its
 frontmatter under `allowed-tools`: invoking the entry point is the grant, and no other turn
-holds one.
+holds one. Each tool is named in both spellings the surfaces give it,
+`mcp__claude_ai_Claude_Docs__…` and `mcp__Claude_Docs__…`; a name the surface lacks grants
+nothing.
 
 ## Ground rules
 

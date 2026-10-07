@@ -2,7 +2,7 @@
 name: bootstrap
 description: The principal reconciles application directly from the hypomnemata, ahead of canon. Review the notebook's applications against the checkout for gaps, plan the round for approval, build it on a branch of its own, record what was built as bootstrap, and publish a pull request the author merges. Invoke as /principal:bootstrap [dictation].
 disable-model-invocation: true
-allowed-tools: mcp__claude_ai_Claude_Docs__read, mcp__claude_ai_Claude_Docs__update, mcp__claude_ai_Claude_Docs__batch
+allowed-tools: mcp__claude_ai_Claude_Docs__read, mcp__claude_ai_Claude_Docs__update, mcp__claude_ai_Claude_Docs__batch, mcp__Claude_Docs__read, mcp__Claude_Docs__update, mcp__Claude_Docs__batch
 ---
 
 # /principal:bootstrap \[dictation\]
@@ -34,7 +34,9 @@ The notebook is the document `.principal/notebook.json` names at the project's r
 below is the plugin's own, at `${CLAUDE_PLUGIN_ROOT}/tools/`, and `$SCRATCH` is the session's
 scratch directory. The document tools this run reads and writes the notebook with are granted
 in its frontmatter under `allowed-tools`: invoking the entry point is the grant, and no other
-turn holds one.
+turn holds one. Each tool is named in both spellings the surfaces give it,
+`mcp__claude_ai_Claude_Docs__…` and `mcp__Claude_Docs__…`; a name the surface lacks grants
+nothing.
 
 ## Ground rules
 

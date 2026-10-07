@@ -2,7 +2,7 @@
 name: ask
 description: The principal puts the next question to the AI. Read the notebook, select the question that waits heaviest with nothing left to wait on, write its lineage out of canon, launch the canon agent to answer it in a clean context, test the answer against canon and the notebook, and record it in thread. Invoke as /principal:ask [question].
 disable-model-invocation: true
-allowed-tools: mcp__claude_ai_Claude_Docs__read, mcp__claude_ai_Claude_Docs__update
+allowed-tools: mcp__claude_ai_Claude_Docs__read, mcp__claude_ai_Claude_Docs__update, mcp__Claude_Docs__read, mcp__Claude_Docs__update
 ---
 
 # /principal:ask \[question\]
@@ -21,7 +21,9 @@ The notebook is the document `.principal/notebook.json` names at the project's r
 below is the plugin's own, at `${CLAUDE_PLUGIN_ROOT}/tools/`, and `$SCRATCH` is the session's
 scratch directory. The document tools this run reads the notebook with, and records the answer
 with, are granted in its frontmatter under `allowed-tools`: invoking the entry point is the
-grant, and no other turn holds one.
+grant, and no other turn holds one. Each tool is named in both spellings the surfaces give it,
+`mcp__claude_ai_Claude_Docs__…` and `mcp__Claude_Docs__…`; a name the surface lacks grants
+nothing.
 
 ## Ground rules
 
