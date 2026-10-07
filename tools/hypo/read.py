@@ -19,8 +19,8 @@ from __future__ import annotations
 import re
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
-from .model import AUTHOR, SECTIONS
-from . import render
+from .model import AUTHOR, CITATION_HEADINGS, GLYPHS, SECTIONS
+from . import render, text
 from .render import INSTEAD, SEPARATOR, SHADOW, chip_key
 
 #: ``<?claude block m_canon?>`` as the renderer writes it.
@@ -36,12 +36,6 @@ EXPORTED_CHIP = re.compile(r"\[([^\]]*)\]\(file/([^)]*)\)")
 #: commit reference is part of what the principal wrote.
 IN_PAGE_LINK = re.compile(
     r"\[([^\]]*)\]\((?:https?://[^)#]*/artifact/[^)#]*)?#[^)]*\)")
-
-#: A backslash the export put in front of punctuation the markdown would
-#: otherwise read as a marker — `session\_01Jjv…` for a word with an
-#: underscore in it. It is the exporter's and not the page's, so it comes off;
-#: this is the ordinary markdown reading of a backslash escape.
-ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
 
 #: Only pressure is read back. Backlog and load are projections of the graph
 #: and standing is read off the state, so reading any of them would store a
@@ -59,22 +53,31 @@ DEADLOCK_LINE = re.compile(r"^deadlock: (?P<counter>.*)$", re.S)
 SUSPENDED_LINE = re.compile(r"^suspended: (?P<suspended>.*)$", re.S)
 ATTENUATION_LINE = re.compile(r"^attenuation: (?P<attenuation>.*)$", re.S)
 APPLICATION_LINE = re.compile(
-    r"^(?P<what>.*?) · ◆ (?P<thesis>.*?) · (?P<link>[^·]*?) · "
-    r"(?P<standing>[^·(]+?)(?: \((?P<clause>[^)]*)\))?(?: · (?P<note>.*))?$")
+    r"^(?P<what>.*?) · %s (?P<thesis>.*?) · (?P<link>[^·]*?) · "
+    r"(?P<standing>[^·(]+?)(?: \((?P<clause>[^)]*)\))?(?: · (?P<note>.*))?$"
+    % re.escape(GLYPHS["thesis"]))
 ITEM = re.compile(r"^- (?P<text>.*?)(?: (?P<chip><\?claude block [0-9A-Za-z_]+\?>))?$")
-
-#: what opens the tradition edges at the foot of a thesis subsection. Nothing
-#: the renderer writes follows them, which is what makes the split positional.
-CITATION_HEADINGS = ("**Support**", "**Divergence**")
 
 #: a chip with the space the renderer put before it, so removing one leaves the
 #: text as it was written rather than a gap where a token used to stand
 PLACED_CHIP = re.compile(r" ?(?:<\?claude block [0-9A-Za-z_]+\?>"
                          r"|\[[^\]]*\]\(file/[^)]*\))")
 
-#: what a breadcrumb leaves behind once its chips are gone: the separators that
-#: stood between them, and the full stop that closed the note before it
-CRUMB_TAIL = re.compile(r"[\s›.]+$")
+#: what a breadcrumb leaves behind once its chips are gone: the separators
+#: that stood between them
+CRUMB_TAIL = re.compile(r"[\s›]+$")
+
+#: the heading glyphs the renderer writes under each section; a ``### `` under
+#: a section with any other glyph is a heading the grammar does not hold
+MARKERS = {"thesis": (GLYPHS["thesis"],), "glossary": (GLYPHS["glossary"],),
+           "terms": (GLYPHS["term"], GLYPHS["mention"]),
+           "applications": (GLYPHS["application"],), "hinge": (GLYPHS["hinge"],)}
+
+#: what opens the lineage line, the one block above a tab's title
+LINEAGE = GLYPHS["lineage"]
+
+CHIPPED_STATE = ("a state is a chip and not a word: this is the renderer's markdown, "
+                 "and the reader takes the page as the page spells it")
 
 
 class ParseError(Exception):
@@ -88,6 +91,17 @@ REMOVED_SECTION = "inbox"
 REMOVED_FIELD = " · requires:"
 REMOVED = ("the inbox was removed, and this page still has %s: bring the "
            "page up to the grammar the renderer writes before it is read")
+
+
+def question_line(block: str) -> "re.Match[str]":
+    """The question line's fields, or a ``ParseError`` saying what is wrong
+    with it: the one reading, for the tab parser and the frontier alike."""
+    if REMOVED_FIELD in block:
+        raise ParseError(REMOVED % "a `requires:` field on its question line")
+    found = QUESTION_LINE.match(block)
+    if not found:
+        raise ParseError("the question line is malformed: %r" % block)
+    return found
 
 
 def parties(tabs: Dict[str, dict]) -> Dict[str, str]:
@@ -129,21 +143,35 @@ def _label_run(line: str, labels: Iterable[str]) -> Optional[Tuple[int, List[str
     or nothing. A bare id anywhere else is prose and is left alone, which is
     the whole reason this is a run at the end rather than a search for words.
     """
-    labels = set(labels)
+    labels = sorted(set(labels), key=len, reverse=True)
     if not labels:
         return None
-    at, found = len(line), []
+
+    def ends_with_label(text: str) -> Optional[str]:
+        # whole, and after a space or nothing: a label is a question id, and
+        # one may carry a space, so it is matched as itself and not as a word
+        for label in labels:
+            if text.endswith(label) and (len(text) == len(label)
+                                         or text[-len(label) - 1] == " "):
+                return label
+        return None
+
+    at, found = len(line.rstrip()), []
     while True:
-        head, sep, word = line[:at].rpartition(" › " if found else " ")
-        if not sep and found:
+        label = ends_with_label(line[:at])
+        if label is None:
             break
-        candidate = (word if sep else line[:at]).strip()
-        if candidate not in labels:
-            break
-        found.insert(0, candidate)
-        at = len(head)
-        if not sep:  # the run reaches the start of the line
-            break
+        found.insert(0, label)
+        at -= len(label)
+        before = line[:at]
+        # a step of the crumb, if the one before it is a label too; else the
+        # space that parted the run from the words
+        if before.endswith(" › ") and ends_with_label(before[:-3]):
+            at -= 3
+            continue
+        if before.endswith(" "):
+            at -= 1
+        break
     return (at, found) if found else None
 
 
@@ -171,7 +199,7 @@ def _chips(line: str, labels: Iterable[str] = ()) -> List[str]:
     return [chip_key(word) for word in run[1]] if run else []
 
 
-def _strip_chips(line: str, labels: Iterable[str] = ()) -> str:
+def strip_chips(line: str, labels: Iterable[str] = ()) -> str:
     """The line without its chips, in any spelling.
 
     A chip goes entirely, label and all. It is a token the renderer put there
@@ -231,8 +259,15 @@ def _unchip_prose(body_text: str, edges: List[Tuple[str, List[str]]],
     return out if render.anchored(out, edges, bare) == body_text else body_text
 
 
+#: what parts one block from the next: a blank line, whatever whitespace it
+#: carries and however many stand together. Split on the exact separator, an
+#: extra newline before ``## Thesis`` made that heading a prose block, and the
+#: section with every answer under it was dropped in silence.
+BLANK = re.compile(r"\n[ \t]*\n+")
+
+
 def _blocks(markdown: str) -> List[str]:
-    return [b for b in markdown.strip().split(SEPARATOR) if b.strip()]
+    return [b for b in BLANK.split(markdown.strip()) if b.strip()]
 
 
 def _sections(blocks: List[str]) -> Tuple[List[str], Dict[str, List[str]]]:
@@ -324,6 +359,15 @@ def _edge(heading: str, labels: Iterable[str] = ()) -> Tuple[str, str]:
     return title.strip(), keys[0]
 
 
+def _unstopped(words: str) -> str:
+    """A note without the one stop the renderer closed it with. One and not
+    every trailing stop: ``note-unstopped`` holds that the stored note had
+    none of its own, so one off is the note as it was stored, and ``etc.``
+    is a finding on the graph rather than ``etc`` on the way back."""
+    words = words.strip()
+    return words[:-1].rstrip() if words.endswith(".") else words
+
+
 def _citations(blocks: List[str],
                labels: Iterable[str] = ()) -> List[Tuple[str, str, str, str]]:
     """(relation, note, counter, last chip key) from the Support/Divergence lists.
@@ -341,14 +385,22 @@ def _citations(blocks: List[str],
             for line in block.splitlines():
                 keys = _chips(line, labels)
                 if not keys:
+                    # with the file list in hand a bare label is readable, so a
+                    # citation that names nothing is malformed; without it the
+                    # label is not readable, and the item is left as it was
+                    if labels:
+                        raise ParseError("a citation names no question: %r" % line[:60])
                     continue
                 # the crumb is a breadcrumb, so taking its chips out leaves the
                 # separators that stood between them; they belong to the path
                 # and not to the note that precedes it
-                text = CRUMB_TAIL.sub("", _strip_chips(line[2:], labels))
-                note, _, counter = text.partition(INSTEAD)
-                out.append((relation, note.strip().rstrip("."),
-                            CRUMB_TAIL.sub("", counter).strip(), keys[-1]))
+                words = CRUMB_TAIL.sub("", strip_chips(line[2:], labels))
+                # only a divergence holds something instead; in a support's
+                # note the words are the note's own
+                note, _, counter = (words.partition(INSTEAD) if relation == "divergence"
+                                    else (words, "", ""))
+                out.append((relation, _unstopped(note),
+                            _unstopped(CRUMB_TAIL.sub("", counter)), keys[-1]))
     return out
 
 
@@ -366,7 +418,10 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     # every export carries them and no graph file ever did. They come off here,
     # before the grammar is read, or they would land inside a thesis text and
     # break the one line whose shape is fixed — `· provenance: thesis hinge`.
-    markdown = ESCAPE.sub(r"\1", IN_PAGE_LINK.sub(r"\1", markdown))
+    # So do the exporter's own backslashes, and only those: one before a
+    # character markdown reads as a mark spells the literal character, and
+    # stays, or the next render would write a star the page holds as a mark.
+    markdown = text.canonical(IN_PAGE_LINK.sub(r"\1", markdown))
 
     def target(key: str) -> str:
         # a key with no question behind it names something the graph does not
@@ -379,7 +434,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     # rather than the first block; anything before it is the lineage, which is
     # projected and never stored
     titles = [i for i, b in enumerate(blocks) if b.startswith("# ")]
-    if not titles or any(not b.startswith("⌂") for b in blocks[:titles[0]]):
+    if not titles or any(not b.startswith(LINEAGE) for b in blocks[:titles[0]]):
         raise ParseError("a tab opens with its lineage and then its question id")
     at = titles[0]
     q: dict = {"id": blocks[at][2:].strip()}
@@ -387,6 +442,16 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     head, named = _sections(blocks[at + 1:])
     if REMOVED_SECTION in named:
         raise ParseError(REMOVED % "an Inbox section")
+    foreign = sorted(set(named) - set(SECTIONS))
+    if foreign:
+        raise ParseError("a section the renderer does not write, whose blocks would "
+                         "be lost: %s" % ", ".join("## %s" % s for s in foreign))
+    for section, held in named.items():
+        for block in held:
+            if block.startswith("### ") and not any(
+                    block.startswith("### " + marker) for marker in MARKERS.get(section, ())):
+                raise ParseError("a heading the renderer does not write under %s, which "
+                                 "would end the text before it: %r" % (section, block[:50]))
     incoming: List[Tuple[str, str]] = []
     for block in head:
         if block.startswith("- "):
@@ -394,20 +459,20 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
                 item = ITEM.match(line)
                 if item:
                     keys = _chips(line, labels)
-                    incoming.append((_strip_chips(item.group("text"), labels),
+                    if not keys and labels:
+                        raise ParseError("an item of the header list names no "
+                                         "raiser: %r" % line[:60])
+                    incoming.append((strip_chips(item.group("text"), labels),
                                      target(keys[0]) if keys else ""))
         elif block.startswith("*") and block.endswith("*"):
             q["question"] = _unwrap(block)  # one layer: the question's own
-        elif block.startswith("⌂"):
+        elif block.startswith(LINEAGE):
             continue  # the breadcrumb is projected, never stored
         elif block.startswith("question: "):
-            if REMOVED_FIELD in block:
-                raise ParseError(REMOVED % "a `requires:` field on its "
-                                 "question line")
-            line = QUESTION_LINE.match(block)
-            if not line:
-                raise ParseError("the question line is malformed: %r" % block)
-            q["state"] = _strip_chips(line.group("state"))
+            line = question_line(block)
+            q["state"] = strip_chips(line.group("state"))
+            if not q["state"]:
+                raise ParseError(CHIPPED_STATE)
             q["kind"] = line.group("kind")
             if line.group("answerer"):
                 q["answerer"] = line.group("answerer").strip()
@@ -415,7 +480,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     q["incoming"] = incoming
 
     theses = []
-    for title, body in _subsections(named.get("thesis", []), "◆"):
+    for title, body in _subsections(named.get("thesis", []), GLYPHS["thesis"]):
         thesis: dict = {"title": title, "terms": [], "mentions": [],
                         "traditions": [], "applications": []}
         # The citations close the subsection — the renderer appends them after
@@ -432,17 +497,18 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
             line = ASSENT_LINE.match(block)
             if line and "assent" not in thesis:
                 thesis["assent"] = line.group("assent")
-                thesis["state"] = _strip_chips(line.group("state")).strip()
+                thesis["state"] = strip_chips(line.group("state")).strip()
+                if not thesis["state"]:
+                    raise ParseError(CHIPPED_STATE)
             elif not block.startswith(">"):
-                rest.append(("text", block))
-        text = SEPARATOR.join(b for kind, b in rest if kind == "text")
-        thesis["text"] = PLACED_CHIP.sub("", text)
+                rest.append(block)
+        thesis["text"] = PLACED_CHIP.sub("", SEPARATOR.join(rest))
         for relation, note, counter, key in _citations(cited, labels):
             thesis["traditions"].append({"to": target(key), "relation": relation,
                                          "note": note, "counter": counter})
         theses.append(thesis)
 
-    for heading, body in _subsections(named.get("terms", []), "▸"):
+    for heading, body in _subsections(named.get("terms", []), GLYPHS["term"]):
         title, key = _edge(heading, labels)
         anchors = [_unwrap(b) for b in body if b.startswith("*")]
         term = {"title": title, "to": target(key), "anchors": anchors}
@@ -461,7 +527,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
             term["deadlock"] = deadlock
         if theses:
             _owner(theses, anchors)["terms"].append(term)
-    for heading, body in _subsections(named.get("terms", []), "↗"):
+    for heading, body in _subsections(named.get("terms", []), GLYPHS["mention"]):
         title, key = _edge(heading, labels)
         anchors = [_unwrap(b) for b in body if b.startswith("*")]
         if theses:
@@ -478,7 +544,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     # the glossary is the question's: a word may have come in on the hinge,
     # and one sense per word leaves nothing for an answer to own
     definitions = []
-    for word, body in _subsections(named.get("glossary", []), "≡"):
+    for word, body in _subsections(named.get("glossary", []), GLYPHS["glossary"]):
         definition = {"word": word}
         # a shadow is the last block when there is one: the question the word
         # has earned, pointed at from the definition that stands in for it
@@ -491,11 +557,16 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
             borrowing, body = body[-1], body[:-1]
             here = _closing(borrowing, labels)
             definition["tradition"] = {"to": target(_chips(borrowing, here)[-1]),
-                                       "note": _strip_chips(borrowing, here).rstrip(".")}
+                                       "note": _unstopped(strip_chips(borrowing, here))}
         definition["body"] = SEPARATOR.join(body)
         definitions.append(definition)
 
-    for name, body in _subsections(named.get("applications", []), "⚙"):
+    titles = [thesis["title"] for thesis in theses]
+    doubled = sorted({t for t in titles if titles.count(t) > 1})
+    if doubled:
+        raise ParseError("two answers carry one headline, and the page tells its answers "
+                         "apart by headline alone: %r" % doubled[0])
+    for name, body in _subsections(named.get("applications", []), GLYPHS["application"]):
         line = APPLICATION_LINE.match(body[0]) if body else None
         if not line:
             raise ParseError("an application line is malformed under %r" % name)
@@ -503,13 +574,16 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
                "link": line.group("link"), "standing": line.group("standing")}
         if line.group("note"):
             app["note"] = line.group("note")
-        for thesis in theses:
-            if thesis["title"] == line.group("thesis"):
-                thesis.setdefault("applications", []).append(app)
-                break
+        owner = next((thesis for thesis in theses
+                      if thesis["title"].strip() == line.group("thesis").strip()), None)
+        if owner is None:
+            # dropped, it would be gone from the page at the next body write
+            raise ParseError("the application %r names an answer no heading on the tab "
+                             "carries: %r" % (name, line.group("thesis")))
+        owner["applications"].append(app)
 
     hinge: dict = {}
-    for heading, body in _subsections(named.get("hinge", []), "⚓"):
+    for heading, body in _subsections(named.get("hinge", []), GLYPHS["hinge"]):
         part = "question" if heading.startswith("question:") else "thesis"
         hinge[part] = SEPARATOR.join(body)
     if hinge:

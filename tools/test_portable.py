@@ -1,15 +1,13 @@
 """Sealing parts the notebook from its document, and nothing else."""
 
 import copy
-import io
 import json
 import os
 import shutil
 import tempfile
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
 
-import portable as cli
+import support
 from hypo import model, portable, project
 
 FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
@@ -46,10 +44,7 @@ def tearDownModule():
 
 def run(argv):
     """The CLI, with its streams captured: (exit code, stdout, stderr)."""
-    out, err = io.StringIO(), io.StringIO()
-    with redirect_stdout(out), redirect_stderr(err):
-        code = cli.main(argv)
-    return code, out.getvalue(), err.getvalue()
+    return support.run("portable.py", *argv)
 
 
 class SealTest(unittest.TestCase):
@@ -105,7 +100,7 @@ class SealTest(unittest.TestCase):
             self.assertIn("%s.tab=%s" % (q["id"], q["tab"]), found)
 
     def test_bindings_of_an_unbound_graph_are_none(self):
-        self.assertEqual(portable.bindings(portable.unseal(self.envelope)), [])
+        self.assertEqual(portable.bindings(portable.opened(self.envelope)[0]), [])
 
     def test_the_questions_stand_by_id_whatever_order_the_document_held(self):
         """The tray's order is a projection, recomputed when a sibling comes
@@ -191,7 +186,7 @@ class SelfLinkTest(unittest.TestCase):
         self.assertEqual(self.envelope["rebind"], portable.self_links(self.data))
 
     def test_an_unbound_graph_has_nothing_left_to_rebind(self):
-        reopened = graph_file(portable.unseal(self.envelope))
+        reopened = graph_file(portable.opened(self.envelope)[0])
         self.assertEqual(portable.seal(model.load(reopened))["rebind"], [])
 
     def test_the_drop_report_names_it(self):
@@ -208,7 +203,7 @@ class OpenTest(unittest.TestCase):
     def setUp(self):
         self.graph = model.load(VALID)
         self.envelope = portable.seal(self.graph)
-        self.data = portable.unseal(self.envelope)
+        self.data = portable.opened(self.envelope)[0]
 
     def test_what_comes_out_is_a_graph_file(self):
         graph = model.load(graph_file(self.data))
@@ -242,7 +237,7 @@ class OpenTest(unittest.TestCase):
 
     def test_a_foreign_envelope_is_refused(self):
         with self.assertRaises(ValueError):
-            portable.unseal({"format": "something-else", "questions": []})
+            portable.opened({"format": "something-else", "questions": []})[0]
 
 
 def as_v1(envelope):
@@ -290,11 +285,11 @@ class OlderFormatTest(unittest.TestCase):
         self.assertTrue(notes)
 
     def test_it_opens_to_what_the_current_format_opens_to(self):
-        self.assertEqual(portable.unseal(self.old),
-                         portable.unseal(self.envelope))
+        self.assertEqual(portable.opened(self.old)[0],
+                         portable.opened(self.envelope)[0])
 
     def test_the_words_come_up_whole_and_in_order(self):
-        data = portable.unseal(self.old)
+        data = portable.opened(self.old)[0]
         for came, want in zip(data["questions"], self.envelope["questions"]):
             self.assertEqual(came.get("definitions", []),
                              want.get("definitions", []))

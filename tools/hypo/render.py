@@ -8,8 +8,8 @@ turns into ``format`` operations once the write has returned real block ids.
 One tab points at another with a **mention chip**: the token ``<?claude block
 KEY?>`` in the markdown, and an entry under the sidecar's ``blocks`` map naming
 the tab it refers to. Every place the specification calls for a reference to a
-question is written as a chip and never as a bare id, so the rule that no
-identifier appears in prose is kept by construction.
+question is written as a chip and never as a bare id; the one id a tab
+carries is its own title, and ``headline-not-identifier`` holds the rest.
 """
 
 from __future__ import annotations
@@ -18,8 +18,8 @@ import re
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
 from . import project, spec, text
-from .model import (ANSWERERS, STANDINGS, STATES, Application, Graph, Question,
-                     Term, Thesis)
+from .model import (ANSWERERS, GLYPHS, STANDINGS, STATES, Application, Graph,
+                     Question, Term, Thesis)
 
 SEPARATOR = "\n\n"
 
@@ -38,9 +38,15 @@ def chip_key(qid: str) -> str:
     return "m_" + re.sub(r"[^0-9a-z]", "_", qid.lower())
 
 
+def token(key: str) -> str:
+    """The markdown token for a chip written against ``key`` in the blocks
+    map: a mention's, or a state dropdown's."""
+    return "<?claude block %s?>" % key
+
+
 def chip(qid: str) -> str:
     """The markdown token for a mention chip pointing at ``qid``."""
-    return "<?claude block %s?>" % chip_key(qid)
+    return token(chip_key(qid))
 
 
 class RefusedError(Exception):
@@ -60,18 +66,15 @@ def _incoming_terms(graph: Graph, qid: str) -> List[Tuple[str, Term]]:
                   key=lambda pair: (pair[0], pair[1].title))
 
 
-def breadcrumb(graph: Graph, qid: str, plain_last: bool = True) -> str:
-    """The lineage as chips, ` › ` between them.
+Parents = Optional[Dict[str, Optional[str]]]
 
-    ``plain_last`` leaves the final element as text, which is right where the
-    breadcrumb says where the reader already is. Pointing at another tab it
-    must be a chip, or the last step of the path is the one that does not lead
-    anywhere.
-    """
-    line = project.lineage(graph, qid)
-    if plain_last:
-        return " › ".join([chip(a) for a in line[:-1]] + line[-1:])
-    return " › ".join(chip(a) for a in line)
+
+def breadcrumb(graph: Graph, qid: str, par: Parents = None) -> str:
+    """The lineage as chips, ` › ` between them: pointing at another tab,
+    every step is a chip, or the last step of the path is the one that does
+    not lead anywhere. ``par`` is the projection's parents, which a caller
+    rendering many computes once."""
+    return " › ".join(chip(a) for a in project.lineage(graph, qid, par))
 
 
 #: What opens a divergence's counter-clause inside its citation item. A
@@ -81,7 +84,7 @@ INSTEAD = "Instead: "
 
 #: what opens the block pointing a definition at the question its word has
 #: earned, where the definition shadows that question for reach
-SHADOW = "↗"
+SHADOW = GLYPHS["mention"]
 
 #: what a mention says under its anchors when a term in its place would close a
 #: cycle. It is derived from the edges at every render and never stored, so the
@@ -90,9 +93,9 @@ CYCLE_NOTE = ("cycle: a term here would close a cycle, because the question it "
               "points at already stands above this one.")
 
 
-def _citation_item(graph: Graph, target: str, note: str, counter: str = "") -> str:
-    crumb = breadcrumb(graph, target, plain_last=False) if graph.get(target) \
-        else chip(target)
+def _citation_item(graph: Graph, target: str, note: str, counter: str = "",
+                   par: Parents = None) -> str:
+    crumb = breadcrumb(graph, target, par) if graph.get(target) else chip(target)
     parts = []
     note, counter = note.strip(), counter.strip()
     if note:
@@ -103,7 +106,7 @@ def _citation_item(graph: Graph, target: str, note: str, counter: str = "") -> s
     return "- " + " ".join(parts)
 
 
-def _tradition_blocks(graph: Graph, thesis: Thesis) -> List[str]:
+def _tradition_blocks(graph: Graph, thesis: Thesis, par: Parents = None) -> List[str]:
     """Support and divergence, one bullet list each.
 
     Two lists and not one line, because the two relations are read differently:
@@ -112,7 +115,7 @@ def _tradition_blocks(graph: Graph, thesis: Thesis) -> List[str]:
     """
     blocks: List[str] = []
     for relation, heading in (("support", "Support"), ("divergence", "Divergence")):
-        items = [_citation_item(graph, t.to, t.note, t.counter)
+        items = [_citation_item(graph, t.to, t.note, t.counter, par)
                  for t in thesis.traditions if t.relation == relation]
         if items:
             blocks.append("**%s**" % heading)
@@ -145,7 +148,7 @@ def _citing(graph: Graph, qid: str) -> List[Tuple[str, str]]:
     return sorted(rows)
 
 
-def _cited_by_blocks(graph: Graph, q: Question) -> List[str]:
+def _cited_by_blocks(graph: Graph, q: Question, par: Parents = None) -> List[str]:
     """The mirror: the theses that reach this question by a tradition edge.
 
     A tradition's lineage is not this graph's, so nothing leads to it in the
@@ -161,8 +164,8 @@ def _cited_by_blocks(graph: Graph, q: Question) -> List[str]:
     rows = _citing(graph, q.id)
     blocks: List[str] = []
     for relation, heading in (("support", "Support"), ("divergence", "Divergence")):
-        items = ["- %s" % breadcrumb(graph, src, plain_last=False)
-                 for rel, src in sorted(rows) if rel == relation]
+        items = ["- %s" % breadcrumb(graph, src, par)
+                 for rel, src in rows if rel == relation]
         if items:
             blocks.append("**%s**" % heading)
             blocks.append("\n".join(items))
@@ -170,7 +173,7 @@ def _cited_by_blocks(graph: Graph, q: Question) -> List[str]:
 
 
 #: a line that opens a list item, in either spelling markdown allows
-_LIST_ITEM = re.compile(r"^[ \t]*([-*+]|\d+[.)])[ \t]+")
+_LIST_ITEM = re.compile(r"^[ \t]*(%s)[ \t]+" % text.LIST_MARKER)
 
 #: what separates one paragraph block from the next
 BLANK_LINE = re.compile(r"\n[ \t]*\n")
@@ -253,14 +256,11 @@ def anchored(body_text: str, edges: List[Tuple[str, List[str]]],
     that this function has to agree with.
     """
     token_of = token_of or (lambda to: " " + chip(to))
-    cuts = [(at, order, token_of(to)) for at, order, to in anchor_cuts(body_text, edges)]
-    if not cuts:
-        return body_text
     out: List[str] = []
     last = 0
-    for at, _, token in sorted(cuts, key=lambda cut: (cut[0], cut[1])):
+    for at, _, to in anchor_cuts(body_text, edges):  # sorted, as it returns them
         out.append(body_text[last:at])
-        out.append(token)
+        out.append(token_of(to))
         last = at
     out.append(body_text[last:])
     return "".join(out)
@@ -273,11 +273,11 @@ def _anchored_text(thesis: Thesis) -> str:
 
 
 def _thesis_blocks(graph: Graph, thesis: Thesis, index: int) -> List[str]:
-    blocks = ["### ◆ %s" % thesis.title]
+    blocks = ["### %s %s" % (GLYPHS["thesis"], thesis.title)]
     # the answer's own state, and no standing beside it: the standing is read
     # off the state, so writing both would state one datum twice
     blocks.append("assent: %s · %s · provenance: thesis hinge"
-                  % (thesis.assent, _answer_state(graph, thesis, index)))
+                  % (thesis.assent, _dropdown(graph, thesis.state, answer_state_key(index))))
     blocks.append(_anchored_text(thesis))
     return blocks
 
@@ -318,7 +318,7 @@ def glossary_heading(word: str) -> str:
     Named because two things spell it — the glossary, and the link a thesis
     carries to the entry — and a run writing one entry in place is a third.
     """
-    return "≡ %s" % word
+    return "%s %s" % (GLYPHS["glossary"], word)
 
 
 def term_heading(term: Term) -> str:
@@ -327,7 +327,7 @@ def term_heading(term: Term) -> str:
     The heading ends in a chip, which is a token before the write and a block
     id after it, so only this prefix can be searched for on the page.
     """
-    return "▸ %s" % term.title
+    return "%s %s" % (GLYPHS["term"], term.title)
 
 
 def term_line(term: Term) -> str:
@@ -371,7 +371,7 @@ def _term_blocks(graph: Graph, q: Question) -> List[str]:
         # a clause pointing somewhere, and marked apart from them because it
         # raised nothing. Without an entry of its own it could not be told from
         # a term on the page at all, and the next export would read it as one.
-        blocks.append("### ↗ %s → %s" % (mention.title, chip(mention.to)))
+        blocks.append("### %s %s → %s" % (SHADOW, mention.title, chip(mention.to)))
         for anchor in mention.anchors:
             blocks.append(anchor_line(anchor))
         if q.id in project.reachable_from(graph, mention.to):
@@ -389,7 +389,7 @@ def _application_blocks(q: Question) -> List[str]:
     """
     blocks: List[str] = []
     for thesis, app in q.applications():
-        blocks.append("### ⚙ %s" % app.name)
+        blocks.append("### %s %s" % (GLYPHS["application"], app.name))
         standing = app.standing
         clause = discharge_clause(q, thesis, app)
         if clause:
@@ -405,7 +405,8 @@ def application_line(app: Application, thesis_title: str, standing: str) -> str:
     clause included. The line is written here and nowhere else, so that a run
     changing one application in place writes what a body render would have.
     """
-    line = "%s · ◆ %s · %s · %s" % (app.what, thesis_title, app.link, standing)
+    line = "%s · %s %s · %s · %s" % (app.what, GLYPHS["thesis"], thesis_title,
+                                     app.link, standing)
     if app.note.strip():
         line += " · %s" % app.note.strip()
     return line
@@ -434,10 +435,10 @@ def discharge_clause(q: Question, thesis: Thesis, app: Application) -> str:
 
 #: the heading of a hinge's question half: what the asking stood on, and so
 #: the one place besides an answer where a question brings a word in
-HINGE_QUESTION = "⚓ question: what the asking presupposes"
+HINGE_QUESTION = "%s question: what the asking presupposes" % GLYPHS["hinge"]
 
 #: the heading of a hinge's thesis half, which every answer's provenance names
-HINGE_THESIS = "⚓ thesis: what the answer was drawn from"
+HINGE_THESIS = "%s thesis: what the answer was drawn from" % GLYPHS["hinge"]
 
 #: what a hinge's thesis half says when a run amends the answer it records:
 #: the day, who amended it, and from what. Appended to the provenance and
@@ -464,24 +465,15 @@ def answer_state_key(index: int) -> str:
     return "%s_%d" % (STATE_KEY, index + 1)
 
 
-def _answer_state(graph: Graph, thesis: Thesis, index: int) -> str:
-    """An answer's state as the page holds it, on the same terms as the
-    question's: a dropdown against the same enum where the doc has one."""
-    if graph.state_enum and thesis.state in STATES:
-        return "<?claude block %s?>" % answer_state_key(index)
-    return thesis.state
-
-
-def _state(graph: Graph, q: Question) -> str:
-    """The state as the page holds it: a dropdown where the doc has an enum.
-
-    Rendered as plain text when the graph file names no enum, so a fresh graph
-    still writes a readable tab rather than a chip against an enum that does
-    not exist.
-    """
-    if graph.state_enum and q.state in STATES:
-        return "<?claude block %s?>" % STATE_KEY
-    return q.state
+def _dropdown(graph: Graph, state: str, key: str) -> str:
+    """A state as the page holds it — the question's, or an answer's on the
+    same terms: a dropdown against the document's enum where the graph names
+    one, written against ``key`` in the blocks map. Plain text where it
+    names none, so a fresh graph still writes a readable tab rather than a
+    chip against an enum that does not exist."""
+    if graph.state_enum and state in STATES:
+        return token(key)
+    return state
 
 
 def _note_blocks(q: Question, section: str) -> List[str]:
@@ -515,20 +507,24 @@ def _hinge_blocks(q: Question) -> List[str]:
 
 # -- the body ---------------------------------------------------------------
 
-def body(graph: Graph, qid: str) -> str:
-    """The canonical markdown body for one tab. Empty sections are omitted."""
+def body(graph: Graph, qid: str, par: Parents = None) -> str:
+    """The canonical markdown body for one tab. Empty sections are omitted.
+    ``par`` is the projection's parents, which a caller rendering every tab
+    computes once: the body asks for it, and for a lineage from it, per
+    citation and per cited-by row."""
     q = graph.get(qid)
     if q is None:
         raise KeyError("no question %r" % qid)
-    top_level = project.parents(graph).get(qid) is None
+    par = project.parents(graph) if par is None else par
+    top_level = par.get(qid) is None
 
     # the breadcrumb stands above the title and carries the lineage alone: it
     # says where the reader is arriving from, and the title says where he has
     # arrived, so repeating the question's own name at the end of the path
     # only asserts it twice. A root has no path and says so.
-    ancestry = project.lineage(graph, qid)[:-1]
-    blocks: List[str] = ["⌂ " + " › ".join(chip(a) for a in ancestry)
-                         if ancestry else "⌂ root"]
+    ancestry = project.lineage(graph, qid, par)[:-1]
+    blocks: List[str] = ["%s %s" % (GLYPHS["lineage"], " › ".join(chip(a) for a in ancestry)
+                                    if ancestry else "root")]
 
     blocks.append("# %s" % q.id)
 
@@ -545,7 +541,7 @@ def body(graph: Graph, qid: str) -> str:
 
     # no standing here: it is read off the state, and a question's answers
     # carry states of their own on their own sections
-    meta = "question: %s · %s" % (_state(graph, q), q.kind)
+    meta = "question: %s · %s" % (_dropdown(graph, q.state, STATE_KEY), q.kind)
     if q.answerer:
         meta += " · answerer: %s" % q.answerer
     meta += " · pressure %d · backlog %d · load %d" % (
@@ -555,12 +551,12 @@ def body(graph: Graph, qid: str) -> str:
     thesis_blocks: List[str] = []
     for index, thesis in enumerate(q.theses):
         thesis_blocks.extend(_thesis_blocks(graph, thesis, index))
-        thesis_blocks.extend(_tradition_blocks(graph, thesis))
+        thesis_blocks.extend(_tradition_blocks(graph, thesis, par))
     for name, section in (("thesis", thesis_blocks),
                           ("glossary", _glossary_blocks(q)),
                           ("terms", _term_blocks(graph, q)),
                           ("applications", _application_blocks(q)),
-                          ("cited by", _cited_by_blocks(graph, q)),
+                          ("cited by", _cited_by_blocks(graph, q, par)),
                           ("hinge", _hinge_blocks(q))):
         notes = _note_blocks(q, name)
         # a note opens its section even when the section is otherwise empty,
@@ -573,9 +569,10 @@ def body(graph: Graph, qid: str) -> str:
     return SEPARATOR.join(b.strip("\n") for b in blocks) + "\n"
 
 
-def mention_targets(graph: Graph, qid: str) -> List[str]:
+def mention_targets(graph: Graph, qid: str, par: Parents = None) -> List[str]:
     """The questions this tab points at with a chip, in order of first use."""
     q = graph.get(qid)
+    par = project.parents(graph) if par is None else par
     if q is None:
         raise KeyError("no question %r" % qid)
     targets: List[str] = []
@@ -584,8 +581,8 @@ def mention_targets(graph: Graph, qid: str) -> List[str]:
         if target and target not in targets:
             targets.append(target)
 
-    if project.parents(graph).get(qid) is not None:
-        for ancestor in project.lineage(graph, qid)[:-1]:
+    if par.get(qid) is not None:
+        for ancestor in project.lineage(graph, qid, par)[:-1]:
             add(ancestor)
         for src, _ in _incoming_terms(graph, qid):
             add(src)  # a parent outside the lineage still gets its chip
@@ -596,7 +593,7 @@ def mention_targets(graph: Graph, qid: str) -> List[str]:
             add(mention.to)
         for trad in thesis.traditions:
             # a citation is a breadcrumb, so every step of it carries a chip
-            for step in (project.lineage(graph, trad.to)
+            for step in (project.lineage(graph, trad.to, par)
                          if graph.get(trad.to) else [trad.to]):
                 add(step)
     for definition in q.definitions:
@@ -607,12 +604,12 @@ def mention_targets(graph: Graph, qid: str) -> List[str]:
         if definition.question:
             add(definition.question)
     for _, src in _citing(graph, qid):  # the mirror, on a tab something cites
-        for step in project.lineage(graph, src):
+        for step in project.lineage(graph, src, par):
             add(step)
     return targets
 
 
-def mention_blocks(graph: Graph, qid: str) -> Dict[str, Dict[str, str]]:
+def mention_blocks(graph: Graph, qid: str, par: Parents = None) -> Dict[str, Dict[str, str]]:
     """The ``blocks`` map the markdown's chips are written against.
 
     A target no question in the graph answers to carries no tab to refer to, so
@@ -620,7 +617,7 @@ def mention_blocks(graph: Graph, qid: str) -> Dict[str, Dict[str, str]]:
     """
     by_id = graph.by_id()
     blocks = {chip_key(target): {"type": "mention", "ref": "file/%s" % by_id[target].tab}
-              for target in mention_targets(graph, qid) if target in by_id}
+              for target in mention_targets(graph, qid, par) if target in by_id}
     q = graph.get(qid)
     if graph.state_enum and q is not None and q.state in STATES:
         blocks[STATE_KEY] = {"type": "dropdown", "enum": graph.state_enum,
@@ -634,8 +631,11 @@ def mention_blocks(graph: Graph, qid: str) -> Dict[str, Dict[str, str]]:
     return blocks
 
 
-def links(graph: Graph, qid: str) -> Dict[str, object]:
+def links(graph: Graph, qid: str, par: Parents = None,
+          rendered: Optional[str] = None) -> Dict[str, object]:
     """Every link the caller must apply after the write, and the chips' blocks.
+    ``rendered`` is the body, where the caller has it already; ``par`` the
+    projection's parents, where it renders many.
 
     Block ids are unknown until the write returns, so a target names a tab and
     a string that stands verbatim in that tab's body — a heading, glyph and
@@ -711,14 +711,13 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
                 "anchor": PROVENANCE_ANCHOR,
                 "target": "#%s.%s" % (q.tab, HINGE_THESIS),
             })
-    page = _as_the_page_holds_it(body(graph, qid))
+    page = _as_the_page_holds_it(body(graph, qid, par) if rendered is None else rendered)
     fixed = _fixed_spans(page)
     sections = _section_spans(page)
     taken: Dict[Tuple[str, Optional[str]], int] = {}
     spans: List[Optional[Tuple[int, int]]] = []
     for entry in out:
         anchor = entry["anchor"]
-        entry["whole_word"] = _candidates(entry["kind"], anchor)[1]
         runs = eligible(page, entry["kind"], anchor, fixed, sections)
         # successive runs are handed out per anchor within one section. The
         # key folds case for the same reason the counting does — a clause and
@@ -752,12 +751,11 @@ def links(graph: Graph, qid: str) -> Dict[str, object]:
              and theirs[1] - theirs[0] > mine[1] - mine[0]),
             None)
     return {"question": q.id, "tab": q.tab,
-            "blocks": mention_blocks(graph, qid), "links": out}
+            "blocks": mention_blocks(graph, qid, par), "links": out}
 
 
 #: a chip, as the renderer writes one, with the space that carries it.
 CHIP_TOKEN = re.compile(r" ?<\?claude block ([0-9A-Za-z_]+)\?>")
-_CHIP_TOKEN = CHIP_TOKEN
 
 
 def _as_the_page_holds_it(rendered: str) -> str:
@@ -772,16 +770,17 @@ def _as_the_page_holds_it(rendered: str) -> str:
     visible afterwards, since the page the checker reads back has no chips in
     it either and agrees with the document about where the link is.
     """
-    return _CHIP_TOKEN.sub("", text.plain(rendered))
+    return CHIP_TOKEN.sub("", text.plain(rendered))
 
 
-def page_text(graph: Graph, qid: str) -> str:
+def page_text(graph: Graph, qid: str, rendered: Optional[str] = None) -> str:
     """A tab's characters as the document counts them, chips not among them.
 
     What ``links`` counts a run against, named so that the gate can ask for
-    the same string rather than rebuild it.
+    the same string rather than rebuild it; ``rendered`` is the body, where
+    the gate has rendered it already.
     """
-    return _as_the_page_holds_it(body(graph, qid))
+    return _as_the_page_holds_it(body(graph, qid) if rendered is None else rendered)
 
 
 #: which section of the page each kind of link is a link *in*. Every one of
@@ -939,7 +938,9 @@ def _fixed_spans(page: str) -> List[Tuple[int, int]]:
     out: List[Tuple[int, int]] = []
     at = 0
     for line in (page or "").splitlines(keepends=True):
-        if line.lstrip().startswith("#") or line.startswith("assent:"):
+        # a heading as the page takes one: the marks and then a space, so a
+        # paragraph opening ``#1`` is a paragraph
+        if re.match(r"[ \t]*#{1,6} ", line) or line.startswith("assent:"):
             out.append((at, at + len(line)))
         at += len(line)
     return out
@@ -979,13 +980,15 @@ def render_all(graph: Graph,
         raise RefusedError("--all", blocking)
     order = project.walk(graph)
     order += [q.id for q in graph.questions if q.id not in order]
+    par = project.parents(graph)
     parts = []
     for qid in order:
-        parts.append("=== %s ===\n\n%s" % (qid, body(graph, qid)))
+        parts.append("=== %s ===\n\n%s" % (qid, body(graph, qid, par)))
     return "\n".join(parts)
 
 
 def links_all(graph: Graph) -> List[Dict[str, object]]:
     order = project.walk(graph)
     order += [q.id for q in graph.questions if q.id not in order]
-    return [links(graph, qid) for qid in order]
+    par = project.parents(graph)
+    return [links(graph, qid, par) for qid in order]

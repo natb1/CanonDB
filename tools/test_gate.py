@@ -102,5 +102,37 @@ class GateTest(unittest.TestCase):
         self.assertIn("permissionDecisionReason", out["hookSpecificOutput"])
 
 
+
+class CheckoutTest(unittest.TestCase):
+    """The packet stands outside the checkout; canon on disk is inside it."""
+
+    def setUp(self):
+        self.gate = load_gate()
+        self.root = ROOT
+
+    def decision(self, c):
+        return self.gate.decide(c)["hookSpecificOutput"]["permissionDecision"]
+
+    def test_a_packet_inside_the_checkout_admits_nothing(self):
+        for path in ("packet/lineage.md", "canon/packet/lineage.md",
+                     os.path.join(self.root, "canon", "packet", "lineage.md")):
+            self.assertEqual(self.decision(call(path, cwd=self.root)), "deny", path)
+        with tempfile.TemporaryDirectory() as tmp:
+            os.mkdir(os.path.join(tmp, "packet"))
+            self.assertEqual(self.decision(call(os.path.join(tmp, "packet", "lineage.md"),
+                                                cwd=self.root)), "allow")
+
+    def test_a_call_the_gate_cannot_make_sense_of_is_refused(self):
+        """A guarded turn fails closed; an unguarded one is nobody's to decide."""
+        self.assertEqual(self.gate.decide(["canon-answer"]), {})
+        self.assertEqual(self.decision({"agent_type": "canon-answer", "tool_name": "Read",
+                                        "tool_input": "ti-esti.md", "cwd": self.root}), "deny")
+        self.assertEqual(self.decision(call("/tmp/x/packet/lineage.md\x00", cwd=self.root)),
+                         "deny")
+        self.assertEqual(self.decision({"agent_type": "canon-answer", "tool_name": "Read",
+                                        "tool_input": {"file_path": "/tmp/x/packet/lineage.md"},
+                                        "cwd": 7}), "allow")
+
+
 if __name__ == "__main__":
     unittest.main()

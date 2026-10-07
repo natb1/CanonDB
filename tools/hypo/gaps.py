@@ -16,39 +16,55 @@ from __future__ import annotations
 
 import re
 from typing import Dict, Iterable, List, Optional, Tuple
+from urllib.parse import unquote, urlsplit
 
-#: ``[text](url)`` — the spelling a page read gives a link
-_MD_LINK = re.compile(r"\[[^\]]*\]\(([^)]*)\)")
-#: a GitHub address inside a repository: owner/repo, blob|tree, ref, path
-_GITHUB = re.compile(r"^https://github\.com/([^/]+/[^/]+)/(blob|tree)/[^/]+/?(.*)$")
+from . import text
+#: a GitHub address inside a repository: owner/repo, blob|tree, then the ref
+#: and the path, which only the checkout can part (a ref may carry a slash)
+_GITHUB = re.compile(r"^https://github\.com/([^/]+/[^/]+)/(blob|tree)/(.*)$")
 
 PRESENT, ABSENT, ELSEWHERE, NONE, EVERYTHING = (
     "present", "absent", "not this repository", "no link", "covers everything")
 
 
 def url_of(link: str) -> str:
-    match = _MD_LINK.search(link or "")
-    return match.group(1) if match else (link or "").strip()
+    match = text.LINK.search(link or "")
+    return match.group(2) if match else (link or "").strip()
 
 
-def address(link: str, repo: str) -> Tuple[str, str]:
-    """(kind, path) for a link: kind is blob, tree, elsewhere or none."""
+def address(link: str, repo: str, files: Iterable[str] = ()) -> Tuple[str, str]:
+    """(kind, path) for a link: kind is blob, tree, elsewhere or none.
+
+    The line anchor and the query a GitHub link may carry are not the path,
+    and a space in the path is percent-encoded. The ref and the path share
+    one run of segments, and a ref may carry a slash, so the path is the
+    tail that names something tracked; failing that, what follows the first
+    segment.
+    """
     url = url_of(link)
     if not url.startswith("http"):
         return "none", ""
-    match = _GITHUB.match(url)
+    parts = urlsplit(url)
+    match = _GITHUB.match("%s://%s%s" % (parts.scheme, parts.netloc, parts.path))
     if not match or match.group(1).lower() != repo.lower():
         return "elsewhere", url
-    return match.group(2), match.group(3).strip("/")
+    kind, rest = match.group(2), unquote(match.group(3)).strip("/")
+    files = list(files)
+    for at in [i for i, c in enumerate(rest) if c == "/"]:
+        tail = rest[at + 1:]
+        if (kind == "blob" and tail in files) or (
+                kind == "tree" and any(f.startswith(tail + "/") for f in files)):
+            return kind, tail
+    return kind, rest.partition("/")[2]
 
 
 def status(link: str, repo: str, files: Iterable[str]) -> str:
-    kind, path = address(link, repo)
+    files = list(files)
+    kind, path = address(link, repo, files)
     if kind == "none":
         return NONE
     if kind == "elsewhere":
         return ELSEWHERE
-    files = list(files)
     if kind == "tree" and not path:
         return EVERYTHING
     if kind == "blob":
@@ -60,9 +76,10 @@ def covered(files: Iterable[str], links: Iterable[str], repo: str,
             manifest: dict, canon: Iterable[str]) -> Dict[str, str]:
     """What accounts for each tracked file that something accounts for."""
     why: Dict[str, str] = {}
+    files = list(files)
     blobs, trees = set(), []
     for link in links:
-        kind, path = address(link, repo)
+        kind, path = address(link, repo, files)
         if kind == "blob":
             blobs.add(path)
         elif kind == "tree" and path:
@@ -97,5 +114,7 @@ def canon_files(files: Iterable[str]) -> List[str]:
 
 
 def repo_of(remote: str) -> Optional[str]:
-    match = re.search(r"github\.com[:/]([^/]+/[^/.]+?)(?:\.git)?$", remote.strip())
+    """owner/name from a GitHub remote, in either spelling; a name may carry
+    a dot, and the remote a trailing slash."""
+    match = re.search(r"github\.com[:/]([^/]+/[^/]+?)(?:\.git)?/?$", remote.strip())
     return match.group(1) if match else None

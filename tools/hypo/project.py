@@ -26,7 +26,7 @@ def out_edges(graph: Graph) -> Dict[str, List[str]]:
     out: Dict[str, List[str]] = {q.id: [] for q in graph.questions}
     for q in graph.questions:
         for term in q.terms():
-            if term.to not in out.setdefault(q.id, []):
+            if term.to not in out[q.id]:
                 out[q.id].append(term.to)
     return out
 
@@ -103,12 +103,13 @@ def reachable_from(graph: Graph, start: Optional[str]) -> Set[str]:
     if start is None:
         return set()
     out = out_edges(graph)
+    ids = {q.id for q in graph.questions}
     seen = {start}
     queue = deque([start])
     while queue:
         cur = queue.popleft()
         for nxt in out.get(cur, []):
-            if nxt not in seen and any(q.id == nxt for q in graph.questions):
+            if nxt not in seen and nxt in ids:
                 seen.add(nxt)
                 queue.append(nxt)
     return seen
@@ -160,10 +161,13 @@ def parents(graph: Graph) -> Dict[str, Optional[str]]:
     return chosen
 
 
-def lineage(graph: Graph, qid: str) -> List[str]:
-    """The projection path from the top-level ancestor down to ``qid``."""
+def lineage(graph: Graph, qid: str,
+            par: Optional[Dict[str, Optional[str]]] = None) -> List[str]:
+    """The projection path from the top-level ancestor down to ``qid``.
+    ``par`` is ``parents(graph)``, which a caller asking for many lineages
+    computes once."""
     chain = [qid]
-    par = parents(graph)
+    par = parents(graph) if par is None else par
     cur = par.get(qid)
     while cur is not None and cur not in chain:
         chain.append(cur)
@@ -355,15 +359,28 @@ def tabs_patch(graph: Graph) -> List[dict]:
     return patch
 
 
+def tree_rows(graph: Graph) -> List[Dict[str, object]]:
+    """One row per projected question, in walk order: question, parent,
+    order, distance and load — what project.py prints and what a rebuild
+    from a portable notebook must come out to."""
+    par, ordr, dist = parents(graph), orders(graph), distances(graph)
+    rows: List[Dict[str, object]] = []
+    for qid in walk(graph):
+        d = dist.get(qid, INF)
+        rows.append({"question": qid, "parent": par.get(qid), "order": ordr.get(qid),
+                     "distance": None if d == INF else int(d), "load": load(graph, qid)})
+    return rows
+
+
 def tree_listing(graph: Graph) -> List[str]:
     """One line per projected question: order, id, load, distance."""
-    dist = distances(graph)
+    par, ordr, dist = parents(graph), orders(graph), distances(graph)
     lines = []
     for qid in walk(graph):
-        depth = len(lineage(graph, qid)) - 1
+        depth = len(lineage(graph, qid, par)) - 1
         d = dist.get(qid, INF)
         lines.append("%s%s %s  (load %d, distance %s)" % (
-            "  " * depth, orders(graph).get(qid, "?"), qid,
+            "  " * depth, ordr.get(qid, "?"), qid,
             load(graph, qid), "-" if d == INF else int(d)))
     missing = sorted(q.id for q in graph.questions if dist.get(q.id, INF) == INF)
     for qid in missing:

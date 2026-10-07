@@ -3,17 +3,15 @@
 import json
 import os
 import shutil
-import subprocess
-import sys
 import tempfile
 import unittest
 import xml.etree.ElementTree as ET
 
-from hypo import appline, frontier, model, page, project, turn
+from hypo import appline, frontier, page, project, turn
+from support import load, run
 from test_cli import document
 from test_inplace import SESSION, view_of
 
-HERE = os.path.dirname(os.path.abspath(__file__))
 
 
 def search(view, wanted):
@@ -46,14 +44,14 @@ class FrontierTest(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
         with open(document(self.dir)[0], encoding="utf-8") as fh:
             self.manifest = json.load(fh)
-        self.graph = model.load(os.path.join(HERE, "fixtures", "valid.json"))
+        self.graph = load()
         self.graph.state_enum = "enum-1"  # the states as dropdowns, as the page has them
 
     def rows(self):
         return frontier.frontier(frontier.graph(self.manifest, reads(self.graph)))
 
     def test_the_searches_hold_no_body(self):
-        view, by_id = view_of(self.graph, "canon")
+        _, by_id = view_of(self.graph, "canon")
         found = [b for r in reads(self.graph)["canon"] for b in appline.blocks(r)]
         self.assertLess(len(found), len(by_id) // 3)
 
@@ -118,7 +116,7 @@ class CliTest(unittest.TestCase):
         where = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, where, ignore_errors=True)
         manifest, _ = document(where)
-        graph = model.load(os.path.join(HERE, "fixtures", "valid.json"))
+        graph = load()
         folder = os.path.join(where, "reads")
         os.makedirs(folder)
         for qid, found in reads(graph).items():
@@ -126,14 +124,11 @@ class CliTest(unittest.TestCase):
                 with open(os.path.join(folder, "%s.search%d.xml" % (qid, n)), "w",
                           encoding="utf-8") as fh:
                     fh.write(xml)
-        done = subprocess.run([sys.executable, os.path.join(HERE, "frontier.py"),
-                               manifest, folder, "--json"],
-                              capture_output=True, text=True)
+        done = run("frontier.py", manifest, folder, "--json")
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(json.loads(done.stdout),
                          {"frontier": [{"question": "ti-esti", "pressure": 27}]})
-        plain = subprocess.run([sys.executable, os.path.join(HERE, "frontier.py"),
-                                manifest, folder], capture_output=True, text=True)
+        plain = run("frontier.py", manifest, folder)
         self.assertEqual(plain.stdout.split(), ["ti-esti", "27"])
 
 

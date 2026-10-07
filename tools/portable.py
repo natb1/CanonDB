@@ -24,7 +24,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from hypo import cli, model, portable, spec  # noqa: E402
+from hypo import cli, portable, spec  # noqa: E402
 
 cli.quiet_pipe()
 
@@ -39,11 +39,8 @@ def _write(payload, out) -> None:
 
 
 def _seal(args) -> int:
-    try:
-        graph = model.load(args.file)
-    except model.ShapeError as exc:
-        for problem in exc.problems:
-            print("ERROR shape: %s" % problem, file=sys.stderr)
+    graph = cli.load_graph(args.file)
+    if graph is None:
         return 1
     if graph.partial:
         # a few tabs and their ancestors are not a notebook, and --force does

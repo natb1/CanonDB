@@ -47,6 +47,9 @@ def main(argv=None) -> int:
         return 0
     if not args.graph:
         ap.error("give a graph file, or --list")
+    unknown = sorted(set(args.only or ()) - {c.id for c in spec.CHECKS})
+    if unknown:  # running no check would print 0 errors and read as a pass
+        ap.error("no check is named %s" % ", ".join(unknown))
 
     try:
         graph = model.load(args.graph)

@@ -11,20 +11,7 @@ import unittest
 
 import test_verify  # the page as the document would export one
 from hypo import model, project, render, spec
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-FIXTURES = os.path.join(HERE, "fixtures")
-
-
-def run(script, *args, cwd=None):
-    """Run a tool from another directory: paths resolve beside the script."""
-    return subprocess.run(
-        [sys.executable, os.path.join(HERE, script)] + list(args),
-        capture_output=True, text=True, cwd=cwd or os.path.dirname(HERE))
-
-
-def fixture(name):
-    return os.path.join(FIXTURES, name + ".json")
+from support import HERE, fixture, run
 
 
 def document(where):
@@ -164,21 +151,75 @@ class ReadCliTest(unittest.TestCase):
         """The document read names the tabs and the exports carry the words;
         the enum is in neither, so a rebuild that took only those rendered
         every state as a word rather than a dropdown, and no gate saw it."""
+        # run from a project that names no enum of its own (the temp dir), so
+        # what is kept is kept from the file and nowhere else
         out = os.path.join(self.dir, "graph.json")
         first = run("read.py", self.manifest, self.tabs, "-o", out,
-                    "--state-enum", "enum-1")
+                    "--state-enum", "enum-1", cwd=self.dir)
         self.assertEqual(first.returncode, 0, first.stderr)
         self.assertEqual(model.load(out).state_enum, "enum-1")
-        second = run("read.py", self.manifest, self.tabs, "-o", out)
+        second = run("read.py", self.manifest, self.tabs, "-o", out, cwd=self.dir)
         self.assertEqual(second.returncode, 0, second.stderr)
         self.assertEqual(model.load(out).state_enum, "enum-1")
         self.assertIn("state_enum kept", second.stdout)
 
     def test_a_first_read_has_no_enum_to_keep(self):
         out = os.path.join(self.dir, "graph.json")
-        done = run("read.py", self.manifest, self.tabs, "-o", out)
+        done = run("read.py", self.manifest, self.tabs, "-o", out, cwd=self.dir)
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIsNone(model.load(out).state_enum)
+
+    def test_the_project_s_notebook_names_the_enum(self):
+        """A first read in a project that has one takes it from
+        ``.principal/notebook.json``, so no graph renders its states as words
+        for want of a flag nobody passed."""
+        os.mkdir(os.path.join(self.dir, ".principal"))
+        with open(os.path.join(self.dir, ".principal", "notebook.json"), "w") as fh:
+            json.dump({"artifact": "a", "state_enum": "enum-2"}, fh)
+        out = os.path.join(self.dir, "graph.json")
+        done = run("read.py", self.manifest, self.tabs, "-o", out, cwd=self.dir)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(model.load(out).state_enum, "enum-2")
+        self.assertIn("notebook.json", done.stdout)
+        flagged = run("read.py", self.manifest, self.tabs, "-o", out,
+                      "--state-enum", "enum-3", cwd=self.dir)
+        self.assertEqual(model.load(out).state_enum, "enum-3", flagged.stderr)
+
+    def test_the_project_s_notebook_names_the_artifact_where_the_read_does_not(self):
+        """A graph whose artifact is empty can form no link that leaves its
+        tab; the project's notebook file names the URL every tool joins a tab
+        and block to, and a document read that carries one is believed first."""
+        os.mkdir(os.path.join(self.dir, ".principal"))
+        with open(os.path.join(self.dir, ".principal", "notebook.json"), "w") as fh:
+            json.dump({"artifact": "https://claude.ai/code/artifact/abc", "state_enum": "e"}, fh)
+        with open(self.manifest, encoding="utf-8") as fh:
+            manifest = json.load(fh)
+        self.assertTrue(manifest["frame"]["artifactUrl"])
+        out = os.path.join(self.dir, "graph.json")
+        done = run("read.py", self.manifest, self.tabs, "-o", out, cwd=self.dir)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(model.load(out).artifact, manifest["frame"]["artifactUrl"])
+        del manifest["frame"]
+        with open(self.manifest, "w", encoding="utf-8") as fh:
+            json.dump(manifest, fh)
+        done = run("read.py", self.manifest, self.tabs, "-o", out, cwd=self.dir)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(model.load(out).artifact, "https://claude.ai/code/artifact/abc")
+
+    def test_an_export_that_names_no_tab_is_said(self):
+        """Misnamed, it would be left out of the graph in silence, and the
+        tab it was meant for with it."""
+        os.rename(os.path.join(self.tabs, "party.md"), os.path.join(self.tabs, "party.view.md"))
+        out = os.path.join(self.dir, "graph.json")
+        done = run("read.py", self.manifest, self.tabs, "-o", out, cwd=self.dir)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("party.view.md names no tab", done.stderr)
+
+    def test_a_tabs_directory_that_is_not_there_is_said(self):
+        done = run("read.py", self.manifest, os.path.join(self.dir, "nope"), cwd=self.dir)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("ERROR tabs", done.stderr)
+        self.assertNotIn("Traceback", done.stderr)
 
 
 class VerifyCliTest(unittest.TestCase):
@@ -224,10 +265,24 @@ class VerifyCliTest(unittest.TestCase):
 
 
 class EntryPointTest(unittest.TestCase):
-    """What every script does before its own work, held in one place."""
+    """What every script does before its own work, held in one place. The
+    rest of the suite calls each tool's ``main`` in this process; these are
+    the runs that go through the shell, once per tool."""
 
-    SCRIPTS = ("apply.py", "check.py", "portable.py", "project.py",
-               "read.py", "render.py", "verify.py", "inplace.py", "frontier.py")
+    SCRIPTS = tuple(sorted(
+        name for name in os.listdir(HERE)
+        if name.endswith(".py") and not name.startswith("test_") and name != "support.py"))
+
+    def test_every_tool_runs_by_its_path(self):
+        """The skills run a tool by its path, so each has its shebang and its
+        mode bits, and exits 0 on ``--help`` as a process."""
+        self.assertEqual(len(self.SCRIPTS), 15, self.SCRIPTS)
+        for script in self.SCRIPTS:
+            with self.subTest(script=script):
+                done = subprocess.run([os.path.join(HERE, script), "--help"],
+                                      capture_output=True, text=True)
+                self.assertEqual(done.returncode, 0, done.stderr)
+                self.assertIn("usage:", done.stdout)
 
     def into_a_closed_pipe(self, *command):
         """Run a command whose reader has gone: the pipe closes before the
@@ -265,6 +320,39 @@ class EntryPointTest(unittest.TestCase):
                 self.assertIn(code, (0, -signal.SIGPIPE), err)
                 self.assertNotIn("Traceback", err)
                 self.assertNotIn("BrokenPipeError", err)
+
+
+
+class RefusalCliTest(unittest.TestCase):
+    def test_a_second_root_refuses_the_projection(self):
+        """The walk never reaches the other root's subtree, and the patch would
+        leave those tabs out in silence."""
+        done = run("project.py", fixture("invalid-one-root"))
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("one-root", done.stderr)
+        self.assertEqual(done.stdout, "")
+
+    def test_the_packet_s_directory_is_made(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "nope", "packet", "lineage.md")
+            done = run("lineage.py", fixture("valid"), "canon", "--thread", "ti-esti", "-o", out)
+            self.assertEqual(done.returncode, 0, done.stderr)
+            self.assertTrue(os.path.exists(out))
+
+    def test_a_question_verify_is_asked_for_and_the_graph_has_not(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, tabs = document(tmp)
+            out = os.path.join(tmp, "graph.json")
+            self.assertEqual(run("read.py", manifest, tabs, "-o", out, cwd=tmp).returncode, 0)
+            done = run("verify.py", out, tabs, "--only", "nosuch")
+            self.assertEqual(done.returncode, 1)
+            self.assertIn("no question nosuch", done.stderr)
+            self.assertNotIn("no export on disk", done.stdout)
+
+    def test_the_question_a_read_is_of(self):
+        from hypo import cli
+        for name in ("canon.json", "canon.view.json", "canon.thesis.1.xml", "/a/b/canon.md"):
+            self.assertEqual(cli.question_of(name), "canon", name)
 
 
 if __name__ == "__main__":

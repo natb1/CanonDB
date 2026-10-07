@@ -14,7 +14,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from hypo import cli, model, project, spec  # noqa: E402
+from hypo import cli, project, spec  # noqa: E402
 
 cli.quiet_pipe()
 
@@ -26,42 +26,31 @@ def main(argv=None) -> int:
                     help="print the patch and the tree as one JSON object")
     args = ap.parse_args(argv)
 
-    try:
-        graph = model.load(args.graph)
-    except model.ShapeError as exc:
-        for problem in exc.problems:
-            print("ERROR shape                 -              %s" % problem,
-                  file=sys.stderr)
+    graph = cli.load_graph(args.graph)
+    if graph is None:
         return 1
 
     # parents() breaks a cycle deterministically so that every projection stays
     # total on a broken graph, which the checks rely on. That makes it exactly
     # the wrong thing to send: the tree would look well-formed and the cycle
-    # would survive unseen in the graph file. Refuse, as render.py refuses.
-    blocking = spec.errors(spec.run(graph, only=["acyclic"]))
+    # would survive unseen in the graph file. The same of a second root, whose
+    # subtree the walk never reaches and the patch silently leaves out, and of
+    # a tradition that is not isolated, whose tab the patch hangs under the
+    # author's or his under its. Refuse, as render.py refuses.
+    blocking = spec.errors(spec.run(graph, only=["acyclic", "one-root", "tradition-isolated"]))
     if blocking:
-        print("refusing to project %s: the term graph has a cycle"
+        print("refusing to project %s: the tree would hide what the checks found "
+              "(a cycle, a second root, or a tradition not isolated)"
               % os.path.basename(args.graph), file=sys.stderr)
         for finding in blocking:
             print(finding.line(), file=sys.stderr)
         return 1
 
     patch = project.tabs_patch(graph)
-    parents = project.parents(graph)
-    distances = project.distances(graph)
 
     if args.as_json:
-        tree = []
-        for qid in project.walk(graph):
-            distance = distances.get(qid, project.INF)
-            tree.append({
-                "question": qid,
-                "parent": parents.get(qid),
-                "order": project.orders(graph).get(qid),
-                "distance": None if distance == project.INF else int(distance),
-                "load": project.load(graph, qid),
-            })
-        print(json.dumps({"tabs": patch, "tree": tree}, indent=2, ensure_ascii=False))
+        print(json.dumps({"tabs": patch, "tree": project.tree_rows(graph)},
+                         indent=2, ensure_ascii=False))
         return 0
 
     for line in project.tree_listing(graph):

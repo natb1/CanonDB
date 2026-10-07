@@ -14,13 +14,21 @@ nothing is exported.
 What the export lost, this keeps in reach: ``blocks`` gives each block's id
 beside its markdown, which is what the page check would need to tell which
 block a link leads to and not only which tab.
+
+A character the page holds that markdown would read as a mark — a star, a
+bracket, a backslash — is spelled behind a backslash, as the exporter
+spelled it, so that the reader takes it for the character; spelled bare, the
+next render wrote it as a mark. Inside code nothing is a mark, and a code
+run is spelled as it stands.
 """
 
 from __future__ import annotations
 
 import json
 import xml.etree.ElementTree as ET
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import List, Sequence, Tuple
+
+from . import text
 
 #: the marks a run of text may carry, outermost first as the export spells them
 ITALIC, BOLD, CODE, LINK = "italic", "bold", "code", "link"
@@ -28,16 +36,31 @@ ITALIC, BOLD, CODE, LINK = "italic", "bold", "code", "link"
 SEPARATOR = "\n\n"
 
 
+def expand_id(bid: str, session: str) -> Tuple[str, str]:
+    """A block id as a read prints it, made whole, and the session as it then
+    stands. The session prefix is printed once, on whatever carries an id
+    first, and every id after it is short — ``.5`` for ``<session>.5``. An id
+    with no dot at all leaves the session as it was."""
+    if bid.startswith("."):
+        return session + bid, session
+    if "." in bid:
+        return bid, bid.split(".")[0]
+    return bid, session
+
+
 def view_xml(source) -> str:
     """The view's xml, from the tool's result (JSON, as text or parsed) or
     from the bare xml."""
     if isinstance(source, dict):
         data = source.get("data", source)
-        return data["xml"] if isinstance(data, dict) else source["xml"]
-    text = source.strip()
-    if text.startswith("{"):
-        return view_xml(json.loads(text))
-    return text
+        try:
+            return data["xml"] if isinstance(data, dict) else source["xml"]
+        except KeyError:
+            raise ValueError("the read carries no xml: it is not a view or a search result")
+    body = source.strip()
+    if body.startswith("{"):
+        return view_xml(json.loads(body))
+    return body
 
 
 # --- runs ---------------------------------------------------------------
@@ -45,46 +68,43 @@ def view_xml(source) -> str:
 Run = Tuple[Tuple[Tuple[str, str], ...], str]  # ((mark, arg), ...), text
 
 
-def _runs(node: ET.Element, marks: Tuple[Tuple[str, str], ...] = ()) -> List[Run]:
-    """The runs of text under a paragraph, each with its marks outermost first."""
+def literal(chars: str, marks: Tuple[Tuple[str, str], ...] = ()) -> str:
+    """A run's characters as markdown spells them: a backslash before each
+    one markdown would read as a mark, so a star the page holds comes back a
+    star. Inside code a backslash is a character and nothing is a mark, so a
+    code run is spelled as it stands."""
+    if any(kind == CODE for kind, _ in marks):
+        return chars
+    return text.escape(chars)
+
+
+def _runs(node: ET.Element, marks: Tuple[Tuple[str, str], ...] = (),
+          top: bool = True) -> List[Run]:
+    """The runs of text under a paragraph, each with its marks outermost first.
+
+    A mention is its label and a dropdown the word it shows; the letters of
+    every other element, known or not, are kept — the one walk, as
+    ``inplace.pieces`` walks the tree and ``appline.digest`` hashes it. A
+    walker that skipped an element it did not know spelled a line without a
+    word the hash still counted, and the write put that line back.
+    """
     out: List[Run] = []
+    if not top and node.text:
+        out.append((marks, literal(node.text, marks)))
     for child in node:
         tag = child.tag
-        if tag == "text":
-            out.extend(_text_runs(child, marks))
-        elif tag == "mention":
+        if tag == "mention":
             out.append((marks, child.get("label", "")))
         elif tag == "dropdown":
             out.append((marks, child.text or ""))
         elif tag in (ITALIC, BOLD, CODE):
-            out.extend(_text_runs(child, marks + ((tag, ""),)))
+            out.extend(_runs(child, marks + ((tag, ""),), False))
         elif tag == LINK:
-            out.extend(_text_runs(child, marks + ((LINK, child.get("href", "")),)))
+            out.extend(_runs(child, marks + ((LINK, child.get("href", "")),), False))
         else:
-            out.extend(_runs(child, marks))
+            out.extend(_runs(child, marks, False))
         if child.tail:
-            out.append((marks, child.tail))
-    return out
-
-
-def _text_runs(node: ET.Element, marks: Tuple[Tuple[str, str], ...]) -> List[Run]:
-    out: List[Run] = []
-    if node.text:
-        out.append((marks, node.text))
-    for child in node:
-        tag = child.tag
-        if tag in (ITALIC, BOLD, CODE):
-            out.extend(_text_runs(child, marks + ((tag, ""),)))
-        elif tag == LINK:
-            out.extend(_text_runs(child, marks + ((LINK, child.get("href", "")),)))
-        elif tag == "mention":
-            out.append((marks, child.get("label", "")))
-        elif tag == "dropdown":
-            out.append((marks, child.text or ""))
-        else:
-            out.extend(_text_runs(child, marks))
-        if child.tail:
-            out.append((marks, child.tail))
+            out.append((marks, literal(child.tail, marks)))
     return out
 
 
@@ -99,7 +119,7 @@ def _wrap(mark: Tuple[str, str], inner: str) -> str:
     return "[%s](%s)" % (inner, arg)
 
 
-def _spell(runs: Sequence[Run], depth: int = 0) -> str:
+def spell(runs: Sequence[Run], depth: int = 0) -> str:
     """Adjacent runs that share a mark are spelled inside one pair of its
     delimiters, so a link split across two runs is one link on the page."""
     out: List[str] = []
@@ -114,22 +134,22 @@ def _spell(runs: Sequence[Run], depth: int = 0) -> str:
         j = i
         while j < len(runs) and len(runs[j][0]) > depth and runs[j][0][depth] == mark:
             j += 1
-        out.append(_wrap(mark, _spell(runs[i:j], depth + 1)))
+        out.append(_wrap(mark, spell(runs[i:j], depth + 1)))
         i = j
     return "".join(out)
 
 
 def inline(node: ET.Element) -> str:
     """A paragraph's text in the export's spelling."""
-    return _spell(_runs(node))
+    return spell(_runs(node))
 
 
 # --- blocks -------------------------------------------------------------
 
 def _paragraph(node: ET.Element) -> str:
     level = node.get("heading")
-    text = inline(node)
-    return ("#" * int(level) + " " + text) if level else text
+    words = inline(node)
+    return ("#" * int(level) + " " + words) if level else words
 
 
 def _list(node: ET.Element, indent: int = 0) -> str:
@@ -161,7 +181,6 @@ def _blockquote(node: ET.Element) -> str:
 
 def _table(node: ET.Element) -> str:
     rows: List[List[str]] = []
-    header = False
     for row in node:
         if row.tag != "row":
             continue
@@ -169,16 +188,13 @@ def _table(node: ET.Element) -> str:
         for cell in row:
             if cell.tag != "cell":
                 continue
-            if cell.get("header") == "true" and not rows:
-                header = True
             cells.append(" ".join(inline(p) for p in cell if p.tag == "paragraph")
                          .replace("|", "\\|"))
         rows.append(cells)
     if not rows:
         return ""
-    lines = ["| " + " | ".join(rows[0]) + " |"]
-    if header or True:
-        lines.append("| " + " | ".join("---" for _ in rows[0]) + " |")
+    lines = ["| " + " | ".join(rows[0]) + " |",
+             "| " + " | ".join("---" for _ in rows[0]) + " |"]
     for cells in rows[1:]:
         lines.append("| " + " | ".join(cells) + " |")
     return "\n".join(lines)
@@ -196,30 +212,32 @@ def _block(node: ET.Element) -> str:
         return _table(node)
     if tag == "pending":
         return ""
-    return inline(node)
+    # spelled as nothing, a code block or a divider would be gone from the
+    # markdown and from everything downstream, and the next body write would
+    # take it off the page; a tab holding one is not rewritten from a read
+    raise ValueError("a block the tab's grammar does not hold: <%s>" % tag)
 
 
 def blocks(source) -> List[Tuple[str, str]]:
     """(block id, markdown) per block of the tab, in order; a ``gone`` block is
     not a block."""
     root = ET.fromstring(view_xml(source))
+    if root.get("sinceRev", "0") != "0" or root.find(".//gap") is not None:
+        raise ValueError("a partial view, since rev %s: it folds the blocks that did "
+                         "not change, and spells no whole tab" % root.get("sinceRev"))
     session = ""
     out: List[Tuple[str, str]] = []
     for node in root:
-        bid = node.get("id", "")
-        if bid.startswith("."):
-            bid = session + bid
-        elif "." in bid:
-            session = bid.split(".")[0]
+        bid, session = expand_id(node.get("id", ""), session)
         if node.tag == "gone":
             continue
-        text = _block(node)
-        if text.strip():
-            out.append((bid, text))
+        words = _block(node)
+        if words.strip():
+            out.append((bid, words))
     return out
 
 
 def markdown(source) -> str:
     """The tab as an export spelled it: blocks parted by a blank line, and a
     newline at the end."""
-    return SEPARATOR.join(text for _, text in blocks(source)) + "\n"
+    return SEPARATOR.join(words for _, words in blocks(source)) + "\n"

@@ -31,20 +31,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from hypo import apply as ops, cli, model, render, spec  # noqa: E402
+from hypo import apply as ops, cli, spec  # noqa: E402
 
 cli.quiet_pipe()
-
-
-def outlines(graph: model.Graph, directory: str) -> dict:
-    """tab id -> its parsed outline, for every `<question id>.xml` on disk."""
-    found = {}
-    for q in graph.questions:
-        path = os.path.join(directory, q.id + ".xml")
-        if os.path.exists(path):
-            with open(path, encoding="utf-8") as fh:
-                found[q.tab] = ops.parse_outline(fh.read())
-    return found
 
 
 def main(argv=None) -> int:
@@ -64,11 +53,8 @@ def main(argv=None) -> int:
                     help="list the tabs whose outlines the links step needs")
     args = ap.parse_args(argv)
 
-    try:
-        graph = model.load(args.graph)
-    except model.ShapeError as exc:
-        for problem in exc.problems:
-            print("ERROR shape: %s" % problem, file=sys.stderr)
+    graph = cli.load_graph(args.graph)
+    if graph is None:
         return 1
 
     q = graph.get(args.question)
@@ -77,7 +63,6 @@ def main(argv=None) -> int:
               file=sys.stderr)
         return 1
 
-    by_id = {other.id: other for other in graph.questions}
     tab_name = {other.tab: other.id for other in graph.questions}
 
     if args.wanted:
@@ -106,7 +91,7 @@ def main(argv=None) -> int:
             print(finding.line(), file=sys.stderr)
         return 1
 
-    by_tab = outlines(graph, args.outlines) if args.outlines else {}
+    by_tab = cli.outlines(graph, args.outlines) if args.outlines else {}
     try:
         if args.unlink:
             with open(args.unlink, encoding="utf-8") as fh:

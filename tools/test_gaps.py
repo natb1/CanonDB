@@ -1,9 +1,12 @@
 """The review's decidable half: links against the checkout, and the files
 nothing accounts for."""
 
+import os
+import tempfile
 import unittest
 
 from hypo import gaps
+from support import HERE, run
 
 REPO = "natb1/CanonDB"
 FILES = ["README.md", "canon/ti-esti.md", "tools/a.py", "tools/test_a.py",
@@ -41,6 +44,57 @@ class OrphanTest(unittest.TestCase):
                          ["canon/ti-esti.md"])
         self.assertEqual(gaps.repo_of("git@github.com:natb1/CanonDB.git"), REPO)
         self.assertEqual(gaps.repo_of("https://github.com/natb1/CanonDB"), REPO)
+
+
+
+class CliTest(unittest.TestCase):
+    def test_an_applications_file_that_is_not_one_is_said(self):
+        """The manifest is an object and the applications list is a list; the
+        one handed in for the other tracebacked on the first entry."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "apps.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write('{"applications": []}')
+            done = run("gaps.py", path, "--root", os.path.dirname(HERE), "--repo", "o/r")
+            self.assertEqual(done.returncode, 1)
+            self.assertIn("ERROR apps", done.stderr)
+            self.assertNotIn("Traceback", done.stderr)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write("[]")
+            done = run("gaps.py", path, "--root", os.path.dirname(HERE), "--repo", "o/r")
+            self.assertEqual(done.returncode, 0, done.stderr)
+            self.assertIn("files nothing accounts for: 0", done.stdout)
+
+
+class AddressTest(unittest.TestCase):
+    """A link as GitHub spells one, in every spelling the checkout can answer for."""
+
+    def test_an_anchor_or_a_query_is_not_the_path(self):
+        for url in ("https://github.com/natb1/CanonDB/blob/main/tools/a.py#L10-L20",
+                    "https://github.com/natb1/CanonDB/blob/main/tools/a.py?plain=1"):
+            self.assertEqual(gaps.status("[a](%s)" % url, REPO, FILES), gaps.PRESENT, url)
+
+    def test_a_space_in_the_path_is_percent_encoded(self):
+        files = FILES + ["docs/with space/file one.md"]
+        link = "[f](https://github.com/natb1/CanonDB/blob/main/docs/with%20space/file%20one.md)"
+        self.assertEqual(gaps.status(link, REPO, files), gaps.PRESENT)
+
+    def test_a_ref_may_carry_a_slash(self):
+        self.assertEqual(gaps.status(
+            "[a](https://github.com/natb1/CanonDB/blob/release/1.0/tools/a.py)", REPO, FILES),
+            gaps.PRESENT)
+        self.assertEqual(gaps.status(
+            "[t](https://github.com/natb1/CanonDB/tree/feature/x/tools)", REPO, FILES),
+            gaps.PRESENT)
+        self.assertEqual(gaps.status(
+            "[b](https://github.com/natb1/CanonDB/blob/feature/x/b.py)", REPO, FILES),
+            gaps.ABSENT)
+
+    def test_the_repository_from_its_remote(self):
+        for remote in ("https://github.com/natb1/my.repo.git", "git@github.com:natb1/my.repo.git",
+                       "https://github.com/natb1/my.repo/", "https://github.com/natb1/my.repo"):
+            self.assertEqual(gaps.repo_of(remote), "natb1/my.repo", remote)
+        self.assertEqual(gaps.repo_of("https://github.com/natb1/CanonDB"), "natb1/CanonDB")
 
 
 if __name__ == "__main__":

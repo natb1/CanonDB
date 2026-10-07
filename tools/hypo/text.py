@@ -13,15 +13,24 @@ about how they are drawn.
 ``occurrences`` is the other half of that: once the anchor is plain, where on
 the page does it stand? A link is applied by searching, so the search has to
 name which run of characters it meant.
+
+A backslash before punctuation is markdown's spelling of the literal
+character. The page speller writes one before anything the page holds that
+markdown would otherwise read as a mark (``escape``); the reader keeps those
+and takes off the ones the exporter adds beyond them (``canonical``); and
+``plain`` reads an escaped character as the character, which is what the
+page holds. Without the three agreeing, a literal star was spelled bare on
+the way out of the page and read as a mark on the way back in.
 """
 
 from __future__ import annotations
 
 import re
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Tuple
 
-#: ``[text](url)`` keeps its text and drops its target.
-_LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
+#: ``[text](url)``: the text, and the target. ``plain`` keeps the first and
+#: drops the second; what wants the target reads the second group.
+LINK = re.compile(r"\[([^\]]*)\]\(([^)]*)\)")
 
 #: `` `code` `` keeps what it wraps.
 _CODE = re.compile(r"`+([^`]*)`+")
@@ -35,10 +44,64 @@ _UNDERS = re.compile(r"(?<![0-9A-Za-z_])(_{1,3})(?=\S)(.+?)(?<=\S)\1(?![0-9A-Za-
                      re.DOTALL)
 
 
-def plain(markdown: str) -> str:
-    """``markdown`` with the inline markers removed and the characters kept."""
-    out = markdown or ""
-    out = _LINK.sub(r"\1", out)
+#: A backslash before ASCII punctuation: markdown's spelling of the literal
+#: character, and the one thing in a text that is neither a word nor a mark.
+#: The exporter writes one before anything it would otherwise read as a
+#: marker — ``session\_01Jjv…`` for a word with an underscore in it.
+ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
+
+#: an escape, or a code span, whichever comes first: inside code a backslash
+#: is a character, so a span is passed over whole and an escaped backtick
+#: cannot open one
+_HOLDABLE = re.compile(r"(`+[^`]*`+)|\\([!-/:-@\[-`{-~])")
+
+#: a character standing in for one escape while the marks are taken off
+_HELD = "\ue000"
+
+#: the characters markdown reads as a mark wherever they stand in a run of
+#: text: the backslash itself, the emphasis and code marks, and the brackets
+#: a link is spelled in. An underscore is one only at a word boundary, where
+#: markdown reads it; inside ``session_01`` it is a character.
+_ALWAYS_A_MARK = "\\*`[]"
+_WORDISH = re.compile(r"[0-9A-Za-z]")
+
+
+def marked(before: str, char: str, after: str) -> bool:
+    """Whether markdown reads ``char``, between these neighbours, as a mark —
+    and so whether a literal one is spelled behind a backslash. One rule for
+    the speller that writes the backslash and the reader that keeps it."""
+    if char in _ALWAYS_A_MARK:
+        return True
+    return char == "_" and not (_WORDISH.match(before or " ")
+                                and _WORDISH.match(after or " "))
+
+
+def hold(markdown: str) -> Tuple[str, List[str]]:
+    """``markdown`` with each escape replaced by one placeholder, and the
+    characters held, in order. A held character is neither a mark nor a
+    word: taking the marks off a string with ``\\*`` in it would otherwise
+    pair that star with another."""
+    held: List[str] = []
+
+    def take(m: "re.Match[str]") -> str:
+        if m.group(1) is not None:
+            return m.group(1)  # a code span, as it stands
+        held.append(m.group(2))
+        return _HELD
+
+    return _HOLDABLE.sub(take, markdown or ""), held
+
+
+def release(held_text: str, held: List[str]) -> str:
+    """The placeholders put back as the characters they held."""
+    it = iter(held)
+    return re.sub(_HELD, lambda m: next(it), held_text)
+
+
+def unmarked(held_text: str) -> str:
+    """The inline marks off a string whose escapes are held: a link to its
+    words, code to what it wraps, emphasis to what it emphasises."""
+    out = LINK.sub(r"\1", held_text)
     out = _CODE.sub(r"\1", out)
     for _ in range(3):  # ***both*** unwraps one layer per pass
         unwrapped = _UNDERS.sub(r"\2", _STARS.sub(r"\2", out))
@@ -48,11 +111,66 @@ def plain(markdown: str) -> str:
     return out
 
 
+def plain(markdown: str) -> str:
+    """``markdown`` with the inline markers removed and the characters kept:
+    an escaped character is the character, as the page holds it."""
+    markdown = markdown or ""
+    if "\\" not in markdown:
+        return unmarked(markdown)
+    held_text, held = hold(markdown)
+    return release(unmarked(held_text), held)
+
+
+def escape(chars: str) -> str:
+    """Characters as markdown spells them literally: a backslash before each
+    one it would read as a mark. What the page speller writes for a run of
+    the page's text; ``canonical`` is what the reader keeps of it."""
+    chars = chars or ""
+    if not any(c in chars for c in _ALWAYS_A_MARK + "_"):
+        return chars
+    out: List[str] = []
+    for i, char in enumerate(chars):
+        if marked(chars[i - 1] if i else "", char, chars[i + 1:i + 2]):
+            out.append("\\")
+        out.append(char)
+    return "".join(out)
+
+
+def canonical(markdown: str) -> str:
+    """``markdown`` with the escapes markdown needs and no other.
+
+    The exporter escapes more than it must — a stop, a dash, the underscore
+    inside a word — and those backslashes are the exporter's, so they come
+    off. One before a character ``escape`` would write it before is the
+    page's: it spells a literal star or bracket, and stays, or the next
+    render would write the character as a mark. Code is passed over whole.
+    """
+    markdown = markdown or ""
+    if "\\" not in markdown:
+        return markdown
+
+    def keep(m: "re.Match[str]") -> str:
+        if m.group(1) is not None:
+            return m.group(1)
+        char = m.group(2)
+        before = markdown[m.start() - 1] if m.start() else ""
+        return m.group() if marked(before, char, markdown[m.end():m.end() + 1]) else char
+
+    return _HOLDABLE.sub(keep, markdown)
+
+
 #: what counts as being inside a word, for ``whole_word``. An apostrophe is not
 #: one of these, so ``party`` is found in ``party's``, which is where a reader
 #: meets the word; ``prior`` is not found in ``priority``, which is the case
-#: this exists for.
-_WORD = re.compile(r"[0-9A-Za-z_]")
+#: this exists for. Any script's letters count, so ``merge`` is not found
+#: inside ``mergé`` either.
+_WORD = re.compile(r"\w")
+
+#: what opens a list item, as the page writes one and the renderer places a
+#: chip by one: a bullet or a number and its stop, and then a space. The
+#: renderer and the checks read the same pattern, so a line one takes for an
+#: item the other does not take for a wrapped paragraph.
+LIST_MARKER = r"(?:[-*+]|\d+[.)])"
 
 
 #: A run of the page that reads as the needle: where it begins, and the number
@@ -69,7 +187,16 @@ def fold(words: str) -> str:
     becomes two — and an offset into the folded string has to be an offset into
     the original, so a character that will not fold in place is left alone.
     """
-    return "".join(c.lower() if len(c.lower()) == 1 else c for c in words or "")
+    words = words or ""
+    lowered = words.lower()
+    # ``str.lower`` is the same thing, character for character, for every
+    # string but two: one holding İ, which comes out two long, and one holding
+    # a capital sigma, which lowers by its place in the word. Where the length
+    # holds and no sigma stands, the fast path is this function; the rest take
+    # the slow one, which this used to be for every string
+    if len(lowered) == len(words) and "\u03a3" not in words:
+        return lowered
+    return "".join(c.lower() if len(c.lower()) == 1 else c for c in words)
 
 
 def occurrences(hay: str, needle: str, whole_word: bool = False) -> List[Run]:
@@ -111,7 +238,8 @@ def occurrences(hay: str, needle: str, whole_word: bool = False) -> List[Run]:
                 continue
         out.append(Run(nth=n, at=at))
 
-#: a final consonant, for the endings that want the vowel kept short.
+#: the vowels: a short vowel before a final consonant is what doubles it
+#: (stop -> stopped), and a consonant before a final y is what turns it to -ies.
 _VOWEL = "aeiou"
 
 

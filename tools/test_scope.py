@@ -8,26 +8,17 @@ could answer, and a missing ancestor is refused, never read over.
 import json
 import os
 import shutil
-import subprocess
-import sys
 import tempfile
 import unittest
 
 from hypo import model, spec
+from support import FIXTURES, run
 from test_cli import document
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-FIXTURES = os.path.join(HERE, "fixtures")
 
 #: the rules that need a tab outside a partial graph to say anything, and so
 #: say nothing over one: what a term or a tradition edge leads to stands
 #: below, or beside
 QUIET = {"term-target", "tradition-target"}
-
-
-def run(script, *args):
-    return subprocess.run([sys.executable, os.path.join(HERE, script)] + list(args),
-                          capture_output=True, text=True)
 
 
 class ReadScopeTest(unittest.TestCase):

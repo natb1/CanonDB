@@ -120,17 +120,19 @@ install marketplace`.
 Two other routes exist and are recorded here for completeness. An environment used only with
 this repository can load the checkout in place with the environment variable
 `CLAUDE_CODE_PLUGIN_DIRS=/home/user/CanonDB`, where the path is where the cloud runner clones the
-session's repository; it fails on any other repository. And cloud sessions load the plugins
-enabled on the claude.ai account they run under, as `principal@synced`, via **Customize >
-Plugins**, **Add > Add marketplace**; in testing, a marketplace added that way did not reach the
-account's enabled plugins.
+session's repository; it fails on any other repository, and the path's casing follows the
+runner, so confirm it with `pwd` in a session before setting the variable. And cloud sessions
+load the plugins enabled on the claude.ai account they run under, as `principal@synced`, via
+**Customize > Plugins**, **Add > Add marketplace**; in testing, a marketplace added that way did
+not reach the account's enabled plugins.
 
 ### Working on the plugin itself
 
 `claude --plugin-dir /path/to/CanonDB` loads a checkout for one session and takes precedence
 over an installed copy of the same name. In a cloud session on this repository, the checkout is
-at `/home/user/CanonDB`, and the environment variable `CLAUDE_CODE_PLUGIN_DIRS=/home/user/CanonDB`,
-set on the cloud environment, does the same at startup.
+at `/home/user/CanonDB` (as `pwd` shows it: the casing follows the runner), and the environment
+variable `CLAUDE_CODE_PLUGIN_DIRS=/home/user/CanonDB`, set on the cloud environment, does the
+same at startup.
 
 ## Using it in another project
 

@@ -14,11 +14,17 @@ tooling included.
 
 The packet is the one file a turn may read: `lineage.md` in a directory
 named `packet`, which the plugin's `tools/lineage.py` writes and nothing
-else does. It holds canon above the question, which is all of canon the turn
-carries. There is no reading past it: what an answer collides with outside
-its lineage, on another thread or in the notebook, is found by the entry
-point that put the question, which holds both. So nothing lists what counts
-as canon on disk, and the gate asks no file.
+else does, and which stands outside the checkout — in the session's scratch,
+where the entry point writes it. It holds canon above the question, which is
+all of canon the turn carries. There is no reading past it: what an answer
+collides with outside its lineage, on another thread or in the notebook, is
+found by the entry point that put the question, which holds both. So nothing
+lists what counts as canon on disk, and the gate asks no file; a
+packet-shaped path inside the checkout, where canon on disk is, admits
+nothing.
+
+A guarded turn fails closed: a call the gate cannot make sense of is
+refused, not let through on an error.
 
 A refusal is one line, and it names no file: the turn is told it may not
 read outside its packet, not what it would have found.
@@ -54,34 +60,49 @@ def resolve(path: str, root: str) -> str:
 
 
 def is_packet(path: str, root: str) -> bool:
-    head, name = os.path.split(resolve(path, root))
-    return name == PACKET_FILE and os.path.basename(head) == PACKET_DIR
+    where = resolve(path, root)
+    head, name = os.path.split(where)
+    if name != PACKET_FILE or os.path.basename(head) != PACKET_DIR:
+        return False
+    checkout = os.path.realpath(root)
+    return where != checkout and not where.startswith(checkout + os.sep)
+
+
+def _answer(decision: str, reason: str) -> dict:
+    return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                                   "permissionDecision": decision,
+                                   "permissionDecisionReason": reason}}
 
 
 def decide(call: dict) -> dict:
     """The permission decision for one tool call, as the hook's JSON output.
     An empty object is no decision, which is what every turn but the canon
     agent's gets."""
-    if not guarded(call):
+    if not isinstance(call, dict) or not guarded(call):
         return {}
-    root = call.get("cwd") or os.getcwd()
+    root = str(call.get("cwd") or os.getcwd())
     tool = call.get("tool_name", "")
-    path = str((call.get("tool_input") or {}).get("file_path", ""))
-    if tool == "Read" and path and is_packet(path, root):
-        decision, reason = "allow", "the packet"
-    else:
-        decision, reason = "deny", REFUSED
-    return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
-                                   "permissionDecision": decision,
-                                   "permissionDecisionReason": reason}}
+    tool_input = call.get("tool_input")
+    path = str(tool_input.get("file_path", "")) if isinstance(tool_input, dict) else ""
+    try:
+        admitted = tool == "Read" and bool(path) and is_packet(path, root)
+    except (TypeError, ValueError):  # a path the system cannot resolve is no packet
+        admitted = False
+    if admitted:
+        return _answer("allow", "the packet")
+    return _answer("deny", REFUSED)
 
 
 def main() -> int:
     try:
         call = json.load(sys.stdin)
-    except ValueError:
+    except (ValueError, OSError):
         call = {}
-    print(json.dumps(decide(call)))
+    try:
+        decision = decide(call)
+    except Exception:  # pragma: no cover - a guarded turn fails closed
+        decision = _answer("deny", REFUSED) if isinstance(call, dict) and guarded(call) else {}
+    print(json.dumps(decision))
     return 0
 
 

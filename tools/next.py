@@ -17,7 +17,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from hypo import cli, model, turn  # noqa: E402
+from hypo import cli, turn  # noqa: E402
 
 cli.quiet_pipe()
 
@@ -31,11 +31,8 @@ def main(argv=None) -> int:
                     help="list every question not yet put, and what it waits on")
     args = ap.parse_args(argv)
 
-    try:
-        graph = model.load(args.graph)
-    except model.ShapeError as exc:
-        for problem in exc.problems:
-            print("ERROR shape: %s" % problem, file=sys.stderr)
+    graph = cli.load_graph(args.graph)
+    if graph is None:
         return 1
 
     rows = turn.frontier(graph, args.thread)

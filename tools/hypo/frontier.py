@@ -40,15 +40,16 @@ from typing import Dict, List, Sequence, Tuple
 
 from . import appline, page, project, read, turn
 from .appline import Refused
-from .model import AUTHOR, STATES, Graph, Question, Term, Thesis
+from .model import AUTHOR, GLYPHS, STATES, Graph, Question, Term, Thesis
 
 
 def _lines(source) -> List[Tuple[str, ET.Element]]:
     """(block id, node) for every paragraph of a read, each checked."""
     out = []
-    for bid, node in appline.blocks(source).items():
+    parsed = appline.blocks(source)
+    for bid, node in parsed.items():
         if node.tag == "paragraph":
-            out.append((bid, appline.block(source, bid)))
+            out.append((bid, appline.block(source, bid, parsed)))
     return out
 
 
@@ -62,7 +63,7 @@ def question(name: str, tab: str, party: str, reads: Sequence,
     for source in reads:
         for bid, node in _lines(source):
             text = read.IN_PAGE_LINK.sub(r"\1", page.inline(node))
-            if node.get("heading") == "3" and text.startswith("▸ "):
+            if node.get("heading") == "3" and text.startswith(GLYPHS["term"] + " "):
                 chips = list(node.iter("mention"))
                 if not chips or bid in seen_terms:
                     continue
@@ -74,13 +75,10 @@ def question(name: str, tab: str, party: str, reads: Sequence,
             if node.get("heading"):
                 continue
             if text.startswith("question: "):
-                found = read.QUESTION_LINE.match(text)
-                if read.REMOVED_FIELD in text:
-                    raise Refused("%s: %s" % (name, read.REMOVED % (
-                        "a `requires:` field on its question line")))
-                if not found:
-                    raise Refused("%s: the question line is malformed" % name)
-                line = found
+                try:
+                    line = read.question_line(text)
+                except read.ParseError as exc:
+                    raise Refused("%s: %s" % (name, exc))
             else:
                 found = read.ASSENT_LINE.match(text)
                 if found:

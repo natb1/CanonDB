@@ -2,7 +2,7 @@
 
 import unittest
 
-from hypo.text import forms, occurrences, plain
+from hypo.text import canonical, escape, forms, occurrences, plain
 
 
 class PlainTest(unittest.TestCase):
@@ -37,6 +37,45 @@ class PlainTest(unittest.TestCase):
     def test_empty_and_none_are_empty(self):
         self.assertEqual(plain(""), "")
         self.assertEqual(plain(None), "")
+
+    def test_an_escaped_mark_is_the_character(self):
+        """The page holds a star where the markdown spells `\\*`; read as a
+        marker it paired with the next one and took the words between."""
+        self.assertEqual(plain("a \\* b and \\*not bold\\*"), "a * b and *not bold*")
+        self.assertEqual(plain("\\[x\\](y) and a back\\\\slash"), "[x](y) and a back\\slash")
+
+    def test_inside_code_a_backslash_is_a_character(self):
+        self.assertEqual(plain("`a\\*b` and \\`c\\`"), "a\\*b and `c`")
+
+
+class EscapeTest(unittest.TestCase):
+    """What the page speller writes a backslash before, and what the reader
+    keeps one before, is one rule, or a literal star went out bare and came
+    back a mark."""
+
+    def test_a_mark_the_page_holds_as_a_character_is_escaped(self):
+        self.assertEqual(escape("a * b, [c] and `d` with \\ in it"),
+                         "a \\* b, \\[c\\] and \\`d\\` with \\\\ in it")
+
+    def test_an_underscore_is_escaped_only_at_a_word_boundary(self):
+        self.assertEqual(escape("session_01 and _word_"), "session_01 and \\_word\\_")
+
+    def test_words_without_a_mark_come_back_untouched(self):
+        self.assertEqual(escape("a clause, plainly put."), "a clause, plainly put.")
+        self.assertEqual(escape(""), "")
+
+    def test_canonical_keeps_the_page_s_escapes_and_drops_the_exporter_s(self):
+        self.assertEqual(canonical("session\\_01 \\. \\- \\* \\[x\\] \\_word\\_"),
+                         "session_01 . - \\* \\[x\\] \\_word\\_")
+
+    def test_canonical_leaves_code_as_it_stands(self):
+        self.assertEqual(canonical("`a\\_b` and c\\_d"), "`a\\_b` and c_d")
+
+    def test_escape_then_canonical_is_escape_and_plain_is_the_characters(self):
+        for chars in ("a * b", "[x](y)", "back\\slash", "`not code`", "_edge_ a_b", "**not bold**"):
+            with self.subTest(chars=chars):
+                self.assertEqual(canonical(escape(chars)), escape(chars))
+                self.assertEqual(plain(escape(chars)), chars)
 
 
 class OccurrencesTest(unittest.TestCase):

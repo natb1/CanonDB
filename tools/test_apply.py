@@ -208,7 +208,7 @@ class LinkTest(unittest.TestCase):
                                             anchors=["The record."]))
         by_tab = outlines(self.graph)
         found = apply.headings(self.graph, q.tab, by_tab[q.tab])
-        href = apply._resolve(self.graph, "#%s.▸ The record" % q.tab, by_tab,
+        href = apply.resolve(self.graph, "#%s.▸ The record" % q.tab, by_tab,
                               self.graph.artifact, q.tab)
         self.assertEqual(href, "#" + found["▸ The record →"])
         self.assertNotEqual(href, "#" + found["▸ The record between them →"])
@@ -273,6 +273,30 @@ class UnlinkTest(unittest.TestCase):
         both = page.replace(stray, test_verify.LINK % (stray, "zz", 9), 1)
         self.assertEqual(len(apply.unlink_ops(self.graph, self.qid, both)), 1)
         self.assertEqual(apply.unlink_ops(self.graph, self.qid, page), [])
+
+
+
+class HeadingShapeTest(unittest.TestCase):
+    def test_a_paragraph_opening_on_a_number_sign_is_not_a_heading(self):
+        self.assertEqual(apply.rendered_headings("# Title\n\n#1 on the list is the merge.\n\n## Thesis"),
+                         ["Title", "Thesis"])
+
+    def test_a_heading_s_whitespace_is_collapsed_as_the_outline_s_is(self):
+        self.assertEqual(apply.rendered_headings("### ▸ The record  between them → <?claude block m_canon?>"),
+                         ["▸ The record between them →"])
+
+    def test_two_headings_spelling_one_text_resolve_to_neither(self):
+        graph = load("valid")
+        q = graph.get("ti-esti")
+        thesis = q.theses[0]
+        first = thesis.terms[0]
+        tail = thesis.text.rstrip(".").rsplit(". ", 1)[-1]
+        thesis.terms.append(model.Term(title=first.title, to="party", anchors=[tail]))
+        by_tab = outlines(graph)
+        found = apply.headings(graph, q.tab, by_tab[q.tab])
+        self.assertEqual(found["▸ %s →" % first.title], apply.AMBIGUOUS)
+        self.assertIsNone(apply.resolve(graph, "#%s.▸ %s" % (q.tab, first.title), by_tab,
+                                         graph.artifact, q.tab))
 
 
 if __name__ == "__main__":

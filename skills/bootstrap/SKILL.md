@@ -2,7 +2,7 @@
 name: bootstrap
 description: The principal reconciles application directly from the hypomnemata, ahead of canon. Review the notebook's applications against the checkout for gaps, plan the round for approval, build it on a branch of its own, record what was built as bootstrap, and publish a pull request the author merges. Invoke as /principal:bootstrap [dictation].
 disable-model-invocation: true
-allowed-tools: mcp__claude_ai_Claude_Docs__read, mcp__claude_ai_Claude_Docs__update, mcp__claude_ai_Claude_Docs__batch
+allowed-tools: mcp__claude_ai_Claude_Docs__read, mcp__claude_ai_Claude_Docs__update, mcp__claude_ai_Claude_Docs__batch, mcp__Claude_Docs__read, mcp__Claude_Docs__update, mcp__Claude_Docs__batch
 ---
 
 # /principal:bootstrap \[dictation\]
@@ -34,7 +34,9 @@ The notebook is the document `.principal/notebook.json` names at the project's r
 below is the plugin's own, at `${CLAUDE_PLUGIN_ROOT}/tools/`, and `$SCRATCH` is the session's
 scratch directory. The document tools this run reads and writes the notebook with are granted
 in its frontmatter under `allowed-tools`: invoking the entry point is the grant, and no other
-turn holds one.
+turn holds one. Each tool is named in both spellings the surfaces give it,
+`mcp__claude_ai_Claude_Docs__…` and `mcp__Claude_Docs__…`; a name the surface lacks grants
+nothing.
 
 ## Ground rules
 
@@ -47,8 +49,8 @@ turn holds one.
 3. **Bootstrap yields to canon.** An application whose standing is `derived` was reconciled
    from an answer that has landed, and this run never touches it, nor any file it owns. A
    bootstrap application is superseded the moment canon reconciles the same application: the
-   reconciliation takes its files and drops its manifest entry, and no later round takes them
-   back. See **Supersession**.
+   reconciliation takes its files out of every manifest entry that lists them, drops an entry
+   left with no files, and no later round takes them back. See **Supersession**.
 4. **A file is bootstrap's to write only if it is new or already bootstrap's.** The manifest
    lists what bootstrap owns. A file that exists and is not listed there is canon's, or the
    principal's own hand's, and this run does not change it. Canon is what is under `canon/`,
@@ -60,7 +62,8 @@ turn holds one.
 
 **1 — Read, in place.** The document is the reference, and it is read where it stands:
 nothing is exported, transcribed to disk or built into a graph file. Read the artifact's tab
-list. For each author tab (order `a…`; a tradition tab carries no application), `search` its
+list. For each author tab — one whose top-level ancestor is the root, order `a0`, and not a
+tab under a tradition's, order `b…`; a tradition's tabs carry no application — `search` its
 body for `⚙` to find the application headings, then for ` · ◆ ` to get every application
 line with its block id and `h`, and keep the tab's `rev` as its bookmark. That is every
 application in the notebook, and all this entry point reads of it besides the blocks a
@@ -75,11 +78,11 @@ rows, in step 4, cite the notebook. A dictation that changes nothing in the note
 names what to focus on is still recorded: as the pressure it bears on.
 A dictation that bears only on applications, or on the words of a paragraph, is applied in
 place — `tools/application.py` for an application, `tools/inplace.py` for the words of an
-answer, a definition's body or an amendment to a hinge's provenance. One that adds or drops a
-term or a glossary entry is `/principal:dictate`'s in-place path, with its scoped check over
-the touched tabs and their ancestors; one that changes a question, a state or the
-specification is `/principal:dictate`'s whole, with its graph and its checks, and until that
-runs this round records the dictation verbatim as a note on the tab it bears on.
+answer, its headline, a definition's body or an amendment to a hinge's provenance. One that
+adds or drops a term or a glossary entry is `/principal:dictate`'s in-place path, with its
+scoped check over the touched tabs and their ancestors; one that changes a question, a state
+or the specification is `/principal:dictate`'s whole, with its graph and its checks, and until
+that runs this round records the dictation verbatim as a note on the tab it bears on.
 
 **3 — Review for gaps.** For every application (⚙) read in step 1, read
 what it says and look at the checkout. Its `link` is where it says the thing lives; its
@@ -98,8 +101,11 @@ thing does what `what` says is read, not computed; say what you read.
 
 Then the other direction. Write the applications step 1 read as a JSON list, one
 `{"tab", "name", "link"}` each with the link as the read spells it, and run
-`tools/gaps.py <that file>`. It says per application whether its link's path is in the
-checkout, and lists every tracked file that no link and no manifest entry accounts for
+`tools/gaps.py <that file> --root <the project's root> --repo <owner/name>` (the root defaults
+to the working directory and the repository to `origin`'s; run from elsewhere, or without an
+`origin`, it would list every file as unaccounted for and say so of no link). It says per
+application whether its link's path is in the checkout, and lists every tracked file that no
+link and no manifest entry accounts for
 and that is not under `canon/`. A link to the repository's root accounts for nothing. Read
 each file it lists and class it:
 
@@ -132,8 +138,9 @@ can decide is tooled, as `/principal:dictate` step 3 says. Run the plugin's test
   "pull_request", "rounds"}`, added or updated in `.principal/bootstrap.json`. The files are
   the ones bootstrap now owns; a round that stops owning a file removes it.
 - The notebook: the application's `link` points at the thing on `main` — the path it will
-  have once the pull request is merged — and its standing stays `postulate`, which the
-  renderer reads off the answer's state and this run never writes. Write each change with
+  have once the pull request is merged — and its standing is written `postulate`
+  (`--standing postulate`), and stays so until a reconciliation writes `derived`; the discharge
+  clause beside it is what the renderer reads off the answer's state. Write each change with
   `tools/application.py` over a saved read of the block — `replace` for a line, `insert` for
   a new application, `delete` for one withdrawn — and send the ops it prints as one prose
   `update` per tab. It refuses a read whose block does not hash to the `h` the document
@@ -159,12 +166,14 @@ the second replace the first without anyone's hand.
   `standing-honest` holds the half a script can. This run writes only `postulate`
   applications, and only the files the manifest gives it or that do not yet exist. So
   nothing canon reconciled is ever rewritten by a bootstrap round.
-- **The manifest is the hand-over.** When canon reconciles an application the manifest
-  lists, the reconciliation writes the files as canon says, removes the entry, and the
-  application's standing becomes `derived`. From then on those files are canon's: rule 4
-  refuses them to any later round, and rule 3 refuses the application. The bootstrap version
-  is gone when the reconciliation lands, and it is gone because the entry is, not because
-  anyone remembered it.
+- **The manifest is the hand-over, file by file.** When canon reconciles an application the
+  manifest lists, the reconciliation writes the files as canon says, takes each of them out
+  of every entry that lists it, drops an entry left with no files, and the application's
+  standing becomes `derived`. A file several applications shaped is listed under each —
+  `skills/dictate/SKILL.md` under three — and canon's reconciling any one of them makes the
+  file canon's for all: rule 4 refuses it to any later round, and rule 3 refuses the
+  application. The bootstrap version is gone when the reconciliation lands, and it is gone
+  because the file's listing is, not because anyone remembered it.
 
 A bootstrap application that canon later contradicts is not a conflict to resolve: it is a
 postulate that did not survive, which is what a postulate is. The notebook's answer on

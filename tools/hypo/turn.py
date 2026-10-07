@@ -6,15 +6,17 @@ question, and nothing else. Two things in that rule are decidable from the
 graph file, and this module decides them so that the entry point which
 holds the notebook does not compose them by hand.
 
-``frontier`` is which questions could be put now. A question is put only to
-the AI, only once, and only when nothing it waits on is still owed: every
+``frontier`` is every question the AI answers that has not been put, with
+what each still waits on; ``select`` is the heaviest of those with nothing
+owed. A question is put only to the AI, only once, and only when nothing it
+waits on is still owed: every
 question the AI answers above it — by a path through the AI's questions,
 which is the blocking relation ``project.blocked_behind`` reads — has an
 answer that has landed, or stands earlier in the thread the question is being
 put on. Which thread a
 question is on is not recorded, so the caller names the thread. ``select``
-is the heaviest of them by backlog, ties by id, which is what a caller
-outside this plugin reads off the notebook as the next question.
+weighs by backlog, ties by id, which is what a caller outside this plugin
+reads off the notebook as the next question.
 
 ``lineage`` is the canon above a question, written out as text: for each
 question the AI answers above it, the question and the one answer a turn may
@@ -32,8 +34,8 @@ from typing import Iterable, List, Optional, Sequence, Set, Tuple
 from . import project
 from .model import ANSWERERS, STATES, Graph, Question, Thesis
 
-AI = ANSWERERS[0]
-HELD, IN_THREAD, LANDED = STATES
+AI = project.AI
+_, IN_THREAD, LANDED = STATES
 
 #: what separates one question's entry from the next in a lineage file
 RULE = "---"

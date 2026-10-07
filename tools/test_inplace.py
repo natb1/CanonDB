@@ -10,12 +10,11 @@ body write are the same notebook, or the writer is wrong.
 import json
 import os
 import re
-import subprocess
-import sys
 import unittest
 import xml.etree.ElementTree as ET
 
 from hypo import appline, inplace, model, page, read, render
+from support import chip_ids, load, run
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURES = os.path.join(HERE, "fixtures")
@@ -24,14 +23,6 @@ REV = 7
 
 _INLINE = re.compile(r"(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]*\]\([^)]*\)"
                      r"|<\?claude block [0-9A-Za-z_]+\?>)")
-
-
-def load():
-    return model.load(os.path.join(FIXTURES, "valid.json"))
-
-
-def ids(graph):
-    return {render.chip_key(q.id): q.id for q in graph.questions}
 
 
 class _Ids:
@@ -137,7 +128,7 @@ def rewrite(by_id, bid, new=None, after=None):
 
 
 def parsed(markdown, graph):
-    q = read.parse_tab(markdown, ids(graph))
+    q = read.parse_tab(markdown, chip_ids(graph))
     q.pop("incoming", None)
     return q
 
@@ -168,6 +159,19 @@ class GlossaryTest(unittest.TestCase):
         self.assertEqual(ops[0]["ifRev"], REV)
         self.assertEqual(ops[0]["with"], {"as": "text", "from": {"kind": "inline",
                                                                  "content": new}})
+
+    def test_a_star_among_the_new_words_is_a_letter_the_page_keeps(self):
+        """A text write sends letters, and a star among them is one: the page
+        speller spells it behind a backslash and the reader keeps it so. It
+        was refused as a mark the page would read back, which it no longer
+        does."""
+        new = "The mark * by which the one with standing binds an entry."
+        ops, _, after = inplace.glossary_replace(self.view, self.heading, self.body, new)
+        self.assertEqual(after, new.replace("*", "\\*"))
+        self.graph.get("canon").definitions[0].body = after
+        self.assertEqual(parsed(rewrite(self.by_id, self.body, new=after), self.graph),
+                         parsed(render.body(self.graph, "canon"), self.graph))
+        self.assertEqual(ops[0]["with"]["from"]["content"], new)
 
     def test_an_inserted_entry_reads_back_as_the_graph_holding_it(self):
         ops, content = inplace.glossary_insert(self.body, "entry", "A file in the repository.")
@@ -256,7 +260,7 @@ class IncomingTest(unittest.TestCase):
         md = self.by_id[self.header].splitlines()
         md.insert(1, line)
         got = read.parse_tab(rewrite(self.by_id, self.header, new="\n".join(md)),
-                             dict(ids(self.graph), m_canon_b="canon-b"))
+                             dict(chip_ids(self.graph), m_canon_b="canon-b"))
         self.assertIn(("A clause.", "canon-b"), got["incoming"])
 
     def test_delete_takes_one_item_guarded(self):
@@ -296,10 +300,14 @@ class ThesisTest(unittest.TestCase):
         with self.assertRaises(appline.Refused):
             inplace.thesis_replace(self.view, self.bid, new)
 
-    def test_a_character_the_page_reads_as_a_mark_is_refused(self):
+    def test_a_character_the_page_read_as_a_mark_is_a_letter_it_keeps(self):
+        """The stars are letters: the page spells them behind a backslash and
+        the reader keeps them so. Refused before as marks the page would read
+        back, which it no longer does."""
         new = self.old().replace("a file", "a *file*")
-        with self.assertRaises(appline.Refused):
-            inplace.thesis_replace(self.view, self.bid, new)
+        ops, _, new_md = inplace.thesis_replace(self.view, self.bid, new)
+        self.assertIn("a \\*file\\*", new_md)
+        self.assertEqual(ops[0]["with"]["from"]["content"], new)
 
 
 class MarkdownTest(unittest.TestCase):
@@ -355,7 +363,7 @@ class MarkdownTest(unittest.TestCase):
         there = "#%s.77" % SESSION
         new = self.old.replace("a file in the repository",
                                "[a file](%s) in the repository" % there)
-        ops, _, after, dropped, added = inplace.thesis_markdown(
+        _, _, after, dropped, added = inplace.thesis_markdown(
             self.view, self.bid, new,
             ["Authority to act on an unassented entry is held down, never removed."])
         self.assertEqual((dropped, added), ([], [("a file", there)]))
@@ -364,7 +372,7 @@ class MarkdownTest(unittest.TestCase):
 
     def test_a_chip_kept_is_carried_in_the_blocks_map(self):
         new = self.old.replace("not a message in a thread", "never a chat message")
-        ops, _, after, _, _ = inplace.thesis_markdown(self.view, self.bid, new)
+        ops, _, _, _, _ = inplace.thesis_markdown(self.view, self.bid, new)
         self.assertIn(self.CHIP, ops[0]["with"]["from"]["content"])
         self.assertEqual(ops[0]["with"]["blocks"],
                          {"m_attenuation": {"type": "mention", "ref": "file/tab-04"}})
@@ -379,6 +387,14 @@ class MarkdownTest(unittest.TestCase):
         with self.assertRaises(appline.Refused):
             inplace.thesis_markdown(self.view, self.bid,
                                     self.old + " <?claude block m_party?>")
+
+    def test_a_chip_said_twice_is_refused(self):
+        """The blocks map carries the chip once; a second token is a chip the
+        paragraph did not hold."""
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.thesis_markdown(self.view, self.bid,
+                                    self.old.replace(self.CHIP, self.CHIP + " " + self.CHIP))
+        self.assertIn("did not hold", str(caught.exception))
 
     def test_an_anchor_that_no_longer_stands_is_refused(self):
         new = self.old.replace("never removed", "sometimes removed")
@@ -477,6 +493,45 @@ class HeadlineTest(unittest.TestCase):
         with self.assertRaises(appline.Refused):
             inplace.thesis_headline(self.view, self.heading, "What is owed · and by whom")
 
+    def test_the_separator_is_refused_before_any_application_says_the_headline(self):
+        """Accepted while no line says it, the headline would part the fields of
+        the first application line written for it, and the reader would file
+        that application under no answer."""
+        self.graph.get("ti-esti").theses[0].applications = []
+        view, by_id = view_of(self.graph, "ti-esti")
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.thesis_headline(view, block_of(by_id, "### ◆ "),
+                                    "What is owed · and by whom")
+        self.assertIn("·", str(caught.exception))
+
+    def test_the_section_is_found_as_the_reader_finds_it(self):
+        """The reader folds the case of a section's name; the lines under a
+        heading it would read must move with the headline all the same."""
+        view, by_id = view_of(self.graph, "ti-esti",
+                              edit=lambda md: md.replace("## Applications", "## applications"))
+        ops, _, _ = inplace.thesis_headline(view, block_of(by_id, "### ◆ "), self.NEW)
+        self.assertEqual(len(ops), 1 + len(self.lines))
+
+    def test_another_answer_s_line_that_does_not_round_trip_is_left_alone(self):
+        """Whose a line is comes before its shape: a line the renderer would not
+        have written, under another answer, is not this headline's to refuse."""
+        q = self.graph.get("ti-esti")
+        q.theses.append(model.Thesis(
+            title="The principal's own prior", text="He holds otherwise.",
+            assent="none", state="held",
+            applications=[model.Application(name="his note", what="a note of his",
+                                            link="notes/own.md", standing="postulate")]))
+        view, by_id = view_of(
+            self.graph, "ti-esti",
+            edit=lambda md: md.replace("notes/own.md · postulate (",
+                                       "notes/own.md · postulate  ("))
+        other = next(bid for bid, md in by_id.items() if "notes/own.md" in md)
+        with self.assertRaises(appline.Refused):
+            appline.read_line(view, other)
+        ops, _, _ = inplace.thesis_headline(view, block_of(by_id, "### ◆ Each"), self.NEW)
+        self.assertEqual(len(ops), 3)
+        self.assertNotIn(other, [op["target"]["ids"][0] for op in ops])
+
     def test_a_partial_read_is_refused(self):
         """A search, or a view since a later rev, may not hold every
         application that says the headline."""
@@ -506,8 +561,10 @@ class SpanTest(unittest.TestCase):
             inplace.Piece((), " competing for the slot, and more words here.")]
 
     def test_a_change_clear_of_every_mark_is_written(self):
-        inplace.reworded(self.RUNS, "it is never a work item competing for the slot, "
-                                    "and more words there.")
+        new = "it is never a work item competing for the slot, and more words there."
+        after = inplace.reworded(self.RUNS, new)
+        self.assertEqual(inplace.letters(after), new)
+        self.assertIn(self.RUNS[1], after)
 
     def test_a_stretch_that_covers_a_link_is_refused(self):
         with self.assertRaises(appline.Refused):
@@ -545,16 +602,25 @@ class HingeTest(unittest.TestCase):
         with self.assertRaises(appline.Refused):
             inplace.hinge_amend(self.view, self.bid, "30 Sept", "p", "d")
 
+    def test_a_refusal_names_no_flag_the_command_has_not(self):
+        """A provenance that ends in a link cannot take the amendment as text;
+        the remedy named is a body write, since ``hinge amend`` has no
+        ``--markdown``."""
+        view, by_id = view_of(self.graph, "canon", edit=lambda md: md.replace(
+            "canon: the opening entry", "canon: [the opening entry](https://example.org/c)"))
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.hinge_amend(view, block_of(by_id, "model:"), "2026-10-06", "p", "d")
+        self.assertNotIn("--markdown", str(caught.exception))
+        self.assertIn("write the tab whole", str(caught.exception))
+
 
 class CliTest(unittest.TestCase):
     def test_a_glossary_replace_prints_the_ops_and_the_words(self):
         graph = load()
         view, by_id = view_of(graph, "canon")
-        done = subprocess.run(
-            [sys.executable, os.path.join(HERE, "inplace.py"), "glossary", "replace", "-",
-             "--heading", block_of(by_id, "### ≡"), "--block",
-             block_of(by_id, "The mark"), "--body", "The mark that binds."],
-            input=view, capture_output=True, text=True)
+        done = run("inplace.py", "glossary", "replace", "-",
+                   "--heading", block_of(by_id, "### ≡"), "--block",
+                   block_of(by_id, "The mark"), "--body", "The mark that binds.", stdin=view)
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(json.loads(done.stdout)["ops"][0]["ifRev"], REV)
         self.assertIn("new: The mark that binds.", done.stderr)
@@ -562,10 +628,9 @@ class CliTest(unittest.TestCase):
     def test_a_headline_prints_an_op_per_block_and_the_words(self):
         graph = load()
         view, by_id = view_of(graph, "ti-esti")
-        done = subprocess.run(
-            [sys.executable, os.path.join(HERE, "inplace.py"), "thesis", "headline", "-",
-             "--heading", block_of(by_id, "### ◆ "), "--title", "What each side owes"],
-            input=view, capture_output=True, text=True)
+        done = run("inplace.py", "thesis", "headline", "-",
+                   "--heading", block_of(by_id, "### ◆ "), "--title", "What each side owes",
+                   stdin=view)
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(len(json.loads(done.stdout)["ops"]), 2)
         self.assertIn("old: ◆ Each side owes the other what only it can give.", done.stderr)
@@ -579,10 +644,8 @@ class CliTest(unittest.TestCase):
         bid = block_of(by_id, "An entry is ")
         new = by_id[bid].replace("[a file](#s.5)", "a file").replace(
             "the repository", "[the repository](#s.6)")
-        done = subprocess.run(
-            [sys.executable, os.path.join(HERE, "inplace.py"), "thesis", "replace", "-",
-             "--block", bid, "--text", new, "--markdown"],
-            input=view, capture_output=True, text=True)
+        done = run("inplace.py", "thesis", "replace", "-",
+                   "--block", bid, "--text", new, "--markdown", stdin=view)
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(json.loads(done.stdout)["ops"][0]["with"]["as"], "markdown")
         self.assertIn("dropped: the link on 'a file' to #s.5", done.stderr)
@@ -590,12 +653,38 @@ class CliTest(unittest.TestCase):
         self.assertIn("'the repository' lands on #s.6", done.stderr)
 
     def test_a_refusal_exits_one(self):
-        done = subprocess.run(
-            [sys.executable, os.path.join(HERE, "inplace.py"), "hinge", "amend", "-",
-             "--block", "nope.1", "--date", "2026-09-30", "--by", "p", "--from", "d"],
-            input="<doc rev='1'/>", capture_output=True, text=True)
+        done = run("inplace.py", "hinge", "amend", "-",
+                   "--block", "nope.1", "--date", "2026-09-30", "--by", "p", "--from", "d",
+                   stdin="<doc rev='1'/>")
         self.assertEqual(done.returncode, 1)
         self.assertIn("REFUSED", done.stderr)
+
+
+
+class RewordedTest(unittest.TestCase):
+    def test_a_mark_the_document_leaves_whole_is_kept(self):
+        """Aligned by a diff, the bold A was taken for part of the change; the
+        document keeps the letters shared at the front, and the mark on them."""
+        runs = [inplace.Piece((("bold", ""),), "A"), inplace.Piece((), " A B")]
+        after = inplace.reworded(runs, "A B")
+        self.assertEqual(inplace.letters(after), "A B")
+        self.assertEqual(after[0], runs[0])
+
+    def test_an_in_page_link_clear_of_the_change_is_said_back_linked(self):
+        runs = [inplace.Piece((), "see "), inplace.Piece(((page.LINK, "#abc.1"),), "the entry"),
+                inplace.Piece((), " here")]
+        after = inplace.reworded(runs, "see the entry there")
+        self.assertEqual(inplace.spelled(after)[0], "see [the entry](#abc.1) there")
+
+    def test_the_reader_s_unescaping_is_applied_on_this_side_too(self):
+        self.assertEqual(inplace._reader_md("session\\_01 [x](#a.1)"), "session_01 x")
+
+    def test_a_list_with_no_live_item_is_refused(self):
+        src = "<doc rev='1' sinceRev='0'><list id='a.3' kind='bullet' h='%s'><gone id='.4'/></list></doc>"
+        src = src % appline.digest(ET.fromstring("<list><gone/></list>"))
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.incoming_insert(src, "a.3", "an anchor", "ti-esti", "tab-01")
+        self.assertIn("no item", str(caught.exception))
 
 
 if __name__ == "__main__":

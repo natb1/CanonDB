@@ -2,7 +2,7 @@
 name: dictate
 description: The principal dictates a change to the hypomnemata. Plan every edit, map each to the clause of the dictation that motivates it, apply it through the tooling, and — when the dictation changes the spec — tool the new rule, attenuate what cannot be tooled, and bring the whole notebook up to it. Invoke as /principal:dictate <dictation>.
 disable-model-invocation: true
-allowed-tools: mcp__claude_ai_Claude_Docs__read, mcp__claude_ai_Claude_Docs__update, mcp__claude_ai_Claude_Docs__batch
+allowed-tools: mcp__claude_ai_Claude_Docs__read, mcp__claude_ai_Claude_Docs__update, mcp__claude_ai_Claude_Docs__batch, mcp__Claude_Docs__read, mcp__Claude_Docs__update, mcp__Claude_Docs__batch
 ---
 
 # /principal:dictate \<dictation\>
@@ -21,7 +21,9 @@ enum its states point at. `tools/` below is the plugin's own, at `${CLAUDE_PLUGI
 `$SCRATCH` is the session's scratch directory, and nothing of the notebook is written under the
 project. The document tools this run reads and writes the notebook with are granted in its
 frontmatter under `allowed-tools`: invoking the entry point is the grant, and no other turn
-holds one.
+holds one. Each tool is named in both spellings the surfaces give it,
+`mcp__claude_ai_Claude_Docs__…` and `mcp__Claude_Docs__…`; a name the surface lacks grants
+nothing.
 
 ## Ground rules
 
@@ -45,8 +47,10 @@ yourself: a read tells you what the page holds, not what it means. Where the run
 whole notebook as a graph file — a change to the specification, a check over every tab — read
 each tab's body whole (`view` with `sinceRev` 0), save the reads as `$SCRATCH/views/<question>.json`,
 spell them with `tools/page.py $SCRATCH/views/*.json -o $SCRATCH/tabs`, and build the graph with
-`tools/read.py <document read> $SCRATCH/tabs` (`$SCRATCH/graph.json`, schema in
-`tools/hypo/model.py`). Nothing is exported: `page.py` spells the read as the export did, so the
+`tools/read.py <document read> $SCRATCH/tabs -o $SCRATCH/graph.json` (schema in
+`tools/hypo/model.py`; the enum the states point at is read from `.principal/notebook.json`, or
+given with `--state-enum`, and the notebook's URL from the same file where the document read
+does not carry it). Nothing is exported: `page.py` spells the read as the export did, so the
 reader, the page check and the relink tool take the directory unchanged.
 
 Where the dictation changes only line-shaped parts of a few tabs — step 4 names them — the run
@@ -84,8 +88,9 @@ this order:
 **4 — Apply.** A dictation that changes only line-shaped parts of a few tabs is written **in
 place**, block by block: an application with `tools/application.py`; a glossary entry, a term
 and its item on the header list of the tab it raises, the words of an answer, an answer's
-headline, or an amendment to a hinge's provenance with `tools/inplace.py`. Each takes the saved read of its blocks and
-prints the ops of one prose `update` for that tab, every whole-block op guarded by the block's
+headline, or an amendment to a hinge's provenance with `tools/inplace.py`. A replace or a delete
+takes the saved read of its blocks, an insert names the block it follows, and each prints the
+ops of one prose `update` for that tab, every whole-block op guarded by the block's
 `h` and the read's `rev`; send them as printed. A refusal is a block that moved or a part the
 reader would not take back, and either is read again, never forced; an answer's paragraph
 whose change reaches a link, a chip or a marked run is written whole with `--markdown`, which
@@ -274,10 +279,11 @@ a procedure rather than a script.
   Nothing computes which case you are in, and nothing counts the lines still to be drawn.
 - **Reach is judged where a part is written.** `reach` holds the context rule over the notebook's
   vocabulary, and holds it on what the notebook writes: the question, its hinge, every answer
-  that has not landed, every answer's headline, glossary bodies, notes, tradition notes and
-  counters, deadlocks and suspensions. Each is judged from the tab it is written on. What the
-  check cannot
-  judge is whether a word in reach is used in the sense that was fixed for it.
+  that has not landed, every answer's headline, glossary bodies and the notes on their
+  borrowings, notes, term and mention headlines, tradition notes and counters, deadlocks and
+  suspensions, and what each application is named and said to be. Each is judged from the tab it
+  is written on. What the check cannot judge is whether a word in reach is used in the sense
+  that was fixed for it.
 - **A party's word is imported, never assumed.** A party's notebook never stands above a question
   of yours, so its term of art is brought in by an entry that names the party and takes its sense
   — and a word of the notebook's own that a question cannot reach is a missing edge or a

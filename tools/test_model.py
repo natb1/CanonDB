@@ -6,12 +6,26 @@ import tempfile
 import unittest
 
 from hypo import model
+from support import FIXTURES, fixture
 
-FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
-
-
-def fixture(name):
-    return os.path.join(FIXTURES, name + ".json")
+class ImportShapeTest(unittest.TestCase):
+    def test_an_import_needs_no_body_key(self):
+        """An entry with no body of its own is an import, as the model says;
+        the key may be left out as well as left empty."""
+        with open(fixture("valid"), encoding="utf-8") as fh:
+            data = json.load(fh)
+        canon = next(q for q in data["questions"] if q["id"] == "canon")
+        canon["definitions"].append({"word": "homologia", "tradition": {"to": "plato"}})
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False,
+                                         encoding="utf-8") as fh:
+            json.dump(data, fh)
+        try:
+            graph = model.load(fh.name)
+        finally:
+            os.unlink(fh.name)
+        entry = graph.get("canon").definitions[-1]
+        self.assertTrue(entry.imported)
+        self.assertEqual(entry.body, "")
 
 
 class LoadTest(unittest.TestCase):

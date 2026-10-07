@@ -24,10 +24,10 @@ heading, since that is what a link's target names.
 from __future__ import annotations
 
 import re
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional
 from xml.etree import ElementTree
 
-from . import render, text, verify
+from . import page, render, text, verify
 from .model import Graph
 
 #: the wrapper an outline comes in, and the one thing that must not be parsed.
@@ -95,18 +95,11 @@ def parse_outline(xml: str) -> List[Block]:
             if el.tag == "gap":  # a sinceRev read folds what did not change
                 out.append(Block(id="", kind="gap", heading=0, text=""))
             continue
-        bid, prefix = _expand(bid, prefix)
+        bid, prefix = page.expand_id(bid, prefix)
         out.append(Block(id=bid, kind=el.tag,
                          heading=int(el.get("heading", 0) or 0),
                          text=" ".join("".join(el.itertext()).split())))
     return out
-
-
-def _expand(bid: str, prefix: str) -> Tuple[str, str]:
-    """A short id against the session prefix of the last full one."""
-    if bid.startswith("."):
-        return prefix + bid, prefix
-    return bid, bid.split(".")[0]
 
 
 def _scan(body: str) -> List[Block]:
@@ -120,7 +113,7 @@ def _scan(body: str) -> List[Block]:
             if m.group("kind") == "gap":
                 out.append(Block(id="", kind="gap", heading=0, text=""))
             continue
-        bid, prefix = _expand(bid, prefix)
+        bid, prefix = page.expand_id(bid, prefix)
         words = _TAG.sub("", _CHIP.sub("", m.group("text") or ""))
         out.append(Block(id=bid, kind=m.group("kind"),
                          heading=int(attrs.get("heading", 0) or 0),
@@ -131,8 +124,15 @@ def _scan(body: str) -> List[Block]:
 #: what an outline puts where it stopped printing a block's words.
 _ELIDED = "…"
 
-#: a heading line of the rendered body, and the chip that closes one.
-_HEADING = re.compile(r"^(#+)\s*(.*)$")
+#: a heading line of the rendered body, and the chip that closes one. The
+#: marks and then a space, as the document and the reader take a heading; a
+#: paragraph opening ``#1`` is a paragraph, and counting it made the outline
+#: and the render disagree on every heading of the tab.
+_HEADING = re.compile(r"^(#{1,6}) (.*)$")
+
+#: what ``headings`` maps a text to when two headings of the tab spell it: a
+#: target naming it means neither, and resolves to nothing
+AMBIGUOUS = ""
 
 
 def rendered_headings(body: str) -> List[str]:
@@ -144,8 +144,8 @@ def rendered_headings(body: str) -> List[str]:
     out: List[str] = []
     for chunk in (body or "").split("\n\n"):
         m = _HEADING.match(chunk.strip())
-        if m:
-            out.append(_CHIP.sub("", m.group(2)).strip())
+        if m:  # whitespace collapsed, as ``parse_outline`` collapses the outline's
+            out.append(" ".join(_CHIP.sub("", m.group(2)).split()))
     return out
 
 
@@ -171,25 +171,35 @@ def headings(graph: Graph, tab: str, outline: List[Block]) -> Dict[str, str]:
         shown = block.text.rstrip(_ELIDED)
         if shown and not words.startswith(shown):
             return {}  # the page is not this render; nothing here can be trusted
-        out.setdefault(words, block.id)
+        out[words] = AMBIGUOUS if words in out else block.id
     return out
 
 
-def _resolve(graph: Graph, target: str, by_tab: Dict[str, List[Block]],
-             artifact: str, own_tab: str) -> Optional[str]:
-    """A sidecar target — ``#<tab>.<heading>`` — as an href the viewer follows."""
+def resolve(graph: Graph, target: str, by_tab: Dict[str, List[Block]],
+            artifact: str, own_tab: str,
+            cache: Optional[Dict[str, Dict[str, str]]] = None) -> Optional[str]:
+    """A sidecar target — ``#<tab>.<heading>`` — as an href the viewer follows.
+    ``cache`` holds the headings of each tab already paired, so a tab with
+    many links renders once and not once per link."""
     tab, _, heading = target.lstrip("#").partition(".")
     outline = by_tab.get(tab)
     if outline is None:
         return None
-    found = headings(graph, tab, outline)
+    if cache is not None and tab in cache:
+        found = cache[tab]
+    else:
+        found = headings(graph, tab, outline)
+        if cache is not None:
+            cache[tab] = found
     # a target names the prefix the renderer could promise: a term heading goes
     # on to an arrow and a chip, which are a block id once the tab is written.
     # So the arrow is tried after the words themselves, and nothing looser: one
     # term's title may open another's, and the first heading that merely began
     # with the words was taken for it
-    bid = found.get(heading) or found.get("%s →" % heading)
+    bid = found.get(heading)
     if bid is None:
+        bid = found.get("%s →" % heading)
+    if not bid:  # no heading spells it, or two do
         return None
     if tab == own_tab:
         return "#%s" % bid
@@ -243,6 +253,7 @@ def link_ops(graph: Graph, qid: str, by_tab: Dict[str, List[Block]],
     own = q.tab if q is not None else ""
     ops: List[dict] = []
     missing: List[str] = []
+    paired: Dict[str, Dict[str, str]] = {}
     for entry in entries:
         find = entry.get("find")
         if not find:
@@ -256,7 +267,7 @@ def link_ops(graph: Graph, qid: str, by_tab: Dict[str, List[Block]],
             missing.append("%s: %s leaves the tab, and the graph names no "
                            "artifact to leave it by" % (entry["kind"], entry["target"]))
             continue
-        href = _resolve(graph, entry["target"], by_tab, artifact, own)
+        href = resolve(graph, entry["target"], by_tab, artifact, own, paired)
         if href is None:
             missing.append("%s: %s" % (entry["kind"], entry["target"]))
             continue

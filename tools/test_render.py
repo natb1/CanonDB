@@ -5,13 +5,7 @@ import re
 import unittest
 
 from hypo import model, project, read, render, spec, text
-
-FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
-
-
-def load(name):
-    return model.load(os.path.join(FIXTURES, name + ".json"))
-
+from support import FIXTURES, load
 
 def sections(text):
     return [line[3:] for line in text.splitlines() if line.startswith("## ")]

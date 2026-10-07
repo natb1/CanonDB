@@ -21,18 +21,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from hypo import cli, model, verify as check  # noqa: E402
+from hypo import cli, verify as check  # noqa: E402
 
 cli.quiet_pipe()
-
-
-def pages(directory: str) -> dict:
-    found = {}
-    for entry in sorted(os.listdir(directory)):
-        if entry.endswith(".md"):
-            with open(os.path.join(directory, entry), encoding="utf-8") as fh:
-                found[entry[:-3]] = fh.read()
-    return found
 
 
 def main(argv=None) -> int:
@@ -43,15 +34,12 @@ def main(argv=None) -> int:
                     help="verify only this question (repeatable)")
     args = ap.parse_args(argv)
 
-    try:
-        graph = model.load(args.graph)
-    except model.ShapeError as exc:
-        for problem in exc.problems:
-            print("ERROR shape: %s" % problem, file=sys.stderr)
+    graph = cli.load_graph(args.graph)
+    if graph is None:
         return 1
 
     try:
-        found = pages(args.tabs)
+        found = cli.exports(args.tabs)
     except OSError as exc:
         print("ERROR tabs: %s" % exc, file=sys.stderr)
         return 1
@@ -60,6 +48,11 @@ def main(argv=None) -> int:
         return 1
     if args.only:  # everything not named is absent on purpose; the named is owed
         wanted = set(args.only)
+        unknown = sorted(wanted - {q.id for q in graph.questions})
+        if unknown:
+            print("no question %s in %s" % (", ".join(unknown), os.path.basename(args.graph)),
+                  file=sys.stderr)
+            return 1
         found = {qid: page for qid, page in found.items() if qid in wanted}
         absent = sorted(qid for qid in wanted if qid not in found)
     else:

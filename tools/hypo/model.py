@@ -24,6 +24,10 @@ from typing import Any, Dict, Iterator, List, Optional, Tuple
 STATES = ("held", "in thread", "landed")
 KINDS = ("definitional", "case", "consistency", "root")
 
+#: the two headings that open an answer's citations, as the renderer writes
+#: them and the reader parts the answer's text from them
+CITATION_HEADINGS = ("**Support**", "**Divergence**")
+
 #: An application's standing: the artifact exists and its landed source has
 #: been diffed against it, or it was built ahead of that and owes the diff.
 STANDINGS = ("derived", "postulate")
@@ -62,6 +66,14 @@ REMOVED = ("inbox", "requires")
 #: The section a note may be attached to, as the renderer names them.
 SECTIONS = ("thesis", "glossary", "terms", "applications", "cited by",
             "hinge")
+
+#: The glyph that opens each kind of heading on a tab — an answer, a glossary
+#: entry, a term, a mention, an application, a hinge half — and the one that
+#: opens the lineage line above the title. The renderer writes them and the
+#: reader, the frontier and every in-place writer read them, so they are
+#: spelled here once; a glyph changed here changes on every side at once.
+GLYPHS = {"thesis": "◆", "glossary": "≡", "term": "▸", "mention": "↗",
+          "application": "⚙", "hinge": "⚓", "lineage": "⌂"}
 
 NOTEBOOK = "notebook"
 CANON = "canon"
@@ -112,13 +124,6 @@ class _Reader:
         if not isinstance(v, str):
             self.fail(where, "%r must be a string or null" % key)
             return None
-        return v
-
-    def flag(self, d: Dict[str, Any], key: str, where: str, default: bool = False) -> bool:
-        v = d.get(key, default)
-        if not isinstance(v, bool):
-            self.fail(where, "%r must be true or false" % key)
-            return default
         return v
 
     def number(self, d: Dict[str, Any], key: str, where: str) -> int:
@@ -304,7 +309,7 @@ class Definition:
             tradition = None
         entry = Definition(
             word=r.text(d, "word", where),
-            body=r.text(d, "body", where),
+            body=r.text(d, "body", where, required=False),
             tradition=tradition,
             question=r.text(d, "question", where, required=False),
         )
@@ -511,9 +516,14 @@ class Question:
         d = r.obj(data, where)
         qid = r.text(d, "id", where)
         here = "%s (%s)" % (where, qid) if qid else where
-        hinge = Hinge.read(r, d["hinge"], here + ".hinge") if isinstance(d.get("hinge"), dict) else None
-        if "hinge" in d and d["hinge"] is not None and not isinstance(d["hinge"], dict):
+        raw = d.get("hinge")
+        if raw is None:
+            hinge = None
+        elif isinstance(raw, dict):
+            hinge = Hinge.read(r, raw, here + ".hinge")
+        else:
             r.fail(here + ".hinge", "expected an object or null")
+            hinge = None
         for key in REMOVED:
             if key in d:
                 # nothing else refuses a key it does not know, so a stale

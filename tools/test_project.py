@@ -1,34 +1,10 @@
 """The tab-tree projection is deterministic, total and correctly ordered."""
 
 import copy
-import json
-import os
-import tempfile
 import unittest
 
-from hypo import model, project, spec
-
-FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
-
-
-def load(name):
-    return model.load(os.path.join(FIXTURES, name + ".json"))
-
-
-def rewrite(name, mutate):
-    """Load a fixture, mutate its JSON, and load the result."""
-    with open(os.path.join(FIXTURES, name + ".json"), encoding="utf-8") as fh:
-        data = json.load(fh)
-    mutate(data)
-    handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False,
-                                         encoding="utf-8")
-    try:
-        json.dump(data, handle)
-        handle.close()
-        return model.load(handle.name)
-    finally:
-        os.unlink(handle.name)
-
+from hypo import project, spec
+from support import load, rewrite
 
 class RootTest(unittest.TestCase):
     def setUp(self):
