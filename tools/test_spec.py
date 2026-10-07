@@ -757,6 +757,37 @@ class PartedTextTest(unittest.TestCase):
         self.assertIn("one", findings[0].message)
 
 
+class AcyclicTest(unittest.TestCase):
+    @staticmethod
+    def chain(n):
+        """``n`` questions, each raising the next by a term."""
+        questions = []
+        for i in range(n):
+            terms = [model.Term(title="next", to="q%04d" % (i + 1))] if i + 1 < n else []
+            questions.append(model.Question(
+                id="q%04d" % i, tab="t%d" % i, body="", question="", state="held",
+                kind="case", pressure=0, answerer="ai",
+                theses=[model.Thesis(title="", text="", state="held", terms=terms)]))
+        return model.Graph(artifact="", questions=questions)
+
+    def test_a_long_chain_is_a_graph_and_not_a_recursion_limit(self):
+        """Walked by recursion, a chain deeper than the interpreter's limit
+        crashed the checker instead of passing."""
+        graph = self.chain(2000)
+        self.assertEqual(list(spec.acyclic(graph)), [])
+        graph.questions[-1].theses[0].terms.append(model.Term(title="back", to="q0000"))
+        findings = list(spec.acyclic(graph))
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0][0], "q0000")
+        self.assertTrue(findings[0][1].startswith("term edges form a cycle: q0000 -> q0001"))
+        self.assertTrue(findings[0][1].endswith("q1999 -> q0000"))
+
+    def test_each_cycle_is_said_once_from_where_the_walk_met_it(self):
+        findings = spec.run(load("invalid-acyclic"), only=["acyclic"])
+        self.assertEqual(len(findings), 1)
+        self.assertIn("cycle", findings[0].message)
+
+
 class NoteUnstoppedTest(unittest.TestCase):
     def test_a_citation_s_note_ending_in_a_stop_is_refused(self):
         findings = spec.run(load("invalid-note-unstopped"), only=["note-unstopped"])

@@ -338,31 +338,34 @@ def tradition_isolated(graph: Graph) -> Yield:
 
 @check("acyclic", "the term graph is acyclic")
 def acyclic(graph: Graph) -> Yield:
+    """Depth first, with the path held here rather than on the call stack: a
+    chain of a thousand questions, each raising the next, is a graph and not
+    a recursion limit. Each cycle is reported once, from the first question
+    on it the walk reached."""
     out = project.out_edges(graph)
-    colour: Dict[str, int] = {}
+    colour: Dict[str, int] = {}  # 1 on the path, 2 done
     reported: Set[Tuple[str, ...]] = set()
-
-    def walk(node: str, stack: List[str]) -> Iterator[List[str]]:
-        colour[node] = 1
-        stack.append(node)
-        for nxt in out.get(node, []):
-            if nxt not in colour:
-                for cyc in walk(nxt, stack):
-                    yield cyc
-            elif colour.get(nxt) == 1:
-                cycle = stack[stack.index(nxt):] + [nxt]
-                yield cycle
-        stack.pop()
-        colour[node] = 2
-
     for q in sorted(graph.questions, key=lambda x: x.id):
-        if q.id not in colour:
-            for cycle in walk(q.id, []):
+        if q.id in colour:
+            continue
+        colour[q.id] = 1
+        path = [q.id]
+        pending = [iter(out.get(q.id, []))]
+        while pending:
+            nxt = next(pending[-1], None)
+            if nxt is None:
+                colour[path.pop()] = 2
+                pending.pop()
+            elif nxt not in colour:
+                colour[nxt] = 1
+                path.append(nxt)
+                pending.append(iter(out.get(nxt, [])))
+            elif colour[nxt] == 1:
+                cycle = path[path.index(nxt):] + [nxt]
                 key = tuple(sorted(set(cycle)))
-                if key in reported:
-                    continue
-                reported.add(key)
-                yield cycle[0], "term edges form a cycle: %s" % " -> ".join(cycle)
+                if key not in reported:
+                    reported.add(key)
+                    yield cycle[0], "term edges form a cycle: %s" % " -> ".join(cycle)
 
 
 @check("unique-ids",
