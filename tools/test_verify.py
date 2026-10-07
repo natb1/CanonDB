@@ -364,6 +364,14 @@ class PlainlyTest(unittest.TestCase):
         self.assertEqual(verify.plainly("session_01Jjv"), "session_01Jjv")
         self.assertEqual(verify.plainly("_word_ and *word*"), "word and word")
 
+    def test_a_literal_star_is_a_character_and_not_a_stray_marker(self):
+        """The page spells it behind a backslash; the offsets beside it are
+        the document's only if it counts as one character."""
+        self.assertEqual(verify.plainly("a \\* b and *c*"), "a * b and c")
+        plain, spans = verify.linked_spans("x \\* [y](#t.1)")
+        self.assertEqual(plain, "x * y")
+        self.assertEqual((spans[0].at, spans[0].end), (4, 5))
+
 
 class NormaliseTest(unittest.TestCase):
     def test_a_chip_reads_the_same_either_way_it_is_spelled(self):

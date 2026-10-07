@@ -169,6 +169,19 @@ class GlossaryTest(unittest.TestCase):
         self.assertEqual(ops[0]["with"], {"as": "text", "from": {"kind": "inline",
                                                                  "content": new}})
 
+    def test_a_star_among_the_new_words_is_a_letter_the_page_keeps(self):
+        """A text write sends letters, and a star among them is one: the page
+        speller spells it behind a backslash and the reader keeps it so. It
+        was refused as a mark the page would read back, which it no longer
+        does."""
+        new = "The mark * by which the one with standing binds an entry."
+        ops, _, after = inplace.glossary_replace(self.view, self.heading, self.body, new)
+        self.assertEqual(after, new.replace("*", "\\*"))
+        self.graph.get("canon").definitions[0].body = after
+        self.assertEqual(parsed(rewrite(self.by_id, self.body, new=after), self.graph),
+                         parsed(render.body(self.graph, "canon"), self.graph))
+        self.assertEqual(ops[0]["with"]["from"]["content"], new)
+
     def test_an_inserted_entry_reads_back_as_the_graph_holding_it(self):
         ops, content = inplace.glossary_insert(self.body, "entry", "A file in the repository.")
         self.graph.get("canon").definitions.append(
@@ -296,10 +309,14 @@ class ThesisTest(unittest.TestCase):
         with self.assertRaises(appline.Refused):
             inplace.thesis_replace(self.view, self.bid, new)
 
-    def test_a_character_the_page_reads_as_a_mark_is_refused(self):
+    def test_a_character_the_page_read_as_a_mark_is_a_letter_it_keeps(self):
+        """The stars are letters: the page spells them behind a backslash and
+        the reader keeps them so. Refused before as marks the page would read
+        back, which it no longer does."""
         new = self.old().replace("a file", "a *file*")
-        with self.assertRaises(appline.Refused):
-            inplace.thesis_replace(self.view, self.bid, new)
+        ops, _, new_md = inplace.thesis_replace(self.view, self.bid, new)
+        self.assertIn("a \\*file\\*", new_md)
+        self.assertEqual(ops[0]["with"]["from"]["content"], new)
 
 
 class MarkdownTest(unittest.TestCase):

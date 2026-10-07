@@ -335,6 +335,18 @@ class DetailTest(unittest.TestCase):
         self.assertEqual(parsed["hinge"]["thesis"],
                          "harness: session_01JjvCcM5QM8JTTCsN2PEKCD")
 
+    def test_the_page_s_backslashes_stay(self):
+        """A graph text spells a literal star `\\*`, as markdown does. The
+        renderer writes it so and the page speller spells the page's star so;
+        taken off here, the next render wrote the star as a mark."""
+        graph = load("valid")
+        canon = graph.get("canon")
+        canon.hinge.thesis = "a literal \\* star, a \\[bracket\\] and a back\\\\slash"
+        canon.definitions[0].body = "The mark \\* by which the one with standing binds."
+        parsed = read.parse_tab(render.body(graph, "canon"), self.ids)
+        self.assertEqual(parsed["hinge"]["thesis"], canon.hinge.thesis)
+        self.assertEqual(parsed["definitions"][0]["body"], canon.definitions[0].body)
+
     def test_an_exported_chip_leaves_no_label_in_a_citation(self):
         """A chip carries an edge, not a word. Flattened to `[Plato](file/…)`
         on export and read back as its label, the tradition's name ended up

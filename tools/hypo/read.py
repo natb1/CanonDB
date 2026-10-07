@@ -20,7 +20,7 @@ import re
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 from .model import AUTHOR, CITATION_HEADINGS, SECTIONS
-from . import render
+from . import render, text
 from .render import INSTEAD, SEPARATOR, SHADOW, chip_key
 
 #: ``<?claude block m_canon?>`` as the renderer writes it.
@@ -36,12 +36,6 @@ EXPORTED_CHIP = re.compile(r"\[([^\]]*)\]\(file/([^)]*)\)")
 #: commit reference is part of what the principal wrote.
 IN_PAGE_LINK = re.compile(
     r"\[([^\]]*)\]\((?:https?://[^)#]*/artifact/[^)#]*)?#[^)]*\)")
-
-#: A backslash the export put in front of punctuation the markdown would
-#: otherwise read as a marker — `session\_01Jjv…` for a word with an
-#: underscore in it. It is the exporter's and not the page's, so it comes off;
-#: this is the ordinary markdown reading of a backslash escape.
-ESCAPE = re.compile(r"\\([!-/:-@\[-`{-~])")
 
 #: Only pressure is read back. Backlog and load are projections of the graph
 #: and standing is read off the state, so reading any of them would store a
@@ -375,11 +369,11 @@ def _citations(blocks: List[str],
                 # the crumb is a breadcrumb, so taking its chips out leaves the
                 # separators that stood between them; they belong to the path
                 # and not to the note that precedes it
-                text = CRUMB_TAIL.sub("", strip_chips(line[2:], labels))
+                words = CRUMB_TAIL.sub("", strip_chips(line[2:], labels))
                 # only a divergence holds something instead; in a support's
                 # note the words are the note's own
-                note, _, counter = (text.partition(INSTEAD) if relation == "divergence"
-                                    else (text, "", ""))
+                note, _, counter = (words.partition(INSTEAD) if relation == "divergence"
+                                    else (words, "", ""))
                 out.append((relation, note.strip().rstrip("."),
                             CRUMB_TAIL.sub("", counter).strip(), keys[-1]))
     return out
@@ -399,7 +393,10 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     # every export carries them and no graph file ever did. They come off here,
     # before the grammar is read, or they would land inside a thesis text and
     # break the one line whose shape is fixed — `· provenance: thesis hinge`.
-    markdown = ESCAPE.sub(r"\1", IN_PAGE_LINK.sub(r"\1", markdown))
+    # So do the exporter's own backslashes, and only those: one before a
+    # character markdown reads as a mark spells the literal character, and
+    # stays, or the next render would write a star the page holds as a mark.
+    markdown = text.canonical(IN_PAGE_LINK.sub(r"\1", markdown))
 
     def target(key: str) -> str:
         # a key with no question behind it names something the graph does not
@@ -485,8 +482,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
                     raise ParseError(CHIPPED_STATE)
             elif not block.startswith(">"):
                 rest.append(block)
-        text = SEPARATOR.join(rest)
-        thesis["text"] = PLACED_CHIP.sub("", text)
+        thesis["text"] = PLACED_CHIP.sub("", SEPARATOR.join(rest))
         for relation, note, counter, key in _citations(cited, labels):
             thesis["traditions"].append({"to": target(key), "relation": relation,
                                          "note": note, "counter": counter})

@@ -14,6 +14,12 @@ nothing is exported.
 What the export lost, this keeps in reach: ``blocks`` gives each block's id
 beside its markdown, which is what the page check would need to tell which
 block a link leads to and not only which tab.
+
+A character the page holds that markdown would read as a mark — a star, a
+bracket, a backslash — is spelled behind a backslash, as the exporter
+spelled it, so that the reader takes it for the character; spelled bare, the
+next render wrote it as a mark. Inside code nothing is a mark, and a code
+run is spelled as it stands.
 """
 
 from __future__ import annotations
@@ -21,6 +27,8 @@ from __future__ import annotations
 import json
 import xml.etree.ElementTree as ET
 from typing import List, Sequence, Tuple
+
+from . import text
 
 #: the marks a run of text may carry, outermost first as the export spells them
 ITALIC, BOLD, CODE, LINK = "italic", "bold", "code", "link"
@@ -49,15 +57,25 @@ def view_xml(source) -> str:
             return data["xml"] if isinstance(data, dict) else source["xml"]
         except KeyError:
             raise ValueError("the read carries no xml: it is not a view or a search result")
-    text = source.strip()
-    if text.startswith("{"):
-        return view_xml(json.loads(text))
-    return text
+    body = source.strip()
+    if body.startswith("{"):
+        return view_xml(json.loads(body))
+    return body
 
 
 # --- runs ---------------------------------------------------------------
 
 Run = Tuple[Tuple[Tuple[str, str], ...], str]  # ((mark, arg), ...), text
+
+
+def literal(chars: str, marks: Tuple[Tuple[str, str], ...] = ()) -> str:
+    """A run's characters as markdown spells them: a backslash before each
+    one markdown would read as a mark, so a star the page holds comes back a
+    star. Inside code a backslash is a character and nothing is a mark, so a
+    code run is spelled as it stands."""
+    if any(kind == CODE for kind, _ in marks):
+        return chars
+    return text.escape(chars)
 
 
 def _runs(node: ET.Element, marks: Tuple[Tuple[str, str], ...] = (),
@@ -72,7 +90,7 @@ def _runs(node: ET.Element, marks: Tuple[Tuple[str, str], ...] = (),
     """
     out: List[Run] = []
     if not top and node.text:
-        out.append((marks, node.text))
+        out.append((marks, literal(node.text, marks)))
     for child in node:
         tag = child.tag
         if tag == "mention":
@@ -86,7 +104,7 @@ def _runs(node: ET.Element, marks: Tuple[Tuple[str, str], ...] = (),
         else:
             out.extend(_runs(child, marks, False))
         if child.tail:
-            out.append((marks, child.tail))
+            out.append((marks, literal(child.tail, marks)))
     return out
 
 
@@ -130,8 +148,8 @@ def inline(node: ET.Element) -> str:
 
 def _paragraph(node: ET.Element) -> str:
     level = node.get("heading")
-    text = inline(node)
-    return ("#" * int(level) + " " + text) if level else text
+    words = inline(node)
+    return ("#" * int(level) + " " + words) if level else words
 
 
 def _list(node: ET.Element, indent: int = 0) -> str:
@@ -213,13 +231,13 @@ def blocks(source) -> List[Tuple[str, str]]:
         bid, session = expand_id(node.get("id", ""), session)
         if node.tag == "gone":
             continue
-        text = _block(node)
-        if text.strip():
-            out.append((bid, text))
+        words = _block(node)
+        if words.strip():
+            out.append((bid, words))
     return out
 
 
 def markdown(source) -> str:
     """The tab as an export spelled it: blocks parted by a blank line, and a
     newline at the end."""
-    return SEPARATOR.join(text for _, text in blocks(source)) + "\n"
+    return SEPARATOR.join(words for _, words in blocks(source)) + "\n"

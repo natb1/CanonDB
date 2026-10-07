@@ -36,6 +36,17 @@ class SpellingTest(unittest.TestCase):
         self.assertEqual(tab["theses"][0]["applications"][0]["link"],
                          "[skills/dictate/SKILL.md](https://github.com/natb1/CanonDB/blob/main/skills/dictate/SKILL.md)")
 
+    def test_a_mark_the_page_holds_as_a_character_is_spelled_behind_a_backslash(self):
+        """The exporter escaped a literal star or bracket and the reader keeps
+        the escape; spelled bare, the next render wrote a mark. Inside code
+        nothing is a mark, so a code run is spelled as it stands."""
+        xml = ("<doc><paragraph id='s.1'><text id='.2'>a * b, [c] and </text>"
+               "<text id='.3'><code>x*y</code></text><text id='.4'> with \\ in it</text>"
+               "</paragraph></doc>")
+        self.assertEqual(page.markdown(xml), "a \\* b, \\[c\\] and `x*y` with \\\\ in it\n")
+        self.assertEqual(read.parse_tab("⌂ root\n\n# q\n\n*%s*\n" % page.markdown(xml).strip())["question"],
+                         "a \\* b, \\[c\\] and `x*y` with \\\\ in it")
+
     def test_a_split_link_is_one_link(self):
         xml = ("<doc><paragraph id='s.1'><text id='.2'><link href='u'>a/</link></text>"
                "<text id='.3'><link href='u'>b.md</link></text><text id='.4'> · x</text></paragraph></doc>")

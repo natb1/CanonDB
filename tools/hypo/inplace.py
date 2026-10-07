@@ -68,7 +68,8 @@ APPLICATIONS = "Applications"
 
 #: a link as the renderer's markdown spells one: its words and where it leads
 
-#: marks the page reads back as markup, and so must not arrive as letters
+#: the marks a field of one line of plain words — a headline, a term's title,
+#: a glossary word, who amended and from what — may not carry
 MARKUP = re.compile(r"[*`\[\]]")
 
 #: the date an amendment names
@@ -137,7 +138,7 @@ def spelled(runs: Sequence[Piece]) -> Tuple[str, Dict[str, dict]]:
             chips[key] = {"type": "mention", "ref": p.chip.get("ref", "")}
             runs_out.append((p.marks, render.token(key)))
         else:
-            runs_out.append((p.marks, p.text))
+            runs_out.append((p.marks, page.literal(p.text, p.marks)))
     return page.spell(runs_out), chips
 
 
@@ -164,11 +165,9 @@ def reworded(runs: Sequence[Piece], new: str,
     # after it moves by the difference. (Aligned by a diff instead, a run the
     # document left whole was refused as inside the changed words.)
     s0, e0 = _span(old, new)
-    e1 = len(new) - (len(old) - e0)  # where the stretch ends in the new letters
-    marked = MARKUP.search(new[s0:e1])
-    if marked:
-        raise Refused("the new words carry %r, which the page reads back as "
-                      "a mark; write it as a body write instead" % marked.group())
+    # A star or a bracket among the new letters is a letter: the page spells
+    # it behind a backslash and the reader keeps it so, which the caller's
+    # read-back of what is said here confirms.
     # New words beside a link came back linked from the first change to the
     # last. So no marked run and no chip may meet that stretch, not even an
     # in-page link the reader drops; a block whose changes reach one is
@@ -221,13 +220,9 @@ def _span(old: str, new: str) -> Tuple[int, int]:
 
 def _reader_md(md: str) -> str:
     """Markdown as the reader holds it in a thesis: chips off, the sidecar's
-    links reduced to their words, and a backslash before punctuation off, as
+    links reduced to their words, and the exporter's backslashes off, as
     ``read.parse_tab`` takes every tab."""
-    return _unescaped(read.PLACED_CHIP.sub("", read.IN_PAGE_LINK.sub(r"\1", md))).strip()
-
-
-def _unescaped(md: str) -> str:
-    return read.ESCAPE.sub(r"\1", md)
+    return text.canonical(read.PLACED_CHIP.sub("", read.IN_PAGE_LINK.sub(r"\1", md))).strip()
 
 
 def _reader_text(runs: Sequence[Piece]) -> str:
@@ -345,7 +340,7 @@ def glossary_replace(source, heading: str, body: str,
     after, _ = spelled(reworded(runs, new))
     _plain_block(after, "the definition")
     got = _read_back(_tab(("Glossary", ["### %s" % render.glossary_heading(word), after])))
-    if got["definitions"] != [{"word": word, "body": _unescaped(after)}]:
+    if got["definitions"] != [{"word": word, "body": text.canonical(after)}]:
         raise Refused("the entry does not read back as written: %r" % got["definitions"])
     return [_words_op(body, node, rev(source), new)], old, after
 
@@ -689,6 +684,6 @@ def hinge_amend(source, bid: str, day: str, by: str,
     if new_md != render.amended(old_md, day, by.strip(), origin.strip()):
         raise Refused("the amendment does not land at the end of the line")
     got = _read_back(_tab(("Hinge", ["### %s" % render.HINGE_THESIS, new_md])))
-    if got.get("hinge", {}).get("thesis") != _unescaped(new_md):
+    if got.get("hinge", {}).get("thesis") != text.canonical(new_md):
         raise Refused("the provenance does not read back as written")
     return [_words_op(bid, node, rev(source), new)], old_md, new_md

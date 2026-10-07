@@ -147,7 +147,7 @@ def normalise(markdown: str, labels: Optional[Dict[str, str]] = None) -> List[st
         out = read.EXPORTED_CHIP.sub(r"\1", out)
     else:
         out = read.PLACED_CHIP.sub("", out)
-    out = read.ESCAPE.sub(r"\1", out)
+    out = text.ESCAPE.sub(r"\1", out)
     out = _STATE.sub(r"\1 STATE ·", out)
     out = _ANSWER_STATE.sub(r"\1 STATE \2", out)
     # a blank line parts two blocks, and one block with a soft break is not
@@ -219,11 +219,13 @@ def plainly(markdown: str) -> str:
     Run over one piece of the page at a time, so what is left is consistent
     with the offsets taken beside it. A link may open inside an emphasis span,
     which leaves a marker without its pair in one of the pieces; those come off
-    too, or the offsets would count characters nobody sees.
+    too, or the offsets would count characters nobody sees. A star the page
+    spells behind a backslash is a character and not a stray marker, so the
+    escapes are held while the markers come off.
     """
-    out = read.ESCAPE.sub(r"\1", markdown or "")
-    out = read.PLACED_CHIP.sub("", out)
-    return _MARKERS.sub("", text.plain(out))
+    held_text, held = text.hold(markdown)
+    held_text = read.PLACED_CHIP.sub("", held_text)
+    return text.release(_MARKERS.sub("", text.unmarked(held_text)), held)
 
 
 def _leads_to(href: str, tab: str, own: str) -> bool:
