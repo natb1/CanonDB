@@ -49,7 +49,8 @@ each tab's body whole (`view` with `sinceRev` 0), save the reads as `$SCRATCH/vi
 spell them with `tools/page.py $SCRATCH/views/*.json -o $SCRATCH/tabs`, and build the graph with
 `tools/read.py <document read> $SCRATCH/tabs -o $SCRATCH/graph.json` (schema in
 `tools/hypo/model.py`; the enum the states point at is read from `.principal/notebook.json`, or
-given with `--state-enum`). Nothing is exported: `page.py` spells the read as the export did, so the
+given with `--state-enum`, and the notebook's URL from the same file where the document read
+does not carry it). Nothing is exported: `page.py` spells the read as the export did, so the
 reader, the page check and the relink tool take the directory unchanged.
 
 Where the dictation changes only line-shaped parts of a few tabs — step 4 names them — the run

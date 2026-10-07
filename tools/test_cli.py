@@ -198,6 +198,27 @@ class ReadCliTest(unittest.TestCase):
                       "--state-enum", "enum-3", cwd=self.dir)
         self.assertEqual(model.load(out).state_enum, "enum-3", flagged.stderr)
 
+    def test_the_project_s_notebook_names_the_artifact_where_the_read_does_not(self):
+        """A graph whose artifact is empty can form no link that leaves its
+        tab; the project's notebook file names the URL every tool joins a tab
+        and block to, and a document read that carries one is believed first."""
+        os.mkdir(os.path.join(self.dir, ".principal"))
+        with open(os.path.join(self.dir, ".principal", "notebook.json"), "w") as fh:
+            json.dump({"artifact": "https://claude.ai/code/artifact/abc", "state_enum": "e"}, fh)
+        with open(self.manifest, encoding="utf-8") as fh:
+            manifest = json.load(fh)
+        self.assertTrue(manifest["frame"]["artifactUrl"])
+        out = os.path.join(self.dir, "graph.json")
+        done = run("read.py", self.manifest, self.tabs, "-o", out, cwd=self.dir)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(model.load(out).artifact, manifest["frame"]["artifactUrl"])
+        del manifest["frame"]
+        with open(self.manifest, "w", encoding="utf-8") as fh:
+            json.dump(manifest, fh)
+        done = run("read.py", self.manifest, self.tabs, "-o", out, cwd=self.dir)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(model.load(out).artifact, "https://claude.ai/code/artifact/abc")
+
     def test_an_export_that_names_no_tab_is_said(self):
         """Misnamed, it would be left out of the graph in silence, and the
         tab it was meant for with it."""

@@ -20,6 +20,10 @@ The enum the states point at is in neither the document read nor the exports,
 so `--state-enum ID` names it, and a rebuild over an existing graph file keeps
 the one that file holds rather than dropping it — dropped, every state would
 render as a word rather than a dropdown, and no gate can see the difference.
+Both the enum and the notebook's URL are what `.principal/notebook.json` names
+at the project's root: the enum where no flag names one, the URL where the
+document read does not carry it, since a graph with none can form no link
+that leaves its tab.
 """
 
 from __future__ import annotations
@@ -97,14 +101,17 @@ def assemble(manifest: dict, bodies: dict, scope: Sequence[str] = ()) -> dict:
     return graph
 
 
-def notebook_enum(root: str = ".") -> str:
-    """The enum ``.principal/notebook.json`` names at the project's root,
-    which is where the tools are run from; empty where there is none."""
+def notebook(root: str = ".") -> dict:
+    """What ``.principal/notebook.json`` names at the project's root, which
+    is where the tools are run from: the notebook's URL under ``artifact``
+    and the enum its states point at under ``state_enum``; empty where there
+    is none."""
     try:
         with open(os.path.join(root, ".principal", "notebook.json"), encoding="utf-8") as fh:
-            return str(json.load(fh).get("state_enum") or "")
+            found = json.load(fh)
     except (OSError, ValueError):
-        return ""
+        return {}
+    return found if isinstance(found, dict) else {}
 
 
 def kept(path: Optional[str]) -> str:
@@ -166,13 +173,19 @@ def main(argv=None) -> int:
         print("ERROR exports: %s" % exc, file=sys.stderr)
         return 1
 
+    named = notebook()
+    # the artifact, where the document read did not carry it, is the one the
+    # project names: every link that leaves a tab is formed on it
+    if not graph["artifact"] and named.get("artifact"):
+        graph["artifact"] = str(named["artifact"])
     # the enum, from the flag, else from the project's notebook.json, else as
     # the file being rewritten held it: a graph without one renders every
     # state as a word, and a body write then puts words where the page had
     # its dropdowns
     enum, whence = args.state_enum, ""
     if not enum:
-        enum, whence = notebook_enum(), " (state_enum from .principal/notebook.json)"
+        enum = str(named.get("state_enum") or "")
+        whence = " (state_enum from .principal/notebook.json)"
     if not enum:
         enum, whence = kept(args.out), " (state_enum kept)"
     if enum:
