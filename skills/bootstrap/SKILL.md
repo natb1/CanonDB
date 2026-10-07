@@ -49,8 +49,8 @@ nothing.
 3. **Bootstrap yields to canon.** An application whose standing is `derived` was reconciled
    from an answer that has landed, and this run never touches it, nor any file it owns. A
    bootstrap application is superseded the moment canon reconciles the same application: the
-   reconciliation takes its files and drops its manifest entry, and no later round takes them
-   back. See **Supersession**.
+   reconciliation takes its files out of every manifest entry that lists them, drops an entry
+   left with no files, and no later round takes them back. See **Supersession**.
 4. **A file is bootstrap's to write only if it is new or already bootstrap's.** The manifest
    lists what bootstrap owns. A file that exists and is not listed there is canon's, or the
    principal's own hand's, and this run does not change it. Canon is what is under `canon/`,
@@ -166,12 +166,14 @@ the second replace the first without anyone's hand.
   `standing-honest` holds the half a script can. This run writes only `postulate`
   applications, and only the files the manifest gives it or that do not yet exist. So
   nothing canon reconciled is ever rewritten by a bootstrap round.
-- **The manifest is the hand-over.** When canon reconciles an application the manifest
-  lists, the reconciliation writes the files as canon says, removes the entry, and the
-  application's standing becomes `derived`. From then on those files are canon's: rule 4
-  refuses them to any later round, and rule 3 refuses the application. The bootstrap version
-  is gone when the reconciliation lands, and it is gone because the entry is, not because
-  anyone remembered it.
+- **The manifest is the hand-over, file by file.** When canon reconciles an application the
+  manifest lists, the reconciliation writes the files as canon says, takes each of them out
+  of every entry that lists it, drops an entry left with no files, and the application's
+  standing becomes `derived`. A file several applications shaped is listed under each —
+  `skills/dictate/SKILL.md` under three — and canon's reconciling any one of them makes the
+  file canon's for all: rule 4 refuses it to any later round, and rule 3 refuses the
+  application. The bootstrap version is gone when the reconciliation lands, and it is gone
+  because the file's listing is, not because anyone remembered it.
 
 A bootstrap application that canon later contradicts is not a conflict to resolve: it is a
 postulate that did not survive, which is what a postulate is. The notebook's answer on

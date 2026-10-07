@@ -1,5 +1,5 @@
 {
-  "description": "What /principal:bootstrap built from the notebook ahead of canon, and still owns. An entry is dropped when canon reconciles the application; the files are then canon's.",
+  "description": "What /principal:bootstrap built from the notebook ahead of canon, and still owns. A file is taken out of every entry that lists it when canon reconciles any of those applications, and an entry left with no files is dropped; the files are then canon's.",
   "applications": [
     {
       "question": "context",
