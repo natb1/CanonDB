@@ -18,8 +18,8 @@ import re
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
 from . import project, spec, text
-from .model import (ANSWERERS, STANDINGS, STATES, Application, Graph, Question,
-                     Term, Thesis)
+from .model import (ANSWERERS, GLYPHS, STANDINGS, STATES, Application, Graph,
+                     Question, Term, Thesis)
 
 SEPARATOR = "\n\n"
 
@@ -84,7 +84,7 @@ INSTEAD = "Instead: "
 
 #: what opens the block pointing a definition at the question its word has
 #: earned, where the definition shadows that question for reach
-SHADOW = "↗"
+SHADOW = GLYPHS["mention"]
 
 #: what a mention says under its anchors when a term in its place would close a
 #: cycle. It is derived from the edges at every render and never stored, so the
@@ -273,7 +273,7 @@ def _anchored_text(thesis: Thesis) -> str:
 
 
 def _thesis_blocks(graph: Graph, thesis: Thesis, index: int) -> List[str]:
-    blocks = ["### ◆ %s" % thesis.title]
+    blocks = ["### %s %s" % (GLYPHS["thesis"], thesis.title)]
     # the answer's own state, and no standing beside it: the standing is read
     # off the state, so writing both would state one datum twice
     blocks.append("assent: %s · %s · provenance: thesis hinge"
@@ -318,7 +318,7 @@ def glossary_heading(word: str) -> str:
     Named because two things spell it — the glossary, and the link a thesis
     carries to the entry — and a run writing one entry in place is a third.
     """
-    return "≡ %s" % word
+    return "%s %s" % (GLYPHS["glossary"], word)
 
 
 def term_heading(term: Term) -> str:
@@ -327,7 +327,7 @@ def term_heading(term: Term) -> str:
     The heading ends in a chip, which is a token before the write and a block
     id after it, so only this prefix can be searched for on the page.
     """
-    return "▸ %s" % term.title
+    return "%s %s" % (GLYPHS["term"], term.title)
 
 
 def term_line(term: Term) -> str:
@@ -371,7 +371,7 @@ def _term_blocks(graph: Graph, q: Question) -> List[str]:
         # a clause pointing somewhere, and marked apart from them because it
         # raised nothing. Without an entry of its own it could not be told from
         # a term on the page at all, and the next export would read it as one.
-        blocks.append("### ↗ %s → %s" % (mention.title, chip(mention.to)))
+        blocks.append("### %s %s → %s" % (SHADOW, mention.title, chip(mention.to)))
         for anchor in mention.anchors:
             blocks.append(anchor_line(anchor))
         if q.id in project.reachable_from(graph, mention.to):
@@ -389,7 +389,7 @@ def _application_blocks(q: Question) -> List[str]:
     """
     blocks: List[str] = []
     for thesis, app in q.applications():
-        blocks.append("### ⚙ %s" % app.name)
+        blocks.append("### %s %s" % (GLYPHS["application"], app.name))
         standing = app.standing
         clause = discharge_clause(q, thesis, app)
         if clause:
@@ -405,7 +405,8 @@ def application_line(app: Application, thesis_title: str, standing: str) -> str:
     clause included. The line is written here and nowhere else, so that a run
     changing one application in place writes what a body render would have.
     """
-    line = "%s · ◆ %s · %s · %s" % (app.what, thesis_title, app.link, standing)
+    line = "%s · %s %s · %s · %s" % (app.what, GLYPHS["thesis"], thesis_title,
+                                     app.link, standing)
     if app.note.strip():
         line += " · %s" % app.note.strip()
     return line
@@ -434,10 +435,10 @@ def discharge_clause(q: Question, thesis: Thesis, app: Application) -> str:
 
 #: the heading of a hinge's question half: what the asking stood on, and so
 #: the one place besides an answer where a question brings a word in
-HINGE_QUESTION = "⚓ question: what the asking presupposes"
+HINGE_QUESTION = "%s question: what the asking presupposes" % GLYPHS["hinge"]
 
 #: the heading of a hinge's thesis half, which every answer's provenance names
-HINGE_THESIS = "⚓ thesis: what the answer was drawn from"
+HINGE_THESIS = "%s thesis: what the answer was drawn from" % GLYPHS["hinge"]
 
 #: what a hinge's thesis half says when a run amends the answer it records:
 #: the day, who amended it, and from what. Appended to the provenance and
@@ -522,8 +523,8 @@ def body(graph: Graph, qid: str, par: Parents = None) -> str:
     # arrived, so repeating the question's own name at the end of the path
     # only asserts it twice. A root has no path and says so.
     ancestry = project.lineage(graph, qid, par)[:-1]
-    blocks: List[str] = ["⌂ " + " › ".join(chip(a) for a in ancestry)
-                         if ancestry else "⌂ root"]
+    blocks: List[str] = ["%s %s" % (GLYPHS["lineage"], " › ".join(chip(a) for a in ancestry)
+                                    if ancestry else "root")]
 
     blocks.append("# %s" % q.id)
 

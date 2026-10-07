@@ -6,13 +6,7 @@ import tempfile
 import unittest
 
 from hypo import model
-
-FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
-
-
-def fixture(name):
-    return os.path.join(FIXTURES, name + ".json")
-
+from support import FIXTURES, fixture
 
 class ImportShapeTest(unittest.TestCase):
     def test_an_import_needs_no_body_key(self):

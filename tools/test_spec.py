@@ -4,13 +4,7 @@ import os
 import unittest
 
 from hypo import model, spec
-
-FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
-
-
-def load(name):
-    return model.load(os.path.join(FIXTURES, name + ".json"))
-
+from support import FIXTURES, load
 
 class CatalogueTest(unittest.TestCase):
     def test_ids_are_unique_and_severities_known(self):

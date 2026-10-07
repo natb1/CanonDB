@@ -67,6 +67,14 @@ REMOVED = ("inbox", "requires")
 SECTIONS = ("thesis", "glossary", "terms", "applications", "cited by",
             "hinge")
 
+#: The glyph that opens each kind of heading on a tab — an answer, a glossary
+#: entry, a term, a mention, an application, a hinge half — and the one that
+#: opens the lineage line above the title. The renderer writes them and the
+#: reader, the frontier and every in-place writer read them, so they are
+#: spelled here once; a glyph changed here changes on every side at once.
+GLYPHS = {"thesis": "◆", "glossary": "≡", "term": "▸", "mention": "↗",
+          "application": "⚙", "hinge": "⚓", "lineage": "⌂"}
+
 NOTEBOOK = "notebook"
 CANON = "canon"
 MODES = (NOTEBOOK, CANON)

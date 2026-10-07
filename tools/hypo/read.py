@@ -19,7 +19,7 @@ from __future__ import annotations
 import re
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
-from .model import AUTHOR, CITATION_HEADINGS, SECTIONS
+from .model import AUTHOR, CITATION_HEADINGS, GLYPHS, SECTIONS
 from . import render, text
 from .render import INSTEAD, SEPARATOR, SHADOW, chip_key
 
@@ -53,8 +53,9 @@ DEADLOCK_LINE = re.compile(r"^deadlock: (?P<counter>.*)$", re.S)
 SUSPENDED_LINE = re.compile(r"^suspended: (?P<suspended>.*)$", re.S)
 ATTENUATION_LINE = re.compile(r"^attenuation: (?P<attenuation>.*)$", re.S)
 APPLICATION_LINE = re.compile(
-    r"^(?P<what>.*?) · ◆ (?P<thesis>.*?) · (?P<link>[^·]*?) · "
-    r"(?P<standing>[^·(]+?)(?: \((?P<clause>[^)]*)\))?(?: · (?P<note>.*))?$")
+    r"^(?P<what>.*?) · %s (?P<thesis>.*?) · (?P<link>[^·]*?) · "
+    r"(?P<standing>[^·(]+?)(?: \((?P<clause>[^)]*)\))?(?: · (?P<note>.*))?$"
+    % re.escape(GLYPHS["thesis"]))
 ITEM = re.compile(r"^- (?P<text>.*?)(?: (?P<chip><\?claude block [0-9A-Za-z_]+\?>))?$")
 
 #: a chip with the space the renderer put before it, so removing one leaves the
@@ -68,8 +69,12 @@ CRUMB_TAIL = re.compile(r"[\s›]+$")
 
 #: the heading glyphs the renderer writes under each section; a ``### `` under
 #: a section with any other glyph is a heading the grammar does not hold
-MARKERS = {"thesis": ("◆",), "glossary": ("≡",), "terms": ("▸", "↗"),
-           "applications": ("⚙",), "hinge": ("⚓",)}
+MARKERS = {"thesis": (GLYPHS["thesis"],), "glossary": (GLYPHS["glossary"],),
+           "terms": (GLYPHS["term"], GLYPHS["mention"]),
+           "applications": (GLYPHS["application"],), "hinge": (GLYPHS["hinge"],)}
+
+#: what opens the lineage line, the one block above a tab's title
+LINEAGE = GLYPHS["lineage"]
 
 CHIPPED_STATE = ("a state is a chip and not a word: this is the renderer's markdown, "
                  "and the reader takes the page as the page spells it")
@@ -86,6 +91,17 @@ REMOVED_SECTION = "inbox"
 REMOVED_FIELD = " · requires:"
 REMOVED = ("the inbox was removed, and this page still has %s: bring the "
            "page up to the grammar the renderer writes before it is read")
+
+
+def question_line(block: str) -> "re.Match[str]":
+    """The question line's fields, or a ``ParseError`` saying what is wrong
+    with it: the one reading, for the tab parser and the frontier alike."""
+    if REMOVED_FIELD in block:
+        raise ParseError(REMOVED % "a `requires:` field on its question line")
+    found = QUESTION_LINE.match(block)
+    if not found:
+        raise ParseError("the question line is malformed: %r" % block)
+    return found
 
 
 def parties(tabs: Dict[str, dict]) -> Dict[str, str]:
@@ -418,7 +434,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     # rather than the first block; anything before it is the lineage, which is
     # projected and never stored
     titles = [i for i, b in enumerate(blocks) if b.startswith("# ")]
-    if not titles or any(not b.startswith("⌂") for b in blocks[:titles[0]]):
+    if not titles or any(not b.startswith(LINEAGE) for b in blocks[:titles[0]]):
         raise ParseError("a tab opens with its lineage and then its question id")
     at = titles[0]
     q: dict = {"id": blocks[at][2:].strip()}
@@ -450,15 +466,10 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
                                      target(keys[0]) if keys else ""))
         elif block.startswith("*") and block.endswith("*"):
             q["question"] = _unwrap(block)  # one layer: the question's own
-        elif block.startswith("⌂"):
+        elif block.startswith(LINEAGE):
             continue  # the breadcrumb is projected, never stored
         elif block.startswith("question: "):
-            if REMOVED_FIELD in block:
-                raise ParseError(REMOVED % "a `requires:` field on its "
-                                 "question line")
-            line = QUESTION_LINE.match(block)
-            if not line:
-                raise ParseError("the question line is malformed: %r" % block)
+            line = question_line(block)
             q["state"] = strip_chips(line.group("state"))
             if not q["state"]:
                 raise ParseError(CHIPPED_STATE)
@@ -469,7 +480,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     q["incoming"] = incoming
 
     theses = []
-    for title, body in _subsections(named.get("thesis", []), "◆"):
+    for title, body in _subsections(named.get("thesis", []), GLYPHS["thesis"]):
         thesis: dict = {"title": title, "terms": [], "mentions": [],
                         "traditions": [], "applications": []}
         # The citations close the subsection — the renderer appends them after
@@ -497,7 +508,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
                                          "note": note, "counter": counter})
         theses.append(thesis)
 
-    for heading, body in _subsections(named.get("terms", []), "▸"):
+    for heading, body in _subsections(named.get("terms", []), GLYPHS["term"]):
         title, key = _edge(heading, labels)
         anchors = [_unwrap(b) for b in body if b.startswith("*")]
         term = {"title": title, "to": target(key), "anchors": anchors}
@@ -516,7 +527,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
             term["deadlock"] = deadlock
         if theses:
             _owner(theses, anchors)["terms"].append(term)
-    for heading, body in _subsections(named.get("terms", []), "↗"):
+    for heading, body in _subsections(named.get("terms", []), GLYPHS["mention"]):
         title, key = _edge(heading, labels)
         anchors = [_unwrap(b) for b in body if b.startswith("*")]
         if theses:
@@ -533,7 +544,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     # the glossary is the question's: a word may have come in on the hinge,
     # and one sense per word leaves nothing for an answer to own
     definitions = []
-    for word, body in _subsections(named.get("glossary", []), "≡"):
+    for word, body in _subsections(named.get("glossary", []), GLYPHS["glossary"]):
         definition = {"word": word}
         # a shadow is the last block when there is one: the question the word
         # has earned, pointed at from the definition that stands in for it
@@ -555,7 +566,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     if doubled:
         raise ParseError("two answers carry one headline, and the page tells its answers "
                          "apart by headline alone: %r" % doubled[0])
-    for name, body in _subsections(named.get("applications", []), "⚙"):
+    for name, body in _subsections(named.get("applications", []), GLYPHS["application"]):
         line = APPLICATION_LINE.match(body[0]) if body else None
         if not line:
             raise ParseError("an application line is malformed under %r" % name)
@@ -572,7 +583,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
         owner["applications"].append(app)
 
     hinge: dict = {}
-    for heading, body in _subsections(named.get("hinge", []), "⚓"):
+    for heading, body in _subsections(named.get("hinge", []), GLYPHS["hinge"]):
         part = "question" if heading.startswith("question:") else "thesis"
         hinge[part] = SEPARATOR.join(body)
     if hinge:

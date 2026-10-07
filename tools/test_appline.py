@@ -3,11 +3,10 @@
 import hashlib
 import json
 import os
-import subprocess
-import sys
 import unittest
 
 from hypo import appline
+from support import HERE, read_fixture, run
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -59,8 +58,7 @@ class PageTest(unittest.TestCase):
     """A real read of a tab, as the document printed it."""
 
     def setUp(self):
-        with open(os.path.join(HERE, "fixtures", "view-wording.xml"), encoding="utf-8") as fh:
-            self.view = fh.read()
+        self.view = read_fixture("view-wording.xml")
 
     def test_every_block_hashes_as_the_document_printed(self):
         """A dropdown's word is the enum's and not the block's letters: the
@@ -115,9 +113,9 @@ class OpsTest(unittest.TestCase):
 
 class CliTest(unittest.TestCase):
     def test_replace_prints_the_ops_of_one_update(self):
-        out = subprocess.run([sys.executable, os.path.join(HERE, "application.py"),
-                              "replace", "-", "--block", "abc.9", "--note", "n"],
-                             input=view(), capture_output=True, text=True, check=True)
+        out = run("application.py", "replace", "-", "--block", "abc.9", "--note", "n",
+                  stdin=view())
+        self.assertEqual(out.returncode, 0, out.stderr)
         ops = json.loads(out.stdout)["ops"]
         self.assertTrue(ops[0]["with"]["from"]["content"].endswith(" · n"))
 
@@ -168,16 +166,12 @@ class DeleteTest(unittest.TestCase):
 
 class ReadErrorTest(unittest.TestCase):
     def test_a_read_that_is_not_there_is_said_not_tracebacked(self):
-        done = subprocess.run([sys.executable, os.path.join(HERE, "application.py"), "replace",
-                               os.path.join(HERE, "nope.xml"), "--block", "a.1"],
-                              capture_output=True, text=True)
+        done = run("application.py", "replace", os.path.join(HERE, "nope.xml"), "--block", "a.1")
         self.assertEqual(done.returncode, 1)
         self.assertIn("ERROR read", done.stderr)
         self.assertNotIn("Traceback", done.stderr)
-        done = subprocess.run([sys.executable, os.path.join(HERE, "application.py"), "replace",
-                               "-", "--block", "a.1"],
-                              input="<doc rev='1'><paragraph id='a.1'>unclosed</doc>",
-                              capture_output=True, text=True)
+        done = run("application.py", "replace", "-", "--block", "a.1",
+                   stdin="<doc rev='1'><paragraph id='a.1'>unclosed</doc>")
         self.assertEqual(done.returncode, 1)
         self.assertIn("REFUSED", done.stderr)
 

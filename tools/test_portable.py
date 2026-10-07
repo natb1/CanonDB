@@ -1,15 +1,13 @@
 """Sealing parts the notebook from its document, and nothing else."""
 
 import copy
-import io
 import json
 import os
 import shutil
 import tempfile
 import unittest
-from contextlib import redirect_stderr, redirect_stdout
 
-import portable as cli
+import support
 from hypo import model, portable, project
 
 FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
@@ -46,10 +44,7 @@ def tearDownModule():
 
 def run(argv):
     """The CLI, with its streams captured: (exit code, stdout, stderr)."""
-    out, err = io.StringIO(), io.StringIO()
-    with redirect_stdout(out), redirect_stderr(err):
-        code = cli.main(argv)
-    return code, out.getvalue(), err.getvalue()
+    return support.run("portable.py", *argv)
 
 
 class SealTest(unittest.TestCase):

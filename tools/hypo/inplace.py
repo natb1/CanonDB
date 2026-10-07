@@ -58,10 +58,10 @@ from typing import Dict, List, NamedTuple, Optional, Sequence, Tuple
 
 from . import appline, page, read, render, spec, text
 from .appline import Refused, block, blocks, rev
-from .model import Term
+from .model import GLYPHS, Term
 
 #: the glyphs that open each part's heading, as the renderer writes them
-GLOSSARY, TERM, THESIS = "≡", "▸", "◆"
+GLOSSARY, TERM, THESIS = GLYPHS["glossary"], GLYPHS["term"], GLYPHS["thesis"]
 
 #: the section an application line stands in, as the page heads it
 APPLICATIONS = "Applications"
@@ -256,7 +256,7 @@ def _heading(source, bid: str, glyph: str) -> Tuple[ET.Element, str]:
 
 def _tab(*sections: Tuple[str, List[str]]) -> str:
     """The least tab the reader takes: its lineage, its id, and sections."""
-    blocks_ = ["⌂ root", "# here", "question: held · case · pressure 0 · backlog 0 "
+    blocks_ = [read.LINEAGE + " root", "# here", "question: held · case · pressure 0 · backlog 0 "
                "· load 0"]
     for name, body in sections:
         blocks_.append("## %s" % name)
@@ -289,7 +289,7 @@ def _plain_block(words: str, what: str) -> None:
         raise Refused("%s is empty" % what)
     if render.BLANK_LINE.search(words) or "\n" in stripped:
         raise Refused("%s breaks a line, so it would be more than one block" % what)
-    if re.match(r"^(#|>|[-*+] |\d+[.)] |⌂|\|)", stripped):
+    if re.match(r"^(#|>|[-*+] |\d+[.)] |%s|\|)" % re.escape(read.LINEAGE), stripped):
         raise Refused("%s opens like a heading, a note, a list or a table: %r"
                       % (what, stripped[:40]))
     for label in ("assent: ", "question: ", "suspended: ", "deadlock: ",
@@ -464,7 +464,8 @@ def incoming_insert(source, header: str, anchor: str, raiser: str,
         raise Refused("the list %s holds no item in this read: it is not the header "
                       "list, or the read is partial" % header)
     line = render.incoming_item(_anchor(anchor), raiser)
-    got = _read_back("⌂ root\n\n# here\n\n%s\n" % line, {render.chip_key(raiser): raiser})
+    got = _read_back("%s root\n\n# here\n\n%s\n" % (read.LINEAGE, line),
+                     {render.chip_key(raiser): raiser})
     if got["incoming"] != [(read.strip_chips(anchor), raiser)]:
         raise Refused("the item does not read back as written: %r" % got["incoming"])
     if after_item is None:

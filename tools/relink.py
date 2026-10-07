@@ -86,18 +86,15 @@ def main(argv=None) -> int:
     if graph is None:
         return 1
     by_id = graph.by_id()
-    by_tab = {}
     for qid in args.questions:
         if qid not in by_id:
             print("ERROR no such question: %s" % qid, file=sys.stderr)
             return 1
-        path = os.path.join(args.outlines, qid + ".xml")
-        try:
-            with open(path, encoding="utf-8") as fh:
-                by_tab[by_id[qid].tab] = apply.parse_outline(fh.read())
-        except OSError as exc:
-            print("ERROR outline: %s" % exc, file=sys.stderr)
-            return 1
+    try:
+        by_tab = cli.outlines(graph, args.outlines, args.questions)
+    except OSError as exc:
+        print("ERROR outline: %s" % exc, file=sys.stderr)
+        return 1
     try:
         pages = cli.exports(args.tabs)
     except OSError as exc:

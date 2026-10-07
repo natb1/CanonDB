@@ -10,12 +10,11 @@ body write are the same notebook, or the writer is wrong.
 import json
 import os
 import re
-import subprocess
-import sys
 import unittest
 import xml.etree.ElementTree as ET
 
 from hypo import appline, inplace, model, page, read, render
+from support import chip_ids, load, run
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURES = os.path.join(HERE, "fixtures")
@@ -24,14 +23,6 @@ REV = 7
 
 _INLINE = re.compile(r"(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]*\]\([^)]*\)"
                      r"|<\?claude block [0-9A-Za-z_]+\?>)")
-
-
-def load():
-    return model.load(os.path.join(FIXTURES, "valid.json"))
-
-
-def ids(graph):
-    return {render.chip_key(q.id): q.id for q in graph.questions}
 
 
 class _Ids:
@@ -137,7 +128,7 @@ def rewrite(by_id, bid, new=None, after=None):
 
 
 def parsed(markdown, graph):
-    q = read.parse_tab(markdown, ids(graph))
+    q = read.parse_tab(markdown, chip_ids(graph))
     q.pop("incoming", None)
     return q
 
@@ -269,7 +260,7 @@ class IncomingTest(unittest.TestCase):
         md = self.by_id[self.header].splitlines()
         md.insert(1, line)
         got = read.parse_tab(rewrite(self.by_id, self.header, new="\n".join(md)),
-                             dict(ids(self.graph), m_canon_b="canon-b"))
+                             dict(chip_ids(self.graph), m_canon_b="canon-b"))
         self.assertIn(("A clause.", "canon-b"), got["incoming"])
 
     def test_delete_takes_one_item_guarded(self):
@@ -627,11 +618,9 @@ class CliTest(unittest.TestCase):
     def test_a_glossary_replace_prints_the_ops_and_the_words(self):
         graph = load()
         view, by_id = view_of(graph, "canon")
-        done = subprocess.run(
-            [sys.executable, os.path.join(HERE, "inplace.py"), "glossary", "replace", "-",
-             "--heading", block_of(by_id, "### ≡"), "--block",
-             block_of(by_id, "The mark"), "--body", "The mark that binds."],
-            input=view, capture_output=True, text=True)
+        done = run("inplace.py", "glossary", "replace", "-",
+                   "--heading", block_of(by_id, "### ≡"), "--block",
+                   block_of(by_id, "The mark"), "--body", "The mark that binds.", stdin=view)
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(json.loads(done.stdout)["ops"][0]["ifRev"], REV)
         self.assertIn("new: The mark that binds.", done.stderr)
@@ -639,10 +628,9 @@ class CliTest(unittest.TestCase):
     def test_a_headline_prints_an_op_per_block_and_the_words(self):
         graph = load()
         view, by_id = view_of(graph, "ti-esti")
-        done = subprocess.run(
-            [sys.executable, os.path.join(HERE, "inplace.py"), "thesis", "headline", "-",
-             "--heading", block_of(by_id, "### ◆ "), "--title", "What each side owes"],
-            input=view, capture_output=True, text=True)
+        done = run("inplace.py", "thesis", "headline", "-",
+                   "--heading", block_of(by_id, "### ◆ "), "--title", "What each side owes",
+                   stdin=view)
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(len(json.loads(done.stdout)["ops"]), 2)
         self.assertIn("old: ◆ Each side owes the other what only it can give.", done.stderr)
@@ -656,10 +644,8 @@ class CliTest(unittest.TestCase):
         bid = block_of(by_id, "An entry is ")
         new = by_id[bid].replace("[a file](#s.5)", "a file").replace(
             "the repository", "[the repository](#s.6)")
-        done = subprocess.run(
-            [sys.executable, os.path.join(HERE, "inplace.py"), "thesis", "replace", "-",
-             "--block", bid, "--text", new, "--markdown"],
-            input=view, capture_output=True, text=True)
+        done = run("inplace.py", "thesis", "replace", "-",
+                   "--block", bid, "--text", new, "--markdown", stdin=view)
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(json.loads(done.stdout)["ops"][0]["with"]["as"], "markdown")
         self.assertIn("dropped: the link on 'a file' to #s.5", done.stderr)
@@ -667,10 +653,9 @@ class CliTest(unittest.TestCase):
         self.assertIn("'the repository' lands on #s.6", done.stderr)
 
     def test_a_refusal_exits_one(self):
-        done = subprocess.run(
-            [sys.executable, os.path.join(HERE, "inplace.py"), "hinge", "amend", "-",
-             "--block", "nope.1", "--date", "2026-09-30", "--by", "p", "--from", "d"],
-            input="<doc rev='1'/>", capture_output=True, text=True)
+        done = run("inplace.py", "hinge", "amend", "-",
+                   "--block", "nope.1", "--date", "2026-09-30", "--by", "p", "--from", "d",
+                   stdin="<doc rev='1'/>")
         self.assertEqual(done.returncode, 1)
         self.assertIn("REFUSED", done.stderr)
 

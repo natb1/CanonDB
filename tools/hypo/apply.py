@@ -24,7 +24,7 @@ heading, since that is what a link's target names.
 from __future__ import annotations
 
 import re
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional
 from xml.etree import ElementTree
 
 from . import page, render, text, verify

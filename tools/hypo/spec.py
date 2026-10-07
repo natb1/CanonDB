@@ -23,7 +23,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple
 
 from . import project, text
-from .model import (ANSWERERS, CANON, CITATION_HEADINGS, Graph, KINDS, MODES, RELATIONS,
+from .model import (ANSWERERS, CANON, CITATION_HEADINGS, GLYPHS, Graph, KINDS, MODES, RELATIONS,
                     SECTIONS, STANDINGS, STATES)
 
 ERROR = "ERROR"
@@ -778,9 +778,10 @@ def _prose(q) -> Iterator[Tuple[str, str]]:
     if q.hinge is not None:
         yield "the question's hinge", q.hinge.question
     for definition in q.definitions:
-        yield "≡ %s" % definition.word, definition.body
+        yield "%s %s" % (GLYPHS["glossary"], definition.word), definition.body
         if definition.tradition is not None and definition.tradition.note:
-            yield "the note on ≡ %s" % definition.word, definition.tradition.note
+            yield ("the note on %s %s" % (GLYPHS["glossary"], definition.word),
+                   definition.tradition.note)
     for note in q.notes:
         yield "a note", note.body
     for thesis in q.theses:
@@ -799,7 +800,8 @@ def _prose(q) -> Iterator[Tuple[str, str]]:
         for edge in thesis.traditions:
             yield "the note on %s" % edge.to, "%s %s" % (edge.note, edge.counter)
         for app in thesis.applications:
-            yield "⚙ %s" % app.name, "%s %s %s" % (app.name, app.what, app.note)
+            yield ("%s %s" % (GLYPHS["application"], app.name),
+                   "%s %s %s" % (app.name, app.what, app.note))
 
 
 @check("reach", "a defined word is used where its sense can be reached")
@@ -1177,7 +1179,8 @@ def _one_line(q) -> Iterator[Tuple[str, str]]:
             yield "the counter on %s" % edge.to, edge.counter
     for definition in q.definitions:
         if definition.tradition is not None:
-            yield "the note on ≡ %s" % definition.word, definition.tradition.note
+            yield ("the note on %s %s" % (GLYPHS["glossary"], definition.word),
+                   definition.tradition.note)
 
 
 #: a block that opens with a quotation mark, at the start of the text or after
@@ -1195,7 +1198,7 @@ def _parted(q) -> Iterator[Tuple[str, str]]:
     for thesis in q.theses:
         yield "the answer's text", thesis.text
     for definition in q.definitions:
-        yield "the body of ≡ %s" % definition.word, definition.body
+        yield "the body of %s %s" % (GLYPHS["glossary"], definition.word), definition.body
     if q.hinge is not None:
         yield "the hinge's question", q.hinge.question
         yield "the hinge's thesis", q.hinge.thesis
@@ -1264,9 +1267,10 @@ def note_unstopped(graph: Graph) -> Yield:
                                      % (field, trad.to, _clip(value)))
         for definition in q.definitions:
             if definition.tradition and definition.tradition.note.rstrip().endswith("."):
-                yield q.id, ("the note on the borrowing of ≡ %s ends in a stop, which the "
+                yield q.id, ("the note on the borrowing of %s %s ends in a stop, which the "
                              "renderer adds and the reader takes off: %r"
-                             % (definition.word, _clip(definition.tradition.note)))
+                             % (GLYPHS["glossary"], definition.word,
+                                _clip(definition.tradition.note)))
 
 
 @check("fields-parted",
@@ -1288,8 +1292,8 @@ def fields_parted(graph: Graph) -> Yield:
             for app in thesis.applications:
                 for field, value in (("what", app.what), ("link", app.link)):
                     if "·" in value:
-                        yield q.id, ("⚙ %s: its %s carries ·, which parts the fields "
-                                     "of its line" % (app.name, field))
+                        yield q.id, ("%s %s: its %s carries ·, which parts the fields "
+                                     "of its line" % (GLYPHS["application"], app.name, field))
 
 
 # -- the runner -------------------------------------------------------------

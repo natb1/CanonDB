@@ -28,10 +28,10 @@ import xml.etree.ElementTree as ET
 from typing import Dict, List, Optional, Sequence
 
 from . import page, read, render
-from .model import STANDINGS, Application
+from .model import GLYPHS, STANDINGS, Application
 
 #: the heading an application stands under, as the renderer writes it
-MARK = "⚙"
+MARK = GLYPHS["application"]
 
 #: containers whose own text is not a block's text
 _CONTAINERS = ("paragraph", "listItem", "cell", "row", "table", "list",

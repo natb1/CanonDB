@@ -2,7 +2,6 @@
 
 import json
 import os
-import subprocess
 import sys
 import tempfile
 import unittest
@@ -11,27 +10,23 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 from hypo import page, read  # noqa: E402
+from support import read_fixture, run
 
 FIXTURES = os.path.join(HERE, "fixtures")
 
 
-def fixture(name):
-    with open(os.path.join(FIXTURES, name), encoding="utf-8") as fh:
-        return fh.read()
-
-
 class SpellingTest(unittest.TestCase):
     def test_a_real_tab_spells_as_its_export_did(self):
-        self.assertEqual(page.markdown(fixture("view-wording.xml")), fixture("view-wording.md"))
+        self.assertEqual(page.markdown(read_fixture("view-wording.xml")), read_fixture("view-wording.md"))
 
     def test_the_tool_result_is_taken_as_well_as_its_xml(self):
-        xml = fixture("view-wording.xml")
+        xml = read_fixture("view-wording.xml")
         wrapped = json.dumps({"verdict": "allow", "rev": 6, "data": {"rev": 6, "xml": xml}})
         self.assertEqual(page.markdown(wrapped), page.markdown(xml))
         self.assertEqual(page.markdown(json.loads(wrapped)), page.markdown(xml))
 
     def test_the_reader_parses_what_it_spells(self):
-        tab = read.parse_tab(page.markdown(fixture("view-wording.xml")))
+        tab = read.parse_tab(page.markdown(read_fixture("view-wording.xml")))
         self.assertEqual(tab["id"], "wording")
         self.assertEqual(tab["theses"][0]["applications"][0]["link"],
                          "[skills/dictate/SKILL.md](https://github.com/natb1/CanonDB/blob/main/skills/dictate/SKILL.md)")
@@ -82,7 +77,7 @@ class SpellingTest(unittest.TestCase):
         ]) + "\n")
 
     def test_blocks_carry_their_ids_in_full(self):
-        ids = [bid for bid, _ in page.blocks(fixture("view-wording.xml"))]
+        ids = [bid for bid, _ in page.blocks(read_fixture("view-wording.xml"))]
         self.assertEqual(ids[0], "mg8a8pjx8b4.9")
         self.assertIn("mg8a8pjx8b4.1421", ids)
         self.assertNotIn("mg8a8pjx8b4.0", ids)  # gone
@@ -91,18 +86,16 @@ class SpellingTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             src = os.path.join(tmp, "wording.json")
             with open(src, "w", encoding="utf-8") as fh:
-                json.dump({"data": {"xml": fixture("view-wording.xml")}}, fh)
+                json.dump({"data": {"xml": read_fixture("view-wording.xml")}}, fh)
             bad = os.path.join(tmp, "broken.xml")
             with open(bad, "w") as fh:
                 fh.write("<doc><paragraph>")
             out = os.path.join(tmp, "tabs")
-            proc = subprocess.run([sys.executable, os.path.join(HERE, "page.py"), src, "-o", out],
-                                  capture_output=True, text=True)
+            proc = run("page.py", src, "-o", out)
             self.assertEqual(proc.returncode, 0, proc.stderr)
             with open(os.path.join(out, "wording.md"), encoding="utf-8") as fh:
-                self.assertEqual(fh.read(), fixture("view-wording.md"))
-            proc = subprocess.run([sys.executable, os.path.join(HERE, "page.py"), bad, "-o", out],
-                                  capture_output=True, text=True)
+                self.assertEqual(fh.read(), read_fixture("view-wording.md"))
+            proc = run("page.py", bad, "-o", out)
             self.assertEqual(proc.returncode, 1)
             self.assertIn("ERROR", proc.stderr)
 

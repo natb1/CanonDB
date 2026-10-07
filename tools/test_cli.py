@@ -11,20 +11,7 @@ import unittest
 
 import test_verify  # the page as the document would export one
 from hypo import model, project, render, spec
-
-HERE = os.path.dirname(os.path.abspath(__file__))
-FIXTURES = os.path.join(HERE, "fixtures")
-
-
-def run(script, *args, cwd=None):
-    """Run a tool from another directory: paths resolve beside the script."""
-    return subprocess.run(
-        [sys.executable, os.path.join(HERE, script)] + list(args),
-        capture_output=True, text=True, cwd=cwd or os.path.dirname(HERE))
-
-
-def fixture(name):
-    return os.path.join(FIXTURES, name + ".json")
+from support import HERE, fixture, run
 
 
 def document(where):
@@ -278,10 +265,24 @@ class VerifyCliTest(unittest.TestCase):
 
 
 class EntryPointTest(unittest.TestCase):
-    """What every script does before its own work, held in one place."""
+    """What every script does before its own work, held in one place. The
+    rest of the suite calls each tool's ``main`` in this process; these are
+    the runs that go through the shell, once per tool."""
 
-    SCRIPTS = ("apply.py", "check.py", "portable.py", "project.py",
-               "read.py", "render.py", "verify.py", "inplace.py", "frontier.py")
+    SCRIPTS = tuple(sorted(
+        name for name in os.listdir(HERE)
+        if name.endswith(".py") and not name.startswith("test_") and name != "support.py"))
+
+    def test_every_tool_runs_by_its_path(self):
+        """The skills run a tool by its path, so each has its shebang and its
+        mode bits, and exits 0 on ``--help`` as a process."""
+        self.assertEqual(len(self.SCRIPTS), 15, self.SCRIPTS)
+        for script in self.SCRIPTS:
+            with self.subTest(script=script):
+                done = subprocess.run([os.path.join(HERE, script), "--help"],
+                                      capture_output=True, text=True)
+                self.assertEqual(done.returncode, 0, done.stderr)
+                self.assertIn("usage:", done.stdout)
 
     def into_a_closed_pipe(self, *command):
         """Run a command whose reader has gone: the pipe closes before the

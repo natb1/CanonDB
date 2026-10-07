@@ -1,32 +1,9 @@
 """What a canon turn is put to, and what it carries, is decided from the graph."""
 
-import json
-import os
-import tempfile
 import unittest
 
-from hypo import model, project, spec, turn
-
-FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
-
-
-def load(name):
-    return model.load(os.path.join(FIXTURES, name + ".json"))
-
-
-def rewrite(name, mutate):
-    with open(os.path.join(FIXTURES, name + ".json"), encoding="utf-8") as fh:
-        data = json.load(fh)
-    mutate(data)
-    handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False,
-                                         encoding="utf-8")
-    try:
-        json.dump(data, handle)
-        handle.close()
-        return model.load(handle.name)
-    finally:
-        os.unlink(handle.name)
-
+from hypo import project, turn
+from support import load, rewrite
 
 def by_id(data, qid):
     return next(q for q in data["questions"] if q["id"] == qid)

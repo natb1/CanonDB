@@ -5,18 +5,7 @@ import re
 import unittest
 
 from hypo import model, read, render
-
-FIXTURES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
-
-
-def load(name):
-    return model.load(os.path.join(FIXTURES, name + ".json"))
-
-
-def chip_ids(graph):
-    """The map the document's file list supplies: chip key back to question."""
-    return {render.chip_key(q.id): q.id for q in graph.questions}
-
+from support import FIXTURES, chip_ids, load
 
 #: what the document holds and the markdown does not, per class. A question's
 #: ``party`` is derived from the tab order; a definition's tradition is on the page,

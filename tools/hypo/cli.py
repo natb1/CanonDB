@@ -9,7 +9,8 @@ drifts, and the eighth script would have started from whichever one its
 author opened. The same went for loading the graph file and saying what is
 wrong with its shape (nine copies, one of them already spelling the line
 another way), for taking a saved read from a file or stdin, for reading a
-directory of exports, and for the question a saved read's name is of.
+directory of exports or of outlines, and for the question a saved read's
+name is of.
 
 What cannot move here is the line before the import: a script finds this
 package by its own directory, and has to say so before it can import it.
@@ -20,9 +21,9 @@ from __future__ import annotations
 import os
 import signal
 import sys
-from typing import Dict, Optional
+from typing import Dict, Iterable, List, Optional
 
-from . import model
+from . import apply, model
 
 
 def quiet_pipe() -> None:
@@ -66,6 +67,23 @@ def exports(directory: str) -> Dict[str, str]:
         if entry.endswith(".md"):
             with open(os.path.join(directory, entry), encoding="utf-8") as fh:
                 found[entry[:-3]] = fh.read()
+    return found
+
+
+def outlines(graph: model.Graph, directory: str,
+             questions: Optional[Iterable[str]] = None) -> Dict[str, List[apply.Block]]:
+    """tab id -> its parsed outline, from the ``<question id>.xml`` files in
+    ``directory``: every one on disk, or, with ``questions`` named, those
+    tabs' and no other, each of which must be there."""
+    by_id = graph.by_id()
+    found: Dict[str, List[apply.Block]] = {}
+    named = list(questions) if questions is not None else [q.id for q in graph.questions]
+    for qid in named:
+        path = os.path.join(directory, qid + ".xml")
+        if questions is None and not os.path.exists(path):
+            continue
+        with open(path, encoding="utf-8") as fh:
+            found[by_id[qid].tab] = apply.parse_outline(fh.read())
     return found
 
 

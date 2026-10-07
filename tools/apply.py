@@ -36,17 +36,6 @@ from hypo import apply as ops, cli, spec  # noqa: E402
 cli.quiet_pipe()
 
 
-def outlines(graph: model.Graph, directory: str) -> dict:
-    """tab id -> its parsed outline, for every `<question id>.xml` on disk."""
-    found = {}
-    for q in graph.questions:
-        path = os.path.join(directory, q.id + ".xml")
-        if os.path.exists(path):
-            with open(path, encoding="utf-8") as fh:
-                found[q.tab] = ops.parse_outline(fh.read())
-    return found
-
-
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("graph", help="the graph file")
@@ -102,7 +91,7 @@ def main(argv=None) -> int:
             print(finding.line(), file=sys.stderr)
         return 1
 
-    by_tab = outlines(graph, args.outlines) if args.outlines else {}
+    by_tab = cli.outlines(graph, args.outlines) if args.outlines else {}
     try:
         if args.unlink:
             with open(args.unlink, encoding="utf-8") as fh:

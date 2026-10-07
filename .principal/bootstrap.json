@@ -168,6 +168,7 @@
         "tools/test_render.py",
         "tools/test_text.py",
         "tools/test_cli.py",
+        "tools/support.py",
         "tools/fixtures/invalid-acyclic.json",
         "tools/fixtures/invalid-anchor-grain.json",
         "tools/fixtures/invalid-anchor-substring.json",
