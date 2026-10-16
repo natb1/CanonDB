@@ -478,3 +478,26 @@ class BlockStructureTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LabelCutTest(unittest.TestCase):
+    """The page's labels are cut by walking page and render in step; a line
+    that differs for a reason of its own used to stop the walk, and every
+    label after it then counted."""
+
+    def test_a_line_that_differs_for_its_own_reason_still_cuts_the_labels_after_it(self):
+        plain = ("question: held · pressure 0 · backlog 9\n\n"
+                 "see party here\n\nparty is a word\n")
+        target = ("question: held · pressure 0 · backlog 0\n\n"
+                  "see here\n\nparty is a word\n")
+        at = plain.index("party is")
+        spans = [verify.Link(at, at + 5, "#x.1")]
+        out, moved = verify._as_the_document_holds_it(plain, spans, target, ["party"])
+        self.assertEqual(out, ("question: held · pressure 0 · backlog 9\n\n"
+                               "see here\n\nparty is a word\n"))
+        self.assertEqual(moved, [verify.Link(at - 6, at - 1, "#x.1")])
+
+    def test_a_page_that_is_the_render_is_left_as_it_is(self):
+        plain = "a line\n\nparty is a word\n"
+        out, spans = verify._as_the_document_holds_it(plain, [], plain, ["party"])
+        self.assertEqual((out, spans), (plain, []))

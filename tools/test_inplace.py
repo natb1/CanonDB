@@ -688,16 +688,16 @@ class HingeTest(unittest.TestCase):
         with self.assertRaises(appline.Refused):
             inplace.hinge_amend(self.view, self.bid, "30 Sept", "p", "d")
 
-    def test_a_refusal_names_no_flag_the_command_has_not(self):
+    def test_a_refusal_sends_to_the_write_that_takes_the_block_whole(self):
         """A provenance that ends in a link cannot take the amendment as text;
-        the remedy named is a body write, since ``hinge amend`` has no
-        ``--markdown``."""
+        the remedy named is ``words replace --markdown``, and not a body
+        write, which would retire every link into the tab."""
         view, by_id = view_of(self.graph, "canon", edit=lambda md: md.replace(
             "canon: the opening entry", "canon: [the opening entry](https://example.org/c)"))
         with self.assertRaises(appline.Refused) as caught:
             inplace.hinge_amend(view, block_of(by_id, "model:"), "2026-10-06", "p", "d")
-        self.assertNotIn("--markdown", str(caught.exception))
-        self.assertIn("write the tab whole", str(caught.exception))
+        self.assertIn("words replace --markdown", str(caught.exception))
+        self.assertNotIn("write the tab whole", str(caught.exception))
 
 
 class CliTest(unittest.TestCase):
@@ -789,3 +789,133 @@ class RewordedTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WordsTest(unittest.TestCase):
+    """Any block of words, written in place and decided by its read-back."""
+
+    def setUp(self):
+        self.graph = load()
+        self.view, self.by_id = view_of(self.graph, "canon")
+        self.q = self.graph.get("canon")
+
+    def test_a_hinge_question_half_reads_back_as_the_graph_holding_it(self):
+        bid = next(b for b, md in self.by_id.items() if md == self.q.hinge.question)
+        new = self.q.hinge.question + " And that a door turns."
+        ops, old, after, field = inplace.words_replace(self.view, bid, new)
+        self.assertEqual(field, "hinge.question")
+        self.assertEqual(ops[0]["with"]["from"]["content"], new)
+        self.q.hinge.question = new
+        self.assertEqual(parsed(rewrite(self.by_id, bid, new=after), self.graph),
+                         parsed(render.body(self.graph, "canon"), self.graph))
+
+    def test_a_pressure_is_one_field_and_a_kind_with_it_is_two(self):
+        bid = block_of(self.by_id, "question: ")
+        node = appline.block(self.view, bid)
+        letters = inplace.letters(inplace.pieces(node))
+        self.assertIn("pressure %d" % self.q.pressure, letters)
+        one = letters.replace("pressure %d" % self.q.pressure, "pressure %d" % (self.q.pressure + 3))
+        _, _, _, field = inplace.words_replace(self.view, bid, one)
+        self.assertEqual(field, "pressure")
+        two = one.replace(" · %s · " % self.q.kind, " · case · ")
+        self.assertNotEqual(two, one)
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.words_replace(self.view, bid, two)
+        self.assertIn("more than one field", str(caught.exception))
+
+    def test_the_words_as_they_stand_are_refused(self):
+        bid = next(b for b, md in self.by_id.items() if md == self.q.hinge.question)
+        with self.assertRaises(appline.Refused):
+            inplace.words_replace(self.view, bid, self.q.hinge.question)
+
+    def test_a_thesis_keeps_the_anchors_of_its_terms(self):
+        thesis = self.q.theses[0]
+        anchor = next(a for t in thesis.terms for a in t.anchors)
+        bid = next(b for b, md in self.by_id.items()
+                   if anchor in md and not md.startswith("#") and not md.startswith("*"))
+        node = appline.block(self.view, bid)
+        letters = inplace.letters(inplace.pieces(node))
+        self.assertIn(anchor, letters)
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.words_replace(self.view, bid, letters.replace(anchor, "something else"))
+        self.assertIn("anchor", str(caught.exception))
+
+    def test_a_heading_is_refused(self):
+        with self.assertRaises(appline.Refused):
+            inplace.words_replace(self.view, block_of(self.by_id, "### "), "words")
+
+    def test_a_provenance_ending_in_a_link_is_amended_as_markdown(self):
+        view, by_id = view_of(self.graph, "canon", edit=lambda md: md.replace(
+            "canon: the opening entry", "canon: [the opening entry](https://example.org/c)"))
+        bid = block_of(by_id, "model:")
+        new_md = by_id[bid] + " · amended 2026-10-06 by p, from d"
+        ops, old, after, field, off, on = inplace.words_markdown(view, bid, new_md)
+        self.assertEqual(field, "hinge.thesis")
+        # the link closes the old words, so the stretch meets it: off before
+        # the letters change, on after, as thesis replace --markdown sends it
+        link = ("link", "the opening entry", "https://example.org/c")
+        self.assertEqual((off, on), ([link], [link]))
+        self.assertEqual([op["op"] for op in ops], ["format", "replace", "format"])
+        self.assertTrue(ops[1]["with"]["from"]["content"].endswith("by p, from d"))
+        self.assertTrue(after.endswith("[the opening entry](https://example.org/c) · amended "
+                                       "2026-10-06 by p, from d"))
+
+
+class NoteTest(unittest.TestCase):
+    def setUp(self):
+        self.graph = load()
+        self.view, self.by_id = view_of(self.graph, "canon")
+        self.blocks = page.blocks(self.view)
+
+    def last_of(self, section):
+        ids = [bid for bid, _ in self.blocks]
+        start = next(i for i, (_, md) in enumerate(self.blocks) if md == "## " + section)
+        end = next((i for i in range(start + 1, len(ids)) if self.blocks[i][1].startswith("## ")),
+                   len(ids))
+        return ids[end - 1], ids[start]
+
+    def test_a_note_lands_at_the_end_of_its_section_as_the_renderer_writes_it(self):
+        after, _ = self.last_of("Thesis")
+        ops, section, content = inplace.note_insert(
+            self.view, after, "pending: a clause this run could not apply")
+        self.assertEqual(section, "Thesis")
+        self.assertEqual(content, "> pending: a clause this run could not apply")
+        self.assertEqual(ops[0]["target"]["ids"], [after])
+        q = self.graph.get("canon")
+        q.notes.append(model.Note(section="thesis",
+                                  body="pending: a clause this run could not apply"))
+        self.assertEqual(parsed(rewrite(self.by_id, after, after=content), self.graph),
+                         parsed(render.body(self.graph, "canon"), self.graph))
+
+    def test_a_note_mid_section_or_above_the_first_is_refused(self):
+        _, heading = self.last_of("Thesis")
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.note_insert(self.view, heading, "pending: words")
+        self.assertIn("last block", str(caught.exception))
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.note_insert(self.view, block_of(self.by_id, "# canon"), "pending: words")
+        self.assertIn("above the first section", str(caught.exception))
+
+    def test_a_note_that_opens_like_a_heading_is_refused(self):
+        after, _ = self.last_of("Thesis")
+        with self.assertRaises(appline.Refused):
+            inplace.note_insert(self.view, after, "## not a note")
+
+
+class WordsCliTest(unittest.TestCase):
+    def test_words_replace_and_note_insert_run(self):
+        graph = load()
+        view, by_id = view_of(graph, "canon")
+        q = graph.get("canon")
+        bid = next(b for b, md in by_id.items() if md == q.hinge.question)
+        done = run("inplace.py", "words", "replace", "-", "--block", bid,
+                   "--text", q.hinge.question + " And more.", stdin=view)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(len(json.loads(done.stdout)["ops"]), 1)
+        self.assertIn("field: hinge.question", done.stderr)
+        last = [b for b, _ in page.blocks(view)]
+        thesis_end = next(i for i, (_, md) in enumerate(page.blocks(view)) if md == "## Glossary") - 1
+        done = run("inplace.py", "note", "insert", "-", "--after", last[thesis_end],
+                   "--text", "pending: a clause", stdin=view)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("on: Thesis", done.stderr)

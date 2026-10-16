@@ -266,8 +266,15 @@ def _as_the_document_holds_it(plain: str, spans: List[Link], target: str,
 
     The two strings are the same but for those labels, so they are walked in
     step and a label is cut where they part. Nothing else is: where the
-    divergence is not a label this gives the page back untouched, because
-    then it is a real difference and the text comparison is what reports it.
+    divergence is not a label — a scoped graph's question line, whose
+    backlog and load count tabs the scope left out, or a line the principal
+    changed — the page's line is kept as the document holds it, both sides
+    pick up again at its end, and every label after it is still cut. The
+    text comparison is what reports the line. Giving the whole page back
+    untouched at the first such line left every label counting, so over a
+    scoped graph a word that was also a chip's label earlier on the page
+    was found one run late and reported missing, misplaced and unaccounted
+    for at once.
     """
     if plain == target:
         return plain, spans
@@ -284,7 +291,17 @@ def _as_the_document_holds_it(plain: str, spans: List[Link], target: str,
             continue
         cut = next((len(f) for f in forms if plain.startswith(f, i)), 0)
         if not cut:
-            return plain, spans
+            end_i = plain.find("\n", i)
+            end_j = target.find("\n", j)
+            end_i = len(plain) if end_i < 0 else end_i
+            end_j = len(target) if end_j < 0 else end_j
+            if end_i == i and end_j == j:  # one side has run out mid-line
+                out.append(plain[i])
+                i += 1
+                continue
+            out.append(plain[i:end_i])
+            i, j = end_i, end_j
+            continue
         i += cut
         gone += cut
         shift.append((i, gone))

@@ -29,7 +29,7 @@
         "tools/test_gaps.py"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/35",
-      "rounds": 6
+      "rounds": 7
     },
     {
       "question": "context",
@@ -124,7 +124,7 @@
         "tools/test_inplace.py"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/35",
-      "rounds": 4
+      "rounds": 5
     },
     {
       "question": "docs-encoding",
@@ -135,7 +135,7 @@
         "tools/test_verify.py"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/35",
-      "rounds": 3
+      "rounds": 4
     },
     {
       "question": "docs-encoding",
@@ -178,6 +178,7 @@
         "tools/fixtures/invalid-assent-present.json",
         "tools/fixtures/invalid-deadlock-complete.json",
         "tools/fixtures/invalid-definition-anchorable.json",
+        "tools/fixtures/invalid-dictation-pending.json",
         "tools/fixtures/invalid-definition-once.json",
         "tools/fixtures/invalid-divergence-counter.json",
         "tools/fixtures/invalid-fields-parted.json",
@@ -211,8 +212,8 @@
         "tools/test_scope.py",
         ".gitignore"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/32",
-      "rounds": 4
+      "pull_request": "https://github.com/natb1/CanonDB/pull/35",
+      "rounds": 5
     },
     {
       "question": "recognition",

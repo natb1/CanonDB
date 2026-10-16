@@ -106,7 +106,7 @@ class BodyTest(unittest.TestCase):
     def test_one_operation_naming_every_block_the_tab_holds(self):
         graph = load("valid")
         blocks = apply.parse_outline(outline_of(graph, "canon"))
-        ops = apply.body_ops(graph, "canon", blocks)
+        ops = apply.body_ops(graph, "canon", blocks, 1)
         self.assertEqual(len(ops), 1)
         self.assertEqual(ops[0]["op"], "replace")
         self.assertEqual(ops[0]["target"]["ids"], [b.id for b in blocks])
@@ -119,14 +119,14 @@ class BodyTest(unittest.TestCase):
         one without the other writes the token as words."""
         graph = load("valid")
         ops = apply.body_ops(graph, "ti-esti",
-                             apply.parse_outline(outline_of(graph, "ti-esti")))
+                             apply.parse_outline(outline_of(graph, "ti-esti")), 1)
         self.assertEqual(ops[0]["with"]["blocks"],
                          render.links(graph, "ti-esti")["blocks"])
 
     def test_an_empty_outline_is_refused(self):
         graph = load("valid")
         with self.assertRaises(apply.Unresolved):
-            apply.body_ops(graph, "canon", [])
+            apply.body_ops(graph, "canon", [], 1)
 
     def test_an_outline_of_headings_alone_is_refused(self):
         """A reduced outline is kept for resolving link targets. Replacing only
@@ -134,7 +134,7 @@ class BodyTest(unittest.TestCase):
         graph = load("valid")
         whole = apply.parse_outline(outline_of(graph, "canon"))
         with self.assertRaises(apply.Unresolved):
-            apply.body_ops(graph, "canon", [b for b in whole if b.heading])
+            apply.body_ops(graph, "canon", [b for b in whole if b.heading], 1)
 
     def test_an_outline_that_folds_blocks_is_refused(self):
         """Replacing only the blocks a `sinceRev` read shows would leave the
@@ -143,7 +143,7 @@ class BodyTest(unittest.TestCase):
         whole = apply.parse_outline(outline_of(graph, "canon"))
         folded = whole[:2] + [apply.Block("", "gap", 0, "")] + whole[4:]
         with self.assertRaises(apply.Unresolved) as caught:
-            apply.body_ops(graph, "canon", folded)
+            apply.body_ops(graph, "canon", folded, 1)
         self.assertIn("fold", caught.exception.missing[0])
 
 
@@ -301,3 +301,82 @@ class HeadingShapeTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RevTest(unittest.TestCase):
+    def test_the_rev_is_read_off_the_outline(self):
+        self.assertEqual(apply.outline_rev("<doc node='n' rev='42' sinceRev='0'></doc>"), 42)
+        self.assertIsNone(apply.outline_rev("<outline></outline>"))
+
+    def test_the_body_replace_carries_the_rev_as_its_guard(self):
+        """A replace naming every block carries no hash, and the document
+        refuses a whole-block operation that names no guard."""
+        graph = load("valid")
+        outline = apply.parse_outline(outline_of(graph, "canon"))
+        self.assertEqual(apply.body_ops(graph, "canon", outline, 7)[0]["ifRev"], 7)
+        with self.assertRaises(apply.Unresolved) as caught:
+            apply.body_ops(graph, "canon", outline, None)
+        self.assertIn("rev", caught.exception.missing[0])
+
+
+class SectionTest(unittest.TestCase):
+    def setUp(self):
+        self.graph = load("valid")
+        self.graph.artifact = "https://claude.ai/code/artifact/abc-123"
+        self.outline = apply.parse_outline(outline_of(self.graph, "canon"))
+
+    def span(self, section):
+        start = next(i for i, b in enumerate(self.outline)
+                     if b.heading == 2 and b.text.lower() == section)
+        end = next((i for i in range(start + 1, len(self.outline))
+                    if self.outline[i].heading == 2), len(self.outline))
+        return start, end
+
+    def test_one_operation_naming_the_sections_blocks_alone(self):
+        ops = apply.section_ops(self.graph, "canon", self.outline, 3, "hinge")
+        start, end = self.span("hinge")
+        self.assertEqual(len(ops), 1)
+        self.assertEqual(ops[0]["target"]["ids"], [b.id for b in self.outline[start:end]])
+        self.assertEqual(ops[0]["ifRev"], 3)
+        content = ops[0]["with"]["from"]["content"]
+        self.assertTrue(content.startswith("## Hinge"))
+        self.assertIn(content, render.body(self.graph, "canon"))
+        self.assertNotIn("## Glossary", content)
+        for key in ops[0]["with"].get("blocks", {}):
+            self.assertIn(key, content)
+
+    def test_the_chips_sent_are_the_sections_own(self):
+        ops = apply.section_ops(self.graph, "canon", self.outline, 3, "thesis")
+        content = ops[0]["with"]["from"]["content"]
+        sent = set(ops[0]["with"].get("blocks", {}))
+        wanted = set(re.findall(r"<\?claude block ([0-9A-Za-z_]+)\?>", content))
+        self.assertEqual(sent, wanted)
+
+    def test_a_section_the_page_or_the_render_lacks_is_refused(self):
+        with self.assertRaises(apply.Unresolved):
+            apply.section_ops(self.graph, "canon", self.outline, 3, "cited by")
+        start, _ = self.span("hinge")
+        without = [b for i, b in enumerate(self.outline) if i < start]
+        with self.assertRaises(apply.Unresolved) as caught:
+            apply.section_ops(self.graph, "canon", without, 3, "hinge")
+        self.assertIn("page", caught.exception.missing[0])
+
+    def test_a_fold_inside_the_section_is_refused(self):
+        start, end = self.span("hinge")
+        folded = self.outline[:start + 1] + [apply.Block("", "gap", 0, "")] + self.outline[start + 1:]
+        with self.assertRaises(apply.Unresolved):
+            apply.section_ops(self.graph, "canon", folded, 3, "hinge")
+
+    def test_the_links_of_one_section_are_those_in_it_and_those_into_it(self):
+        by_tab = outlines(self.graph)
+        every = apply.link_ops(self.graph, "canon", by_tab, self.graph.artifact)
+        hinge = apply.link_ops(self.graph, "canon", by_tab, self.graph.artifact, "hinge")
+        self.assertTrue(hinge)
+        self.assertLess(len(hinge), len(every))
+        # the provenance link stands on the answer's metadata line and leads
+        # into the hinge, so a write of the hinge retires it
+        self.assertTrue(any(op["target"]["text"] == render.PROVENANCE_ANCHOR for op in hinge))
+        for op in hinge:
+            self.assertIn(op, every)
+        with self.assertRaises(apply.Unresolved):
+            apply.link_ops(self.graph, "canon", by_tab, self.graph.artifact, "nowhere")

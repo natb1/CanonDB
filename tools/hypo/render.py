@@ -733,6 +733,9 @@ def links(graph: Graph, qid: str, par: Parents = None,
         chosen = runs[used] if used < len(runs) else None
         entry["find"] = ({"text": chosen[0], "nth": chosen[1].nth}
                          if chosen else None)
+        # where the run stands on the page as the document holds it: what a
+        # write of one section asks, to keep the links that stand in it
+        entry["at"] = chosen[1].at if chosen else None
         taken[key] = used + 1
         spans.append((chosen[1].at, chosen[1].at + len(chosen[0]))
                      if chosen else None)
@@ -897,6 +900,12 @@ def _hinge_question_span(page: str) -> Optional[Tuple[int, int]]:
             return (start, at)
         at += len(line)
     return None if start is None else (start, len(page or ""))
+
+
+def section_spans(page: str) -> Dict[Optional[str], Tuple[int, int]]:
+    """Where each ``## `` section of a page begins and ends, by its heading;
+    what a write of one section asks, to keep the links that stand in it."""
+    return _section_spans(page)
 
 
 def _section_spans(page: str) -> Dict[Optional[str], Tuple[int, int]]:

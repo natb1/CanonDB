@@ -96,3 +96,39 @@ class UnresolvedTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SectionRewriteTest(unittest.TestCase):
+    """A write of one section mints new ids for that section's blocks alone,
+    so the only links other tabs must repoint are the ones into it."""
+
+    def setUp(self):
+        self.graph = load("valid")
+        self.pages = pages_with(self.graph, "old")
+        self.old = apply.parse_outline(test_apply.outline_of(self.graph, "canon", "old"))
+        self.new = apply.parse_outline(test_apply.outline_of(self.graph, "canon", "new"))
+
+    def mixed(self, section):
+        start = next(i for i, b in enumerate(self.old)
+                     if b.heading == 2 and b.text.lower() == section)
+        end = next((i for i in range(start + 1, len(self.old)) if self.old[i].heading == 2),
+                   len(self.old))
+        return self.old[:start] + self.new[start:end] + self.old[end:], (start, end)
+
+    def test_a_rewritten_hinge_leaves_every_other_tab_alone(self):
+        outline, _ = self.mixed("hinge")
+        out = relink.stale_links(self.graph, ["canon"], self.pages,
+                                 {self.graph.get("canon").tab: outline})
+        self.assertEqual(out, {})
+
+    def test_a_rewritten_terms_section_repoints_only_the_links_into_it(self):
+        outline, (start, end) = self.mixed("terms")
+        out = relink.stale_links(self.graph, ["canon"], self.pages,
+                                 {self.graph.get("canon").tab: outline})
+        self.assertTrue(out)
+        minted = {b.id for b in self.new[start:end]}
+        for ops in out.values():
+            for op in ops:
+                self.assertIn(op["add"][0]["href"].rpartition(".")[2]
+                              if "#" in op["add"][0]["href"] else "",
+                              {bid.rpartition(".")[2] for bid in minted})

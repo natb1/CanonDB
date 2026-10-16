@@ -1296,6 +1296,26 @@ def fields_parted(graph: Graph) -> Yield:
                                      "of its line" % (GLYPHS["application"], app.name, field))
 
 
+@check("dictation-pending",
+       "no note opens with pending: a clause of a dictation no run has applied stands on "
+       "its tab as one until a run takes it in", WARN)
+def dictation_pending(graph: Graph) -> Yield:
+    """A dictation run that cannot apply a clause writes it as a note on the
+    tab it bears on, opening with the word *pending*, so that what a run
+    owes stands on the page and not in the session that owed it. The note is
+    reported for as long as it stands: the next dictation or bootstrap round
+    takes it in and takes it off. A warning and not an error, because the
+    page is right to hold it; what is wrong is only that nothing has yet done
+    what it says.
+    """
+    for q in graph.questions:
+        for note in q.notes:
+            words = note.body.strip()
+            if words.lower().startswith("pending"):
+                yield q.id, ("a pending note on %s, a clause no run has yet applied: %s"
+                             % (note.section, _clip(words)))
+
+
 # -- the runner -------------------------------------------------------------
 
 def run(graph: Graph, only: Optional[Iterable[str]] = None) -> List[Finding]:
