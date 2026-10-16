@@ -28,7 +28,7 @@ import xml.etree.ElementTree as ET
 from typing import Dict, List, Optional, Sequence
 
 from . import page, read, render
-from .model import GLYPHS, STANDINGS, Application
+from .model import GLYPHS, STANDINGS, Application, Question, Thesis
 
 #: the heading an application stands under, as the renderer writes it
 MARK = GLYPHS["application"]
@@ -179,6 +179,51 @@ def read_line(source, bid: str) -> Dict[str, str]:
                       "change it by a body write instead" % bid)
     fields.update({"id": bid, "h": node.get("h", ""), "rev": rev(source)})
     return fields
+
+
+def clause_of(source, thesis_title: str, standing: str) -> str:
+    """The discharge clause an inserted application carries, read off the tab
+    and given by nobody.
+
+    The renderer derives it (``render.discharge_clause``) from who answers
+    the question and the state of the answer the application rests on. The
+    first is on the question line, the second on the metadata line under the
+    answer's heading, and both are in a view of the tab; a search for the
+    application lines shows neither, so an insert takes the view. Written by
+    hand it went stale: eight notes once said it, and six were wrong at once.
+    """
+    answerer: Optional[str] = None
+    state: Optional[str] = None
+    order = list(blocks(source).items())
+    for i, (_bid, node) in enumerate(order):
+        if node.tag != "paragraph":
+            continue
+        words = read.IN_PAGE_LINK.sub(r"\1", page.inline(node))
+        if words.startswith("question: ") and not node.get("heading"):
+            try:
+                answerer = read.question_line(words).group("answerer") or ""
+            except read.ParseError as exc:
+                raise Refused(str(exc))
+        elif (node.get("heading") == "3"
+              and words == "%s %s" % (GLYPHS["thesis"], thesis_title.strip())):
+            below = next((n for _, n in order[i + 1:] if n.tag == "paragraph"), None)
+            found = read.ASSENT_LINE.match(
+                read.IN_PAGE_LINK.sub(r"\1", page.inline(below))) if below is not None else None
+            if not found:
+                raise Refused("no metadata line under the answer %r, whose state the "
+                              "discharge clause is read off" % thesis_title)
+            state = found.group("state").strip()
+    if answerer is None:
+        raise Refused("the read holds no question line, which names who answers; an "
+                      "insert takes the tab's view, since the discharge clause is read "
+                      "off it")
+    if state is None:
+        raise Refused("the read holds no answer headed %r, whose state the discharge "
+                      "clause is read off" % thesis_title)
+    q = Question(id="", tab="", body="", question="", state="", kind="", pressure=0,
+                 answerer=answerer)
+    return render.discharge_clause(q, Thesis(title=thesis_title, text="", state=state),
+                                   Application(name="", what="", standing=standing.strip()))
 
 
 def inline_markdown(content: str, chips: Optional[Dict[str, dict]] = None) -> dict:

@@ -337,45 +337,131 @@ class MarkdownTest(unittest.TestCase):
                 appline.block(self.view, self.bid))).replace("held down, never", "never"))
         self.assertIn("--markdown", str(caught.exception))
 
-    def test_a_linked_word_removed_reads_back_as_the_graph_holding_it(self):
+    def letters(self, markdown):
+        return inplace.letters(inplace.runs_of_markdown(markdown))
+
+    def test_a_linked_word_removed_goes_as_the_document_takes_it(self):
+        """The link meets the stretch: off first, then the letters, then on
+        again over the new words — none of it as markdown, which the document
+        refuses for an in-page link."""
         new = self.old.replace("[held down, never removed.]", "[never removed.]")
-        ops, old, after, dropped, added = inplace.thesis_markdown(self.view, self.bid, new)
+        ops, old, after, off, on = inplace.thesis_markdown(self.view, self.bid, new)
         # the term's own anchor line is another block, and another write
         got = parsed(rewrite(self.by_id, self.bid, new=after), self.graph)
         self.assertEqual(got["theses"][0]["text"], self.text().replace(
             "held down, never removed.", "never removed."))
         self.assertEqual(old, self.old)
-        self.assertEqual(dropped, [("held down, never removed.", self.LINK)])
-        self.assertEqual(added, [("never removed.", self.LINK)])
-        self.assertEqual((ops[0]["op"], ops[0]["target"]["ids"]), ("replace", [self.bid]))
-        self.assertEqual((ops[0]["ifHash"], ops[0]["ifRev"]),
-                         (appline.block(self.view, self.bid).get("h"), REV))
-        self.assertEqual(ops[0]["with"]["as"], "markdown")
-        self.assertEqual(ops[0]["with"]["from"], {"kind": "inline", "content": new})
+        self.assertEqual([op["op"] for op in ops], ["format", "replace", "format"])
+        self.assertEqual(ops[0]["target"], {"kind": "find", "text": "held down, never removed.",
+                                            "nth": 1})
+        self.assertEqual(ops[0]["remove"], [{"type": "link"}])
+        self.assertEqual((ops[1]["target"]["ids"], ops[1]["ifHash"], ops[1]["ifRev"]),
+                         ([self.bid], appline.block(self.view, self.bid).get("h"), REV))
+        self.assertEqual(ops[1]["with"], {"as": "text", "from": {
+            "kind": "inline", "content": self.letters(new)}})
+        self.assertNotIn("<?claude", ops[1]["with"]["from"]["content"])
+        self.assertNotIn("[", ops[1]["with"]["from"]["content"])
+        self.assertEqual(ops[2]["target"], {"kind": "find", "text": "never removed.", "nth": 1})
+        self.assertEqual(ops[2]["add"], [{"type": "link", "href": self.LINK}])
+        self.assertEqual(off, [("link", "held down, never removed.", self.LINK)])
+        self.assertEqual(on, [("link", "never removed.", self.LINK)])
 
-    def test_a_link_dropped_whole_is_said(self):
+    def test_a_link_dropped_whole_is_one_format_off_and_no_words(self):
         new = self.old.replace(self.LINKED, "held down, never removed.")
-        _, _, _, dropped, added = inplace.thesis_markdown(self.view, self.bid, new)
-        self.assertEqual((dropped, added),
-                         ([("held down, never removed.", self.LINK)], []))
+        ops, _, _, off, on = inplace.thesis_markdown(self.view, self.bid, new)
+        self.assertEqual([op["op"] for op in ops], ["format"])
+        self.assertIn("remove", ops[0])
+        self.assertEqual((off, on), ([("link", "held down, never removed.", self.LINK)], []))
 
-    def test_a_link_added_is_said_and_the_words_read_back_without_it(self):
+    def test_a_link_added_is_one_format_on_counted_over_the_tab(self):
         there = "#%s.77" % SESSION
         new = self.old.replace("a file in the repository",
                                "[a file](%s) in the repository" % there)
-        _, _, after, dropped, added = inplace.thesis_markdown(
+        ops, _, after, off, on = inplace.thesis_markdown(
             self.view, self.bid, new,
             ["Authority to act on an unassented entry is held down, never removed."])
-        self.assertEqual((dropped, added), ([], [("a file", there)]))
+        self.assertEqual((off, on), ([], [("link", "a file", there)]))
+        self.assertEqual(ops, [{"op": "format",
+                                "target": {"kind": "find", "text": "a file", "nth": 1},
+                                "add": [{"type": "link", "href": there}]}])
         self.assertEqual(parsed(rewrite(self.by_id, self.bid, new=after), self.graph),
                          parsed(render.body(self.graph, "canon"), self.graph))
 
-    def test_a_chip_kept_is_carried_in_the_blocks_map(self):
+    def test_a_mark_clear_of_the_stretch_is_kept_and_the_letters_alone_are_sent(self):
+        """The chip and the link stand after the changed words: the document
+        keeps both through a text write, so neither is sent again."""
         new = self.old.replace("not a message in a thread", "never a chat message")
-        ops, _, _, _, _ = inplace.thesis_markdown(self.view, self.bid, new)
-        self.assertIn(self.CHIP, ops[0]["with"]["from"]["content"])
-        self.assertEqual(ops[0]["with"]["blocks"],
-                         {"m_attenuation": {"type": "mention", "ref": "file/tab-04"}})
+        ops, _, _, off, on = inplace.thesis_markdown(self.view, self.bid, new)
+        self.assertEqual([op["op"] for op in ops], ["replace"])
+        self.assertEqual(ops[0]["with"]["as"], "text")
+        self.assertEqual(ops[0]["with"]["from"]["content"], self.letters(new))
+        self.assertNotIn("blocks", ops[0]["with"])
+        self.assertEqual((off, on), ([], []))
+
+    def test_a_mark_inside_the_stretch_comes_off_before_the_words_change(self):
+        """A text write spreads a mark the changed stretch meets over the whole
+        of the new words; so it is taken off first, counted over the tab as
+        it stands, and put on again over the new run."""
+        view, by_id = view_of(
+            self.graph, "canon",
+            edit=lambda md: md.replace("An entry is a file", "An **entry** is a file"))
+        bid = block_of(by_id, "An **entry**")
+        new = by_id[bid].replace("An **entry** is a file", "An **item** is a file")
+        ops, _, _, off, on = inplace.thesis_markdown(view, bid, new)
+        self.assertEqual([op["op"] for op in ops], ["format", "replace", "format"])
+        # the question says `entry` once and the answer's headline once before it
+        self.assertEqual(ops[0]["target"], {"kind": "find", "text": "entry", "nth": 3})
+        self.assertEqual(ops[0]["remove"], [{"type": "bold"}])
+        self.assertEqual(ops[1]["with"]["from"]["content"], self.letters(new))
+        self.assertEqual(ops[2]["target"], {"kind": "find", "text": "item", "nth": 1})
+        self.assertEqual(ops[2]["add"], [{"type": "bold"}])
+        self.assertEqual((off, on), ([("bold", "entry", "")], [("bold", "item", "")]))
+
+    def test_a_mark_the_stretch_stops_short_of_is_kept(self):
+        """The document rewrites from the first changed letter to the last;
+        a mark a space away from that stretch keeps its place."""
+        view, by_id = view_of(
+            self.graph, "canon",
+            edit=lambda md: md.replace("An entry is a file", "An **entry** is a file"))
+        bid = block_of(by_id, "An **entry**")
+        new = by_id[bid].replace("An **entry** is a file", "Every **entry** is a file")
+        ops, _, _, off, on = inplace.thesis_markdown(view, bid, new)
+        self.assertEqual([op["op"] for op in ops], ["replace"])
+        self.assertEqual((off, on), ([], []))
+
+    def test_the_words_as_they_stand_are_refused(self):
+        with self.assertRaises(appline.Refused):
+            inplace.thesis_markdown(self.view, self.bid, self.old)
+
+    def test_a_chip_moved_is_refused(self):
+        """The letters as they stand, the chip elsewhere among them: a text
+        write keeps a chip where the document holds it."""
+        view, by_id = view_of(
+            self.graph, "canon",
+            edit=lambda md: md.replace("An entry is a file", "An %s is a file" % self.CHIP))
+        bid = block_of(by_id, "An " + self.CHIP)
+        old = by_id[bid]
+        new = old.replace("An %s is" % self.CHIP, "An  is").replace(
+            "repository, not", "repository, %snot" % self.CHIP)
+        self.assertEqual(self.letters(new), self.letters(old))
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.thesis_markdown(view, bid, new)
+        self.assertIn("elsewhere", str(caught.exception))
+
+    def test_a_chip_against_the_stretch_is_refused(self):
+        """Words appended to a paragraph that ends in a chip meet the chip,
+        and a text write cannot carry one."""
+        new = self.old.replace(self.LINKED + " " + self.CHIP, self.LINKED + " Ever. " + self.CHIP)
+        self.assertNotEqual(new, self.old)
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.thesis_markdown(self.view, self.bid, new)
+        self.assertIn("chip to attenuation", str(caught.exception))
+
+    def test_a_partial_read_is_refused(self):
+        partial = self.view.replace("sinceRev=\"0\"", "sinceRev=\"3\"")
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.thesis_markdown(partial, self.bid, self.old + " More.")
+        self.assertIn("whole", str(caught.exception))
 
     def test_a_chip_dropped_is_refused_by_name(self):
         new = self.old.replace(" " + self.CHIP, "")
@@ -636,7 +722,7 @@ class CliTest(unittest.TestCase):
         self.assertIn("old: ◆ Each side owes the other what only it can give.", done.stderr)
         self.assertIn("new: ◆ What each side owes", done.stderr)
 
-    def test_a_markdown_replace_says_what_it_drops_and_adds(self):
+    def test_a_markdown_replace_says_what_it_takes_off_and_puts_on(self):
         graph = load()
         view, by_id = view_of(
             graph, "canon",
@@ -647,10 +733,24 @@ class CliTest(unittest.TestCase):
         done = run("inplace.py", "thesis", "replace", "-",
                    "--block", bid, "--text", new, "--markdown", stdin=view)
         self.assertEqual(done.returncode, 0, done.stderr)
-        self.assertEqual(json.loads(done.stdout)["ops"][0]["with"]["as"], "markdown")
-        self.assertIn("dropped: the link on 'a file' to #s.5", done.stderr)
-        self.assertIn("owed: ", done.stderr)
-        self.assertIn("'the repository' lands on #s.6", done.stderr)
+        ops = json.loads(done.stdout)["ops"]
+        self.assertEqual([op["op"] for op in ops], ["format", "format"])
+        self.assertIn("remove", ops[0])
+        self.assertIn("add", ops[1])
+        self.assertIn("off: the link on 'a file' to #s.5", done.stderr)
+        self.assertIn("on: the link on 'the repository' to #s.6", done.stderr)
+        self.assertIn("the letters unchanged", done.stderr)
+
+    def test_an_incoming_insert_says_where_the_next_item_goes(self):
+        graph = load()
+        view, by_id = view_of(graph, "attenuation")
+        done = run("inplace.py", "incoming", "insert", "-", "--list", block_of(by_id, "- "),
+                   "--anchor", "A clause.", "--from", "canon-b", "--from-tab", "tab-9",
+                   stdin=view)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(len(json.loads(done.stdout)["ops"]), 1)
+        self.assertIn("next: a further item of the list goes in a call of its own, "
+                      "--after-item", done.stderr)
 
     def test_a_refusal_exits_one(self):
         done = run("inplace.py", "hinge", "amend", "-",

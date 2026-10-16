@@ -89,12 +89,19 @@ this order:
 place**, block by block: an application with `tools/application.py`; a glossary entry, a term
 and its item on the header list of the tab it raises, the words of an answer, an answer's
 headline, or an amendment to a hinge's provenance with `tools/inplace.py`. A replace or a delete
-takes the saved read of its blocks, an insert names the block it follows, and each prints the
-ops of one prose `update` for that tab, every whole-block op guarded by the block's
+takes the saved read of its blocks, an insert names the block it follows — and an
+application's insert takes the tab's view besides, since the discharge clause beside its
+standing is read off the question line and the answer's state and given by nobody — and each
+prints the ops of one prose `update` for that tab, every whole-block op guarded by the block's
 `h` and the read's `rev`; send them as printed. A refusal is a block that moved or a part the
 reader would not take back, and either is read again, never forced; an answer's paragraph
-whose change reaches a link, a chip or a marked run is written whole with `--markdown`, which
-is the tool's own way and not a way round it. No body is written, so no
+whose change reaches a link, a chip or a marked run is given whole with `--markdown`, over the
+tab's whole view, which is the tool's own way and not a way round it: what it prints is what
+the document takes — the paragraph's words as one text replace, and one format operation per
+mark the change takes off or puts on, since the document takes no in-page link in a replace's
+markdown and a text replace spreads a mark inside the changed words over all of them. A term's
+items on a header list go one insert per call, each named after the one the last ack placed,
+as the tool says. No body is written, so no
 link into the tab is retired and nothing is relinked. What a write leaves owed — a new term's
 chip in the answer, and the links a new term or entry wants — it names on stderr, and those go
 as format operations once the insert's ack has given the new heading its id.

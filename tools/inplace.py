@@ -25,9 +25,19 @@ verbatim run of the answer read with it. An application is ``application.py``'s.
 chip or a marked run: ``--text`` is then the whole paragraph as the renderer
 spells it — a link as ``[words](#block)`` or ``[words](url)``, bold, italic
 and code as markdown, a chip as ``<?claude block KEY?>`` — and every chip the
-paragraph held must stand in it. ``thesis headline`` re-words an answer's
-``◆`` heading and the same words on every application line of the tab, so
-READ must be the tab's whole view.
+paragraph held must stand in it, where it stood. What is printed is what the
+document takes, and not that markdown: the document takes no in-page link in
+a replace's markdown, and a text replace spreads a mark inside the changed
+stretch over the new words. So the ops are one ``format`` per mark the change
+takes off, the paragraph's letters as one ``text`` replace, and one ``format``
+per mark it puts on, each found by its words counted over the tab; READ must
+be the tab's whole view. ``thesis headline`` re-words an answer's ``◆``
+heading and the same words on every application line of the tab, so there
+too READ must be the tab's whole view.
+
+``incoming insert`` lands one item per call: the document takes no insert
+anchored on a block it has not placed yet, so a second item for the same
+raiser is a second call, ``--after-item`` the id the first call's ack gave.
 """
 
 from __future__ import annotations
@@ -160,18 +170,23 @@ def _ops(args) -> list:
                                             args.raiser, args.raiser_tab, args.after_item)
         say("new: %s" % line)
         say("owed: the link on the anchor back to the term on %s" % args.raiser)
+        say("next: a further item of the list goes in a call of its own, --after-item "
+            "the id this insert's ack gives the item; the document places one item "
+            "per call and takes no anchor on a block it has not placed yet")
         return ops
     if part == "incoming" and mode == "delete":
         return inplace.incoming_delete(cli.source(args.read), args.header, args.item)
     if part == "thesis" and mode == "replace" and args.markdown:
-        ops, old, new, dropped, added = inplace.thesis_markdown(
+        ops, old, new, off, on = inplace.thesis_markdown(
             cli.source(args.read), args.block, args.text, args.anchor)
         say("old: %s\nnew: %s" % (old, new))
-        for words, target in dropped:
-            say("dropped: the link on %r to %s" % (words, target))
-        for words, target in added:
-            say("owed: a read of the block, to see the new link on %r lands "
-                "on %s" % (words, target))
+        for kind, words, target in off:
+            say("off: the %s on %r%s" % (kind, words, " to %s" % target if target else ""))
+        for kind, words, target in on:
+            say("on: the %s on %r%s" % (kind, words, " to %s" % target if target else ""))
+        say("sent: %d op(s), the letters %s" % (
+            len(ops), "as one text replace among them" if any(
+                op["op"] == "replace" for op in ops) else "unchanged"))
         return ops
     if part == "thesis" and mode == "headline":
         ops, old, new = inplace.thesis_headline(cli.source(args.read), args.heading,

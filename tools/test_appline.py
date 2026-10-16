@@ -111,7 +111,89 @@ class OpsTest(unittest.TestCase):
             appline.delete_ops(bad, "abc.0", "abc.9")
 
 
+def tab_view(answerer="ai", state="held", title="A thesis"):
+    """The least view an insert reads: the question line, one answer with
+    its metadata line, and an application under it."""
+    question = ("question: held · definitional%s · pressure 1 · backlog 1 · load 1"
+                % (" · answerer: %s" % answerer if answerer else ""))
+    heading = "◆ %s" % title
+    assent = "assent: none · %s · provenance: thesis hinge" % state
+    return ("<doc rev='3' sinceRev='0'>"
+            "<paragraph id='abc.0' h='%s'><text id='.1'>%s</text></paragraph>"
+            "<paragraph id='.2' h='%s' heading='3'><text id='.3'>%s</text></paragraph>"
+            "<paragraph id='.4' h='%s'><text id='.5'>assent: none · </text>"
+            "<dropdown id='.6' enum='e' index='0'>%s</dropdown>"
+            "<text id='.7'> · provenance: </text>"
+            "<text id='.8'><link href='#abc.9'>thesis hinge</link></text></paragraph>"
+            "<paragraph id='.10' h='%s' heading='3'><text id='.11'>⚙ the tool</text></paragraph>"
+            "<paragraph id='.12' h='%s'>%s</paragraph></doc>"
+            % (h(question), question, h(heading), heading,
+               h("assent: none ·  · provenance: thesis hinge"), state,
+               h("⚙ the tool"), h(LINE_TEXT), LINE_RUNS))
+
+
+class ClauseTest(unittest.TestCase):
+    """The discharge clause an insert carries is the renderer's, read off the
+    tab: who answers, and whether the answer has landed."""
+
+    def test_the_clause_follows_the_answerer_and_the_state(self):
+        for answerer, state, clause in (
+                ("ai", "held", "until this answer lands and the artifact is diffed against it"),
+                ("ai", "in thread", "until this answer lands and the artifact is diffed against it"),
+                ("ai", "landed", "until the artifact is diffed against this answer"),
+                ("principal", "held", "while the principal answers this question"),
+                ("", "held", "")):
+            with self.subTest(answerer=answerer, state=state):
+                self.assertEqual(appline.clause_of(tab_view(answerer, state), "A thesis",
+                                                   "postulate"), clause)
+
+    def test_a_derived_application_has_no_clause(self):
+        self.assertEqual(appline.clause_of(tab_view(), "A thesis", "derived"), "")
+
+    def test_a_read_without_the_question_line_is_refused(self):
+        """A search for the application lines shows neither the question line
+        nor the answer's state: the insert takes the view."""
+        with self.assertRaises(appline.Refused) as caught:
+            appline.clause_of(view(), "A thesis", "postulate")
+        self.assertIn("question line", str(caught.exception))
+
+    def test_an_answer_the_tab_does_not_hold_is_refused(self):
+        with self.assertRaises(appline.Refused) as caught:
+            appline.clause_of(tab_view(), "Another thesis", "postulate")
+        self.assertIn("Another thesis", str(caught.exception))
+
+    def test_the_state_is_the_dropdown_s_word(self):
+        """The state is an atom the hash leaves out and the word the read
+        shows; the clause is read off the word."""
+        self.assertEqual(appline.clause_of(tab_view(state="landed"), "A thesis", "postulate"),
+                         "until the artifact is diffed against this answer")
+
+
 class CliTest(unittest.TestCase):
+    def test_insert_derives_the_clause_from_the_read(self):
+        out = run("application.py", "insert", "-", "--after", "abc.12", "--name", "new",
+                  "--what", "w", "--thesis", "A thesis", "--link", "not yet written",
+                  "--standing", "postulate", stdin=tab_view())
+        self.assertEqual(out.returncode, 0, out.stderr)
+        content = json.loads(out.stdout)["ops"][0]["source"]["from"]["content"]
+        self.assertTrue(content.endswith(
+            "w · ◆ A thesis · not yet written · postulate "
+            "(until this answer lands and the artifact is diffed against it)"), content)
+
+    def test_insert_takes_no_clause_from_anyone(self):
+        out = run("application.py", "insert", "-", "--after", "abc.12", "--name", "new",
+                  "--what", "w", "--thesis", "A thesis", "--link", "x", "--standing",
+                  "postulate", "--clause", "whenever", stdin=tab_view())
+        self.assertEqual(out.returncode, 2)
+
+    def test_insert_over_a_search_is_refused_and_says_why(self):
+        out = run("application.py", "insert", "-", "--after", "abc.9", "--name", "new",
+                  "--what", "w", "--thesis", "A thesis", "--link", "x", "--standing",
+                  "postulate", stdin=view())
+        self.assertEqual(out.returncode, 1)
+        self.assertIn("REFUSED", out.stderr)
+        self.assertIn("question line", out.stderr)
+
     def test_replace_prints_the_ops_of_one_update(self):
         out = run("application.py", "replace", "-", "--block", "abc.9", "--note", "n",
                   stdin=view())

@@ -52,7 +52,7 @@ import difflib
 import re
 from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
 
-from . import read, render, text
+from . import project, read, render, text
 from .model import Graph
 
 #: emphasis off and case folded. A link may open inside an emphasis span, which
@@ -127,8 +127,22 @@ class Report(NamedTuple):
 
 
 def labels_of(graph: Graph) -> Dict[str, str]:
-    """Chip key to the label the document shows for it, which is the id."""
-    return {render.chip_key(q.id): q.id for q in graph.questions}
+    """Chip key to the label the document shows for it, which is the id.
+
+    Every id the renderer wrote a chip for, and not only the graph's own
+    questions. Over a scoped graph a tab's chips point at tabs outside it —
+    the questions its terms raise, a mention, a borrowing's tradition — and
+    the renderer knows their ids (``render.mention_targets``) without holding
+    their tabs. Labelled from the questions alone, such a chip read as its
+    key on the render side and as its label on the page, and a scoped check
+    reported the difference on every tab it read.
+    """
+    out = {render.chip_key(q.id): q.id for q in graph.questions}
+    par = project.parents(graph)
+    for q in graph.questions:
+        for target in render.mention_targets(graph, q.id, par):
+            out.setdefault(render.chip_key(target), target)
+    return out
 
 
 def normalise(markdown: str, labels: Optional[Dict[str, str]] = None) -> List[str]:
@@ -314,7 +328,7 @@ def account(graph: Graph, qid: str, page: str,
     plain, spans = _as_the_document_holds_it(
         *linked_spans(page, atoms=bool(graph.state_enum)),
         render.page_text(graph, qid, rendered),
-        [q.id for q in graph.questions])
+        list(labels_of(graph).values()))
     own = graph.get(qid).tab if graph.get(qid) is not None else ""
     missing: List[str] = []
     misplaced: List[str] = []

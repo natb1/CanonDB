@@ -26,6 +26,10 @@ _GITHUB = re.compile(r"^https://github\.com/([^/]+/[^/]+)/(blob|tree)/(.*)$")
 PRESENT, ABSENT, ELSEWHERE, NONE, EVERYTHING = (
     "present", "absent", "not this repository", "no link", "covers everything")
 
+#: what an application says in place of a link while nothing is built: the
+#: bootstrap review's own class (``missing``), and not a link gone wrong
+NOT_YET = "not yet written"
+
 
 def url_of(link: str) -> str:
     match = text.LINK.search(link or "")
@@ -59,7 +63,12 @@ def address(link: str, repo: str, files: Iterable[str] = ()) -> Tuple[str, str]:
 
 
 def status(link: str, repo: str, files: Iterable[str]) -> str:
+    """The verdict on one application's link: where it leads in the checkout,
+    or that it is ``not yet written``, which is what the line says and not a
+    link that failed to parse."""
     files = list(files)
+    if url_of(link).strip().lower() == NOT_YET:
+        return NOT_YET
     kind, path = address(link, repo, files)
     if kind == "none":
         return NONE

@@ -104,7 +104,8 @@ Then the other direction. Write the applications step 1 read as a JSON list, one
 `tools/gaps.py <that file> --root <the project's root> --repo <owner/name>` (the root defaults
 to the working directory and the repository to `origin`'s; run from elsewhere, or without an
 `origin`, it would list every file as unaccounted for and say so of no link). It says per
-application whether its link's path is in the checkout, and lists every tracked file that no
+application whether its link's path is in the checkout, or that the link is `not yet written`,
+which is the `missing` class above and not a link gone wrong; and lists every tracked file that no
 link and no manifest entry accounts for
 and that is not under `canon/`. A link to the repository's root accounts for nothing. Read
 each file it lists and class it:

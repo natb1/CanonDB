@@ -200,6 +200,43 @@ class KeptAsTextTest(unittest.TestCase):
 
 
 
+class ScopedLabelTest(unittest.TestCase):
+    """A chip to a tab outside the graph's scope reads as its label on both
+    sides: the renderer knows the id it wrote the chip for, and the page
+    holds the label, and neither needs the tab."""
+
+    def labelled(self, graph, page):
+        labels = verify.labels_of(graph)
+        return render.CHIP_TOKEN.sub(
+            lambda m: " " + labels[m.group(1)] if m.group(1) in labels else m.group(0), page)
+
+    def test_a_scoped_graph_labels_the_chips_that_leave_it(self):
+        whole = load("valid")
+        qid = "canon"  # its answer raises attenuation, which the scope leaves out
+        page = self.labelled(whole, page_of(whole, qid, render.links(whole, qid)["links"]))
+        scoped = load("valid")
+        scoped.questions = [q for q in scoped.questions if q.id in ("ti-esti", qid)]
+        scoped.scope = [qid]
+        self.assertNotIn("attenuation", [q.id for q in scoped.questions])
+        self.assertEqual(verify.labels_of(scoped).get("m_attenuation"), "attenuation")
+        report = verify.verify(scoped, qid, page)
+        # the load projection counts the children, which the scope left out;
+        # nothing else differs, and no chip reads as its key
+        self.assertEqual([line for line in report.diff if not line.startswith("@@")
+                          and "load" not in line], [])
+        self.assertFalse([line for line in report.diff if "m_" in line], report.diff)
+        self.assertEqual((report.missing, report.extra, report.misplaced, report.astray),
+                         ([], [], [], []))
+        rendered = verify.normalise(render.body(scoped, qid), verify.labels_of(scoped))
+        self.assertTrue(any("attenuation" in line and "m_attenuation" not in line
+                            for line in rendered), rendered)
+
+    def test_the_questions_alone_label_a_whole_graph(self):
+        graph = load("valid")
+        self.assertEqual(verify.labels_of(graph),
+                         {render.chip_key(q.id): q.id for q in graph.questions})
+
+
 class MisplacedTest(unittest.TestCase):
     """A link standing where the encoding does not put that kind.
 
