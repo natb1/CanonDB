@@ -305,7 +305,9 @@ def scope_closed(graph: Graph) -> Yield:
             yield qid, "the graph was read for %s, and holds no such question" % qid
     ins = project.in_edges(graph)
     for q in graph.questions:
-        if not ins.get(q.id) and q.kind != "root":
+        # a tradition's head is another party's root: nothing of the author's
+        # raises it, and its tab was read for the citations that reach it
+        if not ins.get(q.id) and q.kind != "root" and not q.tradition:
             yield q.id, ("nothing in the graph raises it, and it is not a root: "
                          "the tab of whatever raises it was not read, so every "
                          "rule over its lineage would read over a gap")

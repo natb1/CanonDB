@@ -90,6 +90,14 @@ class CheckScopeTest(unittest.TestCase):
         self.assertEqual(done.returncode, 1)
         self.assertIn("scope-closed", done.stdout)
 
+    def test_a_traditions_head_in_the_scope_is_not_a_missing_ancestor(self):
+        """plato is cited by ti-esti and raised by nothing: its tab was read
+        for the citations that reach it, and it is another party's root, not
+        an author's question whose raiser went unread."""
+        done = run("check.py", self.split(["ti-esti", "canon", "plato"], ["canon"]))
+        self.assertEqual(done.returncode, 0, done.stdout)
+        self.assertNotIn("scope-closed", done.stdout)
+
     def test_a_question_the_scope_names_and_the_graph_lacks_is_refused(self):
         done = run("check.py", self.split(["ti-esti", "canon"]), "--scope", "party")
         self.assertEqual(done.returncode, 1)
