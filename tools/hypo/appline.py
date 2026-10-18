@@ -58,6 +58,13 @@ def _text(node: ET.Element) -> str:
     return "".join(out)
 
 
+def _chips_alone(node: ET.Element) -> bool:
+    """Whether a paragraph holds chips and no letters: a Cited by line that
+    names one tab, a glossary entry's lone reference."""
+    return not _text(node).strip() and any(
+        child.tag in ("mention", "dropdown") for child in node.iter())
+
+
 def digest(node: ET.Element) -> str:
     """What the document prints as the block's ``h``."""
     return hashlib.sha256(_text(node).encode("utf-8")).hexdigest()[:8]
@@ -124,6 +131,11 @@ def block(source, bid: str, parsed: Optional[Dict[str, ET.Element]] = None) -> E
     # over its shape, which a read does not print, so what is checked there is
     # every paragraph inside it
     for node in found.iter("paragraph"):
+        if _chips_alone(node):
+            # a paragraph of chips and no letters: the document's hash of it
+            # is its own and no read can rebuild it, so the h it printed is
+            # the guard, and there are no words a hand copy could get wrong
+            continue
         if node.get("h") and digest(node) != node.get("h"):
             raise Refused("block %s does not hash to the h the document printed "
                           "(%s, read %s): the read is not the page" %
@@ -249,12 +261,62 @@ def replace_op(fields: Dict[str, str]) -> dict:
             "with": inline_markdown(line(fields))}
 
 
-def insert_op(after: str, name: str, fields: Dict[str, str]) -> dict:
+SECTION = "Applications"
+# the sections the renderer writes after Applications, in its order
+AFTER_SECTION = ("Cited by", "Hinge")
+
+
+def opens_section(source, after: str) -> bool:
+    """Whether an application inserted after block ``after`` must open the
+    Applications section, which the tab does not have yet: true when the view
+    holds neither that heading nor any application. The renderer puts the
+    section ahead of Cited by and Hinge, so ``after`` must be the last block
+    of the section that stands before it, or the tab would read back with
+    the new section out of its place."""
+    root = ET.fromstring(page.view_xml(source))
+    own = set(id(child) for child in root)
+    top: List[tuple] = []
+    session = ""
+    for node in root.iter():
+        # the session prefix carries over every id, nested ones included,
+        # as ``blocks`` reads it
+        bid, session = page.expand_id(node.get("id", ""), session)
+        if bid and id(node) in own and node.tag != "gone":
+            top.append((bid, node))
+    names = [(i, page.inline(node).strip()) for i, (_, node) in enumerate(top)
+             if node.get("heading") == "2"]
+    if any(name == SECTION for _, name in names) or any(
+            node.get("heading") == "3" and page.inline(node).startswith(MARK + " ")
+            for _, node in top):
+        return False
+    ids = [bid for bid, _ in top]
+    if after not in ids:
+        raise Refused("the tab has no %s section, and block %s is not one of the "
+                      "view's top-level blocks, so where the section opens cannot "
+                      "be told" % (SECTION, after))
+    at = ids.index(after)
+    named = dict(names)
+    following = named.get(at + 1) if at + 1 < len(top) else None
+    preceding = next((name for i, name in reversed(names) if i <= at), None)
+    last = at + 1 == len(top)
+    if (not last and following not in AFTER_SECTION) or preceding in AFTER_SECTION:
+        raise Refused("the tab has no %s section, and the renderer opens it ahead "
+                      "of %s: insert after the last block before the first of them"
+                      % (SECTION, " and ".join(AFTER_SECTION)))
+    return True
+
+
+def insert_op(after: str, name: str, fields: Dict[str, str],
+              opens: bool = False) -> dict:
+    """An application's heading and line after block ``after``; with
+    ``opens``, preceded by the Applications heading the tab lacks."""
     if not name.strip():
         raise Refused("an application needs a name")
     if "\n" in name:
         raise Refused("an application's name is one line, its heading")
     content = "### %s %s\n\n%s" % (MARK, name.strip(), line(fields))
+    if opens:
+        content = "## %s\n\n%s" % (SECTION, content)
     return {"op": "insert", "target": {"kind": "blocks", "ids": [after]},
             "side": "after", "source": inline_markdown(content)}
 

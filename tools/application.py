@@ -13,7 +13,9 @@ round-trip through the renderer, or a standing outside the vocabulary.
 
 An inserted line carries the discharge clause the renderer derives, and
 nobody gives it: it is read off the question line and the state of the
-answer ``--thesis`` names, so READ is the tab's view, which holds both.
+answer ``--thesis`` names, so READ is the tab's view, which holds both. On a
+tab with no Applications section the insert opens it, and refuses an
+``--after`` that is not the last block before Cited by or Hinge.
 """
 
 from __future__ import annotations
@@ -68,9 +70,10 @@ def main(argv=None) -> int:
             if missing:
                 raise appline.Refused("insert needs --" + ", --".join(missing))
             fields = {f: getattr(args, f, None) or "" for f in FIELDS}
-            fields["clause"] = appline.clause_of(cli.source(args.read), args.thesis,
-                                                 args.standing)
-            ops = [appline.insert_op(args.after, args.name, fields)]
+            source = cli.source(args.read)
+            fields["clause"] = appline.clause_of(source, args.thesis, args.standing)
+            ops = [appline.insert_op(args.after, args.name, fields,
+                                     appline.opens_section(source, args.after))]
             print("new: %s" % appline.line(fields), file=sys.stderr)
         else:
             ops = appline.delete_ops(cli.source(args.read), args.heading, args.line)

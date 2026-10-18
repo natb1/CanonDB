@@ -260,3 +260,83 @@ class ReadErrorTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ChipsAloneTest(unittest.TestCase):
+    """A paragraph of chips and no letters: the document hashes it its own
+    way (8acbe133 for a Cited by line naming the root alone), and the read is
+    guarded by the h it printed rather than refused."""
+
+    CITED = ("<doc rev='5' sinceRev='0'>"
+             "<paragraph id='abc.1' h='8acbe133'>"
+             "<mention id='.2' ref='file/t' label='ti-esti'/></paragraph></doc>")
+
+    def test_a_chips_alone_paragraph_is_read_by_the_h_printed(self):
+        node = appline.block(self.CITED, "abc.1")
+        self.assertEqual(node.get("h"), "8acbe133")
+        self.assertEqual(appline.guarded_delete(self.CITED, ["abc.1"])[0]["ifHash"], "8acbe133")
+
+    def test_a_paragraph_with_letters_is_still_checked(self):
+        bad = self.CITED.replace("<mention", "<text id='.3'>see </text><mention")
+        with self.assertRaises(appline.Refused):
+            appline.block(bad, "abc.1")
+
+
+def sectioned_view(applications=False):
+    """A tab with a Thesis and a Hinge section and, as asked, an Applications
+    section between them."""
+    question = "question: held · definitional · answerer: ai · pressure 1 · backlog 1 · load 1"
+    heading = "◆ A thesis"
+    parts = ["<doc rev='3' sinceRev='0'>",
+             "<paragraph id='abc.0' h='%s'><text id='.1'>%s</text></paragraph>" % (h(question), question),
+             "<paragraph id='.2' h='%s' heading='2'><text id='.3'>Thesis</text></paragraph>" % h("Thesis"),
+             "<paragraph id='.4' h='%s' heading='3'><text id='.5'>%s</text></paragraph>" % (h(heading), heading),
+             "<paragraph id='.6' h='%s'><text id='.7'>assent: none · </text>"
+             "<dropdown id='.8' enum='e' index='0'>held</dropdown>"
+             "<text id='.9'> · provenance: thesis hinge</text></paragraph>"
+             % h("assent: none ·  · provenance: thesis hinge"),
+             "<paragraph id='.10' h='%s'><text id='.11'>The answer.</text></paragraph>" % h("The answer.")]
+    if applications:
+        parts += ["<paragraph id='.12' h='%s' heading='2'><text id='.13'>Applications</text></paragraph>"
+                  % h("Applications"),
+                  "<paragraph id='.14' h='%s' heading='3'><text id='.15'>⚙ the tool</text></paragraph>"
+                  % h("⚙ the tool"),
+                  "<paragraph id='.16' h='%s'>%s</paragraph>" % (h(LINE_TEXT), LINE_RUNS)]
+    parts += ["<paragraph id='.20' h='%s' heading='2'><text id='.21'>Hinge</text></paragraph>" % h("Hinge"),
+              "<paragraph id='.22' h='%s'><text id='.23'>Inherits the root's.</text></paragraph>"
+              % h("Inherits the root's."),
+              "</doc>"]
+    return "".join(parts)
+
+
+class SectionTest(unittest.TestCase):
+    """An application inserted on a tab with no Applications section opens
+    it, where the renderer puts it: ahead of Cited by and Hinge."""
+
+    ARGS = ("--name", "new", "--what", "w", "--thesis", "A thesis",
+            "--link", "not yet written", "--standing", "postulate")
+
+    def insert(self, after, stdin):
+        return run("application.py", "insert", "-", "--after", after, *self.ARGS, stdin=stdin)
+
+    def test_the_section_is_opened_after_the_last_block_before_hinge(self):
+        out = self.insert("abc.10", sectioned_view())
+        self.assertEqual(out.returncode, 0, out.stderr)
+        content = json.loads(out.stdout)["ops"][0]["source"]["from"]["content"]
+        self.assertTrue(content.startswith("## Applications\n\n### ⚙ new\n\n"), content)
+
+    def test_an_insert_past_hinge_is_refused(self):
+        out = self.insert("abc.22", sectioned_view())
+        self.assertEqual(out.returncode, 1)
+        self.assertIn("no Applications section", out.stderr)
+
+    def test_an_insert_inside_an_earlier_section_is_refused(self):
+        out = self.insert("abc.4", sectioned_view())
+        self.assertEqual(out.returncode, 1)
+        self.assertIn("last block before", out.stderr)
+
+    def test_a_tab_with_the_section_is_written_as_before(self):
+        out = self.insert("abc.16", sectioned_view(applications=True))
+        self.assertEqual(out.returncode, 0, out.stderr)
+        content = json.loads(out.stdout)["ops"][0]["source"]["from"]["content"]
+        self.assertTrue(content.startswith("### ⚙ new"), content)
