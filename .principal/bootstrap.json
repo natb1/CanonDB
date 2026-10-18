@@ -123,8 +123,8 @@
         "tools/inplace.py",
         "tools/test_inplace.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/35",
-      "rounds": 6
+      "pull_request": "https://github.com/natb1/CanonDB/pull/37",
+      "rounds": 7
     },
     {
       "question": "docs-encoding",
