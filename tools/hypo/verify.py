@@ -52,7 +52,7 @@ import difflib
 import re
 from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
 
-from . import read, render, text
+from . import project, read, render, text
 from .model import Graph
 
 #: emphasis off and case folded. A link may open inside an emphasis span, which
@@ -127,8 +127,22 @@ class Report(NamedTuple):
 
 
 def labels_of(graph: Graph) -> Dict[str, str]:
-    """Chip key to the label the document shows for it, which is the id."""
-    return {render.chip_key(q.id): q.id for q in graph.questions}
+    """Chip key to the label the document shows for it, which is the id.
+
+    Every id the renderer wrote a chip for, and not only the graph's own
+    questions. Over a scoped graph a tab's chips point at tabs outside it —
+    the questions its terms raise, a mention, a borrowing's tradition — and
+    the renderer knows their ids (``render.mention_targets``) without holding
+    their tabs. Labelled from the questions alone, such a chip read as its
+    key on the render side and as its label on the page, and a scoped check
+    reported the difference on every tab it read.
+    """
+    out = {render.chip_key(q.id): q.id for q in graph.questions}
+    par = project.parents(graph)
+    for q in graph.questions:
+        for target in render.mention_targets(graph, q.id, par):
+            out.setdefault(render.chip_key(target), target)
+    return out
 
 
 def normalise(markdown: str, labels: Optional[Dict[str, str]] = None) -> List[str]:
@@ -252,8 +266,15 @@ def _as_the_document_holds_it(plain: str, spans: List[Link], target: str,
 
     The two strings are the same but for those labels, so they are walked in
     step and a label is cut where they part. Nothing else is: where the
-    divergence is not a label this gives the page back untouched, because
-    then it is a real difference and the text comparison is what reports it.
+    divergence is not a label — a scoped graph's question line, whose
+    backlog and load count tabs the scope left out, or a line the principal
+    changed — the page's line is kept as the document holds it, both sides
+    pick up again at its end, and every label after it is still cut. The
+    text comparison is what reports the line. Giving the whole page back
+    untouched at the first such line left every label counting, so over a
+    scoped graph a word that was also a chip's label earlier on the page
+    was found one run late and reported missing, misplaced and unaccounted
+    for at once.
     """
     if plain == target:
         return plain, spans
@@ -270,7 +291,17 @@ def _as_the_document_holds_it(plain: str, spans: List[Link], target: str,
             continue
         cut = next((len(f) for f in forms if plain.startswith(f, i)), 0)
         if not cut:
-            return plain, spans
+            end_i = plain.find("\n", i)
+            end_j = target.find("\n", j)
+            end_i = len(plain) if end_i < 0 else end_i
+            end_j = len(target) if end_j < 0 else end_j
+            if end_i == i and end_j == j:  # one side has run out mid-line
+                out.append(plain[i])
+                i += 1
+                continue
+            out.append(plain[i:end_i])
+            i, j = end_i, end_j
+            continue
         i += cut
         gone += cut
         shift.append((i, gone))
@@ -314,7 +345,7 @@ def account(graph: Graph, qid: str, page: str,
     plain, spans = _as_the_document_holds_it(
         *linked_spans(page, atoms=bool(graph.state_enum)),
         render.page_text(graph, qid, rendered),
-        [q.id for q in graph.questions])
+        list(labels_of(graph).values()))
     own = graph.get(qid).tab if graph.get(qid) is not None else ""
     missing: List[str] = []
     misplaced: List[str] = []

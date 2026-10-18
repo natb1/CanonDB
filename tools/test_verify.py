@@ -200,6 +200,43 @@ class KeptAsTextTest(unittest.TestCase):
 
 
 
+class ScopedLabelTest(unittest.TestCase):
+    """A chip to a tab outside the graph's scope reads as its label on both
+    sides: the renderer knows the id it wrote the chip for, and the page
+    holds the label, and neither needs the tab."""
+
+    def labelled(self, graph, page):
+        labels = verify.labels_of(graph)
+        return render.CHIP_TOKEN.sub(
+            lambda m: " " + labels[m.group(1)] if m.group(1) in labels else m.group(0), page)
+
+    def test_a_scoped_graph_labels_the_chips_that_leave_it(self):
+        whole = load("valid")
+        qid = "canon"  # its answer raises attenuation, which the scope leaves out
+        page = self.labelled(whole, page_of(whole, qid, render.links(whole, qid)["links"]))
+        scoped = load("valid")
+        scoped.questions = [q for q in scoped.questions if q.id in ("ti-esti", qid)]
+        scoped.scope = [qid]
+        self.assertNotIn("attenuation", [q.id for q in scoped.questions])
+        self.assertEqual(verify.labels_of(scoped).get("m_attenuation"), "attenuation")
+        report = verify.verify(scoped, qid, page)
+        # the load projection counts the children, which the scope left out;
+        # nothing else differs, and no chip reads as its key
+        self.assertEqual([line for line in report.diff if not line.startswith("@@")
+                          and "load" not in line], [])
+        self.assertFalse([line for line in report.diff if "m_" in line], report.diff)
+        self.assertEqual((report.missing, report.extra, report.misplaced, report.astray),
+                         ([], [], [], []))
+        rendered = verify.normalise(render.body(scoped, qid), verify.labels_of(scoped))
+        self.assertTrue(any("attenuation" in line and "m_attenuation" not in line
+                            for line in rendered), rendered)
+
+    def test_the_questions_alone_label_a_whole_graph(self):
+        graph = load("valid")
+        self.assertEqual(verify.labels_of(graph),
+                         {render.chip_key(q.id): q.id for q in graph.questions})
+
+
 class MisplacedTest(unittest.TestCase):
     """A link standing where the encoding does not put that kind.
 
@@ -441,3 +478,26 @@ class BlockStructureTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LabelCutTest(unittest.TestCase):
+    """The page's labels are cut by walking page and render in step; a line
+    that differs for a reason of its own used to stop the walk, and every
+    label after it then counted."""
+
+    def test_a_line_that_differs_for_its_own_reason_still_cuts_the_labels_after_it(self):
+        plain = ("question: held · pressure 0 · backlog 9\n\n"
+                 "see party here\n\nparty is a word\n")
+        target = ("question: held · pressure 0 · backlog 0\n\n"
+                  "see here\n\nparty is a word\n")
+        at = plain.index("party is")
+        spans = [verify.Link(at, at + 5, "#x.1")]
+        out, moved = verify._as_the_document_holds_it(plain, spans, target, ["party"])
+        self.assertEqual(out, ("question: held · pressure 0 · backlog 9\n\n"
+                               "see here\n\nparty is a word\n"))
+        self.assertEqual(moved, [verify.Link(at - 6, at - 1, "#x.1")])
+
+    def test_a_page_that_is_the_render_is_left_as_it_is(self):
+        plain = "a line\n\nparty is a word\n"
+        out, spans = verify._as_the_document_holds_it(plain, [], plain, ["party"])
+        self.assertEqual((out, spans), (plain, []))

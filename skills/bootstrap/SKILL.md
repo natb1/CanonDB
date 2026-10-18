@@ -82,7 +82,9 @@ answer, its headline, a definition's body or an amendment to a hinge's provenanc
 adds or drops a term or a glossary entry is `/principal:dictate`'s in-place path, with its
 scoped check over the touched tabs and their ancestors; one that changes a question, a state
 or the specification is `/principal:dictate`'s whole, with its graph and its checks, and until
-that runs this round records the dictation verbatim as a note on the tab it bears on.
+that runs this round records the dictation verbatim as a note on the tab it bears on, opening
+with the word *pending* (`tools/inplace.py note insert`, after the last block of the section it
+concerns), which `tools/check.py` reports until a run takes it in.
 
 **3 — Review for gaps.** For every application (⚙) read in step 1, read
 what it says and look at the checkout. Its `link` is where it says the thing lives; its
@@ -99,12 +101,19 @@ Without a dictation, every `diverged` and `missing` application is the round's. 
 only those the prose bears on are, and the rest are listed and left. Whether a `built`
 thing does what `what` says is read, not computed; say what you read.
 
+Then the pending notes. A note on an author tab opening with *pending* — a `search` for the
+word finds them — is a clause of a dictation no run could apply, left on the page by the run
+that owed it. Each is listed with the gaps, and each is taken in as a dictation of this round
+through step 2: applied where the tooling now can, and the note taken off; or left standing,
+and said so, where it still cannot.
+
 Then the other direction. Write the applications step 1 read as a JSON list, one
 `{"tab", "name", "link"}` each with the link as the read spells it, and run
 `tools/gaps.py <that file> --root <the project's root> --repo <owner/name>` (the root defaults
 to the working directory and the repository to `origin`'s; run from elsewhere, or without an
 `origin`, it would list every file as unaccounted for and say so of no link). It says per
-application whether its link's path is in the checkout, and lists every tracked file that no
+application whether its link's path is in the checkout, or that the link is `not yet written`,
+which is the `missing` class above and not a link gone wrong; and lists every tracked file that no
 link and no manifest entry accounts for
 and that is not under `canon/`. A link to the repository's root accounts for nothing. Read
 each file it lists and class it:
@@ -190,6 +199,10 @@ Rules of this entry point that no tool decides. Hold these by reading.
   clause of the notebook or it is nothing the notebook supports. Step 2 comes before step 3
   every round, and a round that built from prose the notebook does not hold has built a
   postulate no application names — which the manifest would list and the notebook would not.
+- **A pending note is a dictation whose run is still owed.** The note says what a run could
+  not apply, in the words that run had; whether the tooling of this round can apply it now,
+  and whether the note's words still say what the principal meant, is read. A note taken off
+  the page is one whose clause now stands on it, and nothing checks that but the reading.
 - **Ownership is the manifest's, and it is kept honest by hand.** Nothing checks that every
   file bootstrap wrote is listed, or that a listed file is still bootstrap's. Read the diff
   against the manifest before the pull request goes: every file in one is in the other.

@@ -58,6 +58,25 @@ _TAG = re.compile(r"<[^>]*>")
 #: A chip, as an outline prints one. It stands in a heading, so it has to come
 #: off before the heading's words are compared with a link's target.
 _CHIP = re.compile(r"<\?claude block [0-9A-Za-z_]+\?>")
+_CHIP_KEY = re.compile(r"<\?claude block ([0-9A-Za-z_]+)\?>")
+
+#: the rev of the read an outline came from, on its ``doc`` element
+_REV = re.compile(r"<doc\b[^>]*\brev='(\d+)'")
+
+
+def outline_rev(xml: str) -> Optional[int]:
+    """The rev of the read an outline came from, which a whole-block write
+    names as ``ifRev``.
+
+    A replace that names every block of a tab, or every block of a section,
+    can carry no hash — a hash is one block's — and the document refuses a
+    whole-block operation that names no guard at all. So the rev is the
+    guard: the tab as the outline showed it, and no later. An outline with
+    none is one the document did not print, and the write is refused rather
+    than sent unguarded.
+    """
+    m = _REV.search(xml or "")
+    return int(m.group(1)) if m else None
 
 
 class Unresolved(Exception):
@@ -231,12 +250,17 @@ def resolve(graph: Graph, target: str, by_tab: Dict[str, List[Block]],
     return "%s#%s.%s" % (artifact, tab, bid)
 
 
-def body_ops(graph: Graph, qid: str, outline: List[Block]) -> List[dict]:
+def body_ops(graph: Graph, qid: str, outline: List[Block],
+             rev: Optional[int]) -> List[dict]:
     """Replace the whole tab with the rendered body: one operation.
 
     Every top-level block is named, so the tab is left holding exactly what the
-    renderer produced and nothing that was there before.
+    renderer produced and nothing that was there before. ``rev`` is the
+    outline's (``outline_rev``), and the operation's guard.
     """
+    if rev is None:
+        raise Unresolved(["%s: the outline carries no rev, and a whole-block replace "
+                          "names it as its guard" % qid])
     ids = [block.id for block in outline if block.id]
     if not ids:
         raise Unresolved(["%s: the outline names no block to replace" % qid])
@@ -260,20 +284,118 @@ def body_ops(graph: Graph, qid: str, outline: List[Block]) -> List[dict]:
     if payload["blocks"]:
         with_["blocks"] = payload["blocks"]
     return [{"op": "replace", "target": {"kind": "blocks", "ids": ids},
-             "with": with_}]
+             "ifRev": rev, "with": with_}]
+
+
+def _section_chunks(body: str) -> List[Tuple[str, List[str]]]:
+    """(section heading, its blocks) per ``## `` section of a rendered body,
+    the heading block first; the masthead comes first under ``''``."""
+    out: List[Tuple[str, List[str]]] = [("", [])]
+    for chunk in body.split(render.SEPARATOR):
+        chunk = chunk.strip("\n")
+        if not chunk:
+            continue
+        m = _HEADING.match(chunk.strip())
+        if m and len(m.group(1)) == 2:
+            out.append((" ".join(m.group(2).split()), [chunk]))
+        else:
+            out[-1][1].append(chunk)
+    return out
+
+
+def section_headings(body: str, section: str) -> List[str]:
+    """The heading text of each heading inside one ``## `` section of a
+    rendered body, the section's own first; empty where the body has no
+    such section."""
+    wanted = section.strip().lower()
+    for name, chunks in _section_chunks(body):
+        if name.lower() == wanted:
+            return [" ".join(_CHIP.sub("", m.group(2)).split())
+                    for m in (_HEADING.match(chunk.strip()) for chunk in chunks) if m]
+    return []
+
+
+def section_ops(graph: Graph, qid: str, outline: List[Block], rev: Optional[int],
+                section: str) -> List[dict]:
+    """Replace one ``## `` section of a tab with its rendered blocks: one
+    operation, naming the blocks the outline shows from the section's heading
+    to the next section's.
+
+    The path between a part written in place and a tab written whole. A body
+    write mints new ids for every block on the tab and so retires every link
+    into it; this retires only the links into the section, and ``relink``
+    finds no other stale, since every other block keeps its id. The chips
+    sent beside the markdown are the section's own.
+    """
+    if rev is None:
+        raise Unresolved(["%s: the outline carries no rev, and a whole-block replace "
+                          "names it as its guard" % qid])
+    wanted = section.strip().lower()
+    body = render.body(graph, qid)
+    rendered = next((chunks for name, chunks in _section_chunks(body)
+                     if name and name.lower() == wanted), None)
+    if rendered is None:
+        raise Unresolved(["%s: the render has no section %r" % (qid, section)])
+    start = next((i for i, block in enumerate(outline)
+                  if block.heading == 2 and block.text
+                  and wanted.startswith(block.text.rstrip(_ELIDED).lower())
+                  and (block.text.endswith(_ELIDED) or block.text.lower() == wanted)),
+                 None)
+    if start is None:
+        raise Unresolved(["%s: the page has no section %r; a section the page lacks "
+                          "is written with the body" % (qid, section)])
+    end = next((i for i in range(start + 1, len(outline)) if outline[i].heading == 2),
+               len(outline))
+    span = outline[start:end]
+    if any(block.kind in ("gap", "gone") for block in span):
+        raise Unresolved(["%s: the outline folds or retires a block inside %r, so it "
+                          "does not show the section whole" % (qid, section)])
+    ids = [block.id for block in span if block.id]
+    markdown = render.SEPARATOR.join(rendered)
+    keys = set(_CHIP_KEY.findall(markdown))
+    chips = {key: value for key, value in render.links(graph, qid)["blocks"].items()
+             if key in keys}
+    with_ = {"as": "markdown", "from": {"kind": "inline", "content": markdown}}
+    if chips:
+        with_["blocks"] = chips
+    return [{"op": "replace", "target": {"kind": "blocks", "ids": ids},
+             "ifRev": rev, "with": with_}]
 
 
 def link_ops(graph: Graph, qid: str, by_tab: Dict[str, List[Block]],
-             artifact: str = "") -> List[dict]:
+             artifact: str = "", section: Optional[str] = None) -> List[dict]:
     """One ``format`` operation per link the sidecar names.
 
     The words are found rather than addressed: a link goes on a run of
     characters inside a block, and the ``nth`` the renderer computed is what
     tells one run from another where the same words stand more than once.
+
+    After a write of one ``section`` alone, the links owed are the ones that
+    write took off or retired: those standing in the section, whose blocks
+    are new, and those leading into it, whose targets are. Every other link
+    on the tab stands as it was, and sending it again would be a no-op the
+    ack cannot tell from a link that never landed.
     """
-    entries = render.links(graph, qid)["links"]
+    rendered = render.body(graph, qid)
+    entries = render.links(graph, qid, rendered=rendered)["links"]
     q = graph.get(qid)
     own = q.tab if q is not None else ""
+    if section is not None:
+        page_ = render.page_text(graph, qid, rendered)
+        spans = render.section_spans(page_)
+        name = next((n for n in spans if n and n.lower() == section.strip().lower()), None)
+        if name is None:
+            raise Unresolved(["%s: the render has no section %r" % (qid, section)])
+        inside = spans[name]
+        heads = section_headings(rendered, section)
+
+        def leads_in(target: str) -> bool:
+            heading = target.lstrip("#").partition(".")[2]
+            return any(h == heading or h.startswith(heading + " ") for h in heads)
+
+        entries = [e for e in entries
+                   if (e.get("at") is not None and inside[0] <= e["at"] < inside[1])
+                   or leads_in(e["target"])]
     ops: List[dict] = []
     missing: List[str] = []
     paired: Dict[str, Dict[str, str]] = {}

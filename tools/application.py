@@ -2,7 +2,7 @@
 """application.py replace|insert|delete — write one application in place.
 
     application.py replace READ --block ID [--what T] [--link T] [--note T] [--standing S] [--clause T]
-    application.py insert --after ID --name N --what T --thesis T --link T --standing S [--clause T] [--note T]
+    application.py insert READ --after ID --name N --what T --thesis T --link T --standing S [--note T]
     application.py delete READ --heading ID --line ID
 
 READ is a saved ``search`` or ``view`` result of the tab (the tool's JSON, or
@@ -10,6 +10,10 @@ its xml alone; `-` for stdin). Prints the ``ops`` of one prose ``update`` as
 JSON; the old and new line go to stderr. Refuses (exit 1) a read whose block
 does not hash to the ``h`` the document printed, a line that does not
 round-trip through the renderer, or a standing outside the vocabulary.
+
+An inserted line carries the discharge clause the renderer derives, and
+nobody gives it: it is read off the question line and the state of the
+answer ``--thesis`` names, so READ is the tab's view, which holds both.
 """
 
 from __future__ import annotations
@@ -35,10 +39,13 @@ def main(argv=None) -> int:
     rep.add_argument("read")
     rep.add_argument("--block", required=True)
     ins = sub.add_parser("insert")
+    ins.add_argument("read")
     ins.add_argument("--after", required=True)
     ins.add_argument("--name", required=True)
     for p in (rep, ins):
         for f in FIELDS:
+            if p is ins and f == "clause":
+                continue  # derived, from the read
             p.add_argument("--" + f)
     dele = sub.add_parser("delete")
     dele.add_argument("read")
@@ -60,7 +67,9 @@ def main(argv=None) -> int:
                        if getattr(args, f) is None]
             if missing:
                 raise appline.Refused("insert needs --" + ", --".join(missing))
-            fields = {f: getattr(args, f) or "" for f in FIELDS}
+            fields = {f: getattr(args, f, None) or "" for f in FIELDS}
+            fields["clause"] = appline.clause_of(cli.source(args.read), args.thesis,
+                                                 args.standing)
             ops = [appline.insert_op(args.after, args.name, fields)]
             print("new: %s" % appline.line(fields), file=sys.stderr)
         else:

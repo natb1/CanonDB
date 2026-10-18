@@ -34,11 +34,28 @@ would read back as a mark of its own. What comes out is the block as the page
 will spell it afterwards, chips as the renderer's tokens, and that is what is
 read back.
 
-A paragraph of an answer whose change does reach a mark is written a third
-way, when the caller asks for it: whole, as **markdown**, in the renderer's
-spelling of it. The caller then says where every link and every mark goes,
-so nothing is left for the document to place; the chips are not his to
-drop, and each one the block held must stand in what he wrote.
+Every other block of words — a hinge's question half, a note, a paragraph
+the writers above do not name — is written by one writer that is decided not
+by which part the block is but by its read-back: the whole tab is read
+through ``read.parse_tab`` before and after, and the write is refused unless
+one field alone differs. A note is inserted at the end of its section, which
+is where the renderer writes one. So no part of a tab is left whose only way
+to the page is a body write.
+
+A paragraph whose change does reach a mark is written a third
+way, when the caller asks for it: given whole, as **markdown** in the
+renderer's spelling, so that the caller says where every link and every mark
+goes. What is sent is what the document takes, which is not that markdown:
+the document takes no in-page link in a replace's markdown, and a ``text``
+replace spreads a mark that stood inside the changed stretch over the whole
+of the new words. So the paragraph goes as its letters, one ``text`` replace,
+and the marks go as ``format`` operations around it — off, before the words
+change, every mark the stretch meets or the new words no longer carry; on,
+after, every mark the new words carry that did not survive — each found by
+its words, counted over the whole tab as the document counts them. The read
+is therefore the tab's whole view. The chips are not the caller's to drop
+or to move: each one the block held must stand in what he wrote, where it
+stood, and clear of the stretch, since a text write cannot carry one.
 
 Every whole-block ``replace`` and ``delete`` carries both guards the document
 asks for: the block's ``h`` and the ``rev`` of the read that showed it.
@@ -173,15 +190,30 @@ def reworded(runs: Sequence[Piece], new: str,
     # in-page link the reader drops; a block whose changes reach one is
     # written as markdown.
     at = 0
+    hit: List[Tuple[int, Piece]] = []
     for p in runs:
         end = at + len(p.text)
         if (p.chip is not None or (p.marks and p.text)) and s0 <= end and e0 >= at:
-            what = ("a chip to %s" % p.chip.get("label", "?") if p.chip is not None
-                    else "the marked run %r" % p.text)
-            raise Refused("%s stands in or against the stretch the document rewrites "
-                          "(from the first changed letter to the last), and would lose "
-                          "its mark or carry it onto the new words; %s" % (what, remedy))
+            hit.append((at, p))
         at = end
+    # A chip is named before a run beside it: a chip has no letters, so the
+    # usual way the stretch reaches one is new words that dropped the letters
+    # around it, and the run before it is only the first thing the stretch
+    # touches. Said that way, the caller knows what to keep.
+    chips = [(at, p) for at, p in hit if p.chip is not None]
+    if chips:
+        at, p = chips[0]
+        before, after = old[max(0, at - 12):at], old[at:at + 12]
+        raise Refused("a chip to %s stands in the stretch the document rewrites (from "
+                      "the first changed letter to the last) and would be lost: the new "
+                      "words must keep the letters around it as they stand, %r before it "
+                      "and %r after, or the change reaches the chip; %s"
+                      % (p.chip.get("label", "?"), before, after, remedy))
+    if hit:
+        raise Refused("the marked run %r stands in or against the stretch the document "
+                      "rewrites (from the first changed letter to the last), and would "
+                      "lose its mark or carry it onto the new words; %s"
+                      % (hit[0][1].text, remedy))
     # every chip and every marked run stands clear of the stretch, so each
     # keeps its letters and its marks — the in-page links too, so that what
     # is said back is what the page will hold
@@ -525,32 +557,175 @@ def thesis_replace(source, bid: str, new: str,
     return [_words_op(bid, node, rev(source), new)], old_md, new_md
 
 
+class Mark(NamedTuple):
+    """One mark over one run of a paragraph's letters: its kind, its argument
+    (a link's target, else empty) and the run, as offsets into the letters."""
+    kind: str
+    arg: str
+    start: int
+    end: int
+
+
+def marks_of(runs: Sequence[Piece]) -> List[Mark]:
+    """Every mark over the letters of ``runs``, each over the longest stretch
+    of adjacent runs that carry it, in the order the marks open. A chip has
+    no letters and breaks nothing: a link that runs through one is one link."""
+    out: List[Mark] = []
+    open_: Dict[Tuple[str, str], int] = {}
+    at = 0
+    for p in runs:
+        end = at + len(p.text)
+        for key in [k for k in open_ if k not in p.marks]:
+            del open_[key]
+        for key in p.marks:
+            if key in open_:
+                out[open_[key]] = out[open_[key]]._replace(end=end)
+            else:
+                open_[key] = len(out)
+                out.append(Mark(key[0], key[1], at, end))
+        at = end
+    return [m for m in out if m.end > m.start]
+
+
+def runs_of_markdown(markdown: str, marks: Tuple[Tuple[str, str], ...] = ()
+                     ) -> List[Piece]:
+    """The caller's markdown as the runs a view would print once it is on the
+    page: the renderer's spelling and no other — a link as ``[words](target)``,
+    emphasis with stars, code in backticks, a chip as its token, a literal
+    mark behind a backslash. A chip comes back as a piece with no letters
+    whose ``chip`` carries the token's key."""
+    out: List[Piece] = []
+    buf: List[str] = []
+
+    def flush() -> None:
+        if buf:
+            out.append(Piece(marks, "".join(buf)))
+            buf.clear()
+
+    i = 0
+    while i < len(markdown):
+        c = markdown[i]
+        escaped = c == "\\" and text.ESCAPE.match(markdown, i)
+        if escaped:
+            buf.append(markdown[i + 1])
+            i += 2
+            continue
+        if c == "`":
+            close = markdown.find("`", i + 1)
+            if close > i:
+                flush()
+                out.append(Piece(marks + ((page.CODE, ""),), markdown[i + 1:close]))
+                i = close + 1
+                continue
+        if c == "<":
+            chip = read.CHIP.match(markdown, i)
+            if chip:
+                flush()
+                out.append(Piece(marks, "", ET.Element("mention", key=chip.group(1))))
+                i = chip.end()
+                continue
+        if c == "[":
+            link = text.LINK.match(markdown, i)
+            if link:
+                flush()
+                out.extend(runs_of_markdown(link.group(1),
+                                            marks + ((page.LINK, link.group(2)),)))
+                i = link.end()
+                continue
+        if c == "*":
+            stars = 3 if markdown.startswith("***", i) else 2 if markdown.startswith("**", i) else 1
+            close = markdown.find("*" * stars, i + stars)
+            if close > i + stars:
+                flush()
+                added = {1: ((page.ITALIC, ""),), 2: ((page.BOLD, ""),),
+                         3: ((page.BOLD, ""), (page.ITALIC, ""))}[stars]
+                out.extend(runs_of_markdown(markdown[i + stars:close], marks + added))
+                i = close + stars
+                continue
+        buf.append(c)
+        i += 1
+    flush()
+    return out
+
+
+def _chip_key(p: Piece) -> str:
+    """The chip's key, from a view's mention (its label) or from a token."""
+    return p.chip.get("key") or render.chip_key(p.chip.get("label", ""))
+
+
+def _chip_places(runs: Sequence[Piece]) -> List[Tuple[int, str]]:
+    """(offset into the letters, key) per chip, in order."""
+    out: List[Tuple[int, str]] = []
+    at = 0
+    for p in runs:
+        if p.chip is not None:
+            out.append((at, _chip_key(p)))
+        at += len(p.text)
+    return out
+
+
+def tab_letters(source) -> List[Tuple[str, str]]:
+    """(block id, its letters) for every paragraph of a view, in page order:
+    the characters the document's find counts over, a chip and a dropdown
+    among them as atoms with none."""
+    return [(bid, letters(pieces(node))) for bid, node in blocks(source).items()
+            if node.tag == "paragraph"]
+
+
+def _format_op(tab: str, offset: int, mark: Mark, words: str, verb: str) -> Optional[dict]:
+    """One ``format`` operation for ``mark`` over ``words`` of a block that
+    starts at ``offset`` in ``tab``, found by its words and the number the
+    document counts to in order to reach them."""
+    run = words[mark.start:mark.end]
+    lead = len(run) - len(run.lstrip())
+    run = run.strip()
+    if not run:
+        return None
+    at = offset + mark.start + lead
+    hit = next((r for r in text.occurrences(tab, run) if r.at == at), None)
+    if hit is None:  # the run was read off this tab, so it stands on it
+        raise Refused("no run of %r at %d of the tab, which the words were read off"
+                      % (run, at))
+    what: dict = {"type": mark.kind}
+    if mark.kind == page.LINK and verb == "add":
+        what["href"] = mark.arg
+    return {"op": "format", "target": {"kind": "find", "text": run, "nth": hit.nth},
+            verb: [what]}
+
+
 def thesis_markdown(source, bid: str, new: str, anchors: Sequence[str] = ()
-                    ) -> Tuple[List[dict], str, str, List[Tuple[str, str]],
-                               List[Tuple[str, str]]]:
-    """A paragraph of an answer written whole, as the markdown the renderer
+                    ) -> Tuple[List[dict], str, str, List[Tuple[str, str, str]],
+                               List[Tuple[str, str, str]]]:
+    """A paragraph of an answer given whole, as the markdown the renderer
     would spell it: what ``thesis_replace`` sends a caller to when the change
     reaches a link, a chip or a marked run.
 
     ``new`` is the paragraph in that spelling — a link as ``[words](target)``,
-    a chip as its token. A chip is an edge and not the paragraph's to lose, so
-    every chip the block held must stand in ``new``, and none it did not hold
-    may. The links are the caller's to place, and the ones the new words drop
-    and add are returned, each as its words and its target, to be said.
+    a chip as its token. What goes to the document is what it takes: the
+    marks the change takes off, as ``format`` operations; the letters, as one
+    ``text`` replace, where they change; the marks the new words carry that
+    did not survive, as ``format`` operations after. Each is found by its
+    words counted over the tab, so the read is the tab's whole view. A chip
+    is an edge and not the paragraph's to lose or to move: every chip the
+    block held must stand in ``new`` where it stood, clear of the stretch the
+    document rewrites. Returned with the ops: the old and new markdown, and
+    the marks taken off and put on, each as its kind, its words and its
+    target, to be said.
     """
+    _whole(source)
     node = _paragraph(source, bid)
     if node.get("heading"):
         raise Refused("block %s is a heading" % bid)
     runs = pieces(node)
     if any(p.chip is not None and p.chip.tag == "dropdown" for p in runs):
         raise Refused("block %s carries a dropdown, which markdown cannot spell" % bid)
-    old_md, chips = spelled(runs)
+    old_md, _ = spelled(runs)
     new_md = new.strip()
     if "\n" in new_md:
         raise Refused("the words break a line, which the document would read "
                       "as a second block")
     # counted and not merely looked for: a chip said twice is one the
-    # paragraph did not hold, and the blocks map would carry it once
+    # paragraph did not hold
     held, written = read.CHIP.findall(old_md), read.CHIP.findall(new_md)
     for key in held:
         if written.count(key) < held.count(key):
@@ -572,13 +747,299 @@ def thesis_markdown(source, bid: str, new: str, anchors: Sequence[str] = ()
     got = _read_back(_thesis_tab("%s answer" % THESIS, new_md))
     if [t["text"] for t in got["theses"]] != [now]:
         raise Refused("the paragraph does not read back as written")
-    had, has = text.LINK.findall(old_md), text.LINK.findall(new_md)
-    dropped = [link for link in had if link not in has]
-    added = [link for link in has if link not in had]
-    op = {"op": "replace", "target": {"kind": "blocks", "ids": [bid]},
-          "ifHash": node.get("h", ""), "ifRev": rev(source),
-          "with": appline.inline_markdown(new_md, chips)}
-    return [op], old_md, new_md, dropped, added
+    ops, said_off, said_on = _mark_ops(source, bid, node, runs, new_md)
+    return ops, old_md, new_md, said_off, said_on
+
+
+def _chips_kept(old_md: str, new_md: str) -> None:
+    """Every chip the block held stands in the new words, and no other does:
+    counted and not merely looked for, since a chip said twice is one the
+    block did not hold."""
+    held, written = read.CHIP.findall(old_md), read.CHIP.findall(new_md)
+    for key in held:
+        if written.count(key) < held.count(key):
+            raise Refused("the chip to %s stood in the block and is not in "
+                          "the new words; write it where it belongs, as "
+                          "<?claude block %s?>" % (key[2:], key))
+    for key in written:
+        if written.count(key) > held.count(key):
+            raise Refused("the new words carry a chip the block did not "
+                          "hold (%s); a new chip is a term's or a mention's to "
+                          "bring" % key)
+
+
+def _mark_ops(source, bid: str, node: ET.Element, runs: Sequence[Piece], new_md: str
+              ) -> Tuple[List[dict], List[Tuple[str, str, str]], List[Tuple[str, str, str]]]:
+    """What the document takes for a block given whole as markdown: the marks
+    the change takes off, the letters as one ``text`` replace, the marks the
+    new words carry that did not survive — each found by its words counted
+    over the whole tab."""
+    after = runs_of_markdown(new_md)
+    old, fresh = letters(runs), letters(after)
+    changed = old != fresh
+    s0, e0 = _span(old, fresh) if changed else (len(old) + 1, len(old) + 1)
+    shift = len(fresh) - len(old)
+
+    def meets(start: int, end: int) -> bool:
+        return changed and s0 <= end and e0 >= start
+
+    def moved(at: int) -> int:
+        return at if at < s0 else at + shift
+
+    # a chip is an atom the text write keeps where the document holds it,
+    # so it may neither meet the stretch nor stand elsewhere in the new words
+    for at, key in _chip_places(runs):
+        if meets(at, at):
+            raise Refused("the chip to %s stands in or against the stretch the document "
+                          "rewrites (from the first changed letter to the last), which a "
+                          "text write cannot carry; change the words around it, or "
+                          "write the tab whole" % key[2:])
+    if sorted((moved(at), key) for at, key in _chip_places(runs)) != sorted(_chip_places(after)):
+        raise Refused("a chip stands elsewhere in the new words than the document holds "
+                      "it; a text write keeps every chip where it stood")
+
+    was, wanted = marks_of(runs), marks_of(after)
+    survive = [m._replace(start=moved(m.start), end=moved(m.end))
+               for m in was if not meets(m.start, m.end)]
+    kept = [m for m in survive if m in wanted]
+    off = [m for m in was if m._replace(start=moved(m.start), end=moved(m.end)) not in kept
+           or meets(m.start, m.end)]
+    on = [m for m in wanted if m not in kept]
+
+    tab = tab_letters(source)
+    offsets: Dict[str, int] = {}
+    at = 0
+    for block_id, words in tab:
+        offsets[block_id] = at
+        at += len(words) + 1  # the separator the page puts between two blocks
+    if bid not in offsets:
+        raise Refused("block %s is not a paragraph of the view" % bid)
+    tab_old = "\n".join(words for _, words in tab)
+    tab_new = "\n".join(fresh if block_id == bid else words for block_id, words in tab)
+
+    ops: List[dict] = []
+    said_off: List[Tuple[str, str, str]] = []
+    said_on: List[Tuple[str, str, str]] = []
+    for m in off:
+        op = _format_op(tab_old, offsets[bid], m, old, "remove")
+        if op is not None:
+            ops.append(op)
+            said_off.append((m.kind, op["target"]["text"], m.arg))
+    if changed:
+        ops.append(_words_op(bid, node, rev(source), fresh))
+    for m in on:
+        op = _format_op(tab_new, offsets[bid], m, fresh, "add")
+        if op is not None:
+            ops.append(op)
+            said_on.append((m.kind, op["target"]["text"], m.arg))
+    if not ops:
+        raise Refused("the new words are the paragraph as it stands")
+    return ops, said_off, said_on
+
+
+# -- any block of words -----------------------------------------------------
+
+def _flatten(value, path: str = "", out: Optional[Dict[str, object]] = None
+             ) -> Dict[str, object]:
+    out = {} if out is None else out
+    if isinstance(value, dict):
+        for key, inner in value.items():
+            _flatten(inner, "%s.%s" % (path, key) if path else str(key), out)
+    elif isinstance(value, list):
+        for i, inner in enumerate(value):
+            _flatten(inner, "%s[%d]" % (path, i), out)
+    else:
+        out[path] = value
+    return out
+
+
+def one_field(before: dict, after: dict) -> str:
+    """The one field of a parsed tab that differs between two readings of it,
+    as its path (``hinge.question``, ``theses[0].text``, ``notes[1].body``).
+
+    What decides whether a block may be re-worded in place is not which part
+    it is but what the reader makes of the tab afterwards: one field changed
+    and nothing else, or the words have moved something the writer did not
+    name — a paragraph that opens like a label, a line the reader files
+    elsewhere — and the write is refused.
+    """
+    a, b = _flatten(before), _flatten(after)
+    changed = sorted(k for k in set(a) | set(b) if a.get(k) != b.get(k))
+    if not changed:
+        raise Refused("the new words are the block as it stands")
+    if len(changed) > 1:
+        raise Refused("the change reaches more than one field of the tab (%s), so it "
+                      "is not one block's re-wording; write the section or the tab whole"
+                      % ", ".join(changed[:4]))
+    return changed[0]
+
+
+def _top_block_of(source, bid: str) -> Optional[str]:
+    """The id of the top-level block that holds ``bid``: itself, or the
+    list or blockquote it stands in."""
+    root = ET.fromstring(page.view_xml(source))
+    session = ""
+    for child in root:
+        own: Optional[str] = None
+        for node in child.iter():
+            full, session = page.expand_id(node.get("id", ""), session)
+            if own is None and full:
+                own = full
+            if full == bid:
+                return own
+    return None
+
+
+def _as_page(runs: Sequence[Piece], labels: Dict[str, str]) -> str:
+    """The block as the page read spells it, a chip as its label: what the
+    reader is given, and what a read-back of the tab substitutes."""
+    out: List[page.Run] = []
+    for p in runs:
+        if p.chip is None:
+            out.append((p.marks, page.literal(p.text, p.marks)))
+        elif p.chip.tag == "dropdown":
+            out.append((p.marks, p.chip.text or ""))
+        else:
+            out.append((p.marks, labels.get(_chip_key(p), p.chip.get("label", ""))))
+    return page.spell(out)
+
+
+def _labels_of(source) -> Dict[str, str]:
+    """Chip key to label for every mention the view carries: the map the
+    reader takes a chip's label back through, which the document's file
+    list supplies to a rebuild and the page itself supplies here."""
+    root = ET.fromstring(page.view_xml(source))
+    return {render.chip_key(node.get("label", "")): node.get("label", "")
+            for node in root.iter("mention") if node.get("label")}
+
+
+def _one_field_after(source, bid: str, old: str, new: str,
+                     ids: Optional[Dict[str, str]] = None) -> str:
+    """The one field that changes when block ``bid``, spelled ``old`` as the
+    page reads it, is spelled ``new``: the whole tab read back before and
+    after, through the reader, and compared."""
+    ids = _labels_of(source) if ids is None else ids
+    top = _top_block_of(source, bid)
+    try:
+        blocks_ = page.blocks(source)
+    except ValueError as exc:
+        raise Refused(str(exc))
+    before_md = render.SEPARATOR.join(md for _, md in blocks_) + "\n"
+    after_parts: List[str] = []
+    hit = False
+    for key, md in blocks_:
+        if key == top:
+            if old not in md:
+                raise Refused("block %s is not spelled inside its block as the page "
+                              "reads it" % bid)
+            md = md.replace(old, new, 1)
+            hit = True
+        after_parts.append(md)
+    if not hit:
+        raise Refused("block %s is not a block of the view" % bid)
+    after_md = render.SEPARATOR.join(after_parts) + "\n"
+    before, after = _read_back(before_md, ids), _read_back(after_md, ids)
+    field = one_field(before, after)
+    m = re.match(r"theses\[(\d+)\]\.text$", field)
+    if m:
+        i = int(m.group(1))
+        now = after["theses"][i].get("text", "")
+        thesis = before["theses"][i]
+        for edge in thesis.get("terms", []) + thesis.get("mentions", []):
+            for anchor in edge.get("anchors", []):
+                if anchor and anchor not in now:
+                    raise Refused("the anchor no longer stands in the paragraph: %r"
+                                  % anchor[:60])
+    return field
+
+
+def _words_block(source, bid: str) -> Tuple[ET.Element, List[Piece], Dict[str, str]]:
+    _whole(source)
+    node = _paragraph(source, bid)
+    if node.get("heading"):
+        raise Refused("block %s is a heading: an answer's headline is thesis headline's "
+                      "to re-word, and a word is its glossary entry's" % bid)
+    runs = pieces(node)
+    labels = {_chip_key(p): p.chip.get("label", "") for p in runs if p.chip is not None}
+    if _as_page(runs, labels) != page.inline(node):
+        raise Refused("block %s cannot be spelled as the page reads it" % bid)
+    return node, runs, labels
+
+
+def words_replace(source, bid: str, new: str, ids: Optional[Dict[str, str]] = None
+                  ) -> Tuple[List[dict], str, str, str]:
+    """Any block of words re-worded in place as ``text``, chips and marks
+    kept: a hinge's question half, a note, a paragraph the other writers
+    do not name. Decided by its read-back, not by which part it is: the
+    whole tab is read before and after, and the write is refused unless
+    one field alone differs. A thesis keeps the anchors of its terms.
+    Returned with the op: the old and new markdown, and the field."""
+    node, runs, labels = _words_block(source, bid)
+    old_md, _ = spelled(runs)
+    after = reworded(runs, new, "write the block as markdown instead "
+                                "(words replace --markdown)")
+    new_md, _ = spelled(after)
+    field = _one_field_after(source, bid, _as_page(runs, labels), _as_page(after, labels), ids)
+    return [_words_op(bid, node, rev(source), new)], old_md, new_md, field
+
+
+def words_markdown(source, bid: str, new: str, ids: Optional[Dict[str, str]] = None
+                   ) -> Tuple[List[dict], str, str, str, List[Tuple[str, str, str]],
+                              List[Tuple[str, str, str]]]:
+    """Any block of words given whole as the markdown the renderer would
+    spell it: what ``words_replace`` sends a caller to when the change
+    reaches a link, a chip or a marked run. The same read-back decides it,
+    and what goes to the document is what ``thesis_markdown`` sends."""
+    node, runs, labels = _words_block(source, bid)
+    if any(p.chip is not None and p.chip.tag == "dropdown" for p in runs):
+        raise Refused("block %s carries a dropdown, which markdown cannot spell" % bid)
+    old_md, _ = spelled(runs)
+    new_md = new.strip()
+    if "\n" in new_md:
+        raise Refused("the words break a line, which the document would read "
+                      "as a second block")
+    _chips_kept(old_md, new_md)
+    after = runs_of_markdown(new_md)
+    field = _one_field_after(source, bid, _as_page(runs, labels), _as_page(after, labels), ids)
+    ops, said_off, said_on = _mark_ops(source, bid, node, runs, new_md)
+    return ops, old_md, new_md, field, said_off, said_on
+
+
+# -- a note -----------------------------------------------------------------
+
+def note_insert(source, after: str, body: str) -> Tuple[List[dict], str, str]:
+    """A note inserted after block ``after``, which must be the last block of
+    its section: the renderer writes a section's notes at its end, so a note
+    put anywhere else would move at the next body write. Read back as one
+    note of that section. Returned with the op: the section and the block."""
+    try:
+        blocks_ = page.blocks(source)
+    except ValueError as exc:
+        raise Refused(str(exc))
+    ids = [bid for bid, _ in blocks_]
+    if after not in ids:
+        raise Refused("the read holds no block %s" % after)
+    at = ids.index(after)
+    section: Optional[str] = None
+    for _, md in blocks_[:at + 1]:
+        if md.startswith("## "):
+            section = md[3:].strip()
+    if section is None:
+        raise Refused("block %s stands above the first section, where the renderer "
+                      "writes no note" % after)
+    if at + 1 < len(blocks_) and not blocks_[at + 1][1].startswith("## "):
+        last = next((ids[i] for i in range(at + 1, len(ids))
+                     if i + 1 == len(ids) or blocks_[i + 1][1].startswith("## ")), ids[-1])
+        raise Refused("block %s is not the last block of %s; the renderer puts a note "
+                      "at the end of its section, so it goes after %s" % (after, section, last))
+    _plain_block(body, "the note")
+    content = "> " + body.strip()
+    got = _read_back(_tab((section, [content])))
+    if got.get("notes") != [{"section": section.lower(), "body": body.strip()}]:
+        raise Refused("the note does not read back as written: %r" % got.get("notes"))
+    op = {"op": "insert", "target": {"kind": "blocks", "ids": [after]},
+          "side": "after", "source": appline.inline_markdown(content)}
+    return [op], section, content
 
 
 # -- an answer's headline ---------------------------------------------------
@@ -681,7 +1142,8 @@ def hinge_amend(source, bid: str, day: str, by: str,
         raise Refused("block %s carries a chip, which a provenance does not" % bid)
     new = render.amended(old, day, by.strip(), origin.strip())
     old_md, _ = spelled(runs)
-    new_md, _ = spelled(reworded(runs, new))
+    new_md, _ = spelled(reworded(runs, new, "write the block as markdown instead "
+                                            "(words replace --markdown)"))
     if new_md != render.amended(old_md, day, by.strip(), origin.strip()):
         raise Refused("the amendment does not land at the end of the line")
     got = _read_back(_tab(("Hinge", ["### %s" % render.HINGE_THESIS, new_md])))

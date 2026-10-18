@@ -21,7 +21,12 @@ class StatusTest(unittest.TestCase):
         self.assertEqual(gaps.status(BLOB, REPO, FILES), gaps.PRESENT)
         self.assertEqual(gaps.status(TREE, REPO, FILES), gaps.PRESENT)
         self.assertEqual(gaps.status(ROOT, REPO, FILES), gaps.EVERYTHING)
-        self.assertEqual(gaps.status("not yet written", REPO, FILES), gaps.NONE)
+        # what an application says while nothing is built is said back as
+        # itself, the review's ``missing`` class, and not as a malformed link
+        self.assertEqual(gaps.status("not yet written", REPO, FILES), gaps.NOT_YET)
+        self.assertEqual(gaps.status("Not yet written", REPO, FILES), gaps.NOT_YET)
+        self.assertEqual(gaps.status("", REPO, FILES), gaps.NONE)
+        self.assertEqual(gaps.status("tools/a.py", REPO, FILES), gaps.NONE)
         self.assertEqual(gaps.status("[x](https://github.com/other/r/blob/main/x)", REPO, FILES),
                          gaps.ELSEWHERE)
         self.assertEqual(gaps.status("[b](https://github.com/natb1/CanonDB/blob/main/b.py)",

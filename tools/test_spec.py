@@ -820,3 +820,18 @@ class FieldsPartedTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DictationPendingTest(unittest.TestCase):
+    def test_a_pending_note_is_reported_until_a_run_takes_it_in(self):
+        findings = spec.run(load("invalid-dictation-pending"), only=["dictation-pending"])
+        self.assertEqual(len(findings), 1, findings)
+        self.assertEqual(findings[0].severity, spec.WARN)
+        self.assertIn("pending", findings[0].message)
+        self.assertEqual(spec.run(load("valid"), only=["dictation-pending"]), [])
+
+    def test_a_note_that_only_mentions_the_word_is_not_one(self):
+        graph = load("valid")
+        graph.questions[0].notes.append(model.Note(
+            section="thesis", body="A note that mentions pending work later on."))
+        self.assertEqual(spec.run(graph, only=["dictation-pending"]), [])

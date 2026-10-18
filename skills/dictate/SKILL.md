@@ -69,7 +69,12 @@ edit:
 
 Every row cites the dictation. An edit no clause motivates does not belong in the plan; raise it
 separately instead of folding it in. A clause of the dictation with no row is an omission — say so
-rather than dropping it silently.
+rather than dropping it silently. A clause the run can see but cannot apply — a part no tool
+writes, a change the tooling refuses, a write out of all proportion to the clause — is neither
+an omission nor a thing to say in the report: it is a row that writes the clause as a **pending
+note** on the tab it bears on (`tools/inplace.py note insert`, after the last block of the
+section it concerns), opening with the word *pending*, so that what the run owes stands on the
+page and `tools/check.py` reports it (`dictation-pending`) until a run takes it in.
 
 **3 — If the dictation changes the specification**, the plan carries three further obligations, in
 this order:
@@ -88,22 +93,42 @@ this order:
 **4 — Apply.** A dictation that changes only line-shaped parts of a few tabs is written **in
 place**, block by block: an application with `tools/application.py`; a glossary entry, a term
 and its item on the header list of the tab it raises, the words of an answer, an answer's
-headline, or an amendment to a hinge's provenance with `tools/inplace.py`. A replace or a delete
-takes the saved read of its blocks, an insert names the block it follows, and each prints the
-ops of one prose `update` for that tab, every whole-block op guarded by the block's
+headline, or an amendment to a hinge's provenance with `tools/inplace.py`; and any other block of
+words — a hinge's question half, a note, a paragraph the modes above do not name — with
+`tools/inplace.py words replace`, which is decided not by which part the block is but by its
+read-back: the tab is read before and after, and the write is refused unless one field alone
+differs, with `--markdown` where the change reaches a link, a chip or a marked run. A replace or a delete
+takes the saved read of its blocks, an insert names the block it follows — and an
+application's insert takes the tab's view besides, since the discharge clause beside its
+standing is read off the question line and the answer's state and given by nobody — and each
+prints the ops of one prose `update` for that tab, every whole-block op guarded by the block's
 `h` and the read's `rev`; send them as printed. A refusal is a block that moved or a part the
 reader would not take back, and either is read again, never forced; an answer's paragraph
-whose change reaches a link, a chip or a marked run is written whole with `--markdown`, which
-is the tool's own way and not a way round it. No body is written, so no
+whose change reaches a link, a chip or a marked run is given whole with `--markdown`, over the
+tab's whole view, which is the tool's own way and not a way round it: what it prints is what
+the document takes — the paragraph's words as one text replace, and one format operation per
+mark the change takes off or puts on, since the document takes no in-page link in a replace's
+markdown and a text replace spreads a mark inside the changed words over all of them. A term's
+items on a header list go one insert per call, each named after the one the last ack placed,
+as the tool says. No body is written, so no
 link into the tab is retired and nothing is relinked. What a write leaves owed — a new term's
 chip in the answer, and the links a new term or entry wants — it names on stderr, and those go
 as format operations once the insert's ack has given the new heading its id.
 
+Between a part written in place and a tab written whole stands the section: `tools/apply.py
+$SCRATCH/graph.json <question> --outlines $SCRATCH/outlines --body --section <name>` renders one
+`## ` section and replaces its blocks alone, and `… --links --section <name>` puts back the
+links that write took off or retired. Only the links into that section retire, so `relink.py`
+finds nothing else stale, and a change the in-place tools refuse — a section's shape, a part
+whose change reaches more than one field — goes that way before it goes whole.
+
 Everything else is written whole: a change to the specification, a new question, a state, or a
-change to a question's or a term's structure the in-place tools refuse. Writing a tab whole is
-**two calls**, and the second is not optional: an in-page link needs a block id, only the
-document mints one, and a body write mints new ones. Both payloads come from the tooling, so
-neither is composed by hand.
+change to a question's or a term's structure the in-place and section writes refuse. Writing a
+tab whole is **two calls**, and the second is not optional: an in-page link needs a block id,
+only the document mints one, and a body write mints new ones. Both payloads come from the
+tooling, so neither is composed by hand. A body's replace names every block of the tab, so it
+carries no hash; its guard is the rev of the read its outline came from, which `apply.py` reads
+off the outline file and refuses to do without.
 
 For each tab, with its outline in `$SCRATCH/outlines/<question>.xml` — the `xml` of a write's
 ack, or a read with `projection: outline`:
@@ -307,6 +332,13 @@ a procedure rather than a script.
   every branch, and what a turn may read is the gate's decision, not the branch's. And the guard holds only where the agent is used: a canon question answered in any
   other way — in this run, in a session that has read the notebook, by a turn composed by hand —
   is answered in a context nobody vouched for, whatever it was given.
+- **What a run cannot apply stands on the page.** A run ends with nothing owed in the session
+  that owed it: a clause it could not apply is a pending note on the tab it bears on, and the
+  checker reports the note until a run takes it in. What no script decides is whether the
+  clause really could not be applied — a hinge's half and a note are written in place, a
+  section is written alone, and only what those refuse earns a note — and whether the note
+  says the clause faithfully enough for a later run to apply it without the session it came
+  from. Read every pending note you write as the dictation it will be.
 - **The page is a second artifact.** A tab written whole reaches the document in two calls,
   because a link needs a block id the document mints and a body write mints new ones. A part
   written in place is one call and retires nothing, but a part it inserts is a block no link

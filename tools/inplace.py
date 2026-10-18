@@ -12,6 +12,8 @@
     inplace.py thesis replace READ --block ID --text T [--anchor A ...] [--markdown]
     inplace.py thesis headline READ --heading ID --title T
     inplace.py hinge amend READ --block ID --date YYYY-MM-DD --by WHO --from WHAT
+    inplace.py words replace READ --block ID --text T [--markdown]
+    inplace.py note insert READ --after ID --text T
 
 READ is a saved ``search`` or ``view`` result of the tab (the tool's JSON, or
 its xml alone; `-` for stdin). Prints the ``ops`` of one prose ``update`` as
@@ -25,9 +27,28 @@ verbatim run of the answer read with it. An application is ``application.py``'s.
 chip or a marked run: ``--text`` is then the whole paragraph as the renderer
 spells it — a link as ``[words](#block)`` or ``[words](url)``, bold, italic
 and code as markdown, a chip as ``<?claude block KEY?>`` — and every chip the
-paragraph held must stand in it. ``thesis headline`` re-words an answer's
-``◆`` heading and the same words on every application line of the tab, so
-READ must be the tab's whole view.
+paragraph held must stand in it, where it stood. What is printed is what the
+document takes, and not that markdown: the document takes no in-page link in
+a replace's markdown, and a text replace spreads a mark inside the changed
+stretch over the new words. So the ops are one ``format`` per mark the change
+takes off, the paragraph's letters as one ``text`` replace, and one ``format``
+per mark it puts on, each found by its words counted over the tab; READ must
+be the tab's whole view. ``thesis headline`` re-words an answer's ``◆``
+heading and the same words on every application line of the tab, so there
+too READ must be the tab's whole view.
+
+``words replace`` re-words any block of words — a hinge's question half, a
+note, a paragraph no mode above names — and is decided by its read-back and
+not by which part the block is: READ must be the tab's whole view, the tab
+is read before and after, and the write is refused unless one field alone
+differs; ``--markdown`` is as for ``thesis replace``. ``note insert`` puts a
+note after the last block of its section, which is where the renderer
+writes one; a clause a dictation cannot apply goes there, opening with the
+word *pending*, and ``check.py`` reports it until a run takes it in.
+
+``incoming insert`` lands one item per call: the document takes no insert
+anchored on a block it has not placed yet, so a second item for the same
+raiser is a second call, ``--after-item`` the id the first call's ack gave.
 """
 
 from __future__ import annotations
@@ -117,6 +138,22 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--date", required=True)
     p.add_argument("--by", required=True)
     p.add_argument("--from", required=True, dest="origin")
+
+    words = parts.add_parser("words").add_subparsers(dest="mode", required=True)
+    p = words.add_parser("replace")
+    p.add_argument("read")
+    p.add_argument("--block", required=True)
+    p.add_argument("--text", required=True)
+    p.add_argument("--markdown", action="store_true",
+                   help="--text is the whole block as markdown, links and chips "
+                        "spelled out")
+
+    note = parts.add_parser("note").add_subparsers(dest="mode", required=True)
+    p = note.add_parser("insert")
+    p.add_argument("read")
+    p.add_argument("--after", required=True,
+                   help="the last block of the section the note goes on")
+    p.add_argument("--text", required=True)
     return ap
 
 
@@ -160,18 +197,23 @@ def _ops(args) -> list:
                                             args.raiser, args.raiser_tab, args.after_item)
         say("new: %s" % line)
         say("owed: the link on the anchor back to the term on %s" % args.raiser)
+        say("next: a further item of the list goes in a call of its own, --after-item "
+            "the id this insert's ack gives the item; the document places one item "
+            "per call and takes no anchor on a block it has not placed yet")
         return ops
     if part == "incoming" and mode == "delete":
         return inplace.incoming_delete(cli.source(args.read), args.header, args.item)
     if part == "thesis" and mode == "replace" and args.markdown:
-        ops, old, new, dropped, added = inplace.thesis_markdown(
+        ops, old, new, off, on = inplace.thesis_markdown(
             cli.source(args.read), args.block, args.text, args.anchor)
         say("old: %s\nnew: %s" % (old, new))
-        for words, target in dropped:
-            say("dropped: the link on %r to %s" % (words, target))
-        for words, target in added:
-            say("owed: a read of the block, to see the new link on %r lands "
-                "on %s" % (words, target))
+        for kind, words, target in off:
+            say("off: the %s on %r%s" % (kind, words, " to %s" % target if target else ""))
+        for kind, words, target in on:
+            say("on: the %s on %r%s" % (kind, words, " to %s" % target if target else ""))
+        say("sent: %d op(s), the letters %s" % (
+            len(ops), "as one text replace among them" if any(
+                op["op"] == "replace" for op in ops) else "unchanged"))
         return ops
     if part == "thesis" and mode == "headline":
         ops, old, new = inplace.thesis_headline(cli.source(args.read), args.heading,
@@ -188,6 +230,28 @@ def _ops(args) -> list:
         ops, old, new = inplace.hinge_amend(cli.source(args.read), args.block, args.date,
                                             args.by, args.origin)
         say("old: %s\nnew: %s" % (old, new))
+        return ops
+    if part == "words" and mode == "replace" and args.markdown:
+        ops, old, new, field, off, on = inplace.words_markdown(
+            cli.source(args.read), args.block, args.text)
+        say("old: %s\nnew: %s\nfield: %s" % (old, new, field))
+        for kind, words_, target in off:
+            say("off: the %s on %r%s" % (kind, words_, " to %s" % target if target else ""))
+        for kind, words_, target in on:
+            say("on: the %s on %r%s" % (kind, words_, " to %s" % target if target else ""))
+        say("sent: %d op(s), the letters %s" % (
+            len(ops), "as one text replace among them" if any(
+                op["op"] == "replace" for op in ops) else "unchanged"))
+        return ops
+    if part == "words" and mode == "replace":
+        ops, old, new, field = inplace.words_replace(cli.source(args.read), args.block,
+                                                     args.text)
+        say("old: %s\nnew: %s\nfield: %s" % (old, new, field))
+        return ops
+    if part == "note" and mode == "insert":
+        ops, section, content = inplace.note_insert(cli.source(args.read), args.after,
+                                                    args.text)
+        say("new: %s\non: %s" % (content, section))
         return ops
     raise Refused("no %s %s" % (part, mode))  # pragma: no cover - argparse decides
 

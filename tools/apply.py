@@ -20,6 +20,17 @@ the sidecar no longer names is on the page and nowhere else.
 prints an outline read or a write's ack. `--wanted` lists the tabs the links
 step needs before it can run. Refuses (exit 1) on a link whose target no
 outline accounts for.
+
+The body's replace names every block of the tab, so it carries no hash; its
+guard is the rev of the read the outline came from, read off the outline
+file, and an outline printing none is refused rather than sent unguarded.
+
+    apply.py graph.json canon --outlines out/ --body --section hinge
+    apply.py graph.json canon --outlines out/ --links --section hinge
+
+writes one section alone — its blocks replaced, then the links that write
+took off or retired put back — so that only the links into that section
+retire and `relink.py` finds nothing else stale.
 """
 
 from __future__ import annotations
@@ -51,6 +62,9 @@ def main(argv=None) -> int:
                          "the sidecar does not name, given the exported tab")
     ap.add_argument("--wanted", action="store_true",
                     help="list the tabs whose outlines the links step needs")
+    ap.add_argument("--section", metavar="NAME",
+                    help="with --body, replace this section's blocks alone; with "
+                         "--links, put back the links that write took off or retired")
     args = ap.parse_args(argv)
 
     graph = cli.load_graph(args.graph)
@@ -80,6 +94,8 @@ def main(argv=None) -> int:
                  % " and ".join(chosen))
     if not args.outlines and not args.unlink:
         ap.error("give --outlines DIR")
+    if args.section and not (args.body or args.links):
+        ap.error("--section goes with --body or --links")
 
     # the renderer's refusal is the gate on both: a tab the checker reports an
     # ERROR against is not written, links or no links
@@ -102,9 +118,16 @@ def main(argv=None) -> int:
                 print("no outline for %s in %s" % (args.question, args.outlines),
                       file=sys.stderr)
                 return 1
-            payload = ops.body_ops(graph, args.question, mine)
+            with open(os.path.join(args.outlines, args.question + ".xml"),
+                      encoding="utf-8") as fh:
+                rev = ops.outline_rev(fh.read())
+            if args.section:
+                payload = ops.section_ops(graph, args.question, mine, rev, args.section)
+            else:
+                payload = ops.body_ops(graph, args.question, mine, rev)
         else:
-            payload = ops.link_ops(graph, args.question, by_tab, graph.artifact)
+            payload = ops.link_ops(graph, args.question, by_tab, graph.artifact,
+                                   args.section)
     except ops.Unresolved as refusal:
         print("refusing to apply %s: %d link target(s) unresolved"
               % (args.question, len(refusal.missing)), file=sys.stderr)
