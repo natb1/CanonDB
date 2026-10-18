@@ -190,15 +190,30 @@ def reworded(runs: Sequence[Piece], new: str,
     # in-page link the reader drops; a block whose changes reach one is
     # written as markdown.
     at = 0
+    hit: List[Tuple[int, Piece]] = []
     for p in runs:
         end = at + len(p.text)
         if (p.chip is not None or (p.marks and p.text)) and s0 <= end and e0 >= at:
-            what = ("a chip to %s" % p.chip.get("label", "?") if p.chip is not None
-                    else "the marked run %r" % p.text)
-            raise Refused("%s stands in or against the stretch the document rewrites "
-                          "(from the first changed letter to the last), and would lose "
-                          "its mark or carry it onto the new words; %s" % (what, remedy))
+            hit.append((at, p))
         at = end
+    # A chip is named before a run beside it: a chip has no letters, so the
+    # usual way the stretch reaches one is new words that dropped the letters
+    # around it, and the run before it is only the first thing the stretch
+    # touches. Said that way, the caller knows what to keep.
+    chips = [(at, p) for at, p in hit if p.chip is not None]
+    if chips:
+        at, p = chips[0]
+        before, after = old[max(0, at - 12):at], old[at:at + 12]
+        raise Refused("a chip to %s stands in the stretch the document rewrites (from "
+                      "the first changed letter to the last) and would be lost: the new "
+                      "words must keep the letters around it as they stand, %r before it "
+                      "and %r after, or the change reaches the chip; %s"
+                      % (p.chip.get("label", "?"), before, after, remedy))
+    if hit:
+        raise Refused("the marked run %r stands in or against the stretch the document "
+                      "rewrites (from the first changed letter to the last), and would "
+                      "lose its mark or carry it onto the new words; %s"
+                      % (hit[0][1].text, remedy))
     # every chip and every marked run stands clear of the stretch, so each
     # keeps its letters and its marks — the in-page links too, so that what
     # is said back is what the page will hold

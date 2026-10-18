@@ -124,7 +124,7 @@
         "tools/test_inplace.py"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/35",
-      "rounds": 5
+      "rounds": 6
     },
     {
       "question": "docs-encoding",
@@ -223,6 +223,29 @@
         "tools/test_ruleset.py"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/32",
+      "rounds": 1
+    },
+    {
+      "question": "again",
+      "application": "the due-again read",
+      "files": [
+        "tools/hypo/again.py",
+        "tools/again.py",
+        "tools/test_again.py",
+        "skills/ask/SKILL.md"
+      ],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/35",
+      "rounds": 1
+    },
+    {
+      "question": "drift",
+      "application": "the drift count",
+      "files": [
+        "tools/hypo/drift.py",
+        "tools/drift.py",
+        "tools/test_drift.py"
+      ],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/35",
       "rounds": 1
     }
   ]

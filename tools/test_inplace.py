@@ -919,3 +919,27 @@ class WordsCliTest(unittest.TestCase):
                    "--text", "pending: a clause", stdin=view)
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertIn("on: Thesis", done.stderr)
+
+
+class ChipRefusalTest(unittest.TestCase):
+    """New words that dropped the letters around a chip are told so, not told
+    of the run that happens to stand before the chip."""
+
+    def test_the_chip_is_named_before_the_run_beside_it(self):
+        chip = ET.Element("mention", {"label": "disposition", "ref": "file/x"})
+        runs = [inplace.Piece(((page.LINK, "https://example.org/a"),), "his only act"),
+                inplace.Piece((), " "), inplace.Piece((), "", chip),
+                inplace.Piece((), "; the words")]
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.reworded(runs, "his only act; the words")
+        said = str(caught.exception)
+        self.assertIn("chip to disposition", said)
+        self.assertIn("act ' before it and '; the words' after", said)
+        self.assertNotIn("marked run", said)
+
+    def test_a_run_beside_the_stretch_with_no_chip_in_it_is_still_named(self):
+        runs = [inplace.Piece(((page.LINK, "https://example.org/a"),), "his only act"),
+                inplace.Piece((), "; the words")]
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.reworded(runs, "his only acts; the words")
+        self.assertIn("marked run", str(caught.exception))

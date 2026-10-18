@@ -1,6 +1,6 @@
 ---
 name: ask
-description: The principal puts the next question to the AI. Read the notebook, select the question that waits heaviest with nothing left to wait on, write its lineage out of canon, launch the canon agent to answer it in a clean context, test the answer against canon and the notebook, and record it in thread. Invoke as /principal:ask [question].
+description: The principal puts the next question to the AI. Read the notebook, select the question that waits heaviest with nothing left to wait on, write its lineage out of canon, launch the canon agent to answer it in a clean context, test the answer against canon and the notebook, and record it in thread; or, with --again, put a landed question again and record what comes back as a further answer beside the first. Invoke as /principal:ask [question] or /principal:ask --again [question].
 disable-model-invocation: true
 allowed-tools: mcp__claude_ai_Claude_Docs__read, mcp__claude_ai_Claude_Docs__update, mcp__Claude_Docs__read, mcp__Claude_Docs__update
 ---
@@ -16,6 +16,12 @@ other.
 `[question]` names the question to put, by id. Without it, the run puts the question the
 frontier puts first. With it, the run puts that question only if the frontier says it can be
 put, and says what it waits on otherwise.
+
+`--again` puts a question that has landed again, in a fresh context, because one answer is one
+draw and a second one dates the first: the run selects from the landed questions whose answer
+is dated — drawn from a model other than the one answering now, or against canon that has
+since moved above the question — and records what comes back as a further answer on the tab,
+beside the one that landed. `[question]` with it names which, and must be among them.
 
 The notebook is the document `.principal/notebook.json` names at the project's root. `tools/`
 below is the plugin's own, at `${CLAUDE_PLUGIN_ROOT}/tools/`, and `$SCRATCH` is the session's
@@ -60,6 +66,13 @@ forbids.
 
 When nothing can be put, stop and say what the frontier waits on. What it waits on is an
 answer above that has not landed, which is his merge and not this run's to supply.
+
+With `--again`, `tools/again.py $SCRATCH/graph.json --model <the model answering now> --root
+<the project's root>` lists instead the landed questions due again, each with what moved: the
+model its hinge names against the one given, and the canon above it against git under
+`canon/` since the commit its hinge names. Put the first, or `[question]` if it is listed, and
+say what the list holds otherwise. Its lineage is what `lineage.py` writes for any question:
+canon above it, and then the question; the answer that landed is not in it.
 
 **3 — Test the question before it is put.** The wording is the notebook's and is not rewritten
 here, but it is read against the drafting rules of `/principal:dictate` before it goes: it
@@ -112,6 +125,15 @@ with `check.py` and `verify.py`. `text-unquoted` and `text-unwrapped` may refuse
 it stands; an answer is verbatim, so the refusal is reported with the answer as the agent gave
 it, and nothing is recorded until the reader can hold it.
 
+A further draw (`--again`) goes on the tab the same way, as a thesis of its own beside the
+answer that landed, and its assent line carries step 6's reading of it against that answer:
+`assent: verbatim (AI), agrees with the earlier draw` where it says the same thing in other
+words, `assent: verbatim (AI), diverges from the earlier draw` where it does not; state `in
+thread`; provenance naming the model, this harness, the session and the canon commit as above.
+The question's state stays, and the landed answer stands until a merge replaces it: a lone
+divergence is noise until it recurs, and `tools/drift.py` counts the draws and their readings
+off these lines, so the word is one of those two and nothing else.
+
 **8 — The session, and no transcript.** The session an answer came from is recorded by its
 id, in the provenance line step 7 writes, and that is the whole of what this run keeps of it:
 no log of this session or of the agent's is copied into the project, and nothing is committed.
@@ -126,6 +148,10 @@ the principal reads it.
 
 What this run holds by reading, because no script decides it.
 
+- **A second draw is compared by reading.** Whether a further draw agrees with the answer that
+  landed is this run's judgement in step 6, and the assent line is the only place it lives:
+  `drift.py` counts the word there and judges nothing. Where two draws disagree and the
+  disagreement holds, the term it turns on is the one to put again, which is a dictation.
 - **The prompt is the question and the reference.** Nothing checks what the Agent tool was
   handed. Read the prompt once more before sending it, against the rule that the question is
   only the question.
