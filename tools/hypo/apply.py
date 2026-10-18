@@ -187,11 +187,34 @@ def headings(graph: Graph, tab: str, outline: List[Block]) -> Dict[str, str]:
         return {}  # a heading more or fewer, and the pairing means nothing
     out: Dict[str, str] = {}
     for words, block in zip(full, seen):
-        shown = block.text.rstrip(_ELIDED)
-        if shown and not words.startswith(shown):
+        if not spells(words, block.text):
             return {}  # the page is not this render; nothing here can be trusted
         out[words] = AMBIGUOUS if words in out else block.id
     return out
+
+
+def spells(words: str, shown: str) -> bool:
+    """Whether an outline's text for a block is consistent with the words the
+    renderer produced for it.
+
+    An outline prints the opening of each text run and elides the rest, so a
+    block edited in place across sessions — one run per edit — comes back as
+    several openings with an ellipsis after each: ``◆ Whe`` + ``re a calen…``
+    + ``; a writte…``. The first piece has to open the words, and each later
+    piece has to follow, in order, after the one before; nothing is said about
+    what the ellipses hide."""
+    pieces = shown.split(_ELIDED)
+    if not words.startswith(pieces[0]):
+        return False
+    at = len(pieces[0])
+    for piece in pieces[1:]:
+        if not piece:
+            continue
+        found = words.find(piece, at)
+        if found < 0:
+            return False
+        at = found + len(piece)
+    return True
 
 
 def resolve(graph: Graph, target: str, by_tab: Dict[str, List[Block]],
