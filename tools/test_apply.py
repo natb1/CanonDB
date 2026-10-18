@@ -91,6 +91,24 @@ class HeadingTest(unittest.TestCase):
                    for b in self.blocks]
         self.assertEqual(apply.headings(self.graph, self.tab, drifted), {})
 
+    def test_a_heading_edited_in_place_pairs_by_its_pieces(self):
+        """A block edited in place across sessions comes back as one text run
+        per edit, each elided on its own: ``◆ Whe`` + ``re a calen…`` +
+        ``; a writte…``. The pieces are checked in order against the render,
+        and what the ellipses hide is not."""
+        pieced = [b._replace(text=b.text[:5] + b.text[5:14] + "…" + b.text[20:27] + "…")
+                  if b.heading else b for b in self.blocks]
+        self.assertEqual(apply.headings(self.graph, self.tab, pieced),
+                         apply.headings(self.graph, self.tab, self.blocks))
+
+    def test_a_piece_out_of_order_pairs_nothing(self):
+        """The pieces have to follow one another as the words do; a later
+        piece found only before an earlier one is another page."""
+        words = apply.rendered_headings(render.body(self.graph, "ti-esti"))[0]
+        self.assertTrue(apply.spells(words, words[:4] + "…" + words[6:9] + "…"))
+        self.assertFalse(apply.spells(words, words[:4] + "…" + "zzzz…"))
+        self.assertFalse(apply.spells(words, words[6:9] + "…"))
+
     def test_a_doctype_is_refused_rather_than_parsed(self):
         with self.assertRaises(apply.Unresolved):
             apply.parse_outline("<doc><!DOCTYPE x><paragraph id='a.1'>x</paragraph></doc>")
