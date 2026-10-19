@@ -943,3 +943,27 @@ class ChipRefusalTest(unittest.TestCase):
         with self.assertRaises(appline.Refused) as caught:
             inplace.reworded(runs, "his only acts; the words")
         self.assertIn("marked run", str(caught.exception))
+
+
+class EndWordsTest(unittest.TestCase):
+    """The end and the method are blocks of words like the question half:
+    written in place, and decided by their read-back."""
+
+    def setUp(self):
+        self.graph = load()
+        self.view, self.by_id = view_of(self.graph, "ti-esti")
+        self.q = self.graph.get("ti-esti")
+
+    def test_the_end_reads_back_as_the_end(self):
+        bid = next(b for b, md in self.by_id.items() if md == self.q.hinge.end)
+        new = self.q.hinge.end + " And nothing more."
+        ops, old, after, field = inplace.words_replace(self.view, bid, new)
+        self.assertEqual(field, "hinge.end")
+        self.q.hinge.end = new
+        self.assertEqual(parsed(rewrite(self.by_id, bid, new=after), self.graph),
+                         parsed(render.body(self.graph, "ti-esti"), self.graph))
+
+    def test_the_method_reads_back_as_the_method(self):
+        bid = next(b for b, md in self.by_id.items() if md == self.q.hinge.method)
+        _, _, _, field = inplace.words_replace(self.view, bid, self.q.hinge.method + " And again.")
+        self.assertEqual(field, "hinge.method")

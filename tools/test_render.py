@@ -806,3 +806,40 @@ class RefusalTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HingeLayoutTest(unittest.TestCase):
+    """The hinge's four parts stand in one order: what the asking stood on,
+    what it is for, how that is read and pursued, what the answer was drawn
+    from. A part a question does not state is omitted, heading and all."""
+
+    def test_the_parts_stand_in_order_and_an_absent_one_is_omitted(self):
+        graph = load("valid")
+        page = render.body(graph, "ti-esti")
+        at = [page.index("### " + h) for h in (render.HINGE_QUESTION, render.HINGE_END,
+                                                render.HINGE_METHOD, render.HINGE_THESIS)]
+        self.assertEqual(at, sorted(at))
+        self.assertIn("### ⚓ end: what the asking is for", page)
+        self.assertIn("### ⚓ method: how the end is read and pursued", page)
+        below = render.body(graph, "canon")
+        self.assertNotIn(render.HINGE_END, below)
+        self.assertNotIn(render.HINGE_METHOD, below)
+
+    def test_a_word_only_the_end_brings_in_is_linked_in_the_end(self):
+        """The end is the asker's words, as the question half is, so a
+        definition's word that stands nowhere else is linked there — and never
+        in the provenance, which says it too."""
+        graph = load("valid")
+        root = graph.get("ti-esti")
+        word = root.definitions[0].word
+        self.assertIn(word, root.theses[0].text)
+        root.theses[0].text = root.theses[0].text.replace(word, "examination")
+        root.hinge.thesis += " · the %s was noted" % word
+        root.hinge.end += ", tested by %s" % word
+        page = render._as_the_page_holds_it(render.body(graph, "ti-esti"))
+        entry = [l for l in render.links(graph, "ti-esti")["links"]
+                 if l["anchor"] == word][0]
+        run = [r for r in text.occurrences(page, entry["find"]["text"])
+               if r.nth == entry["find"]["nth"]][0]
+        self.assertLess(page.index(render.HINGE_END), run.at)
+        self.assertLess(run.at, page.index(render.HINGE_METHOD))

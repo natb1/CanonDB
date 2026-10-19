@@ -442,19 +442,44 @@ class Note:
 
 @dataclass
 class Hinge:
-    """What the asking presupposes, and what the answer was drawn from."""
+    """What the asking presupposes, what it is for and how that end is read,
+    and what the answer was drawn from.
+
+    Four parts. The question part is what the asking stood on without
+    examining it. The end is what the asking is for: the human's own words,
+    stated at a root and inherited down the lineage, stated below only where
+    a lineage's is narrower. The method is how the end is read and pursued;
+    it names counts that are applications elsewhere and restates none. The
+    thesis part is what the answer was drawn from, the conditions of a run.
+    The first three are the asker's and bring words in; the last is the
+    encoding's and brings none.
+    """
 
     question: str = ""
+    end: str = ""
+    method: str = ""
     thesis: str = ""
 
+    #: the asker's parts, in the order the page holds them: what reach
+    #: judges, and where besides an answer a definition's word may stand
+    ASKING = ("question", "end", "method")
+
     def empty(self) -> bool:
-        return not (self.question.strip() or self.thesis.strip())
+        return not any(part.strip() for part in
+                       (self.question, self.end, self.method, self.thesis))
+
+    def asking(self) -> Iterator[Tuple[str, str]]:
+        """The asker's parts, each named, in page order."""
+        for name in self.ASKING:
+            yield name, getattr(self, name)
 
     @staticmethod
     def read(r: _Reader, data: Any, where: str) -> "Hinge":
         d = r.obj(data, where)
         return Hinge(
             question=r.text(d, "question", where, required=False),
+            end=r.text(d, "end", where, required=False),
+            method=r.text(d, "method", where, required=False),
             thesis=r.text(d, "thesis", where, required=False),
         )
 
@@ -474,7 +499,8 @@ class Question:
     answerer: str = ""
     theses: List[Thesis] = field(default_factory=list)
     #: the glossary: the words this question brings in, through an answer or
-    #: through the question half of its hinge
+    #: through the asker's parts of its hinge: the question half, the end
+    #: and the method
     definitions: List[Definition] = field(default_factory=list)
     notes: List[Note] = field(default_factory=list)
     hinge: Optional[Hinge] = None

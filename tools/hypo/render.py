@@ -434,8 +434,19 @@ def discharge_clause(q: Question, thesis: Thesis, app: Application) -> str:
 
 
 #: the heading of a hinge's question half: what the asking stood on, and so
-#: the one place besides an answer where a question brings a word in
+#: one place besides an answer where a question brings a word in
 HINGE_QUESTION = "%s question: what the asking presupposes" % GLYPHS["hinge"]
+
+#: the heading of a hinge's end: what the asking is for, in the human's own
+#: words, stated at a root and inherited below it; it brings words in too
+HINGE_END = "%s end: what the asking is for" % GLYPHS["hinge"]
+
+#: the heading of a hinge's method: how the end is read and pursued
+HINGE_METHOD = "%s method: how the end is read and pursued" % GLYPHS["hinge"]
+
+#: the asker's parts of the hinge with their headings, in page order
+HINGE_ASKING = (("question", HINGE_QUESTION), ("end", HINGE_END),
+                ("method", HINGE_METHOD))
 
 #: the heading of a hinge's thesis half, which every answer's provenance names
 HINGE_THESIS = "%s thesis: what the answer was drawn from" % GLYPHS["hinge"]
@@ -496,9 +507,11 @@ def _hinge_blocks(q: Question) -> List[str]:
     if q.hinge is None or q.hinge.empty():
         return []
     blocks: List[str] = []
-    if q.hinge.question.strip():
-        blocks.append("### %s" % HINGE_QUESTION)
-        blocks.append(q.hinge.question)
+    for name, heading in HINGE_ASKING:
+        part = getattr(q.hinge, name)
+        if part.strip():
+            blocks.append("### %s" % heading)
+            blocks.append(part)
     if q.hinge.thesis.strip():
         blocks.append("### %s" % HINGE_THESIS)
         blocks.append(q.hinge.thesis)
@@ -727,7 +740,8 @@ def links(graph: Graph, qid: str, par: Parents = None,
         home = _HOME[entry["kind"]]
         if (entry["kind"] == "definition" and runs
                 and not _inside(runs[0][1].at, sections.get(home))):
-            home = HINGE_QUESTION  # a word the hinge brought in
+            # a word the hinge's asking brought in: one pool over its parts
+            home = HINGE_QUESTION
         key = (text.fold(anchor), home)
         used = taken.get(key, 0)
         chosen = runs[used] if used < len(runs) else None
@@ -849,11 +863,12 @@ def eligible(page: str, kind: str, anchor: str,
     home = sections.get(_HOME[kind])
     runs = _eligible_in(page, kind, anchor, fixed, home) if home else []
     if kind == "definition" and not runs:
-        # a question brings a word in through an answer or through what its
-        # asking stood on; a word only the hinge brought in is linked there,
-        # in the question half and never in the answer's provenance
-        hinge = _hinge_question_span(page)
-        runs = _eligible_in(page, kind, anchor, fixed, hinge) if hinge else []
+        # a question brings a word in through an answer or through the
+        # asker's parts of its hinge: what the asking stood on, what it is
+        # for, how that is read. A word only the hinge brought in is linked
+        # there, in those parts and never in the answer's provenance
+        runs = [run for span in _hinge_asking_spans(page)
+                for run in _eligible_in(page, kind, anchor, fixed, span)]
     return runs
 
 
@@ -888,18 +903,23 @@ def _inside(at: int, span: Optional[Tuple[int, int]]) -> bool:
     return span is not None and span[0] <= at < span[1]
 
 
-def _hinge_question_span(page: str) -> Optional[Tuple[int, int]]:
-    """Where the question half of the hinge stands, heading excluded."""
+def _hinge_asking_spans(page: str) -> List[Tuple[int, int]]:
+    """Where the asker's parts of the hinge stand — the question half, the
+    end and the method — each heading excluded, in page order."""
+    headings = {"### " + heading for _, heading in HINGE_ASKING}
+    out: List[Tuple[int, int]] = []
     start: Optional[int] = None
     at = 0
     for line in (page or "").splitlines(keepends=True):
-        if start is None:
-            if line.strip() == "### " + HINGE_QUESTION:
-                start = at + len(line)
-        elif line.startswith("#"):
-            return (start, at)
+        if start is not None and line.startswith("#"):
+            out.append((start, at))
+            start = None
+        if line.strip() in headings:
+            start = at + len(line)
         at += len(line)
-    return None if start is None else (start, len(page or ""))
+    if start is not None:
+        out.append((start, len(page or "")))
+    return out
 
 
 def section_spans(page: str) -> Dict[Optional[str], Tuple[int, int]]:

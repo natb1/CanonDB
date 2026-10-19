@@ -171,3 +171,25 @@ class FixtureTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HingeTest(unittest.TestCase):
+    """A hinge has four parts: the asker's three, which bring words in, and
+    the answer's provenance, which brings none."""
+
+    def test_the_root_carries_an_end_and_a_method(self):
+        root = model.load(fixture("valid")).get("ti-esti")
+        self.assertTrue(root.hinge.end.strip())
+        self.assertTrue(root.hinge.method.strip())
+        self.assertEqual([name for name, _ in root.hinge.asking()],
+                         ["question", "end", "method"])
+
+    def test_a_question_below_the_root_may_state_neither(self):
+        canon = model.load(fixture("valid")).get("canon")
+        self.assertEqual((canon.hinge.end, canon.hinge.method), ("", ""))
+        self.assertFalse(canon.hinge.empty())
+
+    def test_an_end_alone_is_not_empty(self):
+        self.assertTrue(model.Hinge().empty())
+        self.assertFalse(model.Hinge(end="that the two go on").empty())
+        self.assertFalse(model.Hinge(method="read at each entry").empty())

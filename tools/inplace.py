@@ -37,7 +37,8 @@ be the tab's whole view. ``thesis headline`` re-words an answer's ``◆``
 heading and the same words on every application line of the tab, so there
 too READ must be the tab's whole view.
 
-``words replace`` re-words any block of words — a hinge's question half, a
+``words replace`` re-words any block of words — a hinge's question half,
+its end or its method, a
 note, a paragraph no mode above names — and is decided by its read-back and
 not by which part the block is: READ must be the tab's whole view, the tab
 is read before and after, and the write is refused unless one field alone

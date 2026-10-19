@@ -34,7 +34,8 @@ would read back as a mark of its own. What comes out is the block as the page
 will spell it afterwards, chips as the renderer's tokens, and that is what is
 read back.
 
-Every other block of words — a hinge's question half, a note, a paragraph
+Every other block of words — a hinge's question half, its end or its
+method, a note, a paragraph
 the writers above do not name — is written by one writer that is decided not
 by which part the block is but by its read-back: the whole tab is read
 through ``read.parse_tab`` before and after, and the write is refused unless

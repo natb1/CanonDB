@@ -94,7 +94,8 @@ this order:
 place**, block by block: an application with `tools/application.py`; a glossary entry, a term
 and its item on the header list of the tab it raises, the words of an answer, an answer's
 headline, or an amendment to a hinge's provenance with `tools/inplace.py`; and any other block of
-words — a hinge's question half, a note, a paragraph the modes above do not name — with
+words — a hinge's question half, its end or its method, a note, a paragraph the modes above do
+not name — with
 `tools/inplace.py words replace`, which is decided not by which part the block is but by its
 read-back: the tab is read before and after, and the write is refused unless one field alone
 differs, with `--markdown` where the change reaches a link, a chip or a marked run. A replace or a delete
@@ -241,6 +242,17 @@ a procedure rather than a script.
 - **Tradition relations are marked honestly.** Support and divergence are read, not derived.
 - **Hinges are complete.** What the asking presupposes, and what leaked into the wording, are the
   principal's judgement; nothing computes them.
+- **The end is the principal's, and never put.** A root's hinge states what the asking is for and
+  how that end is read and pursued, and a question below inherits both. `end-stated` holds the
+  half a script can: the author's root states both parts, a question below states the two
+  together or neither, and a party's question states none. What is left to read: that the end is
+  stated in words the root can reach, since the end brings words in as the question half does and
+  the root has no ancestors; that the method names counts which are applications elsewhere, and
+  restates none of them; that an end stated below the root is narrower than its lineage's and not
+  a second statement of it; and whether the end is right at all, which is examined where the
+  principal keeps what he keeps things for — his own notebook of ends — and never here. No turn
+  that answers a canon question sees the end: the clean-context rule keeps the hinge out, and the
+  end goes with it.
 - **No inline documentation.** A tab carries its content; what its shape means belongs on the
   encoding tabs. The checker cannot see the difference.
 - **Every datum has one home.** A question's metadata on its question line, an answer's on its
@@ -503,16 +515,18 @@ hinge, for a reader — is its **ancestors** and never its breadcrumb.
 - A clause that defers to a question some other clause raised is a mention; a clause that raises
   it is a term.
 - A word belongs on the question that introduces it, not the one that presents it. A question
-  introduces a word through an answer, or through what its asking stood on: the question half of
-  its hinge, which is how the root, with no ancestors, brings in "party" and "leak". The answer's
-  half records how the answer was drawn, in the encoding's own words, like the question's and
-  the answer's metadata; it introduces nothing and is not a user. Where a user cannot reach a
-  word over the ancestors, either the line is missing an edge or the definition is on the wrong
-  tab.
+  introduces a word through an answer, or through the asker's parts of its hinge: the question
+  half, what its asking stood on, which is how the root, with no ancestors, brings in "party" and
+  "leak"; and the end and the method, what the asking is for and how that is read, which bring
+  in the words the end needs. The answer's half records how the answer was drawn, in the
+  encoding's own words, like the question's and the answer's metadata; it introduces nothing and
+  is not a user. Where a user cannot reach a word over the ancestors, either the line is missing
+  an edge or the definition is on the wrong tab.
 - A word comes in on a hinge only because the asking stood on it. Every question sits below the
   root, so the root's hinge is where any hard-to-reach word could be parked — and parking it
   there silences the one signal reach gives, a missing edge. The hinge must be true before it
   is useful.
 - A hinge is what an act stands on without examining it. It is inherited down the lineage and
   stated only where it differs, and one repeated across siblings belongs to a question above
-  them.
+  them. The end and the method are inherited the same way: stated at the root, and below it only
+  where a lineage's end is narrower than the one above it.

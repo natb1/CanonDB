@@ -547,12 +547,14 @@ def definition_anchorable(graph: Graph) -> Yield:
     substring allowed: `grant` was found in `grants`, the check passed, and
     the renderer had nowhere to put the link.
 
-    A question brings a word in two ways: through an answer, or through what
-    its asking stood on, which is the question half of its hinge. The root
-    has no ancestors, so a word its hinge presupposed could be defined
-    nowhere it could reach until the hinge counted. The answer's half does
-    not count: it records how the answer was drawn, in the encoding's own
-    words, and brings none in.
+    A question brings a word in two ways: through an answer, or through the
+    asker's parts of its hinge — the question half, which is what its asking
+    stood on; the end, which is what the asking is for; and the method, how
+    that end is read. The root has no ancestors, so a word its hinge
+    presupposed, or its end needs, could be defined nowhere it could reach
+    until the hinge counted. The answer's half does not count: it records
+    how the answer was drawn, in the encoding's own words, and brings none
+    in.
     """
     for q in graph.questions:
         pool = [text.plain(thesis.text) for thesis in q.theses]
@@ -561,7 +563,7 @@ def definition_anchorable(graph: Graph) -> Yield:
         pool += [text.plain("%s %s" % (edge.note, edge.counter))
                  for thesis in q.theses for edge in thesis.traditions]
         if q.hinge is not None:
-            pool.append(text.plain(q.hinge.question))
+            pool.extend(text.plain(part) for _, part in q.hinge.asking())
         for definition in q.definitions:
             if not any(text.occurrences(body, form, True)
                        for body in pool for form in text.forms(definition.word)):
@@ -589,7 +591,7 @@ def pressure_shape(graph: Graph) -> Yield:
 
 
 @check("hinge-present",
-       "every question carries a hinge with both its parts filled")
+       "every question carries a hinge with its question and thesis parts filled")
 def hinge_present(graph: Graph) -> Yield:
     """A tradition was once exempt, on the reading that it is read rather than
     asked and so presupposes nothing here. But a reading has presuppositions of
@@ -609,6 +611,45 @@ def hinge_present(graph: Graph) -> Yield:
                    if not part.strip()]
         if missing:
             yield q.id, "the hinge records no %s part" % " and no ".join(missing)
+
+
+@check("end-stated",
+       "the author's root states an end and its method; a question below states the two "
+       "together or neither; a party's question states neither")
+def end_stated(graph: Graph) -> Yield:
+    """The end is what the asking is for and the method is how the end is
+    read and pursued: the human's judgement, stated at his root in his own
+    words and inherited down the lineage, stated below only where a
+    lineage's is narrower. Neither is a goal alone — an end nothing reads is
+    a wish, and a reading with no end counts nothing — so a question that
+    states one states the other. A party's question states none: reading a
+    party has no end of ours, and its tabs are joined here by citation alone.
+
+    Whether the end is right, and whether the method's counts would show it
+    met, is no script's. The root's end stands on the human's own notebook
+    of what he keeps things for, which this graph does not hold; a partial
+    graph may stand wholly below the root, and there its absence says
+    nothing.
+    """
+    parts = lambda h: (("end", h.end.strip()), ("method", h.method.strip()))
+    for q in graph.questions:
+        if q.hinge is None:
+            continue  # `hinge-present` reports the absence itself
+        stated = [name for name, part in parts(q.hinge) if part]
+        if q.tradition:
+            if stated:
+                yield q.id, ("a party's question states %s, and reading a party has "
+                             "no end of ours" % " and ".join(stated))
+            continue
+        if q.kind == "root":
+            missing = [name for name, part in parts(q.hinge) if not part]
+            if missing:
+                yield q.id, ("the root states no %s: what the asking is for, and how "
+                             "that is read and pursued, are stated where everything "
+                             "below inherits them" % " and no ".join(missing))
+        elif len(stated) == 1:
+            yield q.id, ("the hinge states %s and no %s, and the two are stated "
+                         "together" % (stated[0], "method" if stated == ["end"] else "end"))
 
 
 @check("provenance-complete",
@@ -774,11 +815,15 @@ def _prose(q) -> Iterator[Tuple[str, str]]:
     the answer's hinge, which records how the answer was drawn in those same
     words; and not an answer landed in canon, which cannot be reworded at
     all. An answer held or in thread is in the notebook only, whoever gave
-    it, so it is judged like the rest.
+    it, so it is judged like the rest; so are the asker's parts of the
+    hinge, what the asking stood on, what it is for and how that is read,
+    which are his words and bring words in.
     """
     yield "the question", q.question
     if q.hinge is not None:
         yield "the question's hinge", q.hinge.question
+        yield "the question's end", q.hinge.end
+        yield "the question's method", q.hinge.method
     for definition in q.definitions:
         yield "%s %s" % (GLYPHS["glossary"], definition.word), definition.body
         if definition.tradition is not None and definition.tradition.note:
@@ -1203,6 +1248,8 @@ def _parted(q) -> Iterator[Tuple[str, str]]:
         yield "the body of %s %s" % (GLYPHS["glossary"], definition.word), definition.body
     if q.hinge is not None:
         yield "the hinge's question", q.hinge.question
+        yield "the hinge's end", q.hinge.end
+        yield "the hinge's method", q.hinge.method
         yield "the hinge's thesis", q.hinge.thesis
 
 
@@ -1225,8 +1272,8 @@ def text_unquoted(graph: Graph) -> Yield:
     The same holds of a block opening on ``#``, which the reader takes for a
     heading and ends the text at, and of a block that is one of the two
     citation headings, which opens the citations; and it holds of every text
-    the reader parts into blocks — a definition's body and the hinge's two
-    halves as much as an answer's text.
+    the reader parts into blocks — a definition's body and the hinge's four
+    parts as much as an answer's text.
     """
     for q in graph.questions:
         for what, held in _parted(q):

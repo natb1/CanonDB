@@ -584,7 +584,10 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
 
     hinge: dict = {}
     for heading, body in _subsections(named.get("hinge", []), GLYPHS["hinge"]):
-        part = "question" if heading.startswith("question:") else "thesis"
+        # the heading names the part: one of the asker's three, or else the
+        # provenance, whose heading no amendment reaches
+        part = next((name for name in ("question", "end", "method")
+                     if heading.startswith(name + ":")), "thesis")
         hinge[part] = SEPARATOR.join(body)
     if hinge:
         q["hinge"] = hinge

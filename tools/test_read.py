@@ -501,3 +501,20 @@ class RefusedShapeTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HingePartsTest(unittest.TestCase):
+    """Each part of the hinge reads back as the part its heading names."""
+
+    def test_the_end_and_the_method_read_back_as_their_own_parts(self):
+        graph = load("valid")
+        root = graph.get("ti-esti")
+        parsed = read.parse_tab(render.body(graph, "ti-esti"), chip_ids(graph))
+        self.assertEqual(parsed["hinge"], {
+            "question": root.hinge.question, "end": root.hinge.end,
+            "method": root.hinge.method, "thesis": root.hinge.thesis})
+
+    def test_a_hinge_without_them_reads_back_without_them(self):
+        graph = load("valid")
+        parsed = read.parse_tab(render.body(graph, "canon"), chip_ids(graph))
+        self.assertEqual(sorted(parsed["hinge"]), ["question", "thesis"])
