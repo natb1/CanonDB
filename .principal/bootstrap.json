@@ -47,7 +47,7 @@
       "files": [
         "skills/dictate/SKILL.md"
       ],
-      "pull_request": "pending: branch bootstrap/the-end-and-its-method, the push held for the principal's go-ahead",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3191",
       "rounds": 5
     },
     {
@@ -91,7 +91,7 @@
         "tools/read.py",
         "tools/test_read.py"
       ],
-      "pull_request": "pending: branch bootstrap/the-end-and-its-method, the push held for the principal's go-ahead",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3191",
       "rounds": 4
     },
     {
@@ -123,7 +123,7 @@
         "tools/inplace.py",
         "tools/test_inplace.py"
       ],
-      "pull_request": "pending: branch bootstrap/the-end-and-its-method, the push held for the principal's go-ahead",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3191",
       "rounds": 8
     },
     {
@@ -213,7 +213,7 @@
         "tools/test_scope.py",
         ".gitignore"
       ],
-      "pull_request": "pending: branch bootstrap/the-end-and-its-method, the push held for the principal's go-ahead",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3191",
       "rounds": 6
     },
     {
