@@ -118,7 +118,20 @@ def parse_outline(xml: str) -> List[Block]:
         out.append(Block(id=bid, kind=el.tag,
                          heading=int(el.get("heading", 0) or 0),
                          text=" ".join("".join(el.itertext()).split())))
+        prefix = _carried(el, prefix)
     return out
+
+
+def _carried(el, prefix: str) -> str:
+    """The session prefix as it stands after a block. A read prints a full id on
+    whatever carries one first, a run of text inside a block included, and
+    abbreviates every id after it: so the block after a nested full id takes that
+    id's prefix, and not the prefix its own block's id was printed with."""
+    for sub in el.iter():
+        sid = sub.get("id", "")
+        if sid and "." in sid and not sid.startswith("."):
+            prefix = sid.split(".")[0]
+    return prefix
 
 
 def _scan(body: str) -> List[Block]:
@@ -137,6 +150,9 @@ def _scan(body: str) -> List[Block]:
         out.append(Block(id=bid, kind=m.group("kind"),
                          heading=int(attrs.get("heading", 0) or 0),
                          text=" ".join(words.split())))
+        for name, value in _ATTR.findall(m.group("text") or ""):
+            if name == "id" and "." in value and not value.startswith("."):
+                prefix = value.split(".")[0]   # as _carried() reads a parsed block
     return out
 
 

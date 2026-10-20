@@ -43,6 +43,16 @@ class OutlineTest(unittest.TestCase):
             "<paragraph id='.7'>two</paragraph></doc>")
         self.assertEqual([b.id for b in blocks], ["abc.0", "abc.7"])
 
+    def test_a_block_after_a_nested_full_id_takes_that_ids_prefix(self):
+        """A read prints a full id on whatever carries one first, a run of text
+        inside a block included, and abbreviates every id after it: the block
+        after a nested full id is short under that id's prefix, not its own
+        block's. Both parsers read it so."""
+        body = ("<paragraph id='abc.1'><text id='.2'>one </text><text id='xyz.3'>two</text></paragraph>"
+                "<paragraph id='.4'>three</paragraph>")
+        self.assertEqual([b.id for b in apply.parse_outline("<doc>%s</doc>" % body)], ["abc.1", "xyz.4"])
+        self.assertEqual([b.id for b in apply._scan(body)], ["abc.1", "xyz.4"])
+
     def test_a_heading_keeps_its_words_and_drops_its_chip(self):
         """A target names the words a heading opens with; the chip that closes
         it is a token before the write and a block id after it."""
