@@ -47,8 +47,8 @@
       "files": [
         "skills/dictate/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/35",
-      "rounds": 4
+      "pull_request": "pending: branch bootstrap/the-end-and-its-method, the push held for the principal's go-ahead",
+      "rounds": 5
     },
     {
       "question": "wording",
@@ -91,8 +91,8 @@
         "tools/read.py",
         "tools/test_read.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/30",
-      "rounds": 3
+      "pull_request": "pending: branch bootstrap/the-end-and-its-method, the push held for the principal's go-ahead",
+      "rounds": 4
     },
     {
       "question": "docs-encoding",
@@ -123,8 +123,8 @@
         "tools/inplace.py",
         "tools/test_inplace.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/37",
-      "rounds": 7
+      "pull_request": "pending: branch bootstrap/the-end-and-its-method, the push held for the principal's go-ahead",
+      "rounds": 8
     },
     {
       "question": "docs-encoding",
@@ -181,6 +181,7 @@
         "tools/fixtures/invalid-dictation-pending.json",
         "tools/fixtures/invalid-definition-once.json",
         "tools/fixtures/invalid-divergence-counter.json",
+        "tools/fixtures/invalid-end-stated.json",
         "tools/fixtures/invalid-fields-parted.json",
         "tools/fixtures/invalid-headline-not-identifier.json",
         "tools/fixtures/invalid-hinge-present.json",
@@ -212,8 +213,8 @@
         "tools/test_scope.py",
         ".gitignore"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/35",
-      "rounds": 5
+      "pull_request": "pending: branch bootstrap/the-end-and-its-method, the push held for the principal's go-ahead",
+      "rounds": 6
     },
     {
       "question": "recognition",
