@@ -52,7 +52,8 @@ _ELEMENT = re.compile(
     r"<(?P<kind>[A-Za-z][\w-]*)(?P<attrs>[^>]*?)"
     r"(?:/>|>(?P<text>.*?)</(?P=kind)>)",
     re.DOTALL)
-_ATTR = re.compile(r"(\w+)='([^']*)'")
+#: an attribute as an outline prints one, its name whole: ``data-id`` is not ``id``
+_ATTR = re.compile(r"(?<![\w:-])(\w+)='([^']*)'")
 _TAG = re.compile(r"<[^>]*>")
 
 #: A chip, as an outline prints one. It stands in a heading, so it has to come
@@ -95,9 +96,10 @@ def parse_outline(xml: str) -> List[Block]:
     """The top-level blocks of one tab, in order.
 
     Ids are printed in full once and abbreviated to ``.<clock>`` after that, so
-    the session prefix carries forward from the last full id seen. A chip is a
-    processing instruction, which the parser drops for us — and must be
-    dropped, since a heading ends in one and a target names only the words.
+    the session prefix carries forward from the last full id seen — a run's
+    inside a block as much as a block's, as ``page.full_ids`` carries it. A
+    chip is a processing instruction, which the parser drops for us — and must
+    be dropped, since a heading ends in one and a target names only the words.
     """
     body = _DOC.sub("", xml or "").strip()
     if _DOCTYPE.search(body):
@@ -107,31 +109,17 @@ def parse_outline(xml: str) -> List[Block]:
     except ElementTree.ParseError:
         return _scan(body)  # an unescaped character should not lose the tab
     out: List[Block] = []
-    prefix = ""
+    full = page.full_ids(root)
     for el in root:
-        bid = el.get("id", "")
+        bid = full[el]
         if not bid:
             if el.tag == "gap":  # a sinceRev read folds what did not change
                 out.append(Block(id="", kind="gap", heading=0, text=""))
             continue
-        bid, prefix = page.expand_id(bid, prefix)
         out.append(Block(id=bid, kind=el.tag,
                          heading=int(el.get("heading", 0) or 0),
                          text=" ".join("".join(el.itertext()).split())))
-        prefix = _carried(el, prefix)
     return out
-
-
-def _carried(el, prefix: str) -> str:
-    """The session prefix as it stands after a block. A read prints a full id on
-    whatever carries one first, a run of text inside a block included, and
-    abbreviates every id after it: so the block after a nested full id takes that
-    id's prefix, and not the prefix its own block's id was printed with."""
-    for sub in el.iter():
-        sid = sub.get("id", "")
-        if sid and "." in sid and not sid.startswith("."):
-            prefix = sid.split(".")[0]
-    return prefix
 
 
 def _scan(body: str) -> List[Block]:
@@ -140,19 +128,21 @@ def _scan(body: str) -> List[Block]:
     prefix = ""
     for m in _ELEMENT.finditer(body):
         attrs = dict(_ATTR.findall(m.group("attrs") or ""))
-        bid = attrs.get("id", "")
-        if not bid:
-            if m.group("kind") == "gap":
-                out.append(Block(id="", kind="gap", heading=0, text=""))
-            continue
-        bid, prefix = page.expand_id(bid, prefix)
-        words = _TAG.sub("", _CHIP.sub("", m.group("text") or ""))
-        out.append(Block(id=bid, kind=m.group("kind"),
-                         heading=int(attrs.get("heading", 0) or 0),
-                         text=" ".join(words.split())))
-        for name, value in _ATTR.findall(m.group("text") or ""):
-            if name == "id" and "." in value and not value.startswith("."):
-                prefix = value.split(".")[0]   # as _carried() reads a parsed block
+        bid, prefix = page.expand_id(attrs.get("id", ""), prefix)
+        if bid:
+            words = _TAG.sub("", _CHIP.sub("", m.group("text") or ""))
+            out.append(Block(id=bid, kind=m.group("kind"),
+                             heading=int(attrs.get("heading", 0) or 0),
+                             text=" ".join(words.split())))
+        elif m.group("kind") == "gap":  # a sinceRev read folds what did not change
+            out.append(Block(id="", kind="gap", heading=0, text=""))
+        # the prefix carries over every id inside the element too, as
+        # ``page.full_ids`` carries it over a parsed one — read off the tags
+        # alone, since ``id='…'`` standing in the words is words
+        for tag in _TAG.finditer(m.group("text") or ""):
+            for name, value in _ATTR.findall(tag.group()):
+                if name == "id":
+                    _, prefix = page.expand_id(value, prefix)
     return out
 
 

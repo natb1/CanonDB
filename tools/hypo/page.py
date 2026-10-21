@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import json
 import xml.etree.ElementTree as ET
-from typing import List, Sequence, Tuple
+from typing import Dict, List, Sequence, Tuple
 
 from . import text
 
@@ -46,6 +46,31 @@ def expand_id(bid: str, session: str) -> Tuple[str, str]:
     if "." in bid:
         return bid, bid.split(".")[0]
     return bid, session
+
+
+def full_ids(root: ET.Element) -> Dict[ET.Element, str]:
+    """Every element of a view with its id made whole, in document order.
+
+    The session prefix is printed once, on whatever carries an id first — a
+    retired block's ``gone`` as often as not, or a run of text inside a
+    block — and every id after it is short, so the prefix is carried over
+    every id the view prints and not only over the blocks'. The one walk for
+    every reader of a view's ids: a walk that carried the prefix from the
+    blocks alone named the block after a nested full id under the wrong
+    session, and a write naming the block as one reader held it was refused
+    against the read as another held it.
+    """
+    out: Dict[ET.Element, str] = {}
+    session = ""
+    for node in root.iter():
+        out[node], session = expand_id(node.get("id", ""), session)
+    return out
+
+
+def own_id(node: ET.Element, full: Dict[ET.Element, str]) -> str:
+    """A top-level element's id: its own, or, printed without one, the
+    first under it. ``full`` is ``full_ids`` of the view it stands in."""
+    return next((full[sub] for sub in node.iter() if full[sub]), "")
 
 
 def view_xml(source) -> str:
@@ -225,15 +250,14 @@ def blocks(source) -> List[Tuple[str, str]]:
     if root.get("sinceRev", "0") != "0" or root.find(".//gap") is not None:
         raise ValueError("a partial view, since rev %s: it folds the blocks that did "
                          "not change, and spells no whole tab" % root.get("sinceRev"))
-    session = ""
+    full = full_ids(root)
     out: List[Tuple[str, str]] = []
     for node in root:
-        bid, session = expand_id(node.get("id", ""), session)
         if node.tag == "gone":
             continue
         words = _block(node)
         if words.strip():
-            out.append((bid, words))
+            out.append((own_id(node, full), words))
     return out
 
 

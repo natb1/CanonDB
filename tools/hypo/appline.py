@@ -108,12 +108,7 @@ def blocks(source) -> Dict[str, ET.Element]:
     except (ET.ParseError, ValueError) as exc:
         raise Refused("the read is not a view or a search result: %s" % exc)
     out: Dict[str, ET.Element] = {}
-    session = ""
-    for node in root.iter():
-        # the session prefix is printed once, on whatever carries an id
-        # first — a retired block's ``gone`` as often as not — so it is
-        # taken from every id and not only from a block's
-        bid, session = page.expand_id(node.get("id", ""), session)
+    for node, bid in page.full_ids(root).items():
         if bid and node.tag in ("paragraph", "list", "listItem", "table",
                                 "blockquote"):
             out[bid] = node
@@ -274,15 +269,8 @@ def opens_section(source, after: str) -> bool:
     of the section that stands before it, or the tab would read back with
     the new section out of its place."""
     root = ET.fromstring(page.view_xml(source))
-    own = set(id(child) for child in root)
-    top: List[tuple] = []
-    session = ""
-    for node in root.iter():
-        # the session prefix carries over every id, nested ones included,
-        # as ``blocks`` reads it
-        bid, session = page.expand_id(node.get("id", ""), session)
-        if bid and id(node) in own and node.tag != "gone":
-            top.append((bid, node))
+    full = page.full_ids(root)
+    top = [(full[node], node) for node in root if full[node] and node.tag != "gone"]
     names = [(i, page.inline(node).strip()) for i, (_, node) in enumerate(top)
              if node.get("heading") == "2"]
     if any(name == SECTION for _, name in names) or any(

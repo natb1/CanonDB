@@ -9,7 +9,7 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-from hypo import page, read  # noqa: E402
+from hypo import appline, page, read  # noqa: E402
 from support import read_fixture, run
 
 FIXTURES = os.path.join(HERE, "fixtures")
@@ -81,6 +81,16 @@ class SpellingTest(unittest.TestCase):
         self.assertEqual(ids[0], "mg8a8pjx8b4.9")
         self.assertIn("mg8a8pjx8b4.1421", ids)
         self.assertNotIn("mg8a8pjx8b4.0", ids)  # gone
+
+    def test_the_session_carries_over_a_run_s_id_inside_a_block(self):
+        """A read prints the full id on whatever carries one first, a run of
+        text inside a block included: the block after it is short under that
+        run's session, and is named so here as ``appline.blocks`` names it."""
+        xml = ("<doc rev='1' sinceRev='0'><paragraph id='abc.1'><text id='.2'>one </text>"
+               "<text id='xyz.3'>two</text></paragraph>"
+               "<paragraph id='.4'><text id='.5'>three</text></paragraph></doc>")
+        self.assertEqual([bid for bid, _ in page.blocks(xml)], ["abc.1", "xyz.4"])
+        self.assertEqual(sorted(appline.blocks(xml)), ["abc.1", "xyz.4"])
 
     def test_the_cli_writes_one_md_per_view(self):
         with tempfile.TemporaryDirectory() as tmp:

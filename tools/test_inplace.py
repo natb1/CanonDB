@@ -964,6 +964,22 @@ class EndWordsTest(unittest.TestCase):
         _, _, _, field = inplace.words_replace(self.view, bid, self.q.hinge.method + " And again.")
         self.assertEqual(field, "hinge.method")
 
+    def test_a_block_after_a_nested_full_id_is_written_under_that_id_s_session(self):
+        """A read prints a full id on whatever carries one first, a run inside
+        a block included, and the block after it is short under that run's
+        session. Every reader of the view names it so, or the write that named
+        it as the document does was refused against the read-back."""
+        bid = next(b for b, md in self.by_id.items() if md == self.q.hinge.end)
+        n = int(bid.rsplit(".", 1)[1])
+        before = self.view[:self.view.index('<paragraph id=".%d"' % n)]
+        run = list(re.finditer(r'<(text|mention) id="\.(\d+)"', before))[-1]
+        view = (self.view[:run.start()] + '<%s id="zzz9.%s"' % run.groups()
+                + self.view[run.end():])
+        _, _, _, field = inplace.words_replace(view, "zzz9.%d" % n, self.q.hinge.end + " And more.")
+        self.assertEqual(field, "hinge.end")
+        with self.assertRaises(appline.Refused):
+            inplace.words_replace(view, bid, self.q.hinge.end + " And more.")
+
 
 if __name__ == "__main__":
     unittest.main()

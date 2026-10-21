@@ -877,17 +877,12 @@ def one_field(before: dict, after: dict) -> str:
 
 def _top_block_of(source, bid: str) -> Optional[str]:
     """The id of the top-level block that holds ``bid``: itself, or the
-    list or blockquote it stands in."""
+    list or blockquote it stands in, named as ``page.blocks`` names it."""
     root = ET.fromstring(page.view_xml(source))
-    session = ""
+    full = page.full_ids(root)
     for child in root:
-        own: Optional[str] = None
-        for node in child.iter():
-            full, session = page.expand_id(node.get("id", ""), session)
-            if own is None and full:
-                own = full
-            if full == bid:
-                return own
+        if any(full[node] == bid for node in child.iter()):
+            return page.own_id(child, full)
     return None
 
 
@@ -970,8 +965,9 @@ def _words_block(source, bid: str) -> Tuple[ET.Element, List[Piece], Dict[str, s
 def words_replace(source, bid: str, new: str, ids: Optional[Dict[str, str]] = None
                   ) -> Tuple[List[dict], str, str, str]:
     """Any block of words re-worded in place as ``text``, chips and marks
-    kept: a hinge's question half, a note, a paragraph the other writers
-    do not name. Decided by its read-back, not by which part it is: the
+    kept: a hinge's question half, its end or its method, a note, a
+    paragraph the other writers do not name. Decided by its read-back, not
+    by which part it is: the
     whole tab is read before and after, and the write is refused unless
     one field alone differs. A thesis keeps the anchors of its terms.
     Returned with the op: the old and new markdown, and the field."""
