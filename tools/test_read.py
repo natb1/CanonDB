@@ -515,6 +515,20 @@ class HingePartsTest(unittest.TestCase):
         parsed = read.parse_tab(render.body(graph, "canon"), chip_ids(graph))
         self.assertEqual(sorted(parsed["hinge"]), ["question", "thesis"])
 
+    def test_a_hinge_heading_naming_no_part_is_refused(self):
+        """A part under a heading the renderer does not write would read
+        back under another part's name — the end as the provenance, which the
+        real provenance then overwrote — or not at all; it is refused like
+        every other heading the grammar does not hold."""
+        graph = load("valid")
+        page = render.body(graph, "ti-esti")
+        for heading in ("End: what the asking is for", "ends: what the asking is for",
+                        "end what the asking is for"):
+            edited = page.replace(render.HINGE_END, "%s %s" % (render.GLYPHS["hinge"], heading))
+            with self.subTest(heading=heading), self.assertRaises(read.ParseError) as caught:
+                read.parse_tab(edited, chip_ids(graph))
+            self.assertIn("hinge heading", str(caught.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

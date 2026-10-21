@@ -151,7 +151,10 @@ class LineageTest(unittest.TestCase):
             for definition in q.definitions:
                 self.assertNotIn(definition.body, text)
             if q.hinge:
-                self.assertNotIn(q.hinge.question, text)
+                # the clean-context rule keeps the hinge out, the end with it
+                for _, part in q.hinge.asking():
+                    if part.strip():
+                        self.assertNotIn(part.strip(), text)
         self.assertTrue(text.rstrip().endswith(graph.get("attenuation").question.strip()))
         self.assertEqual(text.count(turn.RULE), len(turn.above(graph, "attenuation")))
 

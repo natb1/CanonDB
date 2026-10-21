@@ -344,6 +344,16 @@ class DetailTest(unittest.TestCase):
         findings = spec.run(graph, only=["definition-anchorable"])
         self.assertEqual([f.question for f in findings], ["canon"])
 
+    def test_a_word_may_come_in_on_the_method(self):
+        graph = load("valid")
+        root = graph.get("ti-esti")
+        word = root.definitions[0].word
+        root.theses[0].text = root.theses[0].text.replace(word, "examination")
+        findings = spec.run(graph, only=["definition-anchorable"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        root.hinge.method += "; the %s is what tests it" % word
+        self.assertEqual(spec.run(graph, only=["definition-anchorable"]), [])
+
     def test_only_the_ai_s_questions_are_put(self):
         """Another party's question is read, not asked, and lands no more than
         the principal's does; the fixture covers his, this covers theirs."""
@@ -445,6 +455,18 @@ class DetailTest(unittest.TestCase):
         findings = spec.run(graph, only=["reach"])
         self.assertEqual([f.question for f in findings], ["canon"])
         self.assertIn("attenuation", findings[0].message)
+
+    def test_the_end_is_judged_for_reach_like_the_question_half(self):
+        """The end is the asker's words; a defined word it uses must be in
+        reach from the root, which reaches its own glossary and no other."""
+        graph = load("valid")
+        root = graph.get("ti-esti")
+        self.assertEqual(spec.run(graph, only=["reach"]), [])
+        root.hinge.end += ", whatever grade the record carries"
+        findings = spec.run(graph, only=["reach"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        self.assertIn("the question's end", findings[0].message)
+        self.assertIn("'grade'", findings[0].message)
 
     def test_reach_says_a_word_used_twice_once(self):
         """A word out of reach is one thing out of reach, however often the
@@ -721,6 +743,13 @@ class PartedTextTest(unittest.TestCase):
         self.assertEqual([f.question for f in findings], ["canon"])
         self.assertIn("hinge", findings[0].message)
 
+    def test_a_blockquote_in_the_end_is_refused(self):
+        graph = load("valid")
+        graph.get("ti-esti").hinge.end = "> what the asking is for"
+        findings = spec.run(graph, only=["text-unquoted"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        self.assertIn("the hinge's end", findings[0].message)
+
     def test_a_text_ending_in_a_line_break_is_said_so(self):
         graph = load("valid")
         graph.get("canon").theses[0].text += "\n"
@@ -835,7 +864,8 @@ class DictationPendingTest(unittest.TestCase):
 
 class EndStatedTest(unittest.TestCase):
     """The end and its method: stated at the author's root, together or not
-    at all below it, and never on a party's question."""
+    at all below it, and never on a party's question. What the two bring in
+    and how they are read is each check's own, and is tested beside it."""
 
     def test_the_root_is_reported_for_the_part_it_lacks(self):
         graph = load("valid")
@@ -864,36 +894,6 @@ class EndStatedTest(unittest.TestCase):
         findings = spec.run(graph, only=["end-stated"])
         self.assertEqual([f.question for f in findings], ["plato"])
         self.assertIn("no end of ours", findings[0].message)
-
-    def test_the_end_is_judged_for_reach_like_the_question_half(self):
-        """The end is the asker's words; a defined word it uses must be in
-        reach from the root, which reaches its own glossary and no other."""
-        graph = load("valid")
-        root = graph.get("ti-esti")
-        self.assertEqual(spec.run(graph, only=["reach"]), [])
-        root.hinge.end += ", whatever grade the record carries"
-        findings = spec.run(graph, only=["reach"])
-        self.assertEqual([f.question for f in findings], ["ti-esti"])
-        self.assertIn("the question's end", findings[0].message)
-        self.assertIn("'grade'", findings[0].message)
-
-    def test_a_word_may_come_in_on_the_method(self):
-        graph = load("valid")
-        root = graph.get("ti-esti")
-        word = root.definitions[0].word
-        root.theses[0].text = root.theses[0].text.replace(word, "examination")
-        findings = spec.run(graph, only=["definition-anchorable"])
-        self.assertEqual([f.question for f in findings], ["ti-esti"])
-        root.hinge.method += "; the %s is what tests it" % word
-        self.assertEqual(spec.run(graph, only=["definition-anchorable"]), [])
-
-    def test_a_blockquote_in_the_end_is_refused(self):
-        graph = load("valid")
-        graph.get("ti-esti").hinge.end = "> what the asking is for"
-        findings = spec.run(graph, only=["text-unquoted"])
-        self.assertEqual([f.question for f in findings], ["ti-esti"])
-        self.assertIn("the hinge's end", findings[0].message)
-
 
 if __name__ == "__main__":
     unittest.main()

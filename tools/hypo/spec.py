@@ -631,25 +631,24 @@ def end_stated(graph: Graph) -> Yield:
     graph may stand wholly below the root, and there its absence says
     nothing.
     """
-    parts = lambda h: (("end", h.end.strip()), ("method", h.method.strip()))
     for q in graph.questions:
         if q.hinge is None:
             continue  # `hinge-present` reports the absence itself
-        stated = [name for name, part in parts(q.hinge) if part]
+        parts = (("end", q.hinge.end), ("method", q.hinge.method))
+        stated = [name for name, part in parts if part.strip()]
+        missing = [name for name, part in parts if not part.strip()]
         if q.tradition:
             if stated:
                 yield q.id, ("a party's question states %s, and reading a party has "
                              "no end of ours" % " and ".join(stated))
-            continue
-        if q.kind == "root":
-            missing = [name for name, part in parts(q.hinge) if not part]
+        elif q.kind == "root":
             if missing:
                 yield q.id, ("the root states no %s: what the asking is for, and how "
                              "that is read and pursued, are stated where everything "
                              "below inherits them" % " and no ".join(missing))
         elif len(stated) == 1:
             yield q.id, ("the hinge states %s and no %s, and the two are stated "
-                         "together" % (stated[0], "method" if stated == ["end"] else "end"))
+                         "together" % (stated[0], missing[0]))
 
 
 @check("provenance-complete",
@@ -795,6 +794,8 @@ def _words_used(vocabulary: List[Tuple[str, List[str]]], prose: str) -> List[Tup
     is counted as the longer: `term` inside `term edge` is the edge.
     """
     plain = text.plain(prose or "")
+    if not plain.strip():
+        return []  # a part left blank uses no word, and is not read for one
     taken: List[Tuple[int, int]] = []
     found: List[Tuple[int, str, str]] = []
     for word, forms in vocabulary:
@@ -821,9 +822,9 @@ def _prose(q) -> Iterator[Tuple[str, str]]:
     """
     yield "the question", q.question
     if q.hinge is not None:
-        yield "the question's hinge", q.hinge.question
-        yield "the question's end", q.hinge.end
-        yield "the question's method", q.hinge.method
+        for name, part in q.hinge.asking():
+            # the question half has always been "the question's hinge" here
+            yield "the question's %s" % ("hinge" if name == "question" else name), part
     for definition in q.definitions:
         yield "%s %s" % (GLYPHS["glossary"], definition.word), definition.body
         if definition.tradition is not None and definition.tradition.note:
@@ -1247,10 +1248,8 @@ def _parted(q) -> Iterator[Tuple[str, str]]:
     for definition in q.definitions:
         yield "the body of %s %s" % (GLYPHS["glossary"], definition.word), definition.body
     if q.hinge is not None:
-        yield "the hinge's question", q.hinge.question
-        yield "the hinge's end", q.hinge.end
-        yield "the hinge's method", q.hinge.method
-        yield "the hinge's thesis", q.hinge.thesis
+        for name, part in q.hinge.parts():
+            yield "the hinge's %s" % name, part
 
 
 @check("text-unquoted",

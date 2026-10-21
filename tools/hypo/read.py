@@ -19,7 +19,7 @@ from __future__ import annotations
 import re
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
-from .model import AUTHOR, CITATION_HEADINGS, GLYPHS, SECTIONS
+from .model import AUTHOR, CITATION_HEADINGS, GLYPHS, SECTIONS, Hinge
 from . import render, text
 from .render import INSTEAD, SEPARATOR, SHADOW, chip_key
 
@@ -584,10 +584,14 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
 
     hinge: dict = {}
     for heading, body in _subsections(named.get("hinge", []), GLYPHS["hinge"]):
-        # the heading names the part: one of the asker's three, or else the
-        # provenance, whose heading no amendment reaches
-        part = next((name for name in ("question", "end", "method")
-                     if heading.startswith(name + ":")), "thesis")
+        # the heading opens with the part's name, as the renderer writes it;
+        # a heading naming no part would be read back under another's name
+        # or not at all, so it is refused as the other foreign headings are
+        part = next((name for name, _, _ in Hinge.PARTS
+                     if heading.startswith(name + ":")), None)
+        if part is None:
+            raise ParseError("a hinge heading that names none of the hinge's parts, "
+                             "whose words would be lost: %r" % heading[:50])
         hinge[part] = SEPARATOR.join(body)
     if hinge:
         q["hinge"] = hinge

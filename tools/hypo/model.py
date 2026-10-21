@@ -68,7 +68,7 @@ SECTIONS = ("thesis", "glossary", "terms", "applications", "cited by",
             "hinge")
 
 #: The glyph that opens each kind of heading on a tab — an answer, a glossary
-#: entry, a term, a mention, an application, a hinge half — and the one that
+#: entry, a term, a mention, an application, a hinge part — and the one that
 #: opens the lineage line above the title. The renderer writes them and the
 #: reader, the frontier and every in-place writer read them, so they are
 #: spelled here once; a glyph changed here changes on every side at once.
@@ -460,13 +460,27 @@ class Hinge:
     method: str = ""
     thesis: str = ""
 
+    #: the parts in page order, each with what its heading says of it and
+    #: whether it is the asker's — his words, which bring words in — or the
+    #: encoding's, which brings none. The one list the renderer's headings,
+    #: the reader's match and the checks are built from: spelled apart, a
+    #: fifth part would reach the page and read back as the provenance
+    PARTS = (("question", "what the asking presupposes", True),
+             ("end", "what the asking is for", True),
+             ("method", "how the end is read and pursued", True),
+             ("thesis", "what the answer was drawn from", False))
+
     #: the asker's parts, in the order the page holds them: what reach
     #: judges, and where besides an answer a definition's word may stand
-    ASKING = ("question", "end", "method")
+    ASKING = tuple(name for name, _, asker in PARTS if asker)
 
     def empty(self) -> bool:
-        return not any(part.strip() for part in
-                       (self.question, self.end, self.method, self.thesis))
+        return not any(part.strip() for _, part in self.parts())
+
+    def parts(self) -> Iterator[Tuple[str, str]]:
+        """Every part, each named, in page order."""
+        for name, _, _ in self.PARTS:
+            yield name, getattr(self, name)
 
     def asking(self) -> Iterator[Tuple[str, str]]:
         """The asker's parts, each named, in page order."""
