@@ -804,10 +804,6 @@ class RefusalTest(unittest.TestCase):
             render.body(load("valid"), "absent")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class HingeLayoutTest(unittest.TestCase):
     """The hinge's four parts stand in one order: what the asking stood on,
     what it is for, how that is read and pursued, what the answer was drawn
@@ -843,3 +839,7 @@ class HingeLayoutTest(unittest.TestCase):
                if r.nth == entry["find"]["nth"]][0]
         self.assertLess(page.index(render.HINGE_END), run.at)
         self.assertLess(run.at, page.index(render.HINGE_METHOD))
+
+
+if __name__ == "__main__":
+    unittest.main()

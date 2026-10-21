@@ -787,10 +787,6 @@ class RewordedTest(unittest.TestCase):
         self.assertIn("no item", str(caught.exception))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class WordsTest(unittest.TestCase):
     """Any block of words, written in place and decided by its read-back."""
 
@@ -967,3 +963,7 @@ class EndWordsTest(unittest.TestCase):
         bid = next(b for b, md in self.by_id.items() if md == self.q.hinge.method)
         _, _, _, field = inplace.words_replace(self.view, bid, self.q.hinge.method + " And again.")
         self.assertEqual(field, "hinge.method")
+
+
+if __name__ == "__main__":
+    unittest.main()

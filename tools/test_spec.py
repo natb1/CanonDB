@@ -818,10 +818,6 @@ class FieldsPartedTest(unittest.TestCase):
         self.assertIn("link", findings[0].message)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class DictationPendingTest(unittest.TestCase):
     def test_a_pending_note_is_reported_until_a_run_takes_it_in(self):
         findings = spec.run(load("invalid-dictation-pending"), only=["dictation-pending"])
@@ -897,3 +893,7 @@ class EndStatedTest(unittest.TestCase):
         findings = spec.run(graph, only=["text-unquoted"])
         self.assertEqual([f.question for f in findings], ["ti-esti"])
         self.assertIn("the hinge's end", findings[0].message)
+
+
+if __name__ == "__main__":
+    unittest.main()

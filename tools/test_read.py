@@ -499,10 +499,6 @@ class RefusedShapeTest(unittest.TestCase):
         self.assertEqual((trad["note"], trad.get("counter", "")), (edge.note, ""))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class HingePartsTest(unittest.TestCase):
     """Each part of the hinge reads back as the part its heading names."""
 
@@ -518,3 +514,7 @@ class HingePartsTest(unittest.TestCase):
         graph = load("valid")
         parsed = read.parse_tab(render.body(graph, "canon"), chip_ids(graph))
         self.assertEqual(sorted(parsed["hinge"]), ["question", "thesis"])
+
+
+if __name__ == "__main__":
+    unittest.main()

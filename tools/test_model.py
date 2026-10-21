@@ -169,10 +169,6 @@ class FixtureTest(unittest.TestCase):
                 model.load(os.path.join(FIXTURES, name))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class HingeTest(unittest.TestCase):
     """A hinge has four parts: the asker's three, which bring words in, and
     the answer's provenance, which brings none."""
@@ -193,3 +189,7 @@ class HingeTest(unittest.TestCase):
         self.assertTrue(model.Hinge().empty())
         self.assertFalse(model.Hinge(end="that the two go on").empty())
         self.assertFalse(model.Hinge(method="read at each entry").empty())
+
+
+if __name__ == "__main__":
+    unittest.main()
