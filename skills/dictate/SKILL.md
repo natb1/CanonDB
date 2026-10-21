@@ -243,16 +243,16 @@ a procedure rather than a script.
 - **Hinges are complete.** What the asking presupposes, and what leaked into the wording, are the
   principal's judgement; nothing computes them.
 - **The end is the principal's, and never put.** A root's hinge states what the asking is for and
-  how that end is read and pursued, and a question below inherits both. `end-stated` holds the
-  half a script can: the author's root states both parts, a question below states the two
-  together or neither, and a party's question states none. What is left to read: that the end is
-  stated in words the root can reach, since the end brings words in as the question half does and
-  the root has no ancestors; that the method names counts which are applications elsewhere, and
-  restates none of them; that an end stated below the root is narrower than its lineage's and not
-  a second statement of it; and whether the end is right at all, which is examined where the
-  principal keeps what he keeps things for — his own notebook of ends — and never here. No turn
-  that answers a canon question sees the end: the clean-context rule keeps the hinge out, and the
-  end goes with it.
+  how that end is read and pursued, and a question below inherits both. `end-stated` holds the half
+  a script can: the author's root states both parts, a question below states the two together or
+  neither, and a party's question states none; and `reach` holds the end's words to what the root
+  can reach, as it holds the question half's, since the end brings words in and the root has no
+  ancestors. What is left to read: that each word the end uses is used in the sense fixed where it
+  is defined; that the method names counts which are applications elsewhere, and restates none of
+  them; that an end stated below the root is narrower than its lineage's and not a second statement
+  of it; and whether the end is right at all, which is examined where the principal keeps what he
+  keeps things for — his own notebook of ends — and never here. No turn that answers a canon
+  question sees the end: the clean-context rule keeps the hinge out, and the end goes with it.
 - **No inline documentation.** A tab carries its content; what its shape means belongs on the
   encoding tabs. The checker cannot see the difference.
 - **Every datum has one home.** A question's metadata on its question line, an answer's on its
@@ -347,7 +347,7 @@ a procedure rather than a script.
 - **What a run cannot apply stands on the page.** A run ends with nothing owed in the session
   that owed it: a clause it could not apply is a pending note on the tab it bears on, and the
   checker reports the note until a run takes it in. What no script decides is whether the
-  clause really could not be applied — a hinge's half and a note are written in place, a
+  clause really could not be applied — a hinge's part and a note are written in place, a
   section is written alone, and only what those refuse earns a note — and whether the note
   says the clause faithfully enough for a later run to apply it without the session it came
   from. Read every pending note you write as the dictation it will be.
@@ -522,10 +522,10 @@ hinge, for a reader — is its **ancestors** and never its breadcrumb.
   encoding's own words, like the question's and the answer's metadata; it introduces nothing and
   is not a user. Where a user cannot reach a word over the ancestors, either the line is missing
   an edge or the definition is on the wrong tab.
-- A word comes in on a hinge only because the asking stood on it. Every question sits below the
-  root, so the root's hinge is where any hard-to-reach word could be parked — and parking it
-  there silences the one signal reach gives, a missing edge. The hinge must be true before it
-  is useful.
+- A word comes in on a hinge only because the asking stood on it or the end needs it. Every question
+  sits below the root, so the root's hinge is where any hard-to-reach word could be parked — and
+  parking it there silences the one signal reach gives, a missing edge. The hinge must be true
+  before it is useful.
 - A hinge is what an act stands on without examining it. It is inherited down the lineage and
   stated only where it differs, and one repeated across siblings belongs to a question above
   them. The end and the method are inherited the same way: stated at the root, and below it only
