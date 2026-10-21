@@ -12,8 +12,8 @@ principal entry point and not a canon one: a canon turn answers a question and m
 notebook. Never run this inside a turn that is answering a canon question.
 
 `<dictation>` is the principal's description of what should change in the notebook. It may be a
-correction, an addition, or a change to the specification the notebook is written in. Where he
-keeps it before it is run, and what brings it up, is that place's own concern and none of this
+correction, an addition, or a change to the specification the notebook is written in. Where the
+principal keeps it before it is run, and what brings it up, is that place's own concern and none of this
 skill's: the run is made with the prose as its argument, and that is the whole of the interface.
 
 The notebook is the document `.principal/notebook.json` names at the project's root, with the
@@ -31,7 +31,7 @@ nothing.
    there now, never in a local file and never in what you remember writing. The principal edits the
    artifact asynchronously, outside any session.
 2. **Never revert or overwrite a prior you did not write.** A block you have not read is a block you
-   do not touch. On a hash or find mismatch, his words win: keep them, and say what you kept.
+   do not touch. On a hash or find mismatch, the principal's words win: keep them, and say what you kept.
 3. **Never hand-write a tab body.** `tools/render.py` is the only sanctioned producer of one. A
    line changed in place follows the shape the renderer writes for that line, because the next
    read of the page parses that shape and no other; hand-written layout is how it drifts.
@@ -250,8 +250,8 @@ a procedure rather than a script.
   ancestors. What is left to read: that each word the end uses is used in the sense fixed where it
   is defined; that the method names counts which are applications elsewhere, and restates none of
   them; that an end stated below the root is narrower than its lineage's and not a second statement
-  of it; and whether the end is right at all, which is examined where the principal keeps what he
-  keeps things for — his own notebook of ends — and never here. No turn that answers a canon
+  of it; and whether the end is right at all, which is examined where the principal keeps what
+  things are kept for — the user's own notebook of ends — and never here. No turn that answers a canon
   question sees the end: the clean-context rule keeps the hinge out, and the end goes with it.
 - **No inline documentation.** A tab carries its content; what its shape means belongs on the
   encoding tabs. The checker cannot see the difference.
@@ -270,29 +270,37 @@ a procedure rather than a script.
   an answer that is `canon`, which `standing-honest` checks; that is necessary and not
   sufficient. What would discharge a postulate is rendered beside its standing, read off the
   answer and never written: its landing and then the diff, or the diff alone once it has landed.
-  Nothing the principal answers lands, so what rests on his own answer stays a postulate while
-  he answers — and the clause says so. What no check reads is whether the artifact exists, or
+  Nothing the principal answers lands, so what rests on the principal's own answer stays a postulate while
+  the principal answers — and the clause says so. What no check reads is whether the artifact exists, or
   whether anyone diffed it against what the landed answer would have produced. An application
   stays `postulate` until that diff is done, however green the check. Saying so is the writer's
   judgement.
-- **Assent in the notebook is not assent to canon.** The principal may note his assent on an
+- **Assent in the notebook is not assent to canon.** The principal may note assent on an
   open thread so that the next question can be drafted from it. The answer stays in thread:
   nothing is merged, and nothing is canon, until the merge, which is promulgation, and the
   answer's own state says which it is — a question and its answers each carry one, and a question
-  can land before its answer does. While the thread is open he may also suspend his acceptance of
+  can land before its answer does. While the thread is open the principal may also suspend acceptance of
   one clause, saying what it waits on, or record a deadlock on it. A suspension is settled before
   the merge, and a deadlock's attenuation is owed at the merge. `state-order` and
   `suspension-open` hold that shape. What no check reads is the assent line itself — a noted
   assent, a gloss confirmed, acceptance withheld from the whole answer — so read it.
 - **Who answers is the principal's call.** `answerer` is stored, and `answerer-set` checks that
-  every author question names one. Which one is right — a question he answers from his own
+  every author question names one. Which one is right — a question the principal answers from the principal's own
   priors, or one to put to the AI — no script decides. A question with nothing
-  left to wait on is not thereby his. A question the principal answers is never put: it blocks
+  left to wait on is not thereby the principal's. A question the principal answers is never put: it blocks
   nothing, waits on nothing and is never on the frontier, and `only-ai-put` keeps it and its
   answers held. Another party's is read, not asked, and is held the same way.
 - **A defined word is used only in its defined sense.** `definition-once` finds the word, not
   the sense. The notebook once used "line" for a run of the elenchus and for a line of text in
   the same breath. Where the ordinary sense of a defined word is wanted, use another word.
+- **The user is named the user.** The one the notebook is kept for is named the user wherever
+  the notebook speaks of that party, on an author's tab and where a party's tab speaks of the
+  user too, as the encoding's answer says. `user-named` finds "the human" in the notebook's own
+  words, the answer's hinge among them. What it cannot find is a pronoun: he, him, his or himself
+  standing for the user is the same fault, and whom a pronoun stands for is read, since a party's
+  tab says "he" of its author and an answer says it of Euthyphro. Write the user, or the
+  principal where the role is meant, and never a pronoun for either. Canon's words are left as
+  they stand: a landed question or answer keeps "a human" if it says so.
 - **A defined word yields to canon's words.** The words of a landed answer cannot change, so a
   word the notebook defines must not be one of them. `priority` and `title` gave way to
   `backlog` and `headline` when the root's answer turned out to say "priorities" and "titled".
@@ -301,8 +309,8 @@ a procedure rather than a script.
   so there the word is `reach`'s to judge, on the answer. It finds the word and not the sense,
   so a text the principal wrote using a defined word in another sense is still found by reading.
 - **A shadow only where reach needs it.** A definition may stand for a word that has earned a
-  question of its own (`term-target` keeps it off that question's own tab) only when some user
-  of the word cannot reach the question over its ancestors. It gives the sense in a sentence
+  question of its own (`term-target` keeps it off that question's own tab) only when some part
+  using the word cannot reach the question over its ancestors. It gives the sense in a sentence
   and points at the question, and the argument stays on the question's tab. Whether reach needs
   it is judged by reading. That the entry points at the question is decided in the one case a
   script can see, a word that is a question's own id, by `shadow-declared`; a word that earned
@@ -424,7 +432,7 @@ a procedure rather than a script.
   quotation in an answer from a note beside it, it is an answer the notebook cannot hold, and the
   refusal is where that is said.
 - **Pressure is the principal's, backlog is the tooling's.** Pressure is the one scheduling
-  number set by hand — what work is actually waiting at this question — and it is his judgement,
+  number set by hand — what work is actually waiting at this question — and it is the principal's judgement,
   never invented to make a sum come out. The backlog is computed from it over what a question
   blocks, and blocking is what a turn carries: canon above its question, which is the AI's
   answers alone, since nothing the principal answers reaches a turn. So a question waits on each
@@ -446,9 +454,9 @@ a badly drawn question is not corrected later: whatever is built above it is bui
 that was admitted rather than reached.
 
 **Selecting the admission.** Selection is the whole of the steering. The questioner never
-asserts; his view enters as a question or not at all. What he steers *toward* is not his own
-conclusion but a latent conflict between two things the answerer has already said, or a place
-where one of them runs out of coverage — that is where the answerer moves under his own power.
+asserts; the questioner's view enters as a question or not at all. What selection steers *toward* is not the
+questioner's own conclusion but a latent conflict between two things the answerer has already said, or a place
+where one of them runs out of coverage — that is where the answerer moves under its own power.
 If selection cannot reach a point, the point is a dictate, and knowing that is worth as much as
 reaching it. Two grains run at once: the target picks the admission, the admission picks the
 question. Which drawn question is put next is not drafting and is not steering: `next.py`
@@ -496,7 +504,7 @@ clause loads the hinge and pre-empts the derivation. Never restate the term that
 is an implied gloss that leaks the principal's reading, and it makes the answering turn parse
 the question for a prior instead of answering it. Leakage travels through a filename, a commit
 title and a path, not only through wording. And nothing of the notebook may stand in the
-answerer's context while he answers.
+answerer's context while the answer is given.
 
 **Topology.** The tab tree is a projection; the graph is a **DAG**. A question may be raised by
 several clauses and usually should be, and what stands above it — for a definition, for a
@@ -520,7 +528,7 @@ hinge, for a reader — is its **ancestors** and never its breadcrumb.
   "leak"; and the end and the method, what the asking is for and how that is read, which bring
   in the words the end needs. The answer's half records how the answer was drawn, in the
   encoding's own words, like the question's and the answer's metadata; it introduces nothing and
-  is not a user. Where a user cannot reach a word over the ancestors, either the line is missing
+  does not use a word. Where a part that uses a word cannot reach it over the ancestors, either the line is missing
   an edge or the definition is on the wrong tab.
 - A word comes in on a hinge only because the asking stood on it or the end needs it. Every question
   sits below the root, so the root's hinge is where any hard-to-reach word could be parked — and

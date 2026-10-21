@@ -65,7 +65,7 @@ with another open thread's answer in its lineage is what the rule against depend
 forbids.
 
 When nothing can be put, stop and say what the frontier waits on. What it waits on is an
-answer above that has not landed, which is his merge and not this run's to supply.
+answer above that has not landed, which is the principal's merge and not this run's to supply.
 
 With `--again`, `tools/again.py $SCRATCH/graph.json --model <the model answering now> --root
 <the project's root>` lists instead the landed questions due again, each with what moved: the
@@ -110,7 +110,7 @@ start, so a session that began before it existed cannot launch it and says so.
   disposition it awaits, a retreat, rather than as one that stands. The withdrawn answer is
   not deleted: it is on its thread until the merge that replaces it.
 - Against the notebook: a conflict with the principal's own thesis on the tab, or with an
-  admission of his on another line, is no aporia of the AI's. It is the principal's,
+  admission of the principal's on another line, is no aporia of the AI's. It is the principal's,
   suspended. Record the answer, name the conflict, and name every line and thread that could
   reach the point. A dissent is not recorded from this run.
 - Against nothing: record it.
