@@ -530,5 +530,16 @@ class HingePartsTest(unittest.TestCase):
             self.assertIn("hinge heading", str(caught.exception))
 
 
+    def test_a_hinge_part_given_twice_is_refused(self):
+        """The second would replace the first, and the first's words would be
+        gone from the graph and, at the next body write, from the page."""
+        graph = load("valid")
+        page = render.body(graph, "ti-esti")
+        at = page.index("### " + render.HINGE_METHOD)
+        edited = page[:at] + "### %s\n\nA second end.\n\n" % render.HINGE_END + page[at:]
+        with self.assertRaises(read.ParseError) as caught:
+            read.parse_tab(edited, chip_ids(graph))
+        self.assertIn("given twice", str(caught.exception))
+
 if __name__ == "__main__":
     unittest.main()

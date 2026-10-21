@@ -610,16 +610,32 @@ class FindTest(unittest.TestCase):
         and the checker alike; a line of the end that opens ``#2`` is prose,
         and the end runs on past it. The finder used to stop there, and a
         word on that line, anchorable to the checker, was linked nowhere."""
+        for line in ("#2 counts", "# 2 counts", "\t## 2 counts", "  ### counts"):
+            with self.subTest(line=line):
+                graph = load("valid")
+                root = graph.get("ti-esti")
+                word = root.definitions[0].word
+                root.theses[0].text = root.theses[0].text.replace(word, "examination")
+                # inside the end's paragraph: a line of it, never a block of its own
+                root.hinge.end += "\n%s how often the %s is met" % (line, word)
+                self.assertEqual(spec.run(graph, only=["text-unquoted", "definition-anchorable"]), [])
+                page = render._as_the_page_holds_it(render.body(graph, "ti-esti"))
+                run = self.run_of(page, self.entry(graph, "ti-esti", word)["find"])
+                self.assertLess(page.index(render.HINGE_END), run.at)
+                self.assertLess(run.at, page.index(render.HINGE_METHOD))
+
+    def test_a_line_of_an_answer_opening_on_a_mark_leaves_the_section_whole(self):
+        """The Thesis runs to the next section heading the reader takes, and a
+        line inside an answer's paragraph that opens ``# `` is not one."""
         graph = load("valid")
-        root = graph.get("ti-esti")
-        word = root.definitions[0].word
-        root.theses[0].text = root.theses[0].text.replace(word, "examination")
-        root.hinge.end += "\n#2 counts how often the %s is met" % word
-        self.assertEqual(spec.run(graph, only=["text-unquoted", "definition-anchorable"]), [])
-        page = render._as_the_page_holds_it(render.body(graph, "ti-esti"))
-        run = self.run_of(page, self.entry(graph, "ti-esti", word)["find"])
-        self.assertLess(page.index(render.HINGE_END), run.at)
-        self.assertLess(run.at, page.index(render.HINGE_METHOD))
+        canon = graph.get("canon")
+        before = render.section_spans(render._as_the_page_holds_it(render.body(graph, "canon")))["Thesis"]
+        canon.theses[0].text = "Counted weekly:\n# of entries read\n\n" + canon.theses[0].text
+        page = render._as_the_page_holds_it(render.body(graph, "canon"))
+        spans = render.section_spans(page)
+        self.assertEqual(spans["Thesis"][1] - spans["Thesis"][0],
+                         before[1] - before[0] + len("Counted weekly:\n# of entries read\n\n"))
+        self.assertTrue(all(l["find"] for l in render.links(graph, "canon")["links"] if l["kind"] == "term"))
 
     def test_a_one_word_anchor_skips_the_longer_words_it_hides_in(self):
         graph = load("valid")

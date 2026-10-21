@@ -914,15 +914,31 @@ def _inside(at: int, span: Optional[Tuple[int, int]]) -> bool:
 #: here: a walker that took any line opening ``#`` for a heading ended the
 #: hinge's end at a line of it that counted, and the word on that line was
 #: found nowhere, while the reader and the checker took the line for prose
-_HEADING = re.compile(r"[ \t]*(#{1,6}) ")
+_HEADING = re.compile(r"(#{1,6}) ")
 
 
 def _lines(page: str) -> Iterator[Tuple[int, str]]:
-    """Each line of the page with the offset it starts at, newline kept."""
+    """Each line of the page with the offset it starts at, newline kept. A
+    line ends at a newline only, as the reader's blocks do: ``splitlines``
+    also breaks at a form feed, a vertical tab or a line separator, which the
+    page holds inside a line."""
     at = 0
-    for line in (page or "").splitlines(keepends=True):
+    for line in re.findall(r"[^\n]*\n|[^\n]+", page or ""):
         yield at, line
         at += len(line)
+
+
+def _headings(page: str) -> Iterator[Tuple[int, str, int]]:
+    """Each heading line of the page as the reader takes one, (offset, line,
+    marks): a block's first line, unindented, the marks and a space. A line
+    inside a paragraph, or an indented one, is prose to the reader, and so it
+    is here."""
+    opens = True
+    for at, line in _lines(page):
+        m = _HEADING.match(line) if opens else None
+        if m:
+            yield at, line, len(m.group(1))
+        opens = not line.strip()
 
 
 def _heading_spans(page: str, level: int) -> List[Tuple[str, int, int, int]]:
@@ -932,14 +948,13 @@ def _heading_spans(page: str, level: int) -> List[Tuple[str, int, int, int]]:
     of the page."""
     out: List[Tuple[str, int, int, int]] = []
     opened: Optional[Tuple[str, int, int]] = None
-    for at, line in _lines(page):
-        m = _HEADING.match(line)
-        if m and len(m.group(1)) <= level:
+    for at, line, marks in _headings(page):
+        if marks <= level:
             if opened is not None:
                 out.append(opened + (at,))
                 opened = None
-            if len(m.group(1)) == level:
-                opened = (line[m.end():].strip(), at, at + len(line))
+            if marks == level:
+                opened = (line[marks + 1:].strip(), at, at + len(line))
     if opened is not None:
         out.append(opened + (len(page or ""),))
     return out
@@ -996,8 +1011,9 @@ def _fixed_spans(page: str) -> List[Tuple[int, int]]:
     `\u2261 thesis` pointed at the words `provenance: thesis hinge` rather than at
     the sentence that says what a thesis is.
     """
-    return _line_spans(page, lambda line: bool(_HEADING.match(line))
-                       or line.startswith("assent:"))
+    heads = {at for at, _, _ in _headings(page)}
+    return [(at, at + len(line)) for at, line in _lines(page)
+            if at in heads or line.startswith("assent:")]
 
 
 def _metadata_spans(page: str) -> List[Tuple[int, int]]:

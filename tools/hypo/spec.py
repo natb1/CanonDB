@@ -1236,9 +1236,10 @@ def _one_line(q) -> Iterator[Tuple[str, str]]:
 #: a character; one opening a block is a blockquote.
 _QUOTED = re.compile(r"(?:\A|\n[ \t]*\n)[ \t]*>")
 
-#: a block that opens on a heading mark: the reader takes it for a heading of
-#: the layout's, and what follows it as under that heading
-_HEADED = re.compile(r"(?:\A|\n[ \t]*\n)[ \t]*#")
+#: a block that opens on a heading mark — the marks and a space, as the page
+#: reads one, so ``#2 counts`` is a paragraph: the reader takes it for a
+#: heading of the layout's, and what follows it as under that heading
+_HEADED = re.compile(r"(?:\A|\n[ \t]*\n)[ \t]*#(?=#{0,5}(?:[ \t]|\n|\Z))")
 
 
 def _parted(q) -> Iterator[Tuple[str, str]]:

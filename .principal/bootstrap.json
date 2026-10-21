@@ -104,8 +104,8 @@
         "tools/fixtures/view-wording.md",
         "tools/fixtures/view-wording.xml"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/29",
-      "rounds": 1
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3191",
+      "rounds": 2
     },
     {
       "question": "docs-encoding",

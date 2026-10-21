@@ -490,12 +490,8 @@ class Hinge:
     @staticmethod
     def read(r: _Reader, data: Any, where: str) -> "Hinge":
         d = r.obj(data, where)
-        return Hinge(
-            question=r.text(d, "question", where, required=False),
-            end=r.text(d, "end", where, required=False),
-            method=r.text(d, "method", where, required=False),
-            thesis=r.text(d, "thesis", where, required=False),
-        )
+        return Hinge(**{name: r.text(d, name, where, required=False)
+                        for name, _, _ in Hinge.PARTS})
 
 
 @dataclass

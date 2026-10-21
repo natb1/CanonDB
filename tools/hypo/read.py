@@ -592,6 +592,9 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
         if part is None:
             raise ParseError("a hinge heading that names none of the hinge's parts, "
                              "whose words would be lost: %r" % heading[:50])
+        if part in hinge:
+            # the second would replace the first, whose words would be lost
+            raise ParseError("the hinge's %s is given twice: %r" % (part, heading[:50]))
         hinge[part] = SEPARATOR.join(body)
     if hinge:
         q["hinge"] = hinge

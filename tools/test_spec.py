@@ -728,6 +728,15 @@ class PartedTextTest(unittest.TestCase):
         self.assertEqual([f.question for f in findings], ["ti-esti"])
         self.assertIn("heading", findings[0].message)
 
+    def test_a_block_opening_on_a_mark_with_no_space_is_a_paragraph(self):
+        """A heading is the marks and a space, so ``#2 counts`` is a paragraph
+        to the reader, and the method may count in one."""
+        graph = load("valid")
+        graph.get("ti-esti").hinge.method += "\n\n#1 entries read\n\n#2 counts how often"
+        self.assertEqual(spec.run(graph, only=["text-unquoted"]), [])
+        graph.get("ti-esti").hinge.method += "\n\n# 3 a heading"
+        self.assertEqual([f.question for f in spec.run(graph, only=["text-unquoted"])], ["ti-esti"])
+
     def test_a_citation_heading_inside_an_answer_is_refused(self):
         graph = load("valid")
         graph.get("ti-esti").theses[0].text += "\n\n**Support**\n\nA closing paragraph."
