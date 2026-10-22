@@ -1,11 +1,32 @@
 # principal
 
 A Claude Code plugin: the principal's entry points over a hypomnemata notebook and the canon it
-feeds. What the plugin is, and why, is not said here. Canon is the source of truth: the root
-question, [`canon/ti-esti.md`](canon/ti-esti.md), and every answer merged since. Failing canon,
-the notebook is: [Hypomnemata — CanonDB v1](https://claude.ai/code/artifact/47d8730e-0bb8-4995-b3fb-8310665c1528),
-whose applications name every file here. This README is a projection of the two, and says only
-what neither does: how the plugin is installed.
+feeds. Canon is the source of truth: the root question, [`canon/ti-esti.md`](canon/ti-esti.md),
+and every answer merged since. Failing canon, the notebook is:
+[Hypomnemata — CanonDB v1](https://claude.ai/code/artifact/47d8730e-0bb8-4995-b3fb-8310665c1528),
+whose applications name every file here. This README is a projection of the two. It says what the
+plugin is for, as the root states it, and how the plugin is installed, which neither says.
+
+## What it is for
+
+The end, as the root's hinge states it: that what the AI does on the user's behalf is what the
+user would have it do, across sessions, because the AI would do it with nothing in its context
+pushing it there; that the conditions on which the two work can be read in the record they keep;
+and that the condition on which the user keeps the AI can be tested there, off what was agreed
+and off what comes back when a question is put again, never off either party's report.
+
+The method: the record is read whenever an answer is admitted and whenever a model or the
+answers above a question change. The readings are counts: how many answers the AI has drawn to
+each question and whether they agree, which clauses were settled by the user's word rather than
+reached by the AI and whether later draws hold them, and which answers are due to be drawn
+again. Each is read against the last reading and never as a verdict on either party, and one
+thing changes at a time.
+
+What it depends on: the user keeps an AI as a vendor, kept as a means and on condition. Its terms
+are stated and can be read, the user pays for it rather than being sold by it to a third party,
+its reasoning is not captured by an interest that is not the user's, and it can be left while
+others compete to supply the same. That condition is set in a notebook of the user's own, which
+is private, and this record is where it is tested.
 
 ## Installing the plugin
 
@@ -74,22 +95,9 @@ lag to manage. Two facts about the environment shape the rest of the script:
 - **Environment variables are not set while the setup script runs**, so anything the script
   needs must be in the script itself.
 - **Claude Code's own `git` does not use the session proxy** that authenticates the shells'
-  GitHub traffic, so a private marketplace needs credentials `git` can find on its own. The
-  system git config is read without any environment, and the setup script can write it.
-
-For a private repository, create a fine-grained personal access token scoped to the plugin
-repository alone, with Contents set to read-only, and put it in the setup script where the
-placeholder is. The script is readable by anyone who can use the environment, exactly as an
-environment variable would be, so the token's narrow scope is what makes this acceptable:
+  GitHub traffic. The repository is public, so the clone needs no credentials.
 
 ```sh
-# Read-only token for natb1/CanonDB. Claude Code's own git fetches the
-# marketplace at session start and does not use the session proxy.
-printf 'https://x-access-token:%s@github.com\n' 'PASTE_TOKEN_HERE' > /etc/git-credentials
-chmod 600 /etc/git-credentials
-git config --system credential.helper 'store --file /etc/git-credentials'
-git config --system 'http.https://github.com/natb1/CanonDB.git.proxy' ''
-
 # Declare the marketplace and the plugin; Claude Code clones main at every session start.
 mkdir -p ~/.claude
 [ -f ~/.claude/settings.json ] || echo '{}' > ~/.claude/settings.json
@@ -99,10 +107,9 @@ jq '.extraKnownMarketplaces.canondb = {"source": {"source": "github", "repo": "n
 mv "$tmp" ~/.claude/settings.json
 ```
 
-The per-URL proxy line keeps that one clone direct even where a proxy variable is present; it
-is scoped to the plugin repository so the session's own pushes, which rely on the proxy, are
-untouched. For a public repository, the first four lines are unnecessary. Under the
-environment's variables, set
+A private fork needs more: a read-only token scoped to the fork alone, written into the system
+git config by the same script, since Claude Code's own `git` finds no credentials otherwise.
+Under the environment's variables, set
 
 ```
 CLAUDE_CODE_SYNC_PLUGIN_INSTALL=1
@@ -112,10 +119,8 @@ so the first turn waits for the install rather than racing it. A new session the
 `principal@canondb`, at the commit `main` was at when it started, with the three `principal:`
 skills and the canon-answer agent available.
 
-If the clone is rejected, `git`'s `store` helper erases the credential line it sent, so an empty
-`/etc/git-credentials` in a session means the token was refused and the reason is in the
-session's debug log at `/tmp/claude-code.log`, on the line beginning `[reconcile] failed to
-install marketplace`.
+If the install fails, the reason is in the session's debug log at `/tmp/claude-code.log`, on the
+line beginning `[reconcile] failed to install marketplace`.
 
 Two other routes exist and are recorded here for completeness. An environment used only with
 this repository can load the checkout in place with the environment variable
@@ -135,6 +140,9 @@ variable `CLAUDE_CODE_PLUGIN_DIRS=/home/user/CanonDB`, set on the cloud environm
 same at startup.
 
 ## Using it in another project
+
+[natb1/ordo](https://github.com/natb1/ordo) is one: a rule of life kept this way, whose notebook
+is read and written through these entry points.
 
 1. Install the plugin for the sessions you use, as above.
 

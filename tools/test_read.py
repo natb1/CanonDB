@@ -117,30 +117,25 @@ class DetailTest(unittest.TestCase):
         incoming = self.parse("attenuation")["incoming"]
         self.assertEqual([src for _, src in incoming], ["canon", "party"])
 
-    def test_a_page_that_still_has_an_inbox_is_refused(self):
+    def test_a_section_the_renderer_does_not_write_is_refused(self):
         """Read on, the section would leave the page in silence at the next
         body write. The page is brought up to the grammar first."""
         body = render.body(self.graph, "canon")
-        stale = body.replace("## Terms", "## Inbox\n\n### put it where both can "
-                             "see it\n\npromulgate · the act · instances once · "
-                             "not done · id put-it\n\n## Terms", 1)
+        stale = body.replace("## Terms", "## Elsewhere\n\n### a heading of its own"
+                             "\n\nwords the renderer never wrote\n\n## Terms", 1)
         self.assertNotEqual(stale, body)
         with self.assertRaises(read.ParseError) as caught:
             read.parse_tab(stale, self.ids)
-        self.assertIn("the inbox was removed", str(caught.exception))
-        self.assertIn("Inbox section", str(caught.exception))
+        self.assertIn("a section the renderer does not write", str(caught.exception))
+        self.assertIn("## elsewhere", str(caught.exception).lower())
 
-    def test_a_question_line_that_still_says_requires_is_refused(self):
+    def test_a_question_line_with_a_field_it_does_not_hold_is_refused(self):
         body = render.body(self.graph, "canon")
-        for tail in ("nothing", "put it where both can see it"):
-            stale = re.sub(r"(?m)^(question: .*)$", r"\1 · requires: " + tail,
-                           body, count=1)
-            self.assertNotEqual(stale, body)
-            with self.subTest(requires=tail), \
-                    self.assertRaises(read.ParseError) as caught:
-                read.parse_tab(stale, self.ids)
-            self.assertIn("the inbox was removed", str(caught.exception))
-            self.assertIn("requires:", str(caught.exception))
+        stale = re.sub(r"(?m)^(question: .*)$", r"\1 · due: tomorrow", body, count=1)
+        self.assertNotEqual(stale, body)
+        with self.assertRaises(read.ParseError) as caught:
+            read.parse_tab(stale, self.ids)
+        self.assertIn("the question line is malformed", str(caught.exception))
 
     def test_a_tab_that_is_not_a_tab_is_refused(self):
         with self.assertRaises(read.ParseError):

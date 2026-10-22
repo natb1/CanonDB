@@ -84,20 +84,9 @@ class ParseError(Exception):
     """The markdown is not in the grammar the renderer writes."""
 
 
-#: what a page written while a tab had an inbox still carries, and what is
-#: said of it. Read on, such a page would lose the section in silence at the
-#: next body write, so it is refused until it has been brought up.
-REMOVED_SECTION = "inbox"
-REMOVED_FIELD = " · requires:"
-REMOVED = ("the inbox was removed, and this page still has %s: bring the "
-           "page up to the grammar the renderer writes before it is read")
-
-
 def question_line(block: str) -> "re.Match[str]":
     """The question line's fields, or a ``ParseError`` saying what is wrong
     with it: the one reading, for the tab parser and the frontier alike."""
-    if REMOVED_FIELD in block:
-        raise ParseError(REMOVED % "a `requires:` field on its question line")
     found = QUESTION_LINE.match(block)
     if not found:
         raise ParseError("the question line is malformed: %r" % block)
@@ -440,8 +429,6 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     q: dict = {"id": blocks[at][2:].strip()}
 
     head, named = _sections(blocks[at + 1:])
-    if REMOVED_SECTION in named:
-        raise ParseError(REMOVED % "an Inbox section")
     foreign = sorted(set(named) - set(SECTIONS))
     if foreign:
         raise ParseError("a section the renderer does not write, whose blocks would "

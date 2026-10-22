@@ -137,17 +137,6 @@ class ShapeTest(unittest.TestCase):
         self.assertFalse(q.tradition)
         self.assertIsNone(q.hinge)
 
-    def test_a_graph_file_that_still_holds_an_inbox_is_refused(self):
-        """Nothing else refuses a key it does not know, so a file written
-        while a tab had an inbox would be read as though it never held one."""
-        q = {"id": "a", "tab": "t", "body": "b", "question": "?",
-             "state": "held", "kind": "case", "pressure": 0}
-        for key, value in (("inbox", []), ("requires", ["an-item"])):
-            with self.subTest(key=key), self.assertRaises(model.ShapeError) as caught:
-                self._load({"questions": [dict(q, **{key: value})]})
-            problems = " ".join(caught.exception.problems)
-            self.assertIn("(a).%s" % key, problems)
-            self.assertIn("the inbox was removed", problems)
 
     def test_invalid_json_is_a_shape_error(self):
         handle = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)

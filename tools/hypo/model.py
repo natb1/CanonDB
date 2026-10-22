@@ -59,10 +59,6 @@ ANSWERERS = ("ai", "principal")
 #: of the term at deadlock, which is a role in a bond and not a field here.
 AUTHOR = "author"
 
-#: The keys a question carried while a tab had an inbox. Task tracking lives
-#: outside the notebook, and a graph file that still holds one is refused.
-REMOVED = ("inbox", "requires")
-
 #: The section a note may be attached to, as the renderer names them.
 SECTIONS = ("thesis", "glossary", "terms", "applications", "cited by",
             "hinge")
@@ -560,13 +556,6 @@ class Question:
         else:
             r.fail(here + ".hinge", "expected an object or null")
             hinge = None
-        for key in REMOVED:
-            if key in d:
-                # nothing else refuses a key it does not know, so a stale
-                # file would be read as though it had never held one
-                r.fail("%s.%s" % (here, key), "the inbox was removed: a "
-                       "question carries no inbox items and requires none, "
-                       "so drop the key")
         return Question(
             id=qid,
             tab=r.text(d, "tab", here),
