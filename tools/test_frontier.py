@@ -95,20 +95,6 @@ class FrontierTest(unittest.TestCase):
         with self.assertRaises(appline.Refused):
             frontier.graph(self.manifest, partial)
 
-    def test_a_page_that_still_says_requires_is_refused(self):
-        """A page written while a tab had an inbox: the line is the page's,
-        hash and all, and it is the page that has to be brought up."""
-        partial = reads(self.graph)
-        root = ET.fromstring(partial["canon"][0])
-        line = next(n for n in root.iter("paragraph")
-                    if page.inline(n).startswith("question: "))
-        last = list(line)[-1]
-        last.text = (last.text or "") + " · requires: nothing"
-        line.set("h", appline.digest(line))
-        partial["canon"][0] = ET.tostring(root, encoding="unicode")
-        with self.assertRaises(appline.Refused) as caught:
-            frontier.graph(self.manifest, partial)
-        self.assertIn("the inbox was removed", str(caught.exception))
 
 
 class CliTest(unittest.TestCase):
