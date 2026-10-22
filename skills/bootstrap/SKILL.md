@@ -27,7 +27,7 @@ application in the notebook for a gap.
 
 The author's feedback on a bootstrap pull request — a comment, a review, a message naming a
 requirement the round missed — is read the same way: as a dictation to the notebook, and as
-his authority for one more round on the same branch. Nothing is built from feedback that the
+the principal's authority for one more round on the same branch. Nothing is built from feedback that the
 notebook has not first taken in.
 
 The notebook is the document `.principal/notebook.json` names at the project's root. `tools/`
@@ -160,7 +160,7 @@ can decide is tooled, as `/principal:dictate` step 3 says. Run the plugin's test
 **7 — Publish.** Commit on the round's branch, push it, and open the pull request against
 `main`, ready for review, or push to the one already open. The body lists the applications
 built, by tab and name, the manifest's diff, and what step 3 listed and left. The author
-merges; his merge is what makes the branch `main`, and nothing here counts as canon for it.
+merges; that merge is what makes the branch `main`, and nothing here counts as canon for it.
 
 **8 — Report.** The pull request, the applications built, the gaps left, and what step 2
 took into the notebook. Not the code: it is on the branch, where the author reads it.
@@ -194,7 +194,7 @@ Rules of this entry point that no tool decides. Hold these by reading.
 
 - **A gap is read.** Whether a `built` thing does what its `what` says, and whether a
   `diverged` one drifted or was never right, is judgement. The table in step 3 is what you
-  read, written down, so the principal can see the reading before he approves the plan.
+  read, written down, so the principal can see the reading before approving the plan.
 - **The dictation is recorded before it is built.** Feedback that names a requirement is a
   clause of the notebook or it is nothing the notebook supports. Step 2 comes before step 3
   every round, and a round that built from prose the notebook does not hold has built a

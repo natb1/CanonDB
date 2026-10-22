@@ -651,6 +651,44 @@ def end_stated(graph: Graph) -> Yield:
                          "together" % (stated[0], missing[0]))
 
 
+#: what the notebook calls the one it is kept for where the user is meant:
+#: the definite noun, and its possessive with it. "A human" is left to the
+#: reader: it names a kind as often as it names the user.
+_NOT_THE_USER = re.compile(r"\bthe human\b", re.I)
+
+
+@check("user-named",
+       "the notebook's own words name the one it is kept for the user, never the human")
+def user_named(graph: Graph) -> Yield:
+    """One name for one party. The one the notebook is kept for is the user
+    wherever the notebook speaks of that party, and "the human" is the one
+    other name a script can tell is meant for it, so it is the one this
+    finds: in every part ``_prose`` judges, applications among them, and in
+    the answer's hinge, which is the notebook's words too.
+
+    A pronoun standing for the user — he, him, his, himself — is the same
+    fault, and no script can tell whom a pronoun stands for: a party's tab
+    says "he" of its author, and an answer says it of Euthyphro. So that half
+    is held by reading. A party's own words are the party's, so a party's
+    question is not read here; where its tab speaks of the user, the reading
+    finds it. Canon's words are verbatim: a landed question's own words, like
+    a landed answer, are not the notebook's to change, and are not read.
+    """
+    for q in graph.questions:
+        if q.tradition:
+            continue
+        parts = [(what, prose) for what, prose in _prose(q)
+                 if not (what == "the question" and q.state == STATES[-1])]
+        if q.hinge is not None:
+            parts.append(("the answer's hinge", q.hinge.thesis))
+        for what, prose in parts:
+            found = _NOT_THE_USER.search(text.plain(prose or ""))
+            if found:
+                yield q.id, ("%s says %r where it means the user, and the one the "
+                             "notebook is kept for is named the user"
+                             % (what, found.group(0)))
+
+
 @check("provenance-complete",
        "a hinge's thesis part names a model, a harness and a canon reference",
        WARN)

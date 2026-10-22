@@ -207,6 +207,7 @@
         "tools/fixtures/invalid-tradition-isolated.json",
         "tools/fixtures/invalid-tradition-target.json",
         "tools/fixtures/invalid-unique-ids.json",
+        "tools/fixtures/invalid-user-named.json",
         "tools/fixtures/invalid-verbatim-collision.json",
         "tools/fixtures/invalid-vocabulary.json",
         "tools/fixtures/valid.json",

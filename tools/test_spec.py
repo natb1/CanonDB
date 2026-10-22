@@ -871,6 +871,43 @@ class DictationPendingTest(unittest.TestCase):
         self.assertEqual(spec.run(graph, only=["dictation-pending"]), [])
 
 
+class UserNamedTest(unittest.TestCase):
+    """The one the notebook is kept for is named the user: "the human" is
+    found wherever the notebook's own words carry it, and canon's words and
+    a party's are left alone."""
+
+    def test_the_notebook_words_are_read(self):
+        graph = load("valid")
+        self.assertEqual(spec.run(graph, only=["user-named"]), [])
+        graph.get("canon").hinge.end = "that the human's record can be pointed at"
+        graph.get("canon").hinge.method = "read at each entry"
+        findings = spec.run(graph, only=["user-named"])
+        self.assertEqual([f.question for f in findings], ["canon"])
+        self.assertIn("the question's end", findings[0].message)
+
+    def test_the_answer_hinge_and_an_application_are_read(self):
+        graph = load("valid")
+        root = graph.get("ti-esti")
+        root.hinge.thesis += " · amended by the human"
+        root.theses[0].applications[0].note = "kept until the human merges it"
+        findings = spec.run(graph, only=["user-named"])
+        self.assertEqual(len(findings), 2)
+
+    def test_canon_and_a_party_are_left_alone(self):
+        graph = load("valid")
+        root = graph.get("ti-esti")
+        self.assertEqual(root.state, "landed")
+        root.question = "What does the human ask of a working relationship?"
+        plato = graph.get("plato")
+        plato.theses[0].text += " The answerer is the human in the room."
+        self.assertEqual(spec.run(graph, only=["user-named"]), [])
+
+    def test_a_pronoun_is_left_to_the_reading(self):
+        graph = load("valid")
+        graph.get("canon").hinge.question += " He keeps it."
+        self.assertEqual(spec.run(graph, only=["user-named"]), [])
+
+
 class EndStatedTest(unittest.TestCase):
     """The end and its method: stated at the author's root, together or not
     at all below it, and never on a party's question. What the two bring in
