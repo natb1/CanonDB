@@ -84,6 +84,12 @@ def read(source) -> Tuple[int, ET.Element, dict]:
     return int(root.get("rev", "0") or 0), root, _ids(root)
 
 
+def _words(node: ET.Element) -> str:
+    """A paragraph's words: its runs, or, in an outline read, the words the
+    element holds directly."""
+    return page.inline(node) or (node.text or "")
+
+
 def section(root: ET.Element, ids: dict, name: str) -> Section:
     """The blocks under a ``## <name>`` heading, up to the next one."""
     heading: Optional[Block] = None
@@ -94,11 +100,11 @@ def section(root: ET.Element, ids: dict, name: str) -> Section:
         if node.tag == "paragraph" and node.get("heading") == "2":
             if heading is not None:
                 break
-            if page.inline(node).strip() == name:
+            if _words(node).strip() == name:
                 heading = Block(ids[id(node)], node.get("h", ""), name)
             continue
         if heading is not None:
-            words = page.inline(node) if node.tag == "paragraph" else ""
+            words = _words(node) if node.tag == "paragraph" else ""
             out.append((node.tag, node, Block(ids[id(node)], node.get("h", ""), words)))
     return Section(heading, out)
 
@@ -119,7 +125,7 @@ def leases(source) -> List[Lease]:
             if item.tag != "listItem":
                 continue
             para = next((c for c in item if c.tag == "paragraph"), None)
-            words = page.inline(para).strip() if para is not None else ""
+            words = _words(para).strip() if para is not None else ""
             parts = words.split(SEP)
             if len(parts) < 4:
                 continue

@@ -85,6 +85,16 @@ class ReleaseTest(unittest.TestCase):
         self.assertEqual(lease.release(held(A), "s-z"), [])
 
 
+class OutlineTest(unittest.TestCase):
+    def test_an_outline_read_is_enough_to_take(self):
+        outline = ("<doc node='n' rev='3' outline='true'><paragraph id='s1.246' h='hh' heading='2'>"
+                   "Leases</paragraph><paragraph id='.9959' h='nn'>None held.…</paragraph>"
+                   "<paragraph id='.388' h='tt' heading='2'>Tooling</paragraph></doc>")
+        ops = lease.take(outline, "all", "s-a", "/principal:bootstrap", "t")
+        self.assertEqual(ops[0]["target"]["ids"], ["s1.9959"])
+        self.assertEqual((ops[0]["ifHash"], ops[0]["ifRev"]), ("nn", 3))
+
+
 class PinTest(unittest.TestCase):
     def test_reads_the_pin(self):
         self.assertEqual(lease.pin(held(A)), "abc1234")
