@@ -2,9 +2,9 @@
 
 A Claude Code plugin: the principal's entry points over a hypomnemata notebook and the canon it
 feeds. Canon is the source of truth: the root question, [`canon/ti-esti.md`](canon/ti-esti.md),
-and every answer merged since. Failing canon, the notebook is:
-[Hypomnemata — CanonDB v1](https://claude.ai/code/artifact/47d8730e-0bb8-4995-b3fb-8310665c1528),
-whose applications name every file here. This README is a projection of the two. It says what the
+and every answer merged since. Failing canon, the notebook is the `canondb` project of
+[Hypomnemata — merged v1](https://claude.ai/code/artifact/b700cd97-fc03-4060-836e-e2557e2dcfd3),
+the one notebook every project is kept in, whose applications name every file here. This README is a projection of the two. It says what the
 plugin is for, as the root states it, and how the plugin is installed, which neither says.
 
 ## What it is for
@@ -150,7 +150,12 @@ is read and written through these entry points.
 
    - `notebook.json` — `{"artifact": "<Claude Docs artifact id>", "state_enum": "<enum id>"}`,
      the notebook the skills read and write. Make the document first; the enum holds the
-     states `held · in thread · landed`, in that order, and its id is the document's.
+     states `held · in thread · landed`, in that order, and its id is the document's. Where
+     the document holds several projects, add `"project": "<its root's name>"`, the one this
+     repository keeps, and, where that root was renamed after its canon landed,
+     `"canon": {"<question id>": "<canon file name>"}`. Such a document keeps a `lease` tab at
+     the top level, ordered last, with `## Leases` and `## Tooling` sections, which the skills
+     read and write and the reader never takes for a question.
    - `bootstrap.json` — `{"applications": []}`, the manifest `/principal:bootstrap` keeps.
 
 3. Write the root question under `canon/`. Canon is what is under that directory, and nothing

@@ -1,4 +1,8 @@
 {
-  "artifact": "https://claude.ai/code/artifact/47d8730e-0bb8-4995-b3fb-8310665c1528",
-  "state_enum": "cc6462ad-8c3e"
+  "artifact": "https://claude.ai/code/artifact/b700cd97-fc03-4060-836e-e2557e2dcfd3",
+  "state_enum": "beb877f2-119f",
+  "project": "canondb",
+  "canon": {
+    "canondb": "ti-esti"
+  }
 }

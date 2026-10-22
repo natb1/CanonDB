@@ -70,6 +70,19 @@ def exports(directory: str) -> Dict[str, str]:
     return found
 
 
+def revs(directory: str) -> Dict[str, int]:
+    """question id -> the rev its tab answered with, from the ``<question
+    id>.rev`` files ``page.py`` writes beside each spelled read."""
+    found: Dict[str, int] = {}
+    for entry in sorted(os.listdir(directory)):
+        if entry.endswith(".rev"):
+            with open(os.path.join(directory, entry), encoding="utf-8") as fh:
+                words = fh.read().strip()
+            if words.isdigit():
+                found[entry[:-4]] = int(words)
+    return found
+
+
 def outlines(graph: model.Graph, directory: str,
              questions: Optional[Iterable[str]] = None) -> Dict[str, List[apply.Block]]:
     """tab id -> its parsed outline, from the ``<question id>.xml`` files in

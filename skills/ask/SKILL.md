@@ -31,6 +31,10 @@ grant, and no other turn holds one. Each tool is named in both spellings the sur
 `mcp__claude_ai_Claude_Docs__…` and `mcp__Claude_Docs__…`; a name the surface lacks grants
 nothing.
 
+Where the notebook holds several projects, the questions this run reads, selects and puts are
+those of the project `.principal/notebook.json` names, as `/principal:dictate` says; its reads,
+writes and the lease it takes for the record are as **Several sessions** there says.
+
 ## Ground rules
 
 1. **The artifact is the source of truth.** Read it before anything else, as `/principal:dictate`
@@ -49,15 +53,16 @@ nothing.
 
 ## Procedure
 
-**1 — Read.** Read the artifact's tab list and each tab's body whole, spell the reads with
-`tools/page.py`, and build the graph file with `tools/read.py <document read> $SCRATCH/tabs -o
-$SCRATCH/graph.json`, as `/principal:dictate` step 1 says. Run
+**1 — Read.** Read the artifact's tab list and each of the project's tabs' bodies whole, with
+the tabs of the parties it cites, spell the reads with `tools/page.py`, and build the graph file
+with `tools/read.py <document read> $SCRATCH/tabs --project <project> -o $SCRATCH/graph.json`,
+as `/principal:dictate` step 1 says. Run
 `tools/check.py` over it: no ERROR may stand, since a lineage written out of a faulted graph
 is not one anybody vouched for.
 
 **2 — Select.** `tools/next.py $SCRATCH/graph.json` prints the question the frontier puts
-first: the AI's, not yet put, and every question the AI answers above it carrying an answer
-that has landed. `--all` lists every question not yet put
+first: the AI's, not yet put, not claimed by another session, and every question the AI
+answers above it carrying an answer that has landed. `--all` lists every question not yet put
 with what each still waits on, and `--thread <ids>` names the open thread being continued, so
 that an answer earlier on it is carried without having landed. Which thread a question is on is
 not recorded anywhere, so that argument is yours to give and yours to get right: a question put
@@ -90,7 +95,15 @@ with the same `--thread` as step 2. The directory must be named `packet` and the
 through. The script refuses rather than write a lineage with a gap, and says what is owed.
 Do not read the file back into this run; you have the graph it was written from.
 
-**5 — Launch.** Launch `canon-answer` with the Agent tool and this prompt, and nothing more:
+**5 — Claim, then launch.** Claim the question before the turn goes out, so that no other run
+puts it meanwhile: insert a note on its tab, `tools/inplace.py note insert <the tab's read>
+--after <the last block of its Thesis section> --text "claimed by <this session's id> on <the
+date>: put to the canon agent"`, send it, and read the tab back. Where another session's claim
+note stands on the tab before this one — it landed first — take this one off and stop, saying
+whose it is. The note is a claim and not a
+pending dictation; `claim-open` reports it while it stands.
+
+Launch `canon-answer` with the Agent tool and this prompt, and nothing more:
 
 ```
 <the question's wording, from the notebook, verbatim>
@@ -119,8 +132,10 @@ start, so a session that began before it existed cannot launch it and says so.
 `assent: verbatim (AI)`, state `in thread`, provenance naming the model, this harness, the
 session by its id, and the canon commit the lineage was written at. The question's state becomes
 `in thread`. No term is drawn from it — the clauses that raise the next questions are the
-principal's to draw, in a dictation. Edit the graph file, then apply exactly as
-`/principal:dictate` steps 4 and 5 say: body, then links, then the tab patch, then the re-check
+principal's to draw, in a dictation. The claim note comes off in the same run: a guarded
+`delete` of its block, with its `h` and the read's `rev`. A run that records nothing — the
+answer refused, the run stopped — takes the claim off too. Edit the graph file, take the
+lease, then apply exactly as `/principal:dictate` steps 4 and 5 say: body, then links, then the tab patch, then the re-check
 with `check.py` and `verify.py`. `text-unquoted` and `text-unwrapped` may refuse the answer as
 it stands; an answer is verbatim, so the refusal is reported with the answer as the agent gave
 it, and nothing is recorded until the reader can hold it.

@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import json
 import xml.etree.ElementTree as ET
-from typing import Dict, List, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from . import text
 
@@ -259,6 +259,14 @@ def blocks(source) -> List[Tuple[str, str]]:
         if words.strip():
             out.append((own_id(node, full), words))
     return out
+
+
+def rev(source) -> Optional[int]:
+    """The rev the read answered with: the bookmark a freshness check reads
+    the tab again from. None where the read printed none."""
+    root = ET.fromstring(view_xml(source))
+    found = root.get("rev")
+    return int(found) if found and found.isdigit() else None
 
 
 def markdown(source) -> str:

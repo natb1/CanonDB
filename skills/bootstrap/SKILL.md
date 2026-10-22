@@ -62,8 +62,10 @@ nothing.
 
 **1 — Read, in place.** The document is the reference, and it is read where it stands:
 nothing is exported, transcribed to disk or built into a graph file. Read the artifact's tab
-list. For each author tab — one whose top-level ancestor is the root, order `a0`, and not a
-tab under a tradition's, order `b…`; a tradition's tabs carry no application — `search` its
+list. For each author tab — one under the root of the project `.principal/notebook.json`
+names (or, in a notebook of one project, the root, order `a0`), and not a tab of a party,
+under the `tradition` project's root or at top level in the b series; a party's tabs carry no
+application; and never the reserved `lease` tab — `search` its
 body for `⚙` to find the application headings, then for ` · ◆ ` to get every application
 line with its block id and `h`, and keep the tab's `rev` as its bookmark. That is every
 application in the notebook, and all this entry point reads of it besides the blocks a
@@ -135,6 +137,10 @@ file is not bootstrap's, and what would make it so (a dictation that makes the a
 bootstrap's, or the file's own application being reconciled). A row on a `derived`
 application is never in the plan. Wait for approval. Where plan mode is not available,
 present the table and stop until the principal says to go on.
+
+Every write this run makes to the notebook is as `/principal:dictate`'s **Several sessions**
+says: an `opId` on each update, the freshness read before the first write, and a lease taken
+for anything wider than a block in place.
 
 **5 — Build.** Only the rows approved, only the files they name. A tool gets its tests, under
 the plugin's `tools/`; a skill gets its attenuation; a rule the notebook states that a script

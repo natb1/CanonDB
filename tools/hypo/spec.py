@@ -23,8 +23,8 @@ from dataclasses import dataclass
 from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple
 
 from . import project, text
-from .model import (ANSWERERS, CANON, CITATION_HEADINGS, GLYPHS, Graph, KINDS, MODES, RELATIONS,
-                    SECTIONS, STANDINGS, STATES)
+from .model import (ANSWERERS, CANON, CITATION_HEADINGS, CLAIM, GLYPHS, TRADITION, Graph, KINDS,
+                    MODES, RELATIONS, SECTIONS, STANDINGS, STATES)
 
 ERROR = "ERROR"
 WARN = "WARN"
@@ -251,7 +251,8 @@ def term_total(graph: Graph) -> Yield:
 
 
 @check("one-root",
-       "exactly one question has no incoming term edge, and it is not a tradition")
+       "each project has exactly one question with no incoming term edge, and it is "
+       "not a tradition")
 def one_root(graph: Graph) -> Yield:
     """The kind says what a question with no raiser may be, and
     ``scope-closed`` leans on it over a partial graph, so a root's kind and
@@ -270,15 +271,20 @@ def one_root(graph: Graph) -> Yield:
                          % ", ".join(sorted(ins[q.id])))
         elif q.kind != "root" and not ins.get(q.id) and not graph.partial:
             yield q.id, "nothing raises it, and its kind is %r rather than root" % q.kind
-    roots = sorted(q.id for q in graph.questions if not q.tradition and not ins.get(q.id))
-    if len(roots) == 1:
-        return
-    if not roots:
-        if graph.partial:
-            return
-        yield None, "no question is a root: every non-tradition question has an incoming term edge"
-    else:
-        yield None, "%d roots, expected one: %s" % (len(roots), ", ".join(roots))
+    found = project.candidates(graph)
+    several = len(found) > 1
+    for name in project.projects(graph):
+        roots = found.get(name, [])
+        where = " in project %s" % name if several else ""
+        if len(roots) == 1:
+            continue
+        if not roots:
+            if graph.partial:
+                continue
+            yield None, ("no question is a root%s: every non-tradition question "
+                         "has an incoming term edge" % where)
+        else:
+            yield None, "%d roots%s, expected one: %s" % (len(roots), where, ", ".join(roots))
 
 
 @check("scope-closed",
@@ -326,7 +332,9 @@ def tradition_isolated(graph: Graph) -> Yield:
     answer under his own question.
     """
     by_id = graph.by_id()
-    main = project.reachable_from(graph, project.main_root(graph))
+    main: Set[str] = set()
+    for root in project.project_roots(graph):
+        main |= project.reachable_from(graph, root)
     for src, term in graph.term_edges():
         target = by_id.get(term.to)
         if target is not None and target.party != src.party:
@@ -336,6 +344,48 @@ def tradition_isolated(graph: Graph) -> Yield:
     for q in graph.questions:
         if q.tradition and q.id in main:
             yield q.id, "tradition question is reachable from the root, so it is in the main tree"
+
+
+@check("project-order",
+       "a term edge stays inside its project, and a mention leaves it only for an earlier "
+       "project or the tradition project")
+def project_order(graph: Graph) -> Yield:
+    """A notebook of several projects keeps each project's lineage its own:
+    a turn carries canon above its question, and canon is kept per project,
+    each in its own repository. So a term edge never crosses from one
+    project to another — it would put one project's question under
+    another's — and the one thing that may cross is a mention, which points
+    without raising. A mention runs only one way: to a project earlier in the
+    order the projects depend on one another, the order their roots stand
+    in, so that a project depended on never points at what depends on it;
+    and to the tradition project from any, since every project reads its
+    parties. A notebook of one project has nothing to cross.
+    """
+    if len(graph.projects) < 2:
+        return
+    rank = {name: i for i, name in enumerate(graph.projects)}
+    by_id = graph.by_id()
+    for q in graph.questions:
+        if q.tradition:
+            continue
+        for term in q.terms():
+            target = by_id.get(term.to)
+            if target is None or target.tradition or target.project == q.project:
+                continue
+            yield q.id, ("term %r raises %s, a question of project %s; a term edge "
+                         "stays inside project %s, and a mention is what crosses"
+                         % (term.title, target.id, target.project, q.project))
+        for mention in q.mentions():
+            target = by_id.get(mention.to)
+            if target is None or target.tradition or target.project == q.project:
+                continue
+            if target.project == TRADITION:
+                continue
+            if rank.get(target.project, len(rank)) >= rank.get(q.project, len(rank)):
+                yield q.id, ("mention %r points at %s, in project %s, which stands "
+                             "after project %s; a project points only at one it "
+                             "depends on, earlier in the order"
+                             % (mention.title, target.id, target.project, q.project))
 
 
 @check("acyclic", "the term graph is acyclic")
@@ -516,7 +566,7 @@ def verbatim_collision(graph: Graph) -> Yield:
                 continue  # it defines nothing here, and cannot give way
             forms = text.forms(definition.word)
             for q, thesis, body in verbatim:
-                if q.id == owner.id:
+                if q.id == owner.id or q.project != owner.project:
                     continue
                 used = [form for form in forms if text.occurrences(body, form, True)]
                 if used:
@@ -614,8 +664,9 @@ def hinge_present(graph: Graph) -> Yield:
 
 
 @check("end-stated",
-       "the author's root states an end and its method; a question below states the two "
-       "together or neither; a party's question states neither")
+       "a project's root states an end and its method; a question below states the two "
+       "together or neither; a party's question, and the tradition project's root, "
+       "state neither")
 def end_stated(graph: Graph) -> Yield:
     """The end is what the asking is for and the method is how the end is
     read and pursued: the human's judgement, stated at his root in his own
@@ -637,7 +688,9 @@ def end_stated(graph: Graph) -> Yield:
         parts = (("end", q.hinge.end), ("method", q.hinge.method))
         stated = [name for name, part in parts if part.strip()]
         missing = [name for name, part in parts if not part.strip()]
-        if q.tradition:
+        if q.tradition or (q.project == TRADITION and q.kind == "root"):
+            # the tradition project's root is read for the projects that cite
+            # its parties, and states no end of its own, as a party does not
             if stated:
                 yield q.id, ("a party's question states %s, and reading a party has "
                              "no end of ours" % " and ".join(stated))
@@ -728,15 +781,18 @@ def definition_once(graph: Graph) -> Yield:
     still stated once, on the party's tab. Two questions may import the same
     word, because each is declaring its own dependency on it.
     """
-    where: Dict[str, List[str]] = {}
-    spelling: Dict[str, str] = {}
+    where: Dict[Tuple[str, str], List[str]] = {}
+    spelling: Dict[Tuple[str, str], str] = {}
     for q in graph.questions:
         for definition in q.definitions:
             if definition.imported:
                 continue  # a pointer at a party's entry, not a second sense
-            key = definition.word.strip().lower()
-            if not key:
+            word = definition.word.strip().lower()
+            if not word:
                 continue
+            # one sense per word in each project: a notebook of several keeps
+            # each project's vocabulary its own, as its own notebook did
+            key = (q.project, word)
             spelling.setdefault(key, definition.word)
             where.setdefault(key, []).append(q.id)  # every entry: two on one tab are two
     for key, owners in where.items():
@@ -915,14 +971,30 @@ def reach(graph: Graph) -> Yield:
     # one finding per word and part, however often the part uses it: a word
     # used twice in one answer is one thing out of reach, not two
     counted: Dict[Tuple[str, str, str, str], int] = {}
+    by_id = graph.by_id()
+    # the projects that read each party: those of the questions citing it,
+    # over the party's own lineage, with a borrowed sense counted as a citation
+    cited_in = {q.id: {by_id[x].project for x in above[q.id]
+                       if x in by_id and not by_id[x].tradition}
+                for q in graph.questions if q.tradition}
     for q in graph.questions:
         if graph.partial and q.id in parties:
             continue  # a party reaches over what cites it, from anywhere
         seen = above[q.id]
+        # the projects whose vocabulary this part is read in: its own, and for
+        # a party's question, the projects of whatever cites the party
+        scope = {by_id[x].project for x in seen if x in by_id and not by_id[x].tradition}
         for what, prose in _prose(q):
             for word, form in _words_used(vocabulary, prose):
                 if senses[word] & seen:
                     continue
+                owners = [by_id[o] for o in senses[word] if o in by_id]
+                # a word is this part's to reach only in the projects that
+                # read it: an author's word in its own project, and a party's
+                # in the projects whose questions cite the party
+                if owners and not any((cited_in[o.id] if o.tradition else {o.project}) & scope
+                                      for o in owners):
+                    continue  # another project's word, which this one does not read
                 if any(word in imports.get(other, set()) for other in seen):
                     continue
                 key = (q.id, what, form, word)
@@ -964,12 +1036,12 @@ def shadow_declared(graph: Graph) -> Yield:
     not a shadow, and `term-target` keeps it from pointing at itself. An
     import is a party's word in the party's sense, and shadows nothing.
     """
-    ids = {text.fold(q.id): q.id for q in graph.questions}
+    ids = {(q.project, text.fold(q.id)): q.id for q in graph.questions}
     for q in graph.questions:
         for definition in q.definitions:
             if definition.imported or definition.question:
                 continue
-            target = ids.get(text.fold(definition.word.strip()))
+            target = ids.get((q.project, text.fold(definition.word.strip())))
             if target is None or target == q.id:
                 continue
             yield q.id, ("definition %r is the word of the question %s and does "
@@ -1182,6 +1254,8 @@ def mention_justified(graph: Graph) -> Yield:
         for mention in q.mentions():
             if mention.to not in known:
                 continue  # term-target reports it
+            if graph.get(mention.to).project != q.project:
+                continue  # across projects a term is forbidden, so a mention is the encoding
             if q.id not in project.reachable_from(graph, mention.to):
                 yield q.id, ("mention %r points at %s, which does not stand above "
                              "this question, so a term would close no cycle"
@@ -1401,6 +1475,20 @@ def dictation_pending(graph: Graph) -> Yield:
             if words.lower().startswith("pending"):
                 yield q.id, ("a pending note on %s, a clause no run has yet applied: %s"
                              % (note.section, _clip(words)))
+
+
+@check("claim-open",
+       "no question stands claimed: a claim lasts from the put to the record", WARN)
+def claim_open(graph: Graph) -> Yield:
+    """A run that puts a question claims it first, with a note naming the
+    session, so that no other run puts it while the canon turn is out; the
+    run that records the answer takes the note off. A claim that stands is a
+    turn still out or a run that died, and either is worth seeing: a dead
+    one is released by reading it, and by nothing else."""
+    for q in graph.questions:
+        for note in q.notes:
+            if note.body.strip().lower().startswith(CLAIM):
+                yield q.id, "a claim stands on %s: %s" % (note.section, _clip(note.body))
 
 
 # -- the runner -------------------------------------------------------------

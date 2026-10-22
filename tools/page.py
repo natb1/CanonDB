@@ -3,7 +3,8 @@
 
 Each file is a `view` read of one tab's body (the tool's JSON result, or its
 xml alone), named `<question id>.<anything>`; `<question id>.md` is written
-under DIR in the export's spelling, so `read.py`, `verify.py` and `relink.py`
+under DIR in the export's spelling, with `<question id>.rev` beside it holding the
+rev the read answered with, so `read.py`, `verify.py` and `relink.py`
 take the directory as they took a directory of exports. Nothing is exported.
 """
 
@@ -31,7 +32,9 @@ def main(argv=None) -> int:
         qid = cli.question_of(path)
         try:
             with open(path, encoding="utf-8") as fh:
-                text = page.markdown(fh.read())
+                source = fh.read()
+            text = page.markdown(source)
+            stamp = page.rev(source)
         except Exception as exc:  # a view that is not one is said, not skipped
             print("ERROR %s: %s" % (path, exc), file=sys.stderr)
             failed += 1
@@ -39,6 +42,10 @@ def main(argv=None) -> int:
         target = os.path.join(args.out, qid + ".md")
         with open(target, "w", encoding="utf-8") as fh:
             fh.write(text)
+        if stamp is not None:
+            # the bookmark read.py keeps on the question, for the freshness check
+            with open(os.path.join(args.out, qid + ".rev"), "w", encoding="utf-8") as fh:
+                fh.write("%d\n" % stamp)
         print("%s: %d bytes" % (target, len(text.encode("utf-8"))), file=sys.stderr)
     return 1 if failed else 0
 

@@ -28,8 +28,8 @@
         "tools/hypo/gaps.py",
         "tools/test_gaps.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/35",
-      "rounds": 7
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
+      "rounds": 8
     },
     {
       "question": "context",
@@ -38,8 +38,8 @@
         "README.md",
         ".claude/settings.json"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/32",
-      "rounds": 3
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
+      "rounds": 4
     },
     {
       "question": "dictate",
@@ -47,8 +47,8 @@
       "files": [
         "skills/dictate/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3191",
-      "rounds": 5
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
+      "rounds": 6
     },
     {
       "question": "wording",
@@ -56,8 +56,8 @@
       "files": [
         "skills/dictate/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/24",
-      "rounds": 1
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
+      "rounds": 2
     },
     {
       "question": "priority",
@@ -69,8 +69,8 @@
         "tools/test_project.py",
         "tools/test_turn.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/29",
-      "rounds": 2
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
+      "rounds": 3
     },
     {
       "question": "priority",
@@ -80,8 +80,8 @@
         "tools/hypo/frontier.py",
         "tools/test_frontier.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/30",
-      "rounds": 1
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
+      "rounds": 2
     },
     {
       "question": "docs-encoding",
@@ -89,10 +89,14 @@
       "files": [
         "tools/hypo/read.py",
         "tools/read.py",
-        "tools/test_read.py"
+        "tools/test_read.py",
+        "tools/fresh.py",
+        "tools/test_projects.py",
+        "tools/fixtures/invalid-project-order.json",
+        "tools/fixtures/invalid-claim-open.json"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3191",
-      "rounds": 4
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
+      "rounds": 5
     },
     {
       "question": "docs-encoding",
@@ -104,8 +108,8 @@
         "tools/fixtures/view-wording.md",
         "tools/fixtures/view-wording.xml"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3191",
-      "rounds": 2
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
+      "rounds": 3
     },
     {
       "question": "docs-encoding",
@@ -214,8 +218,8 @@
         "tools/test_scope.py",
         ".gitignore"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3191",
-      "rounds": 6
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
+      "rounds": 7
     },
     {
       "question": "recognition",
@@ -236,8 +240,8 @@
         "tools/test_again.py",
         "skills/ask/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/35",
-      "rounds": 1
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
+      "rounds": 2
     },
     {
       "question": "drift",
@@ -248,6 +252,35 @@
         "tools/test_drift.py"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/35",
+      "rounds": 1
+    },
+    {
+      "question": "hypomnemata",
+      "application": "the lease",
+      "files": [
+        "tools/hypo/lease.py",
+        "tools/lease.py",
+        "tools/test_lease.py"
+      ],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
+      "rounds": 1
+    },
+    {
+      "question": "hypomnemata",
+      "application": "the claim",
+      "files": [
+        "skills/ask/SKILL.md"
+      ],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
+      "rounds": 1
+    },
+    {
+      "question": "hypomnemata",
+      "application": "the project files",
+      "files": [
+        ".principal/notebook.json"
+      ],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
       "rounds": 1
     }
   ]

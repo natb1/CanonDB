@@ -50,12 +50,19 @@ class Stray(Exception):
     the graph in silence, and the tab it was meant for with it."""
 
 
-def assemble(manifest: dict, bodies: dict, scope: Sequence[str] = ()) -> dict:
+def assemble(manifest: dict, bodies: dict, scope: Sequence[str] = (),
+             revs: Optional[dict] = None) -> dict:
     """The graph file, from a document read and a question id to markdown map.
 
     ``scope`` names the questions a partial read is for; every one of them,
     and every raiser a read tab's header list names, must be among
-    ``bodies``, or ``OutOfScope`` says which is not.
+    ``bodies``, or ``OutOfScope`` says which is not. ``revs`` gives the rev
+    each tab answered with when it was read, where the reads gave one, and
+    the graph keeps it as the bookmark a freshness check reads against.
+
+    A notebook of several projects records each question's project and the
+    projects in the order their roots stand; a reserved tab is no question
+    and is never read as one.
     """
     value = manifest.get("value", manifest)
     tabs = value.get("tabs", {})
@@ -63,6 +70,10 @@ def assemble(manifest: dict, bodies: dict, scope: Sequence[str] = ()) -> dict:
     names = {tab_id: meta.get("name", tab_id) for tab_id, meta in tabs.items()}
     ids = {render.chip_key(name): name for name in names.values()}
     party = read.parties(tabs)
+    project_of = read.projects(tabs)
+    reserved = {names[t] for t in read.reserved(tabs)}
+    bodies = {k: v for k, v in bodies.items() if k not in reserved}
+    revs = revs or {}
 
     missing = [qid for qid in scope if qid not in bodies]
     if missing:
@@ -92,9 +103,16 @@ def assemble(manifest: dict, bodies: dict, scope: Sequence[str] = ()) -> dict:
         q["tab"] = tab_id
         q["body"] = files.get(tab_id, {}).get("content", {}).get("id", "")
         q["party"] = party.get(tab_id, model.AUTHOR)
+        if project_of.get(tab_id):
+            q["project"] = project_of[tab_id]
+        if revs.get(name):
+            q["rev"] = int(revs[name])
         questions.append(q)
 
     graph = {"artifact": manifest.get("frame", {}).get("artifactUrl", "")}
+    order = read.project_order(tabs)
+    if len(order) > 1:
+        graph["projects"] = order
     graph["questions"] = questions
     if scope:
         graph["scope"] = list(scope)
@@ -104,8 +122,10 @@ def assemble(manifest: dict, bodies: dict, scope: Sequence[str] = ()) -> dict:
 def notebook(root: str = ".") -> dict:
     """What ``.principal/notebook.json`` names at the project's root, which
     is where the tools are run from: the notebook's URL under ``artifact``
-    and the enum its states point at under ``state_enum``; empty where there
-    is none."""
+    and the enum its states point at under ``state_enum``; where the notebook
+    holds several projects, the project this checkout keeps under ``project``,
+    and under ``canon`` the canon file a renamed question's canon stands in;
+    empty where there is none."""
     try:
         with open(os.path.join(root, ".principal", "notebook.json"), encoding="utf-8") as fh:
             found = json.load(fh)
@@ -143,6 +163,10 @@ def main(argv=None) -> int:
     ap.add_argument("--scope", nargs="+", metavar="QUESTION", default=[],
                     help="the questions a dictation touches; the directory holds "
                          "their tabs and their ancestors'")
+    ap.add_argument("--project", metavar="NAME",
+                    help="read one project of a notebook that holds several: "
+                         "every tab of the project, which the directory must "
+                         "hold, as the scope, with any party tabs it holds besides")
     args = ap.parse_args(argv)
 
     try:
@@ -161,8 +185,19 @@ def main(argv=None) -> int:
         print("ERROR no .md exports in %s" % args.tabs, file=sys.stderr)
         return 1
 
+    scope = list(args.scope)
+    if args.project:
+        tabs = manifest.get("value", manifest).get("tabs", {})
+        of = read.projects(tabs)
+        mine = sorted(str(tabs[t].get("name", t)) for t in tabs if of.get(t) == args.project)
+        if not mine:
+            print("ERROR project: the document holds no project %r" % args.project,
+                  file=sys.stderr)
+            return 1
+        scope = sorted(set(scope) | set(mine))
+
     try:
-        graph = assemble(manifest, bodies, args.scope)
+        graph = assemble(manifest, bodies, scope, cli.revs(args.tabs))
     except read.ParseError as exc:
         print("ERROR parse: %s" % exc, file=sys.stderr)
         return 1

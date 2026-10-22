@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import re
 import subprocess
-from typing import Callable, List, NamedTuple, Optional, Sequence
+from typing import Callable, Dict, List, NamedTuple, Optional, Sequence
 
 from . import project, turn
 from .model import Graph
@@ -61,13 +61,16 @@ def provenance(text: str) -> Optional[Provenance]:
     return Provenance(m.group("model").strip(), m.group("harness").strip(), canon)
 
 
-def due(graph: Graph, model: str, moved: Moved) -> List[Due]:
+def due(graph: Graph, model: str, moved: Moved, of: Optional[str] = None) -> List[Due]:
     """Every landed question of the author's the AI answers whose answer is
     dated: by the model, by the canon above it, or by a hinge that names
-    neither. Each with its reasons, by id."""
+    neither. Each with its reasons, by id. ``of`` names one project of a
+    notebook that holds several, whose canon is in its own repository."""
     rows: List[Due] = []
     for q in sorted(graph.questions, key=lambda q: q.id):
         if q.tradition or q.answerer != turn.AI or not project.landed(q):
+            continue
+        if of is not None and q.project != of:
             continue
         prov = provenance(q.hinge.thesis) if q.hinge is not None else None
         reasons: List[str] = []
@@ -89,10 +92,14 @@ def due(graph: Graph, model: str, moved: Moved) -> List[Due]:
     return rows
 
 
-def git_moved(root: str) -> Moved:
+def git_moved(root: str, names: Optional[Dict[str, str]] = None) -> Moved:
     """The reading off git under ``root``: canon is what is under ``canon/``,
     one file per question, and a question's canon has moved when a commit
-    after the one named touches its file."""
+    after the one named touches its file. ``names`` gives the file a question
+    renamed in the notebook still stands in — a project's root, renamed for
+    the project when its notebook joined others, keeps the canon file it
+    landed as, since a canon file is renamed only by a promulgation."""
+    names = names or {}
     def run(*args: str) -> subprocess.CompletedProcess:
         return subprocess.run(["git", "-C", root] + list(args),
                               capture_output=True, text=True)
@@ -102,7 +109,8 @@ def git_moved(root: str) -> Moved:
             return None
         out: List[str] = []
         for other in above:
-            log = run("log", "--format=%h", canon + "..HEAD", "--", "canon/%s.md" % other)
+            log = run("log", "--format=%h", canon + "..HEAD", "--",
+                      "canon/%s.md" % names.get(other, other))
             if log.returncode == 0 and log.stdout.strip():
                 out.append(other)
         return out
