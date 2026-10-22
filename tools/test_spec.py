@@ -344,6 +344,16 @@ class DetailTest(unittest.TestCase):
         findings = spec.run(graph, only=["definition-anchorable"])
         self.assertEqual([f.question for f in findings], ["canon"])
 
+    def test_a_word_may_come_in_on_the_method(self):
+        graph = load("valid")
+        root = graph.get("ti-esti")
+        word = root.definitions[0].word
+        root.theses[0].text = root.theses[0].text.replace(word, "examination")
+        findings = spec.run(graph, only=["definition-anchorable"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        root.hinge.method += "; the %s is what tests it" % word
+        self.assertEqual(spec.run(graph, only=["definition-anchorable"]), [])
+
     def test_only_the_ai_s_questions_are_put(self):
         """Another party's question is read, not asked, and lands no more than
         the principal's does; the fixture covers his, this covers theirs."""
@@ -445,6 +455,18 @@ class DetailTest(unittest.TestCase):
         findings = spec.run(graph, only=["reach"])
         self.assertEqual([f.question for f in findings], ["canon"])
         self.assertIn("attenuation", findings[0].message)
+
+    def test_the_end_is_judged_for_reach_like_the_question_half(self):
+        """The end is the asker's words; a defined word it uses must be in
+        reach from the root, which reaches its own glossary and no other."""
+        graph = load("valid")
+        root = graph.get("ti-esti")
+        self.assertEqual(spec.run(graph, only=["reach"]), [])
+        root.hinge.end += ", whatever grade the record carries"
+        findings = spec.run(graph, only=["reach"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        self.assertIn("the question's end", findings[0].message)
+        self.assertIn("'grade'", findings[0].message)
 
     def test_reach_says_a_word_used_twice_once(self):
         """A word out of reach is one thing out of reach, however often the
@@ -706,6 +728,15 @@ class PartedTextTest(unittest.TestCase):
         self.assertEqual([f.question for f in findings], ["ti-esti"])
         self.assertIn("heading", findings[0].message)
 
+    def test_a_block_opening_on_a_mark_with_no_space_is_a_paragraph(self):
+        """A heading is the marks and a space, so ``#2 counts`` is a paragraph
+        to the reader, and the method may count in one."""
+        graph = load("valid")
+        graph.get("ti-esti").hinge.method += "\n\n#1 entries read\n\n#2 counts how often"
+        self.assertEqual(spec.run(graph, only=["text-unquoted"]), [])
+        graph.get("ti-esti").hinge.method += "\n\n# 3 a heading"
+        self.assertEqual([f.question for f in spec.run(graph, only=["text-unquoted"])], ["ti-esti"])
+
     def test_a_citation_heading_inside_an_answer_is_refused(self):
         graph = load("valid")
         graph.get("ti-esti").theses[0].text += "\n\n**Support**\n\nA closing paragraph."
@@ -720,6 +751,13 @@ class PartedTextTest(unittest.TestCase):
         findings = spec.run(graph, only=["text-unquoted"])
         self.assertEqual([f.question for f in findings], ["canon"])
         self.assertIn("hinge", findings[0].message)
+
+    def test_a_blockquote_in_the_end_is_refused(self):
+        graph = load("valid")
+        graph.get("ti-esti").hinge.end = "> what the asking is for"
+        findings = spec.run(graph, only=["text-unquoted"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        self.assertIn("the hinge's end", findings[0].message)
 
     def test_a_text_ending_in_a_line_break_is_said_so(self):
         graph = load("valid")
@@ -818,10 +856,6 @@ class FieldsPartedTest(unittest.TestCase):
         self.assertIn("link", findings[0].message)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class DictationPendingTest(unittest.TestCase):
     def test_a_pending_note_is_reported_until_a_run_takes_it_in(self):
         findings = spec.run(load("invalid-dictation-pending"), only=["dictation-pending"])
@@ -835,3 +869,40 @@ class DictationPendingTest(unittest.TestCase):
         graph.questions[0].notes.append(model.Note(
             section="thesis", body="A note that mentions pending work later on."))
         self.assertEqual(spec.run(graph, only=["dictation-pending"]), [])
+
+
+class EndStatedTest(unittest.TestCase):
+    """The end and its method: stated at the author's root, together or not
+    at all below it, and never on a party's question. What the two bring in
+    and how they are read is each check's own, and is tested beside it."""
+
+    def test_the_root_is_reported_for_the_part_it_lacks(self):
+        graph = load("valid")
+        self.assertEqual(spec.run(graph, only=["end-stated"]), [])
+        graph.get("ti-esti").hinge.method = ""
+        findings = spec.run(graph, only=["end-stated"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        self.assertIn("no method", findings[0].message)
+        self.assertNotIn("no end", findings[0].message)
+
+    def test_a_question_below_states_the_two_together_or_neither(self):
+        graph = load("valid")
+        canon = graph.get("canon")
+        canon.hinge.end = "that the record can be pointed at"
+        findings = spec.run(graph, only=["end-stated"])
+        self.assertEqual([f.question for f in findings], ["canon"])
+        self.assertIn("no method", findings[0].message)
+        canon.hinge.method = "read at each entry"
+        self.assertEqual(spec.run(graph, only=["end-stated"]), [])
+
+    def test_a_party_states_neither(self):
+        graph = load("valid")
+        plato = graph.get("plato")
+        self.assertTrue(plato.tradition)
+        plato.hinge.end = "that the dialogues answer at all"
+        findings = spec.run(graph, only=["end-stated"])
+        self.assertEqual([f.question for f in findings], ["plato"])
+        self.assertIn("no end of ours", findings[0].message)
+
+if __name__ == "__main__":
+    unittest.main()

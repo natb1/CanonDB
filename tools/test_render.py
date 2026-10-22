@@ -562,6 +562,11 @@ class FindTest(unittest.TestCase):
         return [l for l in render.links(graph, qid)["links"]
                 if l["anchor"] == anchor][0]
 
+    def run_of(self, page, find):
+        """The run of the page a ``find`` names: its text, the nth time."""
+        return next(r for r in text.occurrences(page, find["text"])
+                    if r.nth == find["nth"])
+
     def test_a_word_the_hinge_brought_in_is_linked_in_the_hinge(self):
         """No answer uses the word, so its link stands in the question half of
         the hinge, where the asking stood on it — never in the answer's half,
@@ -574,13 +579,63 @@ class FindTest(unittest.TestCase):
             "marked %s" % word, "marked accord")
         canon.hinge.thesis += " · the %s was noted" % word
         page = render._as_the_page_holds_it(render.body(graph, "canon"))
-        find = self.entry(graph, "canon", word)["find"]
-        run = [r for r in text.occurrences(page, find["text"])
-               if r.nth == find["nth"]][0]
+        run = self.run_of(page, self.entry(graph, "canon", word)["find"])
         self.assertLess(page.index(render.HINGE_QUESTION), run.at)
         self.assertLess(run.at, page.index(render.HINGE_THESIS))
         canon.hinge.question = "that a mark can be made at all"
         self.assertIsNone(self.entry(graph, "canon", word)["find"])
+
+    def test_a_word_only_the_end_brings_in_is_linked_in_the_end(self):
+        """The end is the asker's words, as the question half is, so a
+        definition's word that stands nowhere else is linked there — and never
+        in the provenance, which says it too. With the word in no asker's
+        part, there is nowhere to put it."""
+        graph = load("valid")
+        root = graph.get("ti-esti")
+        word = root.definitions[0].word
+        self.assertIn(word, root.theses[0].text)
+        root.theses[0].text = root.theses[0].text.replace(word, "examination")
+        root.hinge.thesis += " · the %s was noted" % word
+        end = root.hinge.end
+        root.hinge.end = end + ", tested by %s" % word
+        page = render._as_the_page_holds_it(render.body(graph, "ti-esti"))
+        run = self.run_of(page, self.entry(graph, "ti-esti", word)["find"])
+        self.assertLess(page.index(render.HINGE_END), run.at)
+        self.assertLess(run.at, page.index(render.HINGE_METHOD))
+        root.hinge.end = end
+        self.assertIsNone(self.entry(graph, "ti-esti", word)["find"])
+
+    def test_a_line_of_the_end_opening_on_a_mark_is_still_the_end(self):
+        """A heading is the marks and then a space, to the page, the reader
+        and the checker alike; a line of the end that opens ``#2`` is prose,
+        and the end runs on past it. The finder used to stop there, and a
+        word on that line, anchorable to the checker, was linked nowhere."""
+        for line in ("#2 counts", "# 2 counts", "\t## 2 counts", "  ### counts"):
+            with self.subTest(line=line):
+                graph = load("valid")
+                root = graph.get("ti-esti")
+                word = root.definitions[0].word
+                root.theses[0].text = root.theses[0].text.replace(word, "examination")
+                # inside the end's paragraph: a line of it, never a block of its own
+                root.hinge.end += "\n%s how often the %s is met" % (line, word)
+                self.assertEqual(spec.run(graph, only=["text-unquoted", "definition-anchorable"]), [])
+                page = render._as_the_page_holds_it(render.body(graph, "ti-esti"))
+                run = self.run_of(page, self.entry(graph, "ti-esti", word)["find"])
+                self.assertLess(page.index(render.HINGE_END), run.at)
+                self.assertLess(run.at, page.index(render.HINGE_METHOD))
+
+    def test_a_line_of_an_answer_opening_on_a_mark_leaves_the_section_whole(self):
+        """The Thesis runs to the next section heading the reader takes, and a
+        line inside an answer's paragraph that opens ``# `` is not one."""
+        graph = load("valid")
+        canon = graph.get("canon")
+        before = render.section_spans(render._as_the_page_holds_it(render.body(graph, "canon")))["Thesis"]
+        canon.theses[0].text = "Counted weekly:\n# of entries read\n\n" + canon.theses[0].text
+        page = render._as_the_page_holds_it(render.body(graph, "canon"))
+        spans = render.section_spans(page)
+        self.assertEqual(spans["Thesis"][1] - spans["Thesis"][0],
+                         before[1] - before[0] + len("Counted weekly:\n# of entries read\n\n"))
+        self.assertTrue(all(l["find"] for l in render.links(graph, "canon")["links"] if l["kind"] == "term"))
 
     def test_a_one_word_anchor_skips_the_longer_words_it_hides_in(self):
         graph = load("valid")
@@ -625,8 +680,7 @@ class FindTest(unittest.TestCase):
             for entry in render.links(graph, q.id)["links"]:
                 if not entry["find"]:
                     continue
-                run = next(r for r in text.occurrences(page, entry["find"]["text"])
-                           if r.nth == entry["find"]["nth"])
+                run = self.run_of(page, entry["find"])
                 with self.subTest(question=q.id, anchor=entry["anchor"][:40]):
                     if entry["kind"] == "provenance":
                         # the one link that line is given, and it is on it
@@ -695,8 +749,7 @@ class FindTest(unittest.TestCase):
         self.assertIsNotNone(find, "%r no longer anchors" % word)
         self.assertEqual(find["text"], word + "s")
         page = text.plain(render.body(graph, "canon"))
-        run = next(r for r in text.occurrences(page, find["text"])
-                   if r.nth == find["nth"])
+        run = self.run_of(page, find)
         self.assertEqual(page[run.at:run.at + len(find["text"])], word + "s")
 
     def test_every_find_target_stands_where_it_says(self):
@@ -802,6 +855,24 @@ class RefusalTest(unittest.TestCase):
     def test_an_unknown_question_is_a_key_error(self):
         with self.assertRaises(KeyError):
             render.body(load("valid"), "absent")
+
+
+class HingeLayoutTest(unittest.TestCase):
+    """The hinge's four parts stand in one order: what the asking stood on,
+    what it is for, how that is read and pursued, what the answer was drawn
+    from. A part a question does not state is omitted, heading and all."""
+
+    def test_the_parts_stand_in_order_and_an_absent_one_is_omitted(self):
+        graph = load("valid")
+        page = render.body(graph, "ti-esti")
+        at = [page.index("### " + h) for h in (render.HINGE_QUESTION, render.HINGE_END,
+                                                render.HINGE_METHOD, render.HINGE_THESIS)]
+        self.assertEqual(at, sorted(at))
+        self.assertIn("### ⚓ end: what the asking is for", page)
+        self.assertIn("### ⚓ method: how the end is read and pursued", page)
+        below = render.body(graph, "canon")
+        self.assertNotIn(render.HINGE_END, below)
+        self.assertNotIn(render.HINGE_METHOD, below)
 
 
 if __name__ == "__main__":

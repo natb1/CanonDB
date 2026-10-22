@@ -499,5 +499,47 @@ class RefusedShapeTest(unittest.TestCase):
         self.assertEqual((trad["note"], trad.get("counter", "")), (edge.note, ""))
 
 
+class HingePartsTest(unittest.TestCase):
+    """Each part of the hinge reads back as the part its heading names."""
+
+    def test_the_end_and_the_method_read_back_as_their_own_parts(self):
+        graph = load("valid")
+        root = graph.get("ti-esti")
+        parsed = read.parse_tab(render.body(graph, "ti-esti"), chip_ids(graph))
+        self.assertEqual(parsed["hinge"], {
+            "question": root.hinge.question, "end": root.hinge.end,
+            "method": root.hinge.method, "thesis": root.hinge.thesis})
+
+    def test_a_hinge_without_them_reads_back_without_them(self):
+        graph = load("valid")
+        parsed = read.parse_tab(render.body(graph, "canon"), chip_ids(graph))
+        self.assertEqual(sorted(parsed["hinge"]), ["question", "thesis"])
+
+    def test_a_hinge_heading_naming_no_part_is_refused(self):
+        """A part under a heading the renderer does not write would read
+        back under another part's name — the end as the provenance, which the
+        real provenance then overwrote — or not at all; it is refused like
+        every other heading the grammar does not hold."""
+        graph = load("valid")
+        page = render.body(graph, "ti-esti")
+        for heading in ("End: what the asking is for", "ends: what the asking is for",
+                        "end what the asking is for"):
+            edited = page.replace(render.HINGE_END, "%s %s" % (render.GLYPHS["hinge"], heading))
+            with self.subTest(heading=heading), self.assertRaises(read.ParseError) as caught:
+                read.parse_tab(edited, chip_ids(graph))
+            self.assertIn("hinge heading", str(caught.exception))
+
+
+    def test_a_hinge_part_given_twice_is_refused(self):
+        """The second would replace the first, and the first's words would be
+        gone from the graph and, at the next body write, from the page."""
+        graph = load("valid")
+        page = render.body(graph, "ti-esti")
+        at = page.index("### " + render.HINGE_METHOD)
+        edited = page[:at] + "### %s\n\nA second end.\n\n" % render.HINGE_END + page[at:]
+        with self.assertRaises(read.ParseError) as caught:
+            read.parse_tab(edited, chip_ids(graph))
+        self.assertIn("given twice", str(caught.exception))
+
 if __name__ == "__main__":
     unittest.main()

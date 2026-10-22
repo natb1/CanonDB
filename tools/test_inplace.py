@@ -787,10 +787,6 @@ class RewordedTest(unittest.TestCase):
         self.assertIn("no item", str(caught.exception))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class WordsTest(unittest.TestCase):
     """Any block of words, written in place and decided by its read-back."""
 
@@ -943,3 +939,47 @@ class ChipRefusalTest(unittest.TestCase):
         with self.assertRaises(appline.Refused) as caught:
             inplace.reworded(runs, "his only acts; the words")
         self.assertIn("marked run", str(caught.exception))
+
+
+class EndWordsTest(unittest.TestCase):
+    """The end and the method are blocks of words like the question half:
+    written in place, and decided by their read-back."""
+
+    def setUp(self):
+        self.graph = load()
+        self.view, self.by_id = view_of(self.graph, "ti-esti")
+        self.q = self.graph.get("ti-esti")
+
+    def test_the_end_reads_back_as_the_end(self):
+        bid = next(b for b, md in self.by_id.items() if md == self.q.hinge.end)
+        new = self.q.hinge.end + " And nothing more."
+        ops, old, after, field = inplace.words_replace(self.view, bid, new)
+        self.assertEqual(field, "hinge.end")
+        self.q.hinge.end = new
+        self.assertEqual(parsed(rewrite(self.by_id, bid, new=after), self.graph),
+                         parsed(render.body(self.graph, "ti-esti"), self.graph))
+
+    def test_the_method_reads_back_as_the_method(self):
+        bid = next(b for b, md in self.by_id.items() if md == self.q.hinge.method)
+        _, _, _, field = inplace.words_replace(self.view, bid, self.q.hinge.method + " And again.")
+        self.assertEqual(field, "hinge.method")
+
+    def test_a_block_after_a_nested_full_id_is_written_under_that_id_s_session(self):
+        """A read prints a full id on whatever carries one first, a run inside
+        a block included, and the block after it is short under that run's
+        session. Every reader of the view names it so, or the write that named
+        it as the document does was refused against the read-back."""
+        bid = next(b for b, md in self.by_id.items() if md == self.q.hinge.end)
+        n = int(bid.rsplit(".", 1)[1])
+        before = self.view[:self.view.index('<paragraph id=".%d"' % n)]
+        run = list(re.finditer(r'<(text|mention) id="\.(\d+)"', before))[-1]
+        view = (self.view[:run.start()] + '<%s id="zzz9.%s"' % run.groups()
+                + self.view[run.end():])
+        _, _, _, field = inplace.words_replace(view, "zzz9.%d" % n, self.q.hinge.end + " And more.")
+        self.assertEqual(field, "hinge.end")
+        with self.assertRaises(appline.Refused):
+            inplace.words_replace(view, bid, self.q.hinge.end + " And more.")
+
+
+if __name__ == "__main__":
+    unittest.main()

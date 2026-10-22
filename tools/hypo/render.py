@@ -15,11 +15,11 @@ carries is its own title, and ``headline-not-identifier`` holds the rest.
 from __future__ import annotations
 
 import re
-from typing import Callable, Dict, List, Optional, Set, Tuple
+from typing import Callable, Dict, Iterator, List, Optional, Set, Tuple
 
 from . import project, spec, text
 from .model import (ANSWERERS, GLYPHS, STANDINGS, STATES, Application, Graph,
-                     Question, Term, Thesis)
+                     Hinge, Question, Term, Thesis)
 
 SEPARATOR = "\n\n"
 
@@ -433,12 +433,28 @@ def discharge_clause(q: Question, thesis: Thesis, app: Application) -> str:
     return "until this answer lands and the artifact is diffed against it"
 
 
+#: the heading of each part of a hinge, by the part's name: the glyph, the
+#: name and what the part says, as ``Hinge.PARTS`` spells them; the reader
+#: takes a part back by the name its heading opens with
+HINGE_HEADING = {name: "%s %s: %s" % (GLYPHS["hinge"], name, gloss)
+                 for name, gloss, _ in Hinge.PARTS}
+
 #: the heading of a hinge's question half: what the asking stood on, and so
-#: the one place besides an answer where a question brings a word in
-HINGE_QUESTION = "%s question: what the asking presupposes" % GLYPHS["hinge"]
+#: one place besides an answer where a question brings a word in
+HINGE_QUESTION = HINGE_HEADING["question"]
+
+#: the heading of a hinge's end: what the asking is for, in the human's own
+#: words, stated at a root and inherited below it; it brings words in too
+HINGE_END = HINGE_HEADING["end"]
+
+#: the heading of a hinge's method: how the end is read and pursued
+HINGE_METHOD = HINGE_HEADING["method"]
+
+#: the asker's parts of the hinge with their headings, in page order
+HINGE_ASKING = tuple((name, HINGE_HEADING[name]) for name in Hinge.ASKING)
 
 #: the heading of a hinge's thesis half, which every answer's provenance names
-HINGE_THESIS = "%s thesis: what the answer was drawn from" % GLYPHS["hinge"]
+HINGE_THESIS = HINGE_HEADING["thesis"]
 
 #: what a hinge's thesis half says when a run amends the answer it records:
 #: the day, who amended it, and from what. Appended to the provenance and
@@ -496,12 +512,10 @@ def _hinge_blocks(q: Question) -> List[str]:
     if q.hinge is None or q.hinge.empty():
         return []
     blocks: List[str] = []
-    if q.hinge.question.strip():
-        blocks.append("### %s" % HINGE_QUESTION)
-        blocks.append(q.hinge.question)
-    if q.hinge.thesis.strip():
-        blocks.append("### %s" % HINGE_THESIS)
-        blocks.append(q.hinge.thesis)
+    for name, part in q.hinge.parts():
+        if part.strip():
+            blocks.append("### %s" % HINGE_HEADING[name])
+            blocks.append(part)
     return blocks
 
 
@@ -727,7 +741,7 @@ def links(graph: Graph, qid: str, par: Parents = None,
         home = _HOME[entry["kind"]]
         if (entry["kind"] == "definition" and runs
                 and not _inside(runs[0][1].at, sections.get(home))):
-            home = HINGE_QUESTION  # a word the hinge brought in
+            home = _HINGE_POOL  # a word the hinge's asking brought in
         key = (text.fold(anchor), home)
         used = taken.get(key, 0)
         chosen = runs[used] if used < len(runs) else None
@@ -801,6 +815,10 @@ def page_text(graph: Graph, qid: str, rendered: Optional[str] = None) -> str:
 _HOME = {"incoming": None,   # None: above the first section
          "term": "Thesis", "definition": "Thesis", "provenance": "Thesis"}
 
+#: the one pool a definition's runs are drawn from where the hinge's asking
+#: brought the word in: its parts share it, so it is named for none of them
+_HINGE_POOL = GLYPHS["hinge"]
+
 
 def _candidates(kind: str, anchor: str) -> Tuple[List[str], bool]:
     """The spellings to look for on the page, and whether each stands whole.
@@ -847,20 +865,23 @@ def eligible(page: str, kind: str, anchor: str,
     # a section the page does not have holds no run: an absent home is not
     # licence to link anywhere
     home = sections.get(_HOME[kind])
-    runs = _eligible_in(page, kind, anchor, fixed, home) if home else []
+    runs = _eligible_in(page, kind, anchor, fixed, [home]) if home else []
     if kind == "definition" and not runs:
-        # a question brings a word in through an answer or through what its
-        # asking stood on; a word only the hinge brought in is linked there,
-        # in the question half and never in the answer's provenance
-        hinge = _hinge_question_span(page)
-        runs = _eligible_in(page, kind, anchor, fixed, hinge) if hinge else []
+        # a question brings a word in through an answer or through the
+        # asker's parts of its hinge: what the asking stood on, what it is
+        # for, how that is read. A word only the hinge brought in is linked
+        # there, in those parts and never in the answer's provenance
+        asking = _hinge_asking_spans(page)
+        runs = _eligible_in(page, kind, anchor, fixed, asking) if asking else []
     return runs
 
 
 def _eligible_in(page: str, kind: str, anchor: str,
                  fixed: List[Tuple[int, int]],
-                 home: Tuple[int, int]) -> List[Tuple[str, "text.Run"]]:
-    """The runs of one span a link of this kind may stand on."""
+                 homes: List[Tuple[int, int]]) -> List[Tuple[str, "text.Run"]]:
+    """The runs inside any of the spans ``homes`` a link of this kind may
+    stand on, in page order: the page is scanned once per form, whichever
+    span the run falls in."""
     candidates, whole = _candidates(kind, anchor)
     # the provenance link is the one link the answer metadata line carries, so
     # it may stand there and nowhere else; every other kind is kept off it
@@ -876,7 +897,7 @@ def _eligible_in(page: str, kind: str, anchor: str,
                     continue
             elif any(at <= run.at < end for at, end in fixed):
                 continue
-            if not home[0] <= run.at < home[1]:
+            if not any(at <= run.at < end for at, end in homes):
                 continue
             seen.add(run.at)
             out.append((run.at, form, run))
@@ -888,18 +909,63 @@ def _inside(at: int, span: Optional[Tuple[int, int]]) -> bool:
     return span is not None and span[0] <= at < span[1]
 
 
-def _hinge_question_span(page: str) -> Optional[Tuple[int, int]]:
-    """Where the question half of the hinge stands, heading excluded."""
-    start: Optional[int] = None
+#: a heading line as the page takes one: the marks and then a space, so a
+#: paragraph opening ``#1`` is a paragraph. The one test for every walker
+#: here: a walker that took any line opening ``#`` for a heading ended the
+#: hinge's end at a line of it that counted, and the word on that line was
+#: found nowhere, while the reader and the checker took the line for prose
+_HEADING = re.compile(r"(#{1,6}) ")
+
+
+def _lines(page: str) -> Iterator[Tuple[int, str]]:
+    """Each line of the page with the offset it starts at, newline kept. A
+    line ends at a newline only, as the reader's blocks do: ``splitlines``
+    also breaks at a form feed, a vertical tab or a line separator, which the
+    page holds inside a line."""
     at = 0
-    for line in (page or "").splitlines(keepends=True):
-        if start is None:
-            if line.strip() == "### " + HINGE_QUESTION:
-                start = at + len(line)
-        elif line.startswith("#"):
-            return (start, at)
+    for line in re.findall(r"[^\n]*\n|[^\n]+", page or ""):
+        yield at, line
         at += len(line)
-    return None if start is None else (start, len(page or ""))
+
+
+def _headings(page: str) -> Iterator[Tuple[int, str, int]]:
+    """Each heading line of the page as the reader takes one, (offset, line,
+    marks): a block's first line, unindented, the marks and a space. A line
+    inside a paragraph, or an indented one, is prose to the reader, and so it
+    is here."""
+    opens = True
+    for at, line in _lines(page):
+        m = _HEADING.match(line) if opens else None
+        if m:
+            yield at, line, len(m.group(1))
+        opens = not line.strip()
+
+
+def _heading_spans(page: str, level: int) -> List[Tuple[str, int, int, int]]:
+    """Every heading of exactly ``level`` marks, in page order, as (its
+    text, where it starts, where its body starts, where the body ends): a
+    body runs to the next heading of ``level`` or fewer marks, or to the end
+    of the page."""
+    out: List[Tuple[str, int, int, int]] = []
+    opened: Optional[Tuple[str, int, int]] = None
+    for at, line, marks in _headings(page):
+        if marks <= level:
+            if opened is not None:
+                out.append(opened + (at,))
+                opened = None
+            if marks == level:
+                opened = (line[marks + 1:].strip(), at, at + len(line))
+    if opened is not None:
+        out.append(opened + (len(page or ""),))
+    return out
+
+
+def _hinge_asking_spans(page: str) -> List[Tuple[int, int]]:
+    """Where the asker's parts of the hinge stand — the question half, the
+    end and the method — each heading excluded, in page order."""
+    headings = {heading for _, heading in HINGE_ASKING}
+    return [(body, end) for name, _, body, end in _heading_spans(page, 3)
+            if name in headings]
 
 
 def section_spans(page: str) -> Dict[Optional[str], Tuple[int, int]]:
@@ -911,19 +977,20 @@ def section_spans(page: str) -> Dict[Optional[str], Tuple[int, int]]:
 def _section_spans(page: str) -> Dict[Optional[str], Tuple[int, int]]:
     """Where each `## ` section of the page begins and ends.
 
-    ``None`` is the masthead: everything above the first section.
+    ``None`` is the masthead: everything above the first section; a section
+    is its heading and what stands under it, to the next ``## ``.
     """
-    marks: List[Tuple[Optional[str], int]] = [(None, 0)]
-    at = 0
-    for line in (page or "").splitlines(keepends=True):
-        if line.startswith("## ") and not line.startswith("###"):
-            marks.append((line[3:].strip(), at))
-        at += len(line)
-    out: Dict[Optional[str], Tuple[int, int]] = {}
-    for i, (name, start) in enumerate(marks):
-        end = marks[i + 1][1] if i + 1 < len(marks) else len(page or "")
+    spans = _heading_spans(page, 2)
+    out: Dict[Optional[str], Tuple[int, int]] = {
+        None: (0, spans[0][1] if spans else len(page or ""))}
+    for name, start, _, end in spans:
         out.setdefault(name, (start, end))
     return out
+
+
+def _line_spans(page: str, is_one: Callable[[str], bool]) -> List[Tuple[int, int]]:
+    """(start, end) of every line ``is_one`` takes."""
+    return [(at, at + len(line)) for at, line in _lines(page) if is_one(line)]
 
 
 def _fixed_spans(page: str) -> List[Tuple[int, int]]:
@@ -944,26 +1011,14 @@ def _fixed_spans(page: str) -> List[Tuple[int, int]]:
     `\u2261 thesis` pointed at the words `provenance: thesis hinge` rather than at
     the sentence that says what a thesis is.
     """
-    out: List[Tuple[int, int]] = []
-    at = 0
-    for line in (page or "").splitlines(keepends=True):
-        # a heading as the page takes one: the marks and then a space, so a
-        # paragraph opening ``#1`` is a paragraph
-        if re.match(r"[ \t]*#{1,6} ", line) or line.startswith("assent:"):
-            out.append((at, at + len(line)))
-        at += len(line)
-    return out
+    heads = {at for at, _, _ in _headings(page)}
+    return [(at, at + len(line)) for at, line in _lines(page)
+            if at in heads or line.startswith("assent:")]
 
 
 def _metadata_spans(page: str) -> List[Tuple[int, int]]:
     """The answer metadata lines alone: where the provenance link stands."""
-    out: List[Tuple[int, int]] = []
-    at = 0
-    for line in (page or "").splitlines(keepends=True):
-        if line.startswith("assent:"):
-            out.append((at, at + len(line)))
-        at += len(line)
-    return out
+    return _line_spans(page, lambda line: line.startswith("assent:"))
 
 
 # -- the refusal ------------------------------------------------------------

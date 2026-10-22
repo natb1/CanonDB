@@ -43,6 +43,36 @@ class OutlineTest(unittest.TestCase):
             "<paragraph id='.7'>two</paragraph></doc>")
         self.assertEqual([b.id for b in blocks], ["abc.0", "abc.7"])
 
+    def test_a_block_after_a_nested_full_id_takes_that_ids_prefix(self):
+        """A read prints a full id on whatever carries one first, a run of text
+        inside a block included, and abbreviates every id after it: the block
+        after a nested full id is short under that id's prefix, not its own
+        block's. Both parsers read it so."""
+        body = ("<paragraph id='abc.1'><text id='.2'>one </text><text id='xyz.3'>two</text></paragraph>"
+                "<paragraph id='.4'>three</paragraph>")
+        self.assertEqual([b.id for b in apply.parse_outline("<doc>%s</doc>" % body)], ["abc.1", "xyz.4"])
+        self.assertEqual([b.id for b in apply._scan(body)], ["abc.1", "xyz.4"])
+
+    def test_a_full_id_inside_a_wrapper_without_one_carries_too(self):
+        """A wrapper the read prints with no id of its own still holds ids
+        under it, and the prefix carries from those as from any other."""
+        body = ("<paragraph id='abc.1'>one</paragraph>"
+                "<list kind='bullet'><listItem id='xyz.2'><paragraph id='.3'>x</paragraph></listItem></list>"
+                "<paragraph id='.4'>three</paragraph>")
+        self.assertEqual([b.id for b in apply.parse_outline("<doc>%s</doc>" % body)], ["abc.1", "xyz.4"])
+        self.assertEqual([b.id for b in apply._scan(body)], ["abc.1", "xyz.4"])
+
+    def test_the_scan_takes_an_id_off_a_tag_and_never_off_the_words(self):
+        """The fallback reads the outline's tags: ``id='…'`` standing in a
+        block's words is words, and an attribute whose name only ends in
+        ``id`` is not one. The bare ``&`` is what sends the outline to it."""
+        words = ("<paragraph id='abc.1'>say id='zzz.9' here &amp; now &</paragraph>"
+                 "<paragraph id='.3'>two</paragraph>")
+        self.assertEqual([b.id for b in apply.parse_outline("<doc>%s</doc>" % words)], ["abc.1", "abc.3"])
+        nested = ("<paragraph id='abc.1'><text data-id='xyz.3'>two</text></paragraph>"
+                  "<paragraph id='.4'>three</paragraph>")
+        self.assertEqual([b.id for b in apply._scan(nested)], ["abc.1", "abc.4"])
+
     def test_a_heading_keeps_its_words_and_drops_its_chip(self):
         """A target names the words a heading opens with; the chip that closes
         it is a token before the write and a block id after it."""

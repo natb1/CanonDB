@@ -68,7 +68,7 @@ SECTIONS = ("thesis", "glossary", "terms", "applications", "cited by",
             "hinge")
 
 #: The glyph that opens each kind of heading on a tab — an answer, a glossary
-#: entry, a term, a mention, an application, a hinge half — and the one that
+#: entry, a term, a mention, an application, a hinge part — and the one that
 #: opens the lineage line above the title. The renderer writes them and the
 #: reader, the frontier and every in-place writer read them, so they are
 #: spelled here once; a glyph changed here changes on every side at once.
@@ -442,21 +442,56 @@ class Note:
 
 @dataclass
 class Hinge:
-    """What the asking presupposes, and what the answer was drawn from."""
+    """What the asking presupposes, what it is for and how that end is read,
+    and what the answer was drawn from.
+
+    Four parts. The question part is what the asking stood on without
+    examining it. The end is what the asking is for: the human's own words,
+    stated at a root and inherited down the lineage, stated below only where
+    a lineage's is narrower. The method is how the end is read and pursued;
+    it names counts that are applications elsewhere and restates none. The
+    thesis part is what the answer was drawn from, the conditions of a run.
+    The first three are the asker's and bring words in; the last is the
+    encoding's and brings none.
+    """
 
     question: str = ""
+    end: str = ""
+    method: str = ""
     thesis: str = ""
 
+    #: the parts in page order, each with what its heading says of it and
+    #: whether it is the asker's — his words, which bring words in — or the
+    #: encoding's, which brings none. The one list the renderer's headings,
+    #: the reader's match and the checks are built from: spelled apart, a
+    #: fifth part would reach the page and read back as the provenance
+    PARTS = (("question", "what the asking presupposes", True),
+             ("end", "what the asking is for", True),
+             ("method", "how the end is read and pursued", True),
+             ("thesis", "what the answer was drawn from", False))
+
+    #: the asker's parts, in the order the page holds them: what reach
+    #: judges, and where besides an answer a definition's word may stand
+    ASKING = tuple(name for name, _, asker in PARTS if asker)
+
     def empty(self) -> bool:
-        return not (self.question.strip() or self.thesis.strip())
+        return not any(part.strip() for _, part in self.parts())
+
+    def parts(self) -> Iterator[Tuple[str, str]]:
+        """Every part, each named, in page order."""
+        for name, _, _ in self.PARTS:
+            yield name, getattr(self, name)
+
+    def asking(self) -> Iterator[Tuple[str, str]]:
+        """The asker's parts, each named, in page order."""
+        for name in self.ASKING:
+            yield name, getattr(self, name)
 
     @staticmethod
     def read(r: _Reader, data: Any, where: str) -> "Hinge":
         d = r.obj(data, where)
-        return Hinge(
-            question=r.text(d, "question", where, required=False),
-            thesis=r.text(d, "thesis", where, required=False),
-        )
+        return Hinge(**{name: r.text(d, name, where, required=False)
+                        for name, _, _ in Hinge.PARTS})
 
 
 @dataclass
@@ -474,7 +509,8 @@ class Question:
     answerer: str = ""
     theses: List[Thesis] = field(default_factory=list)
     #: the glossary: the words this question brings in, through an answer or
-    #: through the question half of its hinge
+    #: through the asker's parts of its hinge: the question half, the end
+    #: and the method
     definitions: List[Definition] = field(default_factory=list)
     notes: List[Note] = field(default_factory=list)
     hinge: Optional[Hinge] = None
