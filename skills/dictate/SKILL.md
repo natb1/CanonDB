@@ -25,6 +25,17 @@ holds one. Each tool is named in both spellings the surfaces give it,
 `mcp__claude_ai_Claude_Docs__…` and `mcp__Claude_Docs__…`; a name the surface lacks grants
 nothing.
 
+A notebook may hold several projects, each a root at the top level, with `tradition` a project
+of its own whose root holds every party beneath it; where it does, `.principal/notebook.json`
+names the project this checkout keeps under `project`, and the run's **author tabs** are that
+project's: the tabs under its root. Its reads, its checks, its selection and its tab patch are
+that project's too — `read.py --project`, and `next.py`, `frontier.py`, `again.py` and
+`project.py --project`, which take the project from the file — and the parties it cites are
+read with it wherever a rule reaches them. No term edge crosses projects; a mention crosses
+only to a project earlier in the order the roots stand in, or to `tradition` (`project-order`).
+The tab named `lease` is reserved: it is no question, the reader never takes it for one, and it
+holds the leases, the pin and the notebook's provenance (**Several sessions** below).
+
 ## Ground rules
 
 1. **The artifact is the source of truth.** Read it before you write. Ground every edit in what is
@@ -44,10 +55,13 @@ nothing.
 **1 — Read.** Read the artifact's tab list, then the tabs the dictation could touch, in place:
 each tab's outline, and in full, block by block, the blocks the dictation bears on. Read them
 yourself: a read tells you what the page holds, not what it means. Where the run needs the
-whole notebook as a graph file — a change to the specification, a check over every tab — read
-each tab's body whole (`view` with `sinceRev` 0), save the reads as `$SCRATCH/views/<question>.json`,
-spell them with `tools/page.py $SCRATCH/views/*.json -o $SCRATCH/tabs`, and build the graph with
-`tools/read.py <document read> $SCRATCH/tabs -o $SCRATCH/graph.json` (schema in
+project whole as a graph file — a new question, a state, a check over every tab of the project
+— read each of its tabs' bodies whole (`view` with `sinceRev` 0), and the tabs of the parties
+it cites, save the reads as `$SCRATCH/views/<question>.json`, spell them with
+`tools/page.py $SCRATCH/views/*.json -o $SCRATCH/tabs` (which writes each tab's `rev` beside
+it), and build the graph with `tools/read.py <document read> $SCRATCH/tabs --project <project>
+-o $SCRATCH/graph.json`; a change to the specification reads every tab of every project and
+builds the graph without `--project` (schema in
 `tools/hypo/model.py`; the enum the states point at is read from `.principal/notebook.json`, or
 given with `--state-enum`, and the notebook's URL from the same file where the document read
 does not carry it). Nothing is exported: `page.py` spells the read as the export did, so the
@@ -152,8 +166,9 @@ ack, or a read with `projection: outline`:
 
 When a run writes more than one tab, write every body before any link: a link into a tab whose
 body is written after it points at a block that write retires, and nothing can see that it
-does. Then `tools/project.py $SCRATCH/graph.json` for the tab-placement patch, and send it. The
-tab tree is computed, never chosen.
+does. Then `tools/project.py $SCRATCH/graph.json --project <project>` for the tab-placement
+patch of the project the run read (without `--project` only over a graph of every tab), and
+send it. The tab tree is computed, never chosen.
 
 **5 — Re-check.** Read every tab you touched back off the page, the relinked ones included,
 then run both:
@@ -179,6 +194,33 @@ nothing waits on a branch that is not going to be merged. Nothing is committed f
 notebook's content: it lives in the artifact, which is shared between users as it stands. What
 a turn may carry is decided by the configuration of the entry point that runs it — a skill, an
 agent, a gate — and never by which branch is checked out.
+
+## Several sessions
+
+The notebook is one document that several sessions, and the principal's own hand, write at
+once. A write in place is guarded block by block and needs nothing more. What else holds:
+
+- **A write carries the rev of the read it came from, and a run refuses a graph older than the
+  page.** The graph records each tab's `rev` as it was read. Before the first write, and again
+  before the links, read each tab in scope with `{"kind":"view","sinceRev":<its rev>}`, save the
+  reads as `$SCRATCH/since/<question>.json` and run `tools/fresh.py $SCRATCH/graph.json
+  $SCRATCH/since/*.json`. A tab it names moved: read it again, rebuild, re-plan, and never write
+  over it. The page check treats a page newer than the graph as another session's, never as
+  drift.
+- **A run takes a lease before it writes a section or a body, changes the specification or
+  sends the tab patch.** Read the lease tab whole and `tools/lease.py take <read> --scope
+  <project, or all for a spec change or a patch over every tab> --session <this session's id>
+  --entry /principal:dictate`; send the ops, read the tab again, and `tools/lease.py check
+  <read> --session <id>`. Exit 0: the lease is held. Exit 1: a line that overlaps stands above
+  this one — take this one off (`lease.py release`) and stop, saying whose it is. Release the
+  lease when the run ends, whatever it came to.
+- **The notebook names the tooling it was last written with.** `tools/lease.py pin <read>`
+  prints the plugin commit. Where it is not this plugin's, `git merge-base --is-ancestor <pin>
+  <this plugin's commit>` in a CanonDB checkout must succeed before anything is written —
+  older tooling never writes over newer — and the run that writes names its own commit with
+  `lease.py pin <read> --write <commit> --session <id>`.
+- **Every update carries an `opId`**, `<session>-<step>-<n>`, so that a call retried after a
+  dropped connection replays rather than writing twice.
 
 ## Carrying
 
@@ -352,6 +394,10 @@ a procedure rather than a script.
   every branch, and what a turn may read is the gate's decision, not the branch's. And the guard holds only where the agent is used: a canon question answered in any
   other way — in this run, in a session that has read the notebook, by a turn composed by hand —
   is answered in a context nobody vouched for, whatever it was given.
+- **A lease and a claim are released by reading.** Nothing expires: a run that dies leaves its
+  lease line, or a question's claim note, on the page. Whether the session that wrote it is
+  still at work is read — its transcript, the time on the line — and a line left by a dead one
+  is taken off by hand or by the next run that reads it so, never on a guess.
 - **What a run cannot apply stands on the page.** A run ends with nothing owed in the session
   that owed it: a clause it could not apply is a pending note on the tab it bears on, and the
   checker reports the note until a run takes it in. What no script decides is whether the

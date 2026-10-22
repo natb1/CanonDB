@@ -19,7 +19,7 @@ from __future__ import annotations
 import re
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
-from .model import AUTHOR, CITATION_HEADINGS, GLYPHS, SECTIONS, Hinge
+from .model import AUTHOR, CITATION_HEADINGS, GLYPHS, RESERVED, SECTIONS, TRADITION, Hinge
 from . import render, text
 from .render import INSTEAD, SEPARATOR, SHADOW, chip_key
 
@@ -93,19 +93,75 @@ def question_line(block: str) -> "re.Match[str]":
     return found
 
 
+def _top(tabs: Dict[str, dict], tab_id: str) -> str:
+    """The top-level tab a tab stands under, itself if it is one."""
+    seen: Set[str] = set()
+    cur = tab_id
+    while True:
+        parent = tabs.get(cur, {}).get("subtabOf")
+        if not parent or parent in seen or parent not in tabs:
+            return cur
+        seen.add(cur)
+        cur = parent
+
+
+def reserved(tabs: Dict[str, dict]) -> Set[str]:
+    """The tabs that are no question: a top-level tab named for a reserved
+    tab (the lease tab), and anything under one."""
+    heads = {t for t, meta in tabs.items() if not meta.get("subtabOf")
+             and str(meta.get("name", "")) in RESERVED}
+    return {t for t in tabs if _top(tabs, t) in heads}
+
+
+def projects(tabs: Dict[str, dict]) -> Dict[str, str]:
+    """tab id -> the project the tab is in, from the tab list.
+
+    A notebook may hold several projects, each a root at the top level with
+    an order in the a series; a tab is in the project of the top-level tab it
+    stands under. A notebook of one project has one such tab, and every tab
+    in it is in the empty project, as every question of a graph file that
+    names no projects is. The b series and the reserved tabs are no project.
+    """
+    tops = project_order(tabs)
+    if len(tops) < 2:
+        return {t: "" for t in tabs}
+    names = {t: str(tabs[t].get("name", t)) for t in tabs}
+    out: Dict[str, str] = {}
+    for tab_id in tabs:
+        top = _top(tabs, tab_id)
+        out[tab_id] = names[top] if names.get(top) in tops else ""
+    return out
+
+
+def project_order(tabs: Dict[str, dict]) -> List[str]:
+    """The projects' names in the order their roots stand at the top level."""
+    tops = [(str(meta.get("order", "")), str(meta.get("name", t)))
+            for t, meta in tabs.items()
+            if not meta.get("subtabOf") and str(meta.get("order", "")).startswith("a")
+            and str(meta.get("name", "")) not in RESERVED]
+    return [name for _, name in sorted(tops)]
+
+
 def parties(tabs: Dict[str, dict]) -> Dict[str, str]:
     """tab id -> the party whose notebook the tab is in, from the tab list.
 
-    A question belongs to a party. The author's are the main tree; another
-    party's is that party's own notebook, placed at top level in the b
-    series, and anything nested under it is theirs too — a reconstruction
-    may raise its own questions and answer them. Read off the document's tab
-    list alone, so a caller that has not read a single body can tell whose a
-    tab is.
+    A question belongs to a party. The author's are the projects' trees;
+    another party's is that party's own notebook, and anything nested under
+    it is theirs too — a reconstruction may raise its own questions and
+    answer them. Where the notebook holds a tradition project, a party's
+    notebook is a tab directly under that project's root; otherwise it is
+    placed at top level in the b series. Read off the document's tab list
+    alone, so a caller that has not read a single body can tell whose a tab
+    is.
     """
     heads: Dict[str, str] = {}
+    tradition_root = [t for t, meta in tabs.items() if not meta.get("subtabOf")
+                      and str(meta.get("name", "")) == TRADITION
+                      and str(meta.get("order", "")).startswith("a")]
     for tab_id, meta in tabs.items():
-        if not meta.get("subtabOf") and str(meta.get("order", "")).startswith("b"):
+        top_b = not meta.get("subtabOf") and str(meta.get("order", "")).startswith("b")
+        under = bool(tradition_root) and meta.get("subtabOf") == tradition_root[0]
+        if top_b or under:
             heads[tab_id] = str(meta.get("name", tab_id)).lower()
 
     def party(tab_id: str, seen: Set[str]) -> str:

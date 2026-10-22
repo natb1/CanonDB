@@ -11,7 +11,8 @@ from __future__ import annotations
 from collections import deque
 from typing import Dict, List, Optional, Set
 
-from .model import ANSWERERS, STATES, Graph, Question
+from . import text
+from .model import ANSWERERS, STATES, TRADITION, Graph, Question
 
 #: who a question is put to; nothing else is ever put
 AI = ANSWERERS[0]
@@ -43,15 +44,45 @@ def in_edges(graph: Graph) -> Dict[str, List[str]]:
 
 # -- roots ------------------------------------------------------------------
 
+def projects(graph: Graph) -> List[str]:
+    """The projects the notebook holds, in the order their roots stand: the
+    graph's own list, or the one empty project of a notebook that names none.
+    A project a question names and the list does not is put last, so that a
+    stray project is reported where it stands rather than lost."""
+    out = list(graph.projects) or [""]
+    for q in graph.questions:
+        if not q.tradition and q.project not in out:
+            out.append(q.project)
+    return out
+
+
+def candidates(graph: Graph) -> Dict[str, List[str]]:
+    """project -> its questions that are not a tradition and have no incoming
+    term edge, lexicographically: a project's root, where it has one."""
+    ins = in_edges(graph)
+    out: Dict[str, List[str]] = {p: [] for p in projects(graph)}
+    for q in sorted(graph.questions, key=lambda x: x.id):
+        if not q.tradition and not ins.get(q.id):
+            out.setdefault(q.project, []).append(q.id)
+    return out
+
+
+def project_roots(graph: Graph) -> List[str]:
+    """Each project's root, in project order: the lexicographically smallest
+    candidate where there are several, so the projection stays total;
+    ``one-root`` reports the fault."""
+    found = candidates(graph)
+    return [found[p][0] for p in projects(graph) if found.get(p)]
+
+
 def main_root(graph: Graph) -> Optional[str]:
-    """The one question that is not a tradition and has no incoming term edge.
+    """The first project's root: the one root of a notebook of one project.
 
     On a graph with none or several, the lexicographically smallest candidate is
     returned so the projection stays total; ``one-root`` reports the fault.
     """
-    ins = in_edges(graph)
-    cands = sorted(q.id for q in graph.questions if not q.tradition and not ins.get(q.id))
-    return cands[0] if cands else None
+    top = project_roots(graph)
+    return top[0] if top else None
 
 
 def tradition_roots(graph: Graph) -> List[str]:
@@ -66,13 +97,38 @@ def tradition_roots(graph: Graph) -> List[str]:
 
 
 def roots(graph: Graph) -> List[str]:
-    """Every top-level question: the main root first, then the tradition roots."""
-    top: List[str] = []
-    root = main_root(graph)
-    if root is not None:
-        top.append(root)
-    top.extend(r for r in tradition_roots(graph) if r != root)
+    """Every top-level question of the lineage: each project's root, in
+    project order, then the tradition roots."""
+    top = project_roots(graph)
+    top.extend(r for r in tradition_roots(graph) if r not in top)
     return top
+
+
+def tradition_project_root(graph: Graph) -> Optional[str]:
+    """The root of the tradition project, where the notebook holds one: the
+    question every party is placed under."""
+    if TRADITION not in graph.projects:
+        return None
+    found = candidates(graph).get(TRADITION) or []
+    return found[0] if found else None
+
+
+def party_heads(graph: Graph) -> Dict[str, str]:
+    """tradition root -> the tradition root it is placed under, for a party
+    reconstructed more than once: the one named for the party heads it, and
+    each other reconstruction of the same party stands under the head."""
+    by_id = graph.by_id()
+    groups: Dict[str, List[str]] = {}
+    for tid in tradition_roots(graph):
+        groups.setdefault(by_id[tid].party, []).append(tid)
+    out: Dict[str, str] = {}
+    for party, members in groups.items():
+        named = [m for m in members if text.fold(m) == text.fold(party)]
+        head = named[0] if named else sorted(members)[0]
+        for m in members:
+            if m != head:
+                out[m] = head
+    return out
 
 
 # -- distance, parent, lineage ---------------------------------------------
@@ -193,31 +249,65 @@ def tree(graph: Graph) -> Dict[Optional[str], List[str]]:
 
 
 def orders(graph: Graph) -> Dict[str, str]:
-    """question id -> its order string among its siblings.
+    """question id -> its order string among its siblings in the tab tray.
 
-    Siblings take a0, a1, a2, … lexicographically by id. The main root is top
-    level with order a0; the tradition roots are top level, lexicographically,
-    with b0, b1, ….
+    Siblings take a0, a1, a2, … lexicographically by id. A notebook of one
+    project puts its root at top level with order a0 and the tradition roots
+    at top level too, lexicographically, with b0, b1, …. A notebook of
+    several puts each project's root at top level, a0, a1, … in project
+    order; a party's head under the tradition project's root, among the
+    root's children, lexicographically; and each further reconstruction of
+    a party under its head.
 
     The document's tray sorts orders as strings, so an index is padded to the
     width the largest in its group needs: an eleventh tradition ordered b10
     would otherwise stand between b1 and b2. A group of ten or fewer needs no
     padding and keeps the orders it had.
     """
-    kids = tree(graph)
     out: Dict[str, str] = {}
-    root = main_root(graph)
-    if root is not None:
-        out[root] = "a0"
-    heads = [tid for tid in tradition_roots(graph) if tid != root]
-    for i, tid in enumerate(heads):
-        out[tid] = "b" + _index(i, len(heads))
-    for parent, children in kids.items():
+    for parent, children in placement_children(graph).items():
         if parent is None:
             continue
         for i, child in enumerate(children):
             out[child] = "a" + _index(i, len(children))
+    tops = project_roots(graph)
+    for i, rid in enumerate(tops):
+        out[rid] = "a" + _index(i, len(tops))
+    if tradition_project_root(graph) is None:
+        heads = [tid for tid in tradition_roots(graph) if tid not in tops]
+        for i, tid in enumerate(heads):
+            out[tid] = "b" + _index(i, len(heads))
     return out
+
+
+def placement(graph: Graph) -> Dict[str, Optional[str]]:
+    """question id -> the question whose tab its tab is placed under; None at
+    top level. The projection's parents, except that under a tradition
+    project a party's head is placed under that project's root and a further
+    reconstruction under its head: placement and not lineage, since nothing
+    raises a party, and a breadcrumb follows the lineage."""
+    par = dict(parents(graph))
+    troot = tradition_project_root(graph)
+    if troot is not None:
+        alt = party_heads(graph)
+        for tid in tradition_roots(graph):
+            par[tid] = alt.get(tid, troot)
+    return par
+
+
+def placement_children(graph: Graph) -> Dict[Optional[str], List[str]]:
+    """placed-under id (None for top level) -> the tabs placed there,
+    lexicographically."""
+    par = placement(graph)
+    dist = distances(graph)
+    kids: Dict[Optional[str], List[str]] = {}
+    for q in graph.questions:
+        if dist.get(q.id, INF) == INF:
+            continue
+        kids.setdefault(par.get(q.id), []).append(q.id)
+    for key in kids:
+        kids[key].sort()
+    return kids
 
 
 def _index(i: int, count: int) -> str:
@@ -327,29 +417,46 @@ def blocked_behind(graph: Graph, qid: str) -> Set[str]:
 # -- the patch --------------------------------------------------------------
 
 def walk(graph: Graph) -> List[str]:
-    """Every projected question: the main root's tree first, depth first and
-    lexicographic, then each tradition root's."""
-    kids = tree(graph)
+    """Every projected question in tray order: each top-level tab's tree in
+    turn, depth first and lexicographic."""
+    kids = placement_children(graph)
+    ordr = orders(graph)
     order: List[str] = []
 
     def descend(qid: str) -> None:
         order.append(qid)
-        for child in kids.get(qid, []):
-            descend(child)
+        for child in sorted(kids.get(qid, []), key=lambda c: (ordr.get(c, ""), c)):
+            if child not in order:
+                descend(child)
 
-    for top in roots(graph):
+    for top in sorted(kids.get(None, []), key=lambda c: (ordr.get(c, ""), c)):
         if top not in order:
             descend(top)
     return order
 
 
-def tabs_patch(graph: Graph) -> List[dict]:
-    """The complete tab-placement patch, ready to send as a document's `tabs` patch."""
+def in_project(graph: Graph, qid: str, name: str) -> bool:
+    """Whether a question's tab is the project's to place: its own questions,
+    and for the tradition project every party's too."""
+    q = graph.get(qid)
+    if q is None:
+        return False
+    if q.tradition:
+        return name == TRADITION
+    return q.project == name
+
+
+def tabs_patch(graph: Graph, project: Optional[str] = None) -> List[dict]:
+    """The complete tab-placement patch, ready to send as a document's `tabs`
+    patch; with ``project``, that project's tabs alone, so that a run reading
+    one project places nothing of another's."""
     by_id = graph.by_id()
-    par = parents(graph)
+    par = placement(graph)
     ordr = orders(graph)
     patch = []
     for qid in walk(graph):
+        if project is not None and not in_project(graph, qid, project):
+            continue
         q = by_id[qid]
         value = {"name": q.id, "order": ordr.get(qid, "a0")}
         parent = par.get(qid)
@@ -363,7 +470,7 @@ def tree_rows(graph: Graph) -> List[Dict[str, object]]:
     """One row per projected question, in walk order: question, parent,
     order, distance and load — what project.py prints and what a rebuild
     from a portable notebook must come out to."""
-    par, ordr, dist = parents(graph), orders(graph), distances(graph)
+    par, ordr, dist = placement(graph), orders(graph), distances(graph)
     rows: List[Dict[str, object]] = []
     for qid in walk(graph):
         d = dist.get(qid, INF)
@@ -373,8 +480,9 @@ def tree_rows(graph: Graph) -> List[Dict[str, object]]:
 
 
 def tree_listing(graph: Graph) -> List[str]:
-    """One line per projected question: order, id, load, distance."""
-    par, ordr, dist = parents(graph), orders(graph), distances(graph)
+    """One line per projected question: order, id, load, distance, indented
+    by where its tab is placed."""
+    par, ordr, dist = placement(graph), orders(graph), distances(graph)
     lines = []
     for qid in walk(graph):
         depth = len(lineage(graph, qid, par)) - 1

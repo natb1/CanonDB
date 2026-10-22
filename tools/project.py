@@ -24,6 +24,9 @@ def main(argv=None) -> int:
     ap.add_argument("graph", help="the graph file")
     ap.add_argument("--json", action="store_true", dest="as_json",
                     help="print the patch and the tree as one JSON object")
+    ap.add_argument("--project", metavar="NAME",
+                    help="place one project's tabs alone, for a run that read that "
+                         "project (the tradition project's include every party)")
     args = ap.parse_args(argv)
 
     graph = cli.load_graph(args.graph)
@@ -36,8 +39,11 @@ def main(argv=None) -> int:
     # would survive unseen in the graph file. The same of a second root, whose
     # subtree the walk never reaches and the patch silently leaves out, and of
     # a tradition that is not isolated, whose tab the patch hangs under the
-    # author's or his under its. Refuse, as render.py refuses.
-    blocking = spec.errors(spec.run(graph, only=["acyclic", "one-root", "tradition-isolated"]))
+    # author's or his under its, and of a term edge across projects, which
+    # would hang one project's question under another's. Refuse, as render.py
+    # refuses.
+    blocking = spec.errors(spec.run(graph, only=["acyclic", "one-root", "tradition-isolated",
+                                                 "project-order"]))
     if blocking:
         print("refusing to project %s: the tree would hide what the checks found "
               "(a cycle, a second root, or a tradition not isolated)"
@@ -46,7 +52,11 @@ def main(argv=None) -> int:
             print(finding.line(), file=sys.stderr)
         return 1
 
-    patch = project.tabs_patch(graph)
+    if args.project is not None and args.project not in project.projects(graph):
+        print("no project %r in %s" % (args.project, os.path.basename(args.graph)),
+              file=sys.stderr)
+        return 1
+    patch = project.tabs_patch(graph, args.project)
 
     if args.as_json:
         print(json.dumps({"tabs": patch, "tree": project.tree_rows(graph)},

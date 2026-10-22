@@ -54,18 +54,33 @@ def _reads(paths: List[str]) -> Dict[str, List[str]]:
     return out
 
 
+def _project():
+    """The project the checkout keeps, from its notebook file, or None."""
+    try:
+        with open(os.path.join(".principal", "notebook.json"), encoding="utf-8") as fh:
+            found = json.load(fh).get("project")
+    except (OSError, ValueError, AttributeError):
+        return None
+    return found or None
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("manifest", help="the document read, as JSON")
     ap.add_argument("reads", nargs="+", help="saved reads, or directories of them")
     ap.add_argument("--json", action="store_true", dest="as_json",
                     help="print the frontier as JSON")
+    ap.add_argument("--project", metavar="NAME",
+                    help="one project of a notebook that holds several: its "
+                         "author tabs alone are read and must all be given "
+                         "(default: the project .principal/notebook.json names)")
     args = ap.parse_args(argv)
 
     try:
         with open(args.manifest, encoding="utf-8") as fh:
             manifest = json.load(fh)
-        rows = frontier.frontier(frontier.graph(manifest, _reads(args.reads)))
+        project = args.project if args.project is not None else _project()
+        rows = frontier.frontier(frontier.graph(manifest, _reads(args.reads), project))
     except (OSError, ValueError) as exc:
         print("ERROR %s" % exc, file=sys.stderr)
         return 1

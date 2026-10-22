@@ -109,22 +109,28 @@ def _answer_state(q: Question) -> str:
     return "an answer still held"
 
 
-def frontier(graph: Graph, thread: Iterable[str] = ()) -> List[Tuple[str, int, List[str]]]:
+def frontier(graph: Graph, thread: Iterable[str] = (),
+             of: Optional[str] = None) -> List[Tuple[str, int, List[str]]]:
     """Every question the AI answers that has not been put, with its backlog
-    and what it waits on; heaviest first, ties by id."""
+    and what it waits on; heaviest first, ties by id. ``of`` names one
+    project of a notebook that holds several. A question a session has
+    claimed is out: it is being put."""
     thread = list(thread)
     rows = []
     for q in graph.questions:
-        if q.tradition or q.answerer != AI or project.put(q):
+        if q.tradition or q.answerer != AI or project.put(q) or q.claimed:
+            continue
+        if of is not None and q.project != of:
             continue
         rows.append((q.id, project.backlog(graph, q.id), waits(graph, q.id, thread)))
     rows.sort(key=lambda r: (-r[1], r[0]))
     return rows
 
 
-def select(graph: Graph, thread: Iterable[str] = ()) -> Optional[str]:
+def select(graph: Graph, thread: Iterable[str] = (),
+           of: Optional[str] = None) -> Optional[str]:
     """The heaviest question with nothing left to wait on, or None."""
-    for qid, _backlog, owed in frontier(graph, thread):
+    for qid, _backlog, owed in frontier(graph, thread, of):
         if not owed:
             return qid
     return None

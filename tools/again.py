@@ -20,6 +20,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from hypo import again, cli  # noqa: E402
+from read import notebook as read_notebook  # noqa: E402
 
 cli.quiet_pipe()
 
@@ -30,12 +31,18 @@ def main(argv=None) -> int:
     ap.add_argument("--model", required=True, help="the model answering now")
     ap.add_argument("--root", default=".", help="the project root git reads canon under")
     ap.add_argument("--json", action="store_true", dest="as_json")
+    ap.add_argument("--project", metavar="NAME",
+                    help="one project of a notebook that holds several (default: "
+                         "the project the root's .principal/notebook.json names)")
     args = ap.parse_args(argv)
 
     graph = cli.load_graph(args.graph)
     if graph is None:
         return 1
-    rows = again.due(graph, args.model, again.git_moved(args.root))
+    named = read_notebook(args.root)
+    of = args.project if args.project is not None else (named.get("project") or None)
+    canon = named.get("canon") if isinstance(named.get("canon"), dict) else {}
+    rows = again.due(graph, args.model, again.git_moved(args.root, canon), of)
     if args.as_json:
         print(json.dumps([r._asdict() for r in rows], indent=2, ensure_ascii=False))
         return 0

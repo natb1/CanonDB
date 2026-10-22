@@ -36,7 +36,7 @@ frontier's own members block nothing that is not below them.
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from typing import Dict, List, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from . import appline, page, project, read, turn
 from .appline import Refused
@@ -97,17 +97,26 @@ def question(name: str, tab: str, party: str, reads: Sequence,
                     party=party, theses=theses)
 
 
-def graph(manifest: dict, reads: Dict[str, Sequence]) -> Graph:
-    """The author's questions, each from the reads of its tab.
+def graph(manifest: dict, reads: Dict[str, Sequence],
+          project: Optional[str] = None) -> Graph:
+    """The author's questions, each from the reads of its tab; with
+    ``project``, the author's questions of that project alone, which is all a
+    project's frontier rests on, since no term edge crosses projects.
 
-    Every author tab must have been read: a tab not read is a question whose
-    edges and answers are unknown, and a frontier computed without it would
-    put a question under an answer nobody looked for.
+    Every author tab in scope must have been read: a tab not read is a
+    question whose edges and answers are unknown, and a frontier computed
+    without it would put a question under an answer nobody looked for. A
+    reserved tab is no question and is never in scope.
     """
     tabs = manifest.get("value", manifest).get("tabs", {})
     names = {tab_id: meta.get("name", tab_id) for tab_id, meta in tabs.items()}
     party = read.parties(tabs)
-    author = {names[t]: t for t in tabs if party.get(t) == AUTHOR}
+    of = read.projects(tabs)
+    skip = read.reserved(tabs)
+    if project is not None and project not in set(of.values()):
+        raise Refused("the document holds no project %r" % project)
+    author = {names[t]: t for t in tabs if party.get(t) == AUTHOR and t not in skip
+              and (project is None or of.get(t) == project)}
     unknown = sorted(set(reads) - set(author))
     if unknown:
         raise Refused("reads for %s, which the document read names as no tab of "

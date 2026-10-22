@@ -18,6 +18,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from hypo import cli, turn  # noqa: E402
+from read import notebook as read_notebook  # noqa: E402
 
 cli.quiet_pipe()
 
@@ -29,18 +30,22 @@ def main(argv=None) -> int:
                     help="questions on the open thread being continued")
     ap.add_argument("--all", action="store_true", dest="everything",
                     help="list every question not yet put, and what it waits on")
+    ap.add_argument("--project", metavar="NAME",
+                    help="one project of a notebook that holds several (default: "
+                         "the project .principal/notebook.json names)")
     args = ap.parse_args(argv)
 
     graph = cli.load_graph(args.graph)
     if graph is None:
         return 1
 
-    rows = turn.frontier(graph, args.thread)
+    of = args.project if args.project is not None else (read_notebook().get("project") or None)
+    rows = turn.frontier(graph, args.thread, of)
     if args.everything:
         for line in turn.listing(rows):
             print(line)
         return 0
-    chosen = turn.select(graph, args.thread)
+    chosen = turn.select(graph, args.thread, of)
     if chosen is None:
         print("nothing can be put: %d question(s) wait; --all says on what"
               % len(rows), file=sys.stderr)

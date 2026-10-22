@@ -59,6 +59,22 @@ ANSWERERS = ("ai", "principal")
 #: of the term at deadlock, which is a role in a bond and not a field here.
 AUTHOR = "author"
 
+#: The project whose root holds every party, where a notebook holds several
+#: projects: each project is a root at the top level, and a party is placed
+#: under this one's root rather than at the top level itself. A notebook of
+#: one project has none, and its parties stand at the top level in the b
+#: series as they always did.
+TRADITION = "tradition"
+
+#: Tabs a notebook keeps that are no question: the lease tab, which holds the
+#: leases runs take, the tooling the notebook was last written with, and its
+#: provenance. The reader never reads one as a question.
+RESERVED = ("lease",)
+
+#: What opens a note that claims a question for the session putting it, so
+#: that no other run puts it while the canon turn is out.
+CLAIM = "claimed by"
+
 #: The section a note may be attached to, as the renderer names them.
 SECTIONS = ("thesis", "glossary", "terms", "applications", "cited by",
             "hinge")
@@ -503,6 +519,11 @@ class Question:
     pressure: int
     party: str = AUTHOR
     answerer: str = ""
+    #: the project the question belongs to: its top-level tab's name where a
+    #: notebook holds several projects, and empty where it holds one
+    project: str = ""
+    #: the rev its tab answered with when it was read, where the read gave one
+    rev: int = 0
     theses: List[Thesis] = field(default_factory=list)
     #: the glossary: the words this question brings in, through an answer or
     #: through the asker's parts of its hinge: the question half, the end
@@ -525,6 +546,12 @@ class Question:
     def standing(self) -> str:
         """Read off the state, never stored: a question on main is canon."""
         return standing_of(self.state)
+
+    @property
+    def claimed(self) -> bool:
+        """Whether a session has claimed the question to put it: a note on
+        the tab opening with the claim's words, until the answer is recorded."""
+        return any(note.body.strip().lower().startswith(CLAIM) for note in self.notes)
 
     def terms(self) -> Iterator[Term]:
         for t in self.theses:
@@ -566,6 +593,8 @@ class Question:
             pressure=r.number(d, "pressure", here),
             party=r.text(d, "party", here, required=False, default=AUTHOR) or AUTHOR,
             answerer=r.text(d, "answerer", here, required=False),
+            project=r.text(d, "project", here, required=False),
+            rev=_optional_number(r, d, "rev", here),
             theses=[Thesis.read(r, v, "%s.theses[%d]" % (here, i))
                     for i, v in enumerate(r.seq(d, "theses", here))],
             definitions=[Definition.read(r, v, "%s.definitions[%d]" % (here, i))
@@ -595,6 +624,10 @@ class Graph:
     #: rule that needs a tab outside that set cannot be held over it, and
     #: ``spec`` says which; empty is the whole notebook.
     scope: List[str] = field(default_factory=list)
+    #: The projects the notebook holds, in the order their roots stand at the
+    #: top level, which is the order they depend on one another; empty for a
+    #: notebook of one project.
+    projects: List[str] = field(default_factory=list)
 
     @property
     def partial(self) -> bool:
@@ -631,7 +664,15 @@ class Graph:
             questions=[Question.read(r, v, "questions[%d]" % i)
                        for i, v in enumerate(r.seq(d, "questions", where))],
             scope=r.strings(d, "scope", where),
+            projects=r.strings(d, "projects", where),
         )
+
+
+def _optional_number(r: _Reader, d: Dict[str, Any], key: str, where: str) -> int:
+    """An integer the file may leave out, as 0."""
+    if d.get(key) is None:
+        return 0
+    return r.number(d, key, where)
 
 
 def load(path: str) -> Graph:

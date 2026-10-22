@@ -11,8 +11,8 @@ from support import FIXTURES, chip_ids, load
 #: ``party`` is derived from the tab order; a definition's tradition is on the page,
 #: as the chip that closes it, so it is compared like everything else.
 UNCARRIED = {
-    "Question": ("tab", "body", "party"),
-    "Graph": ("path", "questions", "artifact", "mode", "state_enum", "scope"),
+    "Question": ("tab", "body", "party", "project", "rev"),
+    "Graph": ("path", "questions", "artifact", "mode", "state_enum", "scope", "projects"),
 }
 
 
