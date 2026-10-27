@@ -263,3 +263,56 @@ class PatchTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DerivedPressureTest(unittest.TestCase):
+    """A default pressure read off the record where none is stored; the
+    hand's value stands over it."""
+
+    def setUp(self):
+        self.graph = load("valid")
+        for q in self.graph.questions:
+            q.pressure = 0   # the fixture stores one on each; here nothing is stored
+        self.canon = self.graph.by_id()["canon"]
+
+    def test_nothing_stored_and_nothing_to_read_is_zero(self):
+        self.assertEqual(project.derived_pressure(self.graph, "canon"), 0)
+
+    def test_the_fixture_s_stored_pressures_stand_over_any_default(self):
+        fresh = load("valid")
+        for q in fresh.questions:
+            if not q.tradition:
+                self.assertEqual(project.derived_pressure(fresh, q.id, {q.id: 99}), q.pressure)
+
+    def test_a_blocked_application_and_a_postulate_each_count_one(self):
+        from hypo.model import Application
+        self.canon.theses[0].applications.append(
+            Application(name="a tool", what="not built", link="not yet written", standing="postulate"))
+        self.assertEqual(project.derived_pressure(self.graph, "canon"), 1)
+        self.canon.theses[0].applications.append(
+            Application(name="a page", what="built ahead", link="https://example/page", standing="postulate"))
+        self.assertEqual(project.derived_pressure(self.graph, "canon"), 2)
+        self.canon.theses[0].applications.append(
+            Application(name="a script", what="reconciled", link="https://example/s", standing="derived"))
+        self.assertEqual(project.derived_pressure(self.graph, "canon"), 2)
+
+    def test_a_regressed_clause_rides_in_and_the_hands_value_stands(self):
+        self.assertEqual(project.derived_pressure(self.graph, "canon", {"canon": 3}), 3)
+        self.canon.pressure = 5
+        self.assertEqual(project.derived_pressure(self.graph, "canon", {"canon": 3}), 5)
+
+    def test_the_backlog_takes_the_derived_pressure_only_when_asked(self):
+        from hypo.model import Application
+        att = self.graph.by_id()["attenuation"]
+        att.theses[0].applications.append(
+            Application(name="a guard", what="not built", link="not yet written", standing="postulate"))
+        self.assertEqual(project.backlog(self.graph, "canon"), 0)
+        self.assertEqual(project.backlog(self.graph, "canon", derived=True), 0)   # attenuation is the principal's, blocked behind nothing
+        self.canon.theses[0].applications.append(
+            Application(name="a tool", what="not built", link="not yet written", standing="postulate"))
+        self.assertEqual(project.backlog(self.graph, "canon", derived=True), 1)
+        behind = sum(project.derived_pressure(self.graph, b) for b in project.blocked_behind(self.graph, "ti-esti"))
+        own = project.derived_pressure(self.graph, "ti-esti")
+        self.assertEqual(project.backlog(self.graph, "ti-esti", derived=True), own + behind)
+        self.assertGreaterEqual(behind, 1)   # canon's blocked application, at least
+        self.assertEqual(project.backlog(self.graph, "ti-esti"), 0)

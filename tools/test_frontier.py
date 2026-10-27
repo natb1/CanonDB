@@ -120,3 +120,36 @@ class CliTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PrincipalTest(FrontierTest):
+    def listed(self):
+        return frontier.principal(frontier.graph(self.manifest, reads(self.graph)))
+
+    def test_a_question_of_the_principals_waits_on_the_lineage_above_it(self):
+        """attenuation is the principal's; canon and party above it have not
+        landed, so it is not ready, and it is never on the frontier."""
+        self.assertEqual(self.listed(), [])
+        self.assertNotIn("attenuation", [q for q, _ in self.rows()])
+
+    def test_it_is_listed_once_every_answer_above_it_has_landed(self):
+        for qid in ("ti-esti", "canon", "party"):
+            self.graph.by_id()[qid].theses[0].state = "landed"
+        self.assertEqual([q for q, _ in self.listed()], ["attenuation"])
+        self.assertNotIn("attenuation", [q for q, _ in self.rows()])
+
+    def test_the_script_takes_the_flag(self):
+        for qid in ("ti-esti", "canon", "party"):
+            self.graph.by_id()[qid].theses[0].state = "landed"
+        d = os.path.join(self.dir, "reads")
+        os.makedirs(d, exist_ok=True)
+        for qid, found in reads(self.graph).items():
+            for i, text in enumerate(found):
+                with open(os.path.join(d, "%s.%d.xml" % (qid, i)), "w", encoding="utf-8") as fh:
+                    fh.write(text)
+        manifest = os.path.join(self.dir, "docread.json")
+        with open(manifest, "w", encoding="utf-8") as fh:
+            json.dump(self.manifest, fh)
+        out = run("frontier.py", manifest, d, "--principal", "--json")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertEqual([r["question"] for r in json.loads(out.stdout)["principal"]], ["attenuation"])
