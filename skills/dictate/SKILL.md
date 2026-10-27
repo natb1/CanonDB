@@ -367,8 +367,8 @@ a procedure rather than a script.
 - **Reach is judged where a part is written.** `reach` holds the context rule over the notebook's
   vocabulary, and holds it on what the notebook writes: the question, its hinge, every answer
   that has not landed, every answer's headline, glossary bodies and the notes on their
-  borrowings, notes, term and mention headlines, tradition notes and counters, deadlocks and
-  suspensions, and what each application is named and said to be. Each is judged from the tab it
+  borrowings, notes, term and mention headlines, tradition notes and counters, deadlocks,
+  suspensions and cues, and what each application is named and said to be. Each is judged from the tab it
   is written on. What the check cannot judge is whether a word in reach is used in the sense
   that was fixed for it.
 - **A party's word is imported, never assumed.** A party's notebook never stands above a question

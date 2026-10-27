@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 from hypo import model
-from support import FIXTURES, fixture
+from support import FIXTURES, fixture, rewrite
 
 class ImportShapeTest(unittest.TestCase):
     def test_an_import_needs_no_body_key(self):
@@ -178,6 +178,50 @@ class HingeTest(unittest.TestCase):
         self.assertTrue(model.Hinge().empty())
         self.assertFalse(model.Hinge(end="that the two go on").empty())
         self.assertFalse(model.Hinge(method="read at each entry").empty())
+
+    def test_the_end_s_cue_is_read_beside_the_parts_and_is_not_one(self):
+        """The cue is a labelled block under the end: it is read off the
+        hinge and written back, and it is no fifth part, so the four
+        headings and the asker's three stay as they are."""
+        graph = model.load(fixture("valid"))
+        root = graph.get("ti-esti")
+        self.assertEqual(root.hinge.cue, "one side is about to hold the other to "
+                                         "something the record does not say")
+        self.assertEqual([name for name, _, _ in model.Hinge.PARTS],
+                         ["question", "end", "method", "thesis"])
+        self.assertNotIn("cue", [name for name, _ in root.hinge.parts()])
+        self.assertEqual([name for name, _ in root.hinge.asking()],
+                         ["question", "end", "method"])
+        self.assertEqual(graph.get("canon").hinge.cue, "")  # a hinge without one reads
+
+    def test_a_cue_alone_is_not_empty(self):
+        self.assertFalse(model.Hinge(cue="one side holds the other to it").empty())
+
+
+class CueTest(unittest.TestCase):
+    """A term may carry a cue, the situation its clause governs; a term
+    without one reads as before, and a cue that is not words is a shape
+    problem like any other field's."""
+
+    def test_a_term_s_cue_is_read_and_defaults_to_none(self):
+        graph = model.load(fixture("valid"))
+        terms = {t.title: t for t in graph.get("canon").terms()}
+        self.assertEqual(terms["Authority held down"].cue,
+                         "an act is proposed on an entry nobody with standing has marked")
+        self.assertEqual([t.cue for t in graph.get("ti-esti").terms()], ["", ""])
+        self.assertEqual(model.Term(title="t", to="canon").cue, "")
+
+    def test_a_cue_that_is_not_a_string_is_a_shape_problem(self):
+        def mutate(data):
+            canon = next(q for q in data["questions"] if q["id"] == "canon")
+            canon["theses"][0]["terms"][0]["cue"] = 3
+            root = next(q for q in data["questions"] if q["id"] == "ti-esti")
+            root["hinge"]["cue"] = ["not", "words"]
+        with self.assertRaises(model.ShapeError) as caught:
+            rewrite("valid", mutate)
+        said = " ".join(caught.exception.problems)
+        self.assertIn("terms[0]: 'cue' must be a string", said)
+        self.assertIn("hinge: 'cue' must be a string", said)
 
 
 if __name__ == "__main__":

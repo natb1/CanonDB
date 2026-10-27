@@ -348,6 +348,22 @@ class SurvivesReRenderTest(unittest.TestCase):
         self.assertIn("suspended: whether the other side would say it unprompted",
                       body)
 
+    def test_a_cue_is_a_labelled_block_after_the_anchors(self):
+        """The situation the clause governs, the label the AI reads records
+        by: one paragraph of its own, after the anchors and before what
+        stands on the clause, so it is found where the anchors end."""
+        term = self.graph.get("party").theses[0].terms[0]
+        term.cue = "one side means to act while the other has not spoken"
+        anchors = "\n\n".join(render.anchor_line(a) for a in term.anchors)
+        self.assertIn(anchors + "\n\ncue: one side means to act while the other has not "
+                      "spoken\n\ndeadlock: ", render.body(self.graph, "party"))
+        term.deadlock = None
+        term.suspended = "whether the other side would say it unprompted"
+        self.assertIn("\n\ncue: one side means to act while the other has not spoken\n\n"
+                      "suspended: whether", render.body(self.graph, "party"))
+        term.cue = ""
+        self.assertNotIn("cue:", render.body(self.graph, "party"))
+
 
 class RenderAllTest(unittest.TestCase):
     def test_every_tab_in_projection_order(self):
@@ -873,6 +889,26 @@ class HingeLayoutTest(unittest.TestCase):
         below = render.body(graph, "canon")
         self.assertNotIn(render.HINGE_END, below)
         self.assertNotIn(render.HINGE_METHOD, below)
+
+    def test_the_end_s_cue_stands_under_the_end_before_the_method(self):
+        """One labelled paragraph right after the end's words, under the
+        end's heading and not a heading of its own; omitted where there is
+        none, and written under the end's heading even where the end is
+        blank, so that it reaches the page rather than being lost."""
+        graph = load("valid")
+        root = graph.get("ti-esti")
+        page = render.body(graph, "ti-esti")
+        self.assertIn("### %s\n\n%s\n\ncue: %s\n\n### %s"
+                      % (render.HINGE_END, root.hinge.end, root.hinge.cue, render.HINGE_METHOD),
+                      page)
+        self.assertEqual(page.count("cue:"), 1)
+        below = render.body(graph, "canon")
+        self.assertNotIn("cue:", below[below.index("## Hinge"):])
+        root.hinge.cue = ""
+        self.assertNotIn("cue:", render.body(graph, "ti-esti"))
+        root.hinge.cue, root.hinge.end = "one side holds the other to it", ""
+        self.assertIn("### %s\n\ncue: one side holds the other to it\n\n### %s"
+                      % (render.HINGE_END, render.HINGE_METHOD), render.body(graph, "ti-esti"))
 
 
 if __name__ == "__main__":

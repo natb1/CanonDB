@@ -919,6 +919,9 @@ def _prose(q) -> Iterator[Tuple[str, str]]:
         for name, part in q.hinge.asking():
             # the question half has always been "the question's hinge" here
             yield "the question's %s" % ("hinge" if name == "question" else name), part
+        if q.hinge.cue:
+            # the situation the end's clauses govern: the asker's words too
+            yield "the end's cue", q.hinge.cue
     for definition in q.definitions:
         yield "%s %s" % (GLYPHS["glossary"], definition.word), definition.body
         if definition.tradition is not None and definition.tradition.note:
@@ -937,6 +940,8 @@ def _prose(q) -> Iterator[Tuple[str, str]]:
                        "%s %s" % (term.deadlock.counter, term.deadlock.attenuation))
             if term.suspended:
                 yield "the suspension on %r" % _clip(term.title), term.suspended
+            if term.cue:
+                yield "the cue on %r" % _clip(term.title), term.cue
         for mention in thesis.mentions:
             yield "the mention %r" % _clip(mention.title), mention.title
         for edge in thesis.traditions:

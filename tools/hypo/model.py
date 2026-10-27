@@ -201,7 +201,9 @@ class Term:
     the clause it is dissent from, so that it need not withhold the merge of
     the answer the clause sits in. A suspension is acceptance withheld while
     the thread is open, saying what the clause waits on; the merge settles it
-    one way or the other, so a landed answer carries none.
+    one way or the other, so a landed answer carries none. A cue is the
+    situation the clause governs, the label the AI reads records for
+    candidate events by; it is the asker's words, and reach judges it.
     """
 
     title: str
@@ -209,6 +211,9 @@ class Term:
     anchors: List[str] = field(default_factory=list)
     deadlock: Optional[Deadlock] = None
     suspended: str = ""
+    #: the situation the clause governs, where one is given: a labelled block
+    #: of its own under the term, after the anchors
+    cue: str = ""
 
     @staticmethod
     def read(r: _Reader, data: Any, where: str) -> "Term":
@@ -227,6 +232,7 @@ class Term:
             anchors=r.strings(d, "anchors", where),
             deadlock=deadlock,
             suspended=r.text(d, "suspended", where, required=False),
+            cue=r.text(d, "cue", where, required=False),
         )
 
 
@@ -464,13 +470,18 @@ class Hinge:
     it names counts that are applications elsewhere and restates none. The
     thesis part is what the answer was drawn from, the conditions of a run.
     The first three are the asker's and bring words in; the last is the
-    encoding's and brings none.
+    encoding's and brings none. The end may carry one cue, the situation
+    its clauses govern: a labelled block under the end and not a fifth
+    part, so it takes no heading and is not read as a part.
     """
 
     question: str = ""
     end: str = ""
     method: str = ""
     thesis: str = ""
+    #: the situation the end's clauses govern, where one is given: the
+    #: asker's words, judged for reach like the parts, and never a part
+    cue: str = ""
 
     #: the parts in page order, each with what its heading says of it and
     #: whether it is the asker's — his words, which bring words in — or the
@@ -487,7 +498,7 @@ class Hinge:
     ASKING = tuple(name for name, _, asker in PARTS if asker)
 
     def empty(self) -> bool:
-        return not any(part.strip() for _, part in self.parts())
+        return not any(part.strip() for _, part in self.parts()) and not self.cue.strip()
 
     def parts(self) -> Iterator[Tuple[str, str]]:
         """Every part, each named, in page order."""
@@ -503,7 +514,8 @@ class Hinge:
     def read(r: _Reader, data: Any, where: str) -> "Hinge":
         d = r.obj(data, where)
         return Hinge(**{name: r.text(d, name, where, required=False)
-                        for name, _, _ in Hinge.PARTS})
+                        for name, _, _ in Hinge.PARTS},
+                     cue=r.text(d, "cue", where, required=False))
 
 
 @dataclass

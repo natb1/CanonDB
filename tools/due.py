@@ -5,8 +5,10 @@ Prints every reading the record says is due, by project: a landed answer
 drawn again (with --model, the model answering now, read against git under
 --root), a deadlocked clause a later draw gave way on, a pending note, a
 suspended clause, a question past its backstop (with --backstop, in days),
-and a root whose end reads an earlier project's root, whose rev at the
-reading is not recorded. Each with the next step that would take it in. Ids
+an upstream question that moved past the rev the hinge's provenance records
+it read at (`upstream: <id> at rev <n>, …`) or that is not in the graph, and
+a root whose end reads an earlier project's root with no such clause, whose
+rev at the reading is not recorded. Each with the next step that would take it in. Ids
 and reasons only: nothing of the notebook's text is printed beyond the words
 a note or a clause opens with. Computed from the graph file and stored
 nowhere.

@@ -4,8 +4,8 @@ A reading of the notebook used to run on the calendar: the sitting read the
 week and the backlog the month. What makes a reading due is not the date but
 something the record holds, and this lists it: by project, each thing that
 is due, the kind of trigger that made it so, why, and the next step that
-would take it in. Five kinds the record can read, and a sixth it can only
-name:
+would take it in. Six kinds the record can read, the sixth only where the
+rev it compares is recorded:
 
 - ``again``: a landed answer the AI gave, dated by the model or by the canon
   above it (the due-again read);
@@ -17,9 +17,12 @@ name:
   open;
 - ``backstop``: a question whose hinge records no amendment within the
   backstop, where one is given: nothing fired for too long;
-- ``upstream``: a root whose end reads an earlier project's root. The rev it
-  was read at is not recorded, so whether the upstream moved cannot be read;
-  the row says so and never guesses.
+- ``upstream``: a question whose hinge's provenance records the rev it read
+  an upstream question at, as ``upstream: <id> at rev <n>, …`` among its
+  clauses, and the upstream has moved past that rev since, or is not in the
+  graph at all; and a root whose end reads an earlier project's root with no
+  such clause, whose rev at the reading is not recorded, so whether the
+  upstream moved cannot be read: the row says so and never guesses.
 
 Computed from a graph file, as the other projections are, and stored
 nowhere. Every row names a next step: a list of what is due with nothing to
@@ -30,7 +33,7 @@ from __future__ import annotations
 
 import re
 from datetime import date
-from typing import List, NamedTuple, Optional
+from typing import List, NamedTuple, Optional, Tuple
 
 from . import again, drift, project
 from .model import Graph, Question
@@ -39,6 +42,9 @@ from .model import Graph, Question
 AMENDED = re.compile(r"amended (\d{4}-\d{2}-\d{2})")
 #: how a note opens that a dictation run could not apply
 PENDING = "pending"
+#: how a hinge's provenance records the rev an upstream question was read
+#: at: the clause's machine-read part, which prose may follow after a comma
+UPSTREAM = re.compile(r"upstream: (?P<id>[A-Za-z0-9_-]+) at rev (?P<rev>\d+)")
 KINDS = ("again", "drift", "pending", "suspended", "backstop", "upstream")
 
 
@@ -64,6 +70,13 @@ def _in(q: Question, of: Optional[str]) -> bool:
 def _clip(words: str, n: int = 72) -> str:
     words = " ".join(words.split())
     return words if len(words) <= n else words[:n - 1] + "…"
+
+
+def upstream_clauses(hinge_thesis: str) -> List[Tuple[str, int]]:
+    """(upstream id, the rev it was read at) per upstream clause a hinge's
+    provenance carries, in the order they stand."""
+    return [(m.group("id"), int(m.group("rev")))
+            for m in UPSTREAM.finditer(hinge_thesis or "")]
 
 
 def rows(graph: Graph, model: Optional[str] = None, moved: Optional[again.Moved] = None,
@@ -118,20 +131,44 @@ def rows(graph: Graph, model: Optional[str] = None, moved: Optional[again.Moved]
                                "last amended %s, %d days ago, past the backstop of %d"
                                % (last.isoformat(), (when - last).days, backstop),
                                "read it: nothing has fired since"))
+        # the rev an upstream question was read at, where the provenance
+        # records it: moved past since, or gone from the graph, is due; not
+        # moved is nothing, and a rev the graph does not hold is not guessed
+        for uid, at in upstream_clauses(q.hinge.thesis if q.hinge is not None else ""):
+            up = by_id.get(uid)
+            if up is None:
+                out.append(Row(q.project, q.id, "upstream",
+                               "%s is not in this graph" % uid,
+                               "read %s with this project" % uid))
+            elif up.rev > at:
+                out.append(Row(q.project, q.id, "upstream",
+                               "%s moved: read at rev %d, now rev %d" % (uid, at, up.rev),
+                               "re-read %s's end and the clauses the hinge names, and "
+                               "amend the line to 'upstream: %s at rev %d'"
+                               % (uid, uid, up.rev)))
     roots = project.project_roots(graph)
     for i, rid in enumerate(roots):
         r = by_id.get(rid)
         if r is None or r.hinge is None or not _in(r, of):
             continue
+        # an earlier project the end reads is covered by a clause that names
+        # a question of it, or that names the project itself where the
+        # question is not in the graph; the clause's own row says the rest
+        covered = set()
+        for uid, _ in upstream_clauses(r.hinge.thesis):
+            up = by_id.get(uid)
+            covered.add(up.project if up is not None else uid)
         for earlier in roots[:i]:
             e = by_id.get(earlier)
             name = e.project if e is not None else ""
-            if name and re.search(r"\b%s\b" % re.escape(name), r.hinge.end):
+            if name and name not in covered and re.search(r"\b%s\b" % re.escape(name),
+                                                          r.hinge.end):
                 out.append(Row(r.project, r.id, "upstream",
                                "its end reads %s, and the rev %s was read at is not "
                                "recorded, so whether it moved cannot be read" % (name, name),
-                               "record the rev the end was read at, and read this root "
-                               "when that rev moves"))
+                               "record the rev the end was read at, as 'upstream: %s at "
+                               "rev <n>, <what is read>' among the clauses of this hinge's "
+                               "provenance" % earlier))
     order = {k: i for i, k in enumerate(KINDS)}
     out.sort(key=lambda r: (r.project, order[r.kind], r.question))
     return out

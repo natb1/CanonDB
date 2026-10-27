@@ -354,6 +354,10 @@ def _term_blocks(graph: Graph, q: Question) -> List[str]:
         blocks.append("### %s" % term_line(term))
         for anchor in term.anchors:
             blocks.append(anchor_line(anchor))
+        if term.cue:
+            # the situation the clause governs, the label the AI reads
+            # records by: after the anchors, before what stands on the clause
+            blocks.append("cue: %s" % term.cue)
         if term.suspended:
             # acceptance withheld while the thread is open, and what it waits
             # on; a paragraph of its own for the reason a deadlock has two
@@ -513,9 +517,17 @@ def _hinge_blocks(q: Question) -> List[str]:
         return []
     blocks: List[str] = []
     for name, part in q.hinge.parts():
-        if part.strip():
+        # the end's cue stands under the end's heading, right after its
+        # words: a labelled block and not a fifth part, so it takes no
+        # heading of its own and is written even where the end is blank,
+        # since a block with no heading over it would be lost to the reader
+        cue = q.hinge.cue if name == "end" else ""
+        if part.strip() or cue.strip():
             blocks.append("### %s" % HINGE_HEADING[name])
-            blocks.append(part)
+            if part.strip():
+                blocks.append(part)
+            if cue.strip():
+                blocks.append("cue: %s" % cue)
     return blocks
 
 

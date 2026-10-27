@@ -42,9 +42,10 @@ The readings are projections over the record, computed and stored nowhere: `tool
 (the frontier, and with `--principal` the questions only the user can answer whose lineage has
 landed), `tools/again.py` (the answers due again), `tools/drift.py` (the drift count),
 `tools/due.py` (what is due and why: an answer due again, a deadlocked clause a later draw gave
-way on, a pending or suspended clause, a question past its backstop, and a root whose upstream
-rev is not recorded), and `tools/project.py --pressure` (the pressure stored beside the one the
-record derives where none is).
+way on, a pending or suspended clause, a question past its backstop, and an upstream that moved
+past the rev the hinge's provenance records it read at, or whose rev is not recorded), and
+`tools/project.py --pressure` (the pressure stored beside the one the record derives where none
+is).
 
 ## Installing the plugin
 

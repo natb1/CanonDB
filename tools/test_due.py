@@ -77,7 +77,9 @@ class DueTest(unittest.TestCase):
         self.assertIn("--again ti-esti", rows[0].next)
         self.assertEqual(self.kinds(), [])   # without a model, the kind is left out, not guessed
 
-    def test_a_root_whose_end_reads_an_earlier_project_is_named_as_unreadable(self):
+    def two_projects(self):
+        """The fixture as two projects: ti-esti's tree is alpha, and party is
+        beta's root, whose end reads alpha. Returns party."""
         self.graph.projects = ["alpha", "beta"]
         for q in self.graph.questions:
             q.project = "alpha"
@@ -86,10 +88,79 @@ class DueTest(unittest.TestCase):
                                                   if t.to != "party"]
         party.project = "beta"
         party.hinge.end = "For the sake of what alpha names, which is read here and not restated."
+        return party
+
+    def test_a_root_whose_end_reads_an_earlier_project_is_named_as_unreadable(self):
+        self.two_projects()
         rows = due.rows(self.graph)
         self.assertEqual([(r.project, r.question, r.kind) for r in rows], [("beta", "party", "upstream")])
         self.assertIn("not recorded", rows[0].why)
+        # the next step is the clause the provenance is to carry, naming the root it reads
+        self.assertIn("'upstream: ti-esti at rev <n>, <what is read>'", rows[0].next)
+        self.assertIn("provenance", rows[0].next)
         self.assertEqual(due.rows(self.graph, of="alpha"), [])
+
+    def test_an_upstream_that_moved_past_the_rev_recorded_is_due(self):
+        """The provenance records the rev the upstream was read at; the
+        upstream's own rev is past it, so the end and the clauses the hinge
+        names are to be re-read and the line amended."""
+        party = self.two_projects()
+        party.hinge.thesis += " · upstream: ti-esti at rev 15, its end and the clause kept as a means"
+        self.by_id["ti-esti"].rev = 17
+        rows = due.rows(self.graph)
+        self.assertEqual([(r.project, r.question, r.kind) for r in rows], [("beta", "party", "upstream")])
+        self.assertEqual(rows[0].why, "ti-esti moved: read at rev 15, now rev 17")
+        self.assertEqual(rows[0].next, "re-read ti-esti's end and the clauses the hinge names, "
+                                       "and amend the line to 'upstream: ti-esti at rev 17'")
+        self.assertEqual(due.rows(self.graph, of="alpha"), [])
+
+    def test_an_upstream_that_has_not_moved_is_not(self):
+        """Nor is one whose rev the graph does not hold: a rev of 0 says the
+        read gave none, and nothing is guessed from it. The clause covers the
+        earlier project, so the not-recorded row does not fire beside it."""
+        party = self.two_projects()
+        party.hinge.thesis += " · upstream: ti-esti at rev 15, its end and the clause kept as a means"
+        self.by_id["ti-esti"].rev = 15
+        self.assertEqual(self.kinds(), [])
+        self.by_id["ti-esti"].rev = 0
+        self.assertEqual(self.kinds(), [])
+
+    def test_an_upstream_the_graph_does_not_hold_is_due_a_read(self):
+        party = self.two_projects()
+        party.hinge.thesis += " · upstream: archai at rev 15, its end"
+        rows = due.rows(self.graph)
+        kinds = [(r.project, r.question, r.kind) for r in rows]
+        self.assertEqual(kinds, [("beta", "party", "upstream"), ("beta", "party", "upstream")])
+        said = {r.why: r.next for r in rows}
+        self.assertEqual(said["archai is not in this graph"], "read archai with this project")
+        # the clause names no question of alpha, so alpha's rev is still not recorded
+        self.assertTrue(any("not recorded" in why for why in said))
+
+    def test_an_upstream_clause_is_read_on_any_question_of_the_author_s(self):
+        """Not only on a root: a question below that read a question of an
+        earlier project records the rev the same way. A clause names the
+        project itself where the question is not in the graph."""
+        party = self.two_projects()
+        canon = self.by_id["canon"]
+        canon.hinge.thesis += " · upstream: plato at rev 3, its one answer"
+        self.by_id["plato"].rev = 4
+        party.hinge.thesis += " · upstream: alpha at rev 2, the root"
+        rows = due.rows(self.graph)
+        self.assertEqual([(r.project, r.question, r.kind) for r in rows],
+                         [("alpha", "canon", "upstream"), ("beta", "party", "upstream")])
+        self.assertEqual(rows[0].why, "plato moved: read at rev 3, now rev 4")
+        self.assertEqual(rows[1].why, "alpha is not in this graph")
+
+    def test_several_upstream_clauses_are_each_read(self):
+        party = self.two_projects()
+        party.hinge.thesis += (" · upstream: ti-esti at rev 15, its end"
+                               " · upstream: canon at rev 2, the entry"
+                               " · upstream: archai at rev 1, nothing here")
+        self.by_id["ti-esti"].rev = 15
+        self.by_id["canon"].rev = 3
+        rows = due.rows(self.graph)
+        self.assertEqual([r.why for r in rows],
+                         ["canon moved: read at rev 2, now rev 3", "archai is not in this graph"])
 
     def test_the_listing_and_the_order(self):
         self.by_id["canon"].notes.append(model.Note(section="thesis", body="pending: one"))

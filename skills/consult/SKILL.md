@@ -44,7 +44,8 @@ situation it governs written beside it, the cue decides.
 **4 — Report.** For each clause that bears: the tab and the project it stands on, the clause
 verbatim, the end it serves (the root's end, quoted in part where the clause does not say),
 and what stands on the clause: a deadlock and its attenuation, a suspension and what it waits
-on, a pending note. Order by the project's order, earlier first, then by the tab. Then stop.
+on, a cue and the situation it governs, a pending note. Order by the project's order, earlier
+first, then by the tab. Then stop.
 
 **5 — Nothing is written.** No note, no claim, no transcript, no file. A situation no clause
 bears on is said in one line: it is a candidate dictation, and the dictate entry point is

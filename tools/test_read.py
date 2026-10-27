@@ -277,6 +277,28 @@ class DetailTest(unittest.TestCase):
         self.assertEqual(parsed["theses"][0]["terms"][0]["suspended"],
                          "whether the other side would say it unprompted")
 
+    def test_a_cue_comes_back_on_its_term_and_on_no_other(self):
+        """The situation the clause governs, a labelled block after the
+        anchors: read as the term's cue, and never as an anchor or as
+        what the clause waits on."""
+        parsed = self.parse("canon")
+        term = parsed["theses"][0]["terms"][0]
+        self.assertEqual(term["cue"], "an act is proposed on an entry nobody with "
+                                      "standing has marked")
+        self.assertEqual(term["anchors"], ["Authority to act on an unassented entry is "
+                                           "held down, never removed."])
+        self.assertNotIn("suspended", term)
+        self.assertTrue(all("cue" not in t for t in self.parse("ti-esti")["theses"][0]["terms"]))
+
+    def test_a_cue_stands_beside_a_suspension_and_a_deadlock(self):
+        graph = load("valid")
+        term = graph.get("party").theses[0].terms[0]
+        term.cue = "one side means to act while the other has not spoken"
+        parsed = read.parse_tab(render.body(graph, "party"), self.ids)
+        got = parsed["theses"][0]["terms"][0]
+        self.assertEqual((got["cue"], got["deadlock"]["counter"]),
+                         (term.cue, term.deadlock.counter))
+
     def test_an_answer_s_state_comes_back_off_its_own_line(self):
         """Its own, and not the question's: the root is landed and its answer
         is in thread."""
@@ -503,7 +525,50 @@ class HingePartsTest(unittest.TestCase):
         parsed = read.parse_tab(render.body(graph, "ti-esti"), chip_ids(graph))
         self.assertEqual(parsed["hinge"], {
             "question": root.hinge.question, "end": root.hinge.end,
-            "method": root.hinge.method, "thesis": root.hinge.thesis})
+            "method": root.hinge.method, "thesis": root.hinge.thesis,
+            "cue": root.hinge.cue})
+
+    def test_the_end_s_cue_comes_back_apart_from_the_end(self):
+        """The cue stands right after the end's words, before the method's
+        heading, as a labelled block; it is read as the cue and never
+        folded into the end's text."""
+        graph = load("valid")
+        root = graph.get("ti-esti")
+        page = render.body(graph, "ti-esti")
+        self.assertIn("%s\n\ncue: %s\n\n### %s" % (root.hinge.end, root.hinge.cue,
+                                                   render.HINGE_METHOD), page)
+        parsed = read.parse_tab(page, chip_ids(graph))
+        self.assertEqual(parsed["hinge"]["end"], root.hinge.end)
+        self.assertEqual(parsed["hinge"]["cue"], root.hinge.cue)
+        root.hinge.cue = ""
+        parsed = read.parse_tab(render.body(graph, "ti-esti"), chip_ids(graph))
+        self.assertNotIn("cue", parsed["hinge"])
+
+    def test_a_cue_under_an_end_of_two_paragraphs_is_still_apart(self):
+        graph = load("valid")
+        root = graph.get("ti-esti")
+        root.hinge.end += "\n\nand that each can say so in the record."
+        parsed = read.parse_tab(render.body(graph, "ti-esti"), chip_ids(graph))
+        self.assertEqual(parsed["hinge"]["end"], root.hinge.end)
+        self.assertEqual(parsed["hinge"]["cue"], root.hinge.cue)
+
+    def test_a_cue_with_no_end_still_reaches_the_page_and_comes_back(self):
+        graph = load("valid")
+        root = graph.get("ti-esti")
+        root.hinge.end = ""
+        parsed = read.parse_tab(render.body(graph, "ti-esti"), chip_ids(graph))
+        self.assertEqual(parsed["hinge"]["cue"], root.hinge.cue)
+        self.assertEqual(parsed["hinge"].get("end", ""), "")
+
+    def test_a_cue_given_twice_under_the_end_is_refused(self):
+        """The second would replace the first, whose words would be lost."""
+        graph = load("valid")
+        page = render.body(graph, "ti-esti")
+        at = page.index("### " + render.HINGE_METHOD)
+        edited = page[:at] + "cue: a second situation, over the first\n\n" + page[at:]
+        with self.assertRaises(read.ParseError) as caught:
+            read.parse_tab(edited, chip_ids(graph))
+        self.assertIn("cue is given twice", str(caught.exception))
 
     def test_a_hinge_without_them_reads_back_without_them(self):
         graph = load("valid")

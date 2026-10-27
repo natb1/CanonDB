@@ -202,7 +202,10 @@ class TermTest(unittest.TestCase):
         self.graph = load()
         self.view, self.by_id = view_of(self.graph, "canon")
         self.thesis = block_of(self.by_id, "An entry is a file")
-        self.last = block_of(self.by_id, "*Authority to act")
+        self.anchor = block_of(self.by_id, "*Authority to act")
+        # the term's last block is its cue, which stands after the anchors: a
+        # term inserted after the anchor would take the cue under itself
+        self.last = block_of(self.by_id, "cue: an act is proposed")
 
     def test_an_inserted_term_reads_back_as_the_graph_holding_it(self):
         anchor = "An entry is a file in the repository, not a message in a thread."
@@ -224,9 +227,11 @@ class TermTest(unittest.TestCase):
                                 ["words the answer never says"], thesis=text)
 
     def test_delete_takes_the_heading_and_its_anchors(self):
+        """And its cue, which is a line of the term as an anchor is."""
         heading = block_of(self.by_id, "### ▸ Authority")
-        ops = inplace.term_delete(self.view, heading, [self.last])
-        self.assertEqual([o["target"]["ids"][0] for o in ops], [heading, self.last])
+        ops = inplace.term_delete(self.view, heading, [self.anchor, self.last])
+        self.assertEqual([o["target"]["ids"][0] for o in ops],
+                         [heading, self.anchor, self.last])
         with self.assertRaises(appline.Refused):
             inplace.term_delete(self.view, heading, [self.thesis])
 

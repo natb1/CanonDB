@@ -468,6 +468,25 @@ class DetailTest(unittest.TestCase):
         self.assertIn("the question's end", findings[0].message)
         self.assertIn("'grade'", findings[0].message)
 
+    def test_a_cue_is_judged_for_reach_where_it_is_written(self):
+        """A cue is the asker's words too, the situation a clause governs:
+        on a term it is judged from the tab the term stands on, and on the
+        end from the root. The fixture carries one of each, in reach."""
+        graph = load("valid")
+        self.assertEqual(spec.run(graph, only=["reach"]), [])
+        term = graph.get("canon").theses[0].terms[0]
+        term.cue += ", whatever grade it would carry"
+        findings = spec.run(graph, only=["reach"])
+        self.assertEqual([f.question for f in findings], ["canon"])
+        self.assertIn("the cue on 'Authority held down'", findings[0].message)
+        self.assertIn("'grade'", findings[0].message)
+        term.cue = "an act is proposed on an entry nobody with standing has marked"
+        graph.get("ti-esti").hinge.cue += ", whatever grade the record carries"
+        findings = spec.run(graph, only=["reach"])
+        self.assertEqual([f.question for f in findings], ["ti-esti"])
+        self.assertIn("the end's cue", findings[0].message)
+        self.assertIn("'grade'", findings[0].message)
+
     def test_reach_says_a_word_used_twice_once(self):
         """A word out of reach is one thing out of reach, however often the
         part uses it; the count rides on the one finding."""
