@@ -30,7 +30,7 @@
         "skills/consult/SKILL.md",
         "skills/interview/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3195",
       "rounds": 9
     },
     {
@@ -41,7 +41,7 @@
         ".claude/settings.json",
         "CLAUDE.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3195",
       "rounds": 5
     },
     {
@@ -72,7 +72,7 @@
         "tools/test_project.py",
         "tools/test_turn.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3195",
       "rounds": 4
     },
     {
@@ -83,7 +83,7 @@
         "tools/hypo/frontier.py",
         "tools/test_frontier.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3195",
       "rounds": 3
     },
     {
@@ -294,7 +294,7 @@
         "tools/hypo/due.py",
         "tools/test_due.py"
       ],
-      "pull_request": "",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3195",
       "rounds": 1
     }
   ]
