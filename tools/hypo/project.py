@@ -328,8 +328,43 @@ def load(graph: Graph, qid: str) -> int:
     return len(reachable_from(graph, qid)) - 1
 
 
-def backlog(graph: Graph, qid: str) -> int:
+#: the link an application carries while the thing it names is nothing yet
+NOT_YET = "not yet written"
+
+
+def derived_pressure(graph: Graph, qid: str, regressed: Optional[Dict[str, int]] = None) -> int:
+    """The pressure at ``qid`` as the record can read it, where none is stored.
+
+    The hand's value stands over the default: a question with a pressure set
+    keeps it. Where none is set, one is counted for each application blocked
+    on the question, a link of not yet written; one for each postulate its
+    answers carry, the load it bears if the answer turns out false; and one
+    for each deadlocked clause a later draw gave way on, which ``regressed``
+    gives per question (the drift count's reading, since this module reads
+    no draw). An answer due again is the due-again read's and rides in the
+    same way, through ``regressed``, where a caller has it.
+    """
+    q = graph.by_id().get(qid)
+    if q is None:
+        return 0
+    if q.pressure > 0:
+        return q.pressure
+    n = 0
+    for thesis in q.theses:
+        for app in thesis.applications:
+            if app.link.strip().lower() == NOT_YET:
+                n += 1
+            elif app.standing.strip() == "postulate":
+                n += 1
+    return n + (regressed or {}).get(qid, 0)
+
+
+def backlog(graph: Graph, qid: str, derived: bool = False,
+            regressed: Optional[Dict[str, int]] = None) -> int:
     """A question's own pressure plus the pressure of everything blocked behind it.
+
+    With ``derived``, a question with no pressure stored takes the one the
+    record reads for it (``derived_pressure``); the hand's value stands.
 
     Pressure is set by hand on the question where work is actually waiting,
     which need not be a leaf: an interior question can have an application
@@ -363,7 +398,11 @@ def backlog(graph: Graph, qid: str) -> int:
     q = by_id.get(qid)
     if q is None:
         return 0
-    return q.pressure + sum(by_id[b].pressure for b in blocked_behind(graph, qid))
+    if derived:
+        weigh = lambda x: derived_pressure(graph, x, regressed)  # noqa: E731
+    else:
+        weigh = lambda x: by_id[x].pressure  # noqa: E731
+    return weigh(qid) + sum(weigh(b) for b in blocked_behind(graph, qid))
 
 
 def landed(q: Question) -> bool:

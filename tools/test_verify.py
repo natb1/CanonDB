@@ -72,6 +72,24 @@ class WholeTabTest(unittest.TestCase):
                 page = page_of(self.graph, q.id, self.links(q.id))
                 self.assertTrue(verify.verify(self.graph, q.id, page).ok())
 
+    def test_a_cue_is_a_block_the_page_carries_as_written(self):
+        """A cue is a labelled paragraph under its term or under the end, and
+        the page check reads it as the renderer's own block: a tab written
+        with one is clean, and a cue the page carries that the graph does
+        not is a difference like any other words'."""
+        term = self.graph.get("party").theses[0].terms[0]
+        term.cue = "one side means to act while the other has not spoken"
+        page = page_of(self.graph, "party", self.links("party"))
+        self.assertIn("\ncue: one side means to act while the other has not spoken\n", page)
+        self.assertTrue(verify.verify(self.graph, "party", page).ok())
+        term.cue = ""
+        self.assertFalse(verify.verify(self.graph, "party", page).ok())
+        root = self.graph.get("ti-esti")
+        page = page_of(self.graph, "ti-esti", self.links("ti-esti"))
+        self.assertTrue(verify.verify(self.graph, "ti-esti", page).ok())
+        root.hinge.cue = ""
+        self.assertFalse(verify.verify(self.graph, "ti-esti", page).ok())
+
     def test_a_body_write_with_no_links_is_the_defect_this_exists_for(self):
         """192 links over 24 tabs went this way, and every gate on the graph
         file stayed green: the reader strips an in-page link before parsing, so

@@ -326,7 +326,7 @@ def _plain_block(words: str, what: str) -> None:
         raise Refused("%s opens like a heading, a note, a list or a table: %r"
                       % (what, stripped[:40]))
     for label in ("assent: ", "question: ", "suspended: ", "deadlock: ",
-                  "attenuation: "):
+                  "attenuation: ", "cue: "):
         if stripped.startswith(label):
             raise Refused("%s opens with %r, which the reader takes as a line of "
                           "its own" % (what, label))
@@ -452,7 +452,7 @@ def term_delete(source, heading: str, under: Sequence[str]) -> List[dict]:
     for bid in under:
         text = page.inline(_paragraph(source, bid))
         if not (text.startswith("*") or text.startswith(("suspended: ", "deadlock: ",
-                                                         "attenuation: "))):
+                                                         "attenuation: ", "cue: "))):
             raise Refused("block %s is not a line of a term: %r" % (bid, text[:60]))
     return appline.guarded_delete(source, [heading] + list(under))
 

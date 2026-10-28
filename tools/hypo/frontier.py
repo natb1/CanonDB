@@ -40,7 +40,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 from . import appline, page, project, read, turn
 from .appline import Refused
-from .model import AUTHOR, GLYPHS, STATES, Graph, Question, Term, Thesis
+from .model import ANSWERERS, AUTHOR, GLYPHS, STATES, Graph, Question, Term, Thesis
 
 
 def _lines(source) -> List[Tuple[str, ET.Element]]:
@@ -137,6 +137,24 @@ def frontier(g: Graph) -> List[Tuple[str, int]]:
     rows = []
     for q in g.questions:
         if q.tradition or q.answerer != project.AI or project.landed(q):
+            continue
+        if all(project.landed(by_id[a]) for a in turn.above(g, q.id)):
+            rows.append((q.id, q.pressure))
+    rows.sort(key=lambda r: (-r[1], r[0]))
+    return rows
+
+
+def principal(g: Graph) -> List[Tuple[str, int]]:
+    """(question, pressure) for every question the principal answers whose
+    lineage has landed, heaviest first, ties by id: a listing of its own
+    beside the frontier, for a caller outside the notebook to take up. Such
+    a question is never put and blocks nothing, which is why it is not on
+    the frontier; what it is, is a decision only the principal can make, and
+    this says which are ready to be made."""
+    by_id = g.by_id()
+    rows = []
+    for q in g.questions:
+        if q.tradition or q.answerer != ANSWERERS[1]:
             continue
         if all(project.landed(by_id[a]) for a in turn.above(g, q.id)):
             rows.append((q.id, q.pressure))

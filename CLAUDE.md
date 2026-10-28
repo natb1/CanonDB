@@ -1,0 +1,9 @@
+# natb1/CanonDB
+
+The principal plugin: the entry points over a hypomnemata notebook and the canon it feeds. Canon is `canon/ti-esti.md` and every answer merged since; the notebook is the `canondb` project of the one Claude Docs document `.principal/notebook.json` names. `README.md` is the projection of the two: what the plugin is for and how it is installed. Nothing of canon or of the notebook is in this file, and nothing here puts either in a turn: an entry point grants what a turn may carry, and invoking it is the grant.
+
+- Entry points: `skills/ask`, `skills/dictate`, `skills/bootstrap`, `skills/consult` (a read-only situation read), `skills/interview` (a root question the principal answers, put by a questioner that has read nothing of the notebook). The canon turn is `agents/canon-answer.md`, which reads only the lineage; `hooks/canon-gate.py` refuses it every other read. Never answer a canon question outside that agent, and never work around the gate.
+- The projections are under `tools/`: `frontier.py` (the frontier, and with `--principal` the decisions ready to be made), `again.py` (answers due again), `drift.py` (the drift count), `due.py` (what is due and why), `project.py` (the tab tree, and with `--pressure` the pressure the record derives). Each reads the document where it stands or a graph file, and stores nothing.
+- Tests: `cd tools && python3 -m unittest`, before every pull request. `main` takes the user's merge: open the pull request and stop.
+- A notebook write carries the rev of the read it came from; a run records itself on the notebook's `lease` tab before a section or body write; that tab's tooling pin names the plugin commit the notebook was last written with. Keep all three.
+- Wording, in the notebook and here: the user, never he, his or "the human". Counts, never verdicts.

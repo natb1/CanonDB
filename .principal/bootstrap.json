@@ -26,20 +26,23 @@
         ".principal/bootstrap.json",
         "tools/gaps.py",
         "tools/hypo/gaps.py",
-        "tools/test_gaps.py"
+        "tools/test_gaps.py",
+        "skills/consult/SKILL.md",
+        "skills/interview/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
-      "rounds": 8
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3195",
+      "rounds": 9
     },
     {
       "question": "context",
       "application": "the install",
       "files": [
         "README.md",
-        ".claude/settings.json"
+        ".claude/settings.json",
+        "CLAUDE.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
-      "rounds": 4
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3195",
+      "rounds": 5
     },
     {
       "question": "dictate",
@@ -69,8 +72,8 @@
         "tools/test_project.py",
         "tools/test_turn.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
-      "rounds": 3
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3195",
+      "rounds": 4
     },
     {
       "question": "priority",
@@ -80,8 +83,8 @@
         "tools/hypo/frontier.py",
         "tools/test_frontier.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
-      "rounds": 2
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3195",
+      "rounds": 3
     },
     {
       "question": "docs-encoding",
@@ -281,6 +284,17 @@
         ".principal/notebook.json"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
+      "rounds": 1
+    },
+    {
+      "question": "hypomnemata",
+      "application": "the due reading",
+      "files": [
+        "tools/due.py",
+        "tools/hypo/due.py",
+        "tools/test_due.py"
+      ],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3195",
       "rounds": 1
     }
   ]

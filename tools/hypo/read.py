@@ -52,6 +52,8 @@ ASSENT_LINE = re.compile(
 DEADLOCK_LINE = re.compile(r"^deadlock: (?P<counter>.*)$", re.S)
 SUSPENDED_LINE = re.compile(r"^suspended: (?P<suspended>.*)$", re.S)
 ATTENUATION_LINE = re.compile(r"^attenuation: (?P<attenuation>.*)$", re.S)
+#: the situation a clause governs, under a term or under the hinge's end
+CUE_LINE = re.compile(r"^cue: (?P<cue>.*)$", re.S)
 APPLICATION_LINE = re.compile(
     r"^(?P<what>.*?) · %s (?P<thesis>.*?) · (?P<link>[^·]*?) · "
     r"(?P<standing>[^·(]+?)(?: \((?P<clause>[^)]*)\))?(?: · (?P<note>.*))?$"
@@ -560,12 +562,15 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
             counter = DEADLOCK_LINE.match(block)
             attenuation = ATTENUATION_LINE.match(block)
             suspended = SUSPENDED_LINE.match(block)
+            cue = CUE_LINE.match(block)
             if counter:
                 deadlock["counter"] = counter.group("counter")
             elif attenuation:
                 deadlock["attenuation"] = attenuation.group("attenuation")
             elif suspended:
                 term["suspended"] = suspended.group("suspended")
+            elif cue:
+                term["cue"] = cue.group("cue")
         if deadlock:
             term["deadlock"] = deadlock
         if theses:
@@ -638,6 +643,17 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
         if part in hinge:
             # the second would replace the first, whose words would be lost
             raise ParseError("the hinge's %s is given twice: %r" % (part, heading[:50]))
+        if part == "end":
+            # the end may carry one cue, a labelled block of its own after the
+            # end's words; it is the situation the end's clauses govern and
+            # not a line of the end, so it is not folded into the text
+            cues = [found for found in map(CUE_LINE.match, body) if found]
+            if len(cues) > 1:
+                raise ParseError("the end's cue is given twice, and the second would "
+                                 "replace the first: %r" % cues[1].group("cue")[:50])
+            if cues:
+                hinge["cue"] = cues[0].group("cue")
+                body = [block for block in body if not CUE_LINE.match(block)]
         hinge[part] = SEPARATOR.join(body)
     if hinge:
         q["hinge"] = hinge

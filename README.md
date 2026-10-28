@@ -28,6 +28,25 @@ its reasoning is not captured by an interest that is not the user's, and it can 
 others compete to supply the same. That condition is set in a notebook of the user's own, which
 is private, and this record is where it is tested.
 
+## The entry points and the readings
+
+Five entry points, each a grant of what a turn may carry. `/principal:ask` puts the next
+question to the AI in a clean context, and with `--again` puts a landed one again.
+`/principal:dictate` changes the notebook. `/principal:bootstrap` builds what the notebook
+describes ahead of canon. `/principal:consult` takes a situation in the user's words and returns
+the clauses that bear on it, reading only and drawing nothing. `/principal:interview` puts a root
+question the principal answers to the user, through a questioner that has read nothing of the
+notebook, and ends in a dictation the user runs.
+
+The readings are projections over the record, computed and stored nowhere: `tools/frontier.py`
+(the frontier, and with `--principal` the questions only the user can answer whose lineage has
+landed), `tools/again.py` (the answers due again), `tools/drift.py` (the drift count),
+`tools/due.py` (what is due and why: an answer due again, a deadlocked clause a later draw gave
+way on, a pending or suspended clause, a question past its backstop, and an upstream that moved
+past the rev the hinge's provenance records it read at, or whose rev is not recorded), and
+`tools/project.py --pressure` (the pressure stored beside the one the record derives where none
+is).
+
 ## Installing the plugin
 
 The plugin is a marketplace named `canondb`, hosted in this repository, listing one plugin,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""frontier.py <document read> <reads> [--json] — the frontier, off the page.
+"""frontier.py <document read> <reads> [--json] [--principal] — the frontier, off the page.
 
 Prints every question of the author's that the AI answers, that has not
 landed, and whose lineage has — each with its pressure, heaviest first. Ids
@@ -70,6 +70,9 @@ def main(argv=None) -> int:
     ap.add_argument("reads", nargs="+", help="saved reads, or directories of them")
     ap.add_argument("--json", action="store_true", dest="as_json",
                     help="print the frontier as JSON")
+    ap.add_argument("--principal", action="store_true",
+                    help="list the questions the principal answers whose lineage has "
+                         "landed instead: the decisions ready to be made, never put")
     ap.add_argument("--project", metavar="NAME",
                     help="one project of a notebook that holds several: its "
                          "author tabs alone are read and must all be given "
@@ -80,7 +83,8 @@ def main(argv=None) -> int:
         with open(args.manifest, encoding="utf-8") as fh:
             manifest = json.load(fh)
         project = args.project if args.project is not None else _project()
-        rows = frontier.frontier(frontier.graph(manifest, _reads(args.reads), project))
+        built = frontier.graph(manifest, _reads(args.reads), project)
+        rows = frontier.principal(built) if args.principal else frontier.frontier(built)
     except (OSError, ValueError) as exc:
         print("ERROR %s" % exc, file=sys.stderr)
         return 1
@@ -89,11 +93,13 @@ def main(argv=None) -> int:
         return 1
 
     if args.as_json:
-        print(json.dumps({"frontier": [{"question": q, "pressure": p} for q, p in rows]},
+        key = "principal" if args.principal else "frontier"
+        print(json.dumps({key: [{"question": q, "pressure": p} for q, p in rows]},
                          indent=2))
         return 0
     if not rows:
-        print("nothing is on the frontier", file=sys.stderr)
+        print("nothing is on the frontier" if not args.principal
+              else "no question of the principal's is ready", file=sys.stderr)
     width = max([len(q) for q, _ in rows] + [1])
     for qid, pressure in rows:
         print("%-*s  %4d" % (width, qid, pressure))

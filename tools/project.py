@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""project.py <graph.json> [--json] — the tab-tree projection.
+"""project.py <graph.json> [--json] [--pressure] — the tab-tree projection.
 
 Prints the tree listing and the complete tab-placement patch, ready to be sent
 as the `tabs` patch of a document update.
@@ -14,7 +14,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from hypo import cli, project, spec  # noqa: E402
+from hypo import cli, drift, project, spec  # noqa: E402
 
 cli.quiet_pipe()
 
@@ -27,11 +27,33 @@ def main(argv=None) -> int:
     ap.add_argument("--project", metavar="NAME",
                     help="place one project's tabs alone, for a run that read that "
                          "project (the tradition project's include every party)")
+    ap.add_argument("--pressure", action="store_true",
+                    help="print, per question of the author's, the pressure stored and the "
+                         "one the record derives where none is, with the backlog each gives")
     args = ap.parse_args(argv)
 
     graph = cli.load_graph(args.graph)
     if graph is None:
         return 1
+
+    if args.pressure:
+        regressed = {}
+        for held in drift.deadlocks(graph):
+            gave = sum(1 for h in held.holds if not h)
+            if gave:
+                regressed[held.question] = regressed.get(held.question, 0) + gave
+        rows = [(q.id, q.pressure, project.derived_pressure(graph, q.id, regressed),
+                 project.backlog(graph, q.id), project.backlog(graph, q.id, True, regressed))
+                for q in sorted(graph.questions, key=lambda x: x.id) if not q.tradition]
+        if args.as_json:
+            print(json.dumps([{"question": r[0], "stored": r[1], "derived": r[2],
+                               "backlog": r[3], "backlog_derived": r[4]} for r in rows], indent=2))
+            return 0
+        width = max([len(r[0]) for r in rows] + [1])
+        print("%-*s  stored derived  backlog derived" % (width, "question"))
+        for r in rows:
+            print("%-*s  %6d %7d  %7d %7d" % (width, *r))
+        return 0
 
     # parents() breaks a cycle deterministically so that every projection stays
     # total on a broken graph, which the checks rely on. That makes it exactly
