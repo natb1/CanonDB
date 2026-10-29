@@ -314,7 +314,7 @@
         "tools/test_verify.py",
         "tools/test_portable.py"
       ],
-      "pull_request": "",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3196",
       "rounds": 1
     },
     {
@@ -336,7 +336,7 @@
         "tools/test_cli.py",
         "README.md"
       ],
-      "pull_request": "",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3196",
       "rounds": 1
     }
   ]
