@@ -19,7 +19,7 @@ from typing import Callable, Dict, Iterator, List, Optional, Set, Tuple
 
 from . import project, spec, text
 from .model import (ANSWERERS, GLYPHS, STANDINGS, STATES, Application, Graph,
-                     Hinge, Question, Term, Thesis)
+                     Hinge, Question, Term, Thesis, Work)
 
 SEPARATOR = "\n\n"
 
@@ -437,6 +437,60 @@ def discharge_clause(q: Question, thesis: Thesis, app: Application) -> str:
     return "until this answer lands and the artifact is diffed against it"
 
 
+def _work_blocks(q: Question) -> List[str]:
+    """One subsection per work a party is read from, in the graph's order:
+    the key it is cited by as the heading, its fields on one line, and its
+    note as a paragraph of its own.
+
+    The key is the heading because it is what a citation names and what a
+    reader looking one up searches the tab for. The note stands apart from
+    the line because it is the one field written as prose: on the line it
+    would have to hold no separator, and a reason a work was set aside is
+    seldom that short.
+    """
+    blocks: List[str] = []
+    for work in q.works:
+        blocks.append("### %s" % work_heading(work.key))
+        line = work_line(work)
+        if line:
+            blocks.append(line)
+        if work.note.strip():
+            blocks.append(work.note)
+    return blocks
+
+
+def work_heading(key: str) -> str:
+    """A work's heading without its level: the glyph and the key."""
+    return "%s %s" % (GLYPHS["work"], key)
+
+
+#: what parts one labelled field of a work's line from the next
+WORK_SEPARATOR = " · "
+
+
+def work_line(work: Work) -> str:
+    """A work's one line, as a party's tab carries it under its heading: each
+    filled field labelled, in ``Work.FIELDS`` order, the url a link whose
+    words are the url itself. Empty where no field is filled.
+
+    Written here and nowhere else, so that a run writing one work in place
+    writes what a body render would have. The words are the graph's
+    markdown, as every other line here is, and ``work-fields`` holds that no
+    field carries the separator or a line break, which would not read back.
+    """
+    parts = []
+    for name, value in work.fields():
+        if not value:
+            continue
+        if name == "url":
+            # the link's words are characters the page holds, so a mark in
+            # them is spelled behind a backslash, as the page speller spells
+            # it; the target is the url as it stands, which the reader keeps
+            value = "[%s](%s)" % (text.escape(value), value)
+        parts.append("%s: %s" % (name, value))
+    return WORK_SEPARATOR.join(parts)
+
+
 #: the heading of each part of a hinge, by the part's name: the glyph, the
 #: name and what the part says, as ``Hinge.PARTS`` spells them; the reader
 #: takes a part back by the name its heading opens with
@@ -582,6 +636,7 @@ def body(graph: Graph, qid: str, par: Parents = None) -> str:
                           ("glossary", _glossary_blocks(q)),
                           ("terms", _term_blocks(graph, q)),
                           ("applications", _application_blocks(q)),
+                          ("works", _work_blocks(q)),
                           ("cited by", _cited_by_blocks(graph, q, par)),
                           ("hinge", _hinge_blocks(q))):
         notes = _note_blocks(q, name)

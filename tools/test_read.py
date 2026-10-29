@@ -5,6 +5,7 @@ import re
 import unittest
 
 from hypo import model, read, render
+import test_render  # the works a party is read from
 from support import FIXTURES, chip_ids, load
 
 #: what the document holds and the markdown does not, per class. A question's
@@ -42,7 +43,7 @@ class RoundTripTest(unittest.TestCase):
     """
 
     def assert_round_trips(self, name):
-        graph = load(name)
+        graph = load(name) if isinstance(name, str) else name
         ids = chip_ids(graph)
         for q in graph.questions:
             with self.subTest(fixture=name, question=q.id):
@@ -59,8 +60,11 @@ class RoundTripTest(unittest.TestCase):
     #: the fixtures whose mutation is a text the page cannot carry back: a
     #: blockquote inside an answer, which the reader files as a note, and a
     #: headline carrying the separator of the application line that says it.
-    #: That they do not round-trip is the finding, and the tests below hold it.
-    NOT_CARRIED = {"invalid-text-unquoted", "invalid-fields-parted", "invalid-note-unstopped"}
+    #: A work's field carrying that separator is the same fault on a party's
+    #: works. That they do not round-trip is the finding, and the tests below
+    #: hold it.
+    NOT_CARRIED = {"invalid-text-unquoted", "invalid-fields-parted", "invalid-note-unstopped",
+                   "invalid-work-fields"}
 
     def test_every_invalid_fixture_too(self):
         """They are whole graphs with one mutation, so they exercise shapes the
@@ -98,6 +102,53 @@ class RoundTripTest(unittest.TestCase):
         self.assertNotIn(">", parsed["theses"][0]["text"])
         self.assertEqual(parsed["notes"], [{"section": "thesis",
                                             "body": "Not a message in a thread."}])
+
+
+class WorksTest(unittest.TestCase):
+    """A party's works come back exactly, in any spelling a read gives them."""
+
+    def setUp(self):
+        self.graph = test_render.with_works(load("valid"))
+        self.ids = chip_ids(self.graph)
+        self.page = render.body(self.graph, "plato")
+
+    def test_they_round_trip(self):
+        RoundTripTest.assert_round_trips(self, self.graph)
+
+    def test_they_are_left_off_a_tab_without_them(self):
+        self.assertNotIn("works", read.parse_tab(render.body(self.graph, "canon"), self.ids))
+
+    def test_the_url_is_read_off_the_target_in_any_spelling(self):
+        """The renderer's link, its words as the page speller spells them; an
+        autolink; and the bare url a read gives where the link was lost."""
+        url = self.graph.get("plato").works[0].url
+        written = "[%s](%s)" % (url.replace("_", "\\_"), url)
+        self.assertIn(written, self.page)
+        for spelled in ("[%s](%s)" % (url, url), "<%s>" % url, url):
+            with self.subTest(spelled=spelled):
+                again = read.parse_tab(self.page.replace(written, spelled), self.ids)
+                self.assertEqual(again["works"][0]["url"], url)
+
+    def test_a_line_out_of_order_is_refused(self):
+        stale = self.page.replace("work: *Euthyphro* · author: Plato",
+                                  "author: Plato · work: *Euthyphro*")
+        self.assertNotEqual(stale, self.page)
+        with self.assertRaises(read.ParseError) as caught:
+            read.parse_tab(stale, self.ids)
+        self.assertIn("a work's line is malformed", str(caught.exception))
+
+    def test_a_field_carrying_the_separator_does_not_come_back(self):
+        """``work-fields`` refuses the graph before it is written; this is
+        what it stands between."""
+        graph = load("invalid-work-fields")
+        with self.assertRaises(read.ParseError):
+            read.parse_tab(render.body(graph, "plato"), chip_ids(graph))
+
+    def test_a_note_with_no_line_reads_as_the_note(self):
+        works = self.graph.get("plato").works
+        works[1].verified, works[1].note = "", "Owed a reading."
+        again = read.parse_tab(render.body(self.graph, "plato"), self.ids)
+        self.assertEqual(again["works"][1], {"key": "RB-5", "note": "Owed a reading."})
 
 
 class DetailTest(unittest.TestCase):

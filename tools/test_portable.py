@@ -235,6 +235,18 @@ class OpenTest(unittest.TestCase):
         again = portable.seal(model.load(graph_file(self.data)))
         self.assertEqual(again["questions"], self.envelope["questions"])
 
+    def test_a_party_s_works_survive_sealing_and_opening(self):
+        """The registry is on the parties' tabs, so a party raising its own
+        notebook gets the works its parties are read from with it."""
+        data = copy.deepcopy(self.data)
+        works = [{"key": "PLATO-EUTH", "work": "Euthyphro", "note": "Grube."},
+                 {"key": "RB-5", "verified": "yes"}]
+        next(q for q in data["questions"] if q["id"] == "plato")["works"] = works
+        sealed = portable.seal(model.load(graph_file(data)))
+        opened = model.load(graph_file(portable.opened(sealed)[0]))
+        self.assertEqual(opened.get("plato").works,
+                         [model.Work.read(model._Reader(), w, "w") for w in works])
+
     def test_a_foreign_envelope_is_refused(self):
         with self.assertRaises(ValueError):
             portable.opened({"format": "something-else", "questions": []})[0]

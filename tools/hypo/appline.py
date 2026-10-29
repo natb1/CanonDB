@@ -258,14 +258,14 @@ def replace_op(fields: Dict[str, str]) -> dict:
 
 SECTION = "Applications"
 # the sections the renderer writes after Applications, in its order
-AFTER_SECTION = ("Cited by", "Hinge")
+AFTER_SECTION = ("Works", "Cited by", "Hinge")
 
 
 def opens_section(source, after: str) -> bool:
     """Whether an application inserted after block ``after`` must open the
     Applications section, which the tab does not have yet: true when the view
     holds neither that heading nor any application. The renderer puts the
-    section ahead of Cited by and Hinge, so ``after`` must be the last block
+    section ahead of Works, Cited by and Hinge, so ``after`` must be the last block
     of the section that stands before it, or the tab would read back with
     the new section out of its place."""
     root = ET.fromstring(page.view_xml(source))

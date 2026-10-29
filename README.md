@@ -45,7 +45,10 @@ landed), `tools/again.py` (the answers due again), `tools/drift.py` (the drift c
 way on, a pending or suspended clause, a question past its backstop, and an upstream that moved
 past the rev the hinge's provenance records it read at, or whose rev is not recorded), and
 `tools/project.py --pressure` (the pressure stored beside the one the record derives where none
-is).
+is). `tools/registry.py export` is one more, written to a file: every party's works, each
+under the key prose cites it by, which a repository's check reads in place of a registry of its
+own. The notebook is its source: the file is exported again, never edited, and never committed by
+the notebook's tooling.
 
 ## Installing the plugin
 

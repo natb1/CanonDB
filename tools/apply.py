@@ -30,7 +30,9 @@ file, and an outline printing none is refused rather than sent unguarded.
 
 writes one section alone — its blocks replaced, then the links that write
 took off or retired put back — so that only the links into that section
-retire and `relink.py` finds nothing else stale.
+retire and `relink.py` finds nothing else stale. A section the page lacks is
+opened by one insert after the last block of the section before it, and
+retires nothing.
 """
 
 from __future__ import annotations

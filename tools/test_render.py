@@ -911,5 +911,65 @@ class HingeLayoutTest(unittest.TestCase):
                       % (render.HINGE_END, render.HINGE_METHOD), render.body(graph, "ti-esti"))
 
 
+def with_works(graph, qid="plato"):
+    """``graph`` with two works on a party's tab: one with every field and a
+    note, one with its key and one field. The graph, for chaining."""
+    graph.get(qid).works = [
+        model.Work(key="PLATO-EUTH", work="*Euthyphro*", author="Plato",
+                   locus="5d-6e", date="c. 399 BCE", domain="ethics",
+                   verified="2026-10-29", status="read",
+                   url="https://en.wikipedia.org/wiki/Euthyphro_(dialogue)",
+                   note="Read in the Grube translation, which the reconstruction quotes."),
+        model.Work(key="RB-5", verified="yes")]
+    return graph
+
+
+class WorksLayoutTest(unittest.TestCase):
+    """A party's works: the key under the glyph, the filled fields on one
+    line in their fixed order, the note a paragraph of its own; the section
+    between Applications and Cited by."""
+
+    def setUp(self):
+        self.graph = with_works(load("valid"))
+        self.page = render.body(self.graph, "plato")
+
+    def test_the_section_stands_between_applications_and_cited_by(self):
+        self.graph.get("plato").theses[0].applications.append(model.Application(
+            name="a reading", what="a page of notes", link="notes/plato.md",
+            standing="postulate"))
+        order = sections(render.body(self.graph, "plato"))
+        self.assertEqual(order[order.index("Applications") + 1], "Works")
+        self.assertEqual(order[order.index("Works") + 1], "Cited by")
+
+    def test_every_field_in_order_then_the_note(self):
+        self.assertIn(
+            "### ❦ PLATO-EUTH\n\nwork: *Euthyphro* · author: Plato · locus: 5d-6e · "
+            "date: c. 399 BCE · domain: ethics · verified: 2026-10-29 · status: read · "
+            "url: [https://en.wikipedia.org/wiki/Euthyphro\\_(dialogue)]"
+            "(https://en.wikipedia.org/wiki/Euthyphro_(dialogue))\n\n"
+            "Read in the Grube translation, which the reconstruction quotes.\n\n"
+            "### ❦ RB-5\n\nverified: yes\n\n## Cited by", self.page)
+
+    def test_a_field_left_empty_is_not_written(self):
+        self.assertEqual(render.work_line(model.Work(key="RB-5", verified="yes")),
+                         "verified: yes")
+        self.assertEqual(render.work_line(model.Work(key="RB-5")), "")
+
+    def test_a_tab_with_no_works_has_no_section(self):
+        self.assertNotIn("## Works", render.body(load("valid"), "plato"))
+
+    def test_render_read_render_is_the_identity(self):
+        ids = {render.chip_key(q.id): q.id for q in self.graph.questions}
+        parsed = read.parse_tab(self.page, ids)
+        self.graph.get("plato").works = model.Question.read(
+            model._Reader(), dict(parsed, tab="t", body="b"), "again").works
+        self.assertEqual(render.body(self.graph, "plato"), self.page)
+
+    def test_a_note_on_the_section_is_kept(self):
+        self.graph.get("plato").notes.append(model.Note(section="works", body="Two more owed."))
+        page = render.body(self.graph, "plato")
+        self.assertIn("verified: yes\n\n> Two more owed.\n\n## Cited by", page)
+
+
 if __name__ == "__main__":
     unittest.main()

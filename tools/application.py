@@ -15,7 +15,7 @@ An inserted line carries the discharge clause the renderer derives, and
 nobody gives it: it is read off the question line and the state of the
 answer ``--thesis`` names, so READ is the tab's view, which holds both. On a
 tab with no Applications section the insert opens it, and refuses an
-``--after`` that is not the last block before Cited by or Hinge.
+``--after`` that is not the last block before Works, Cited by or Hinge.
 """
 
 from __future__ import annotations

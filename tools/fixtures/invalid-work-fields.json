@@ -1,0 +1,217 @@
+{
+  "artifact": "https://claude.ai/artifact/47d8730e-0bb8-4995-b3fb-8310665c1528",
+  "questions": [
+    {
+      "id": "ti-esti",
+      "tab": "tab-01",
+      "body": "body-01",
+      "question": "What does a working relationship that continues require of each side?",
+      "state": "landed",
+      "kind": "root",
+      "answerer": "ai",
+      "theses": [
+        {
+          "title": "Each side owes the other what only it can give.",
+          "assent": "assented at the merge of the opening entry",
+          "state": "in thread",
+          "text": "A relationship that continues is not a series of errands. The one who asks holds the questions and the standing to settle them; the other holds the work and the memory of it. The record kept between them is the only thing both can point at. Authority to act follows how settled the question is, and nothing irreversible is done while it is unsettled. The word elenchus names the examination by which either side tests what the other has said.",
+          "terms": [
+            {
+              "title": "The record between them",
+              "to": "canon",
+              "anchors": [
+                "The record kept between them is the only thing both can point at."
+              ]
+            },
+            {
+              "title": "Two sides, two debts",
+              "to": "party",
+              "anchors": [
+                "The one who asks holds the questions and the standing to settle them; the other holds the work and the memory of it."
+              ]
+            }
+          ],
+          "traditions": [
+            {
+              "to": "plato",
+              "relation": "support",
+              "note": "the opening move is asked of what the answerer is already doing"
+            }
+          ],
+          "applications": [
+            {
+              "name": "the opening entry",
+              "what": "the first file both sides pointed at",
+              "link": "entries/opening.md",
+              "standing": "postulate"
+            }
+          ]
+        }
+      ],
+      "definitions": [
+        {
+          "word": "elenchus",
+          "body": "The examination by which a claim is tested against what its holder already grants.",
+          "tradition": {
+            "to": "plato",
+            "note": ""
+          }
+        }
+      ],
+      "hinge": {
+        "question": "the addressee is a side of whom something can be required, which the asking already presumes",
+        "end": "that the two sides go on working together, each able to hold the other to what the record says",
+        "method": "read at each entry: whether the record still says what both sides hold to, counted against the last reading and never as a verdict on either side",
+        "cue": "one side is about to hold the other to something the record does not say",
+        "thesis": "model: an unnamed assistant · harness: a repository holding one file · canon: empty"
+      },
+      "pressure": 27
+    },
+    {
+      "id": "canon",
+      "tab": "tab-02",
+      "body": "body-02",
+      "question": "What kind of thing is an entry, and what makes one binding?",
+      "state": "held",
+      "kind": "definitional",
+      "answerer": "ai",
+      "theses": [
+        {
+          "title": "An entry binds when the one with standing has marked it.",
+          "assent": "none",
+          "state": "held",
+          "text": "An entry is a file in the repository, not a message in a thread. It binds when the one with standing has marked assent to it, and not before. Authority to act on an unassented entry is held down, never removed.",
+          "terms": [
+            {
+              "title": "Authority held down",
+              "to": "attenuation",
+              "anchors": [
+                "Authority to act on an unassented entry is held down, never removed."
+              ],
+              "cue": "an act is proposed on an entry nobody with standing has marked"
+            }
+          ],
+          "traditions": []
+        }
+      ],
+      "definitions": [
+        {
+          "word": "assent",
+          "body": "The mark by which the one with standing makes an entry binding.",
+          "tradition": null
+        }
+      ],
+      "hinge": {
+        "question": "that a mark of assent can be made at all, which the asking already presumes",
+        "thesis": "model: an unnamed assistant · harness: the same repository · canon: the opening entry"
+      },
+      "pressure": 12
+    },
+    {
+      "id": "party",
+      "tab": "tab-03",
+      "body": "body-03",
+      "question": "Who are the two sides, and can either be replaced without loss?",
+      "state": "held",
+      "kind": "case",
+      "answerer": "ai",
+      "theses": [
+        {
+          "title": "The two sides are asymmetric and neither substitutes for the other.",
+          "assent": "none",
+          "state": "held",
+          "text": "One side persists across sessions and carries the standing; the other persists across files and carries the memory. Neither can do the other's work. Where the two disagree, the disagreement is recorded rather than resolved by force, and the act that would settle it is held down until the standing side speaks.",
+          "terms": [
+            {
+              "title": "Deadlock waits on standing",
+              "to": "attenuation",
+              "anchors": [
+                "the act that would settle it is held down until the standing side speaks"
+              ],
+              "deadlock": {
+                "counter": "one side holds that the other may act meanwhile; the other holds that it may not",
+                "attenuation": "the clause licenses reversible acts only, and nothing that cannot be undone"
+              }
+            }
+          ],
+          "traditions": []
+        }
+      ],
+      "hinge": {
+        "question": "that there are two sides and not one, which the asking already presumes",
+        "thesis": "model: an unnamed assistant · harness: the same repository · canon: the opening entry"
+      },
+      "pressure": 9
+    },
+    {
+      "id": "attenuation",
+      "tab": "tab-04",
+      "body": "body-04",
+      "question": "How is authority to act graded, and what is never done under a low grade?",
+      "state": "held",
+      "kind": "consistency",
+      "answerer": "principal",
+      "theses": [
+        {
+          "title": "Authority to act is graded by how settled the question is.",
+          "assent": "none",
+          "state": "held",
+          "text": "A settled entry acts silently. An unsettled one may act only if it says so, and never irreversibly. The grade is read off the state of the entry and is not stored twice.",
+          "terms": [],
+          "traditions": [],
+          "applications": [
+            {
+              "name": "the shape gate",
+              "what": "the one synchronous check every write passes",
+              "link": "tools/check.py",
+              "standing": "postulate"
+            }
+          ]
+        }
+      ],
+      "definitions": [
+        {
+          "word": "grade",
+          "body": "How much authority to act an entry carries, read off its state.",
+          "tradition": null
+        }
+      ],
+      "hinge": {
+        "question": "that authority admits of degree, which the asking already presumes",
+        "thesis": "model: an unnamed assistant · harness: the same repository · canon: the opening entry"
+      },
+      "pressure": 5
+    },
+    {
+      "id": "plato",
+      "tab": "tab-05",
+      "body": "body-05",
+      "question": "What does testing a claim against its holder's own admissions require?",
+      "state": "held",
+      "kind": "root",
+      "theses": [
+        {
+          "title": "The one questioned must say what he believes.",
+          "assent": "recorded as read, not as agreed",
+          "state": "held",
+          "text": "The one questioned answers in his own voice and is held to what he grants.",
+          "terms": [],
+          "traditions": []
+        }
+      ],
+      "hinge": {
+        "question": "the reading presupposes that the text answers this question at all, and that what it says can be told apart from what the reader wants it to say",
+        "thesis": "model: an unnamed assistant · harness: a reading of the dialogues · canon: empty"
+      },
+      "pressure": 0,
+      "party": "plato",
+      "works": [
+        {
+          "key": "EUTH",
+          "work": "Euthyphro · Apology",
+          "verified": "yes"
+        }
+      ]
+    }
+  ]
+}
