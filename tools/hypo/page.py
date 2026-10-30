@@ -15,6 +15,13 @@ What the export lost, this keeps in reach: ``blocks`` gives each block's id
 beside its markdown, which is what the page check would need to tell which
 block a link leads to and not only which tab.
 
+The same read is the outline the writer takes (``outline``), so a run that
+read a tab for the reader holds what a body or section write is built from
+without reading it again: every id made whole, since the session prefix is
+printed once and as often as not on a retired block, and every retired
+block left out, since it is no longer on the page and a write that named it
+would be refused as one over a tab the outline does not show whole.
+
 A character the page holds that markdown would read as a mark — a star, a
 bracket, a backslash — is spelled behind a backslash, as the exporter
 spelled it, so that the reader takes it for the character; spelled bare, the
@@ -25,6 +32,7 @@ run is spelled as it stands.
 from __future__ import annotations
 
 import json
+import re
 import xml.etree.ElementTree as ET
 from typing import Dict, List, Optional, Sequence, Tuple
 
@@ -243,13 +251,50 @@ def _block(node: ET.Element) -> str:
     raise ValueError("a block the tab's grammar does not hold: <%s>" % tag)
 
 
+#: an opening tag as a read prints one, its attributes quoted, so a ``>`` in a
+#: value — a retired block's words — does not end it; a chip is not a tag
+_ATTRS = r"(?:\s+[\w:-]+='[^']*')*\s*"
+_TAG = re.compile(r"<[A-Za-z][\w:-]*%s/?>" % _ATTRS)
+#: an ``id`` attribute, its name whole: ``data-id`` is not ``id``
+_ID = re.compile(r"(?<![\w:-])id='([^']*)'")
+#: a retired block, as a read prints one: empty, or with its words inside
+_GONE = re.compile(r"<gone%s(?:/>|>.*?</gone>)" % _ATTRS, re.DOTALL)
+
+
+def _whole(root: ET.Element) -> None:
+    """Refuse a read that is not the whole tab, as ``blocks`` does."""
+    if root.get("sinceRev", "0") != "0" or root.find(".//gap") is not None:
+        raise ValueError("a partial view, since rev %s: it folds the blocks that did "
+                         "not change, and spells no whole tab" % root.get("sinceRev"))
+
+
+def outline(source) -> str:
+    """The view as the outline ``apply.py`` takes: the xml as the document
+    printed it, every id made whole and every retired block taken out.
+
+    The ids are made whole first, in document order, as ``full_ids`` makes
+    them, since the prefix a later id leans on may stand on a block that is
+    then taken out. The rewrite is of the text, so a chip, an entity and the
+    rev on the ``doc`` element stand as they were printed.
+    """
+    xml = view_xml(source).strip()
+    _whole(ET.fromstring(xml))
+    session = [""]
+
+    def tag(m: "re.Match[str]") -> str:
+        def one(a: "re.Match[str]") -> str:
+            bid, session[0] = expand_id(a.group(1), session[0])
+            return "id='%s'" % bid
+        return _ID.sub(one, m.group())
+
+    return _GONE.sub("", _TAG.sub(tag, xml))
+
+
 def blocks(source) -> List[Tuple[str, str]]:
     """(block id, markdown) per block of the tab, in order; a ``gone`` block is
     not a block."""
     root = ET.fromstring(view_xml(source))
-    if root.get("sinceRev", "0") != "0" or root.find(".//gap") is not None:
-        raise ValueError("a partial view, since rev %s: it folds the blocks that did "
-                         "not change, and spells no whole tab" % root.get("sinceRev"))
+    _whole(root)
     full = full_ids(root)
     out: List[Tuple[str, str]] = []
     for node in root:

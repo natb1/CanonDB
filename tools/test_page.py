@@ -9,8 +9,8 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-from hypo import appline, page, read  # noqa: E402
-from support import read_fixture, run
+from hypo import apply, appline, page, read  # noqa: E402
+from support import load, read_fixture, run
 
 FIXTURES = os.path.join(HERE, "fixtures")
 
@@ -109,6 +109,54 @@ class SpellingTest(unittest.TestCase):
             self.assertEqual(proc.returncode, 1)
             self.assertIn("ERROR", proc.stderr)
 
+    def test_the_cli_writes_the_outline_beside_the_markdown(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, "wording.json")
+            with open(src, "w", encoding="utf-8") as fh:
+                json.dump({"data": {"xml": read_fixture("view-wording.xml")}}, fh)
+            out, shapes = os.path.join(tmp, "tabs"), os.path.join(tmp, "outlines")
+            proc = run("page.py", src, "-o", out, "--outlines", shapes)
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            with open(os.path.join(shapes, "wording.xml"), encoding="utf-8") as fh:
+                shape = fh.read()
+            self.assertEqual(shape, page.outline(read_fixture("view-wording.xml")))
+            self.assertEqual(apply.outline_rev(shape), 6)
+            self.assertTrue(os.path.exists(os.path.join(out, "wording.md")))
+
+
+class OutlineTest(unittest.TestCase):
+    # the prefix stands on the retired block alone, as the read prints it
+    VIEW = ("<doc node='n' rev='3' sinceRev='0'>"
+            "<gone id='mq2x81a0kfd.0' rev='2' was='a &gt; b'/>"
+            "<paragraph id='.1' h='aa' heading='1'><text id='.2'>canon</text></paragraph>"
+            "<paragraph id='.3' h='bb'><text id='.4'>words <?claude block k?></text></paragraph>"
+            "</doc>")
+
+    def test_the_retired_block_goes_and_the_ids_after_it_stay_whole(self):
+        shape = page.outline(self.VIEW)
+        self.assertNotIn("<gone", shape)
+        self.assertIn("id='mq2x81a0kfd.1'", shape)
+        self.assertIn("id='mq2x81a0kfd.4'", shape)
+        self.assertIn("<?claude block k?>", shape)
+        self.assertIn("rev='3'", shape)
+
+    def test_the_writer_takes_it_as_the_whole_tab(self):
+        blocks = apply.parse_outline(page.outline(self.VIEW))
+        self.assertEqual([b.id for b in blocks], ["mq2x81a0kfd.1", "mq2x81a0kfd.3"])
+        ops = apply.body_ops(load("valid"), "canon", blocks, 3)
+        self.assertEqual(ops[0]["target"]["ids"], ["mq2x81a0kfd.1", "mq2x81a0kfd.3"])
+
+    def test_the_read_as_printed_is_refused_for_its_retired_block(self):
+        with self.assertRaises(apply.Unresolved):
+            apply.body_ops(load("valid"), "canon", apply.parse_outline(self.VIEW), 3)
+
+    def test_a_partial_view_gives_no_outline(self):
+        with self.assertRaises(ValueError):
+            page.outline("<doc rev='9' sinceRev='4'><paragraph id='a.1'><text>x</text>"
+                         "</paragraph><gap blocks='7'/></doc>")
+
+    def test_the_tool_result_is_taken(self):
+        self.assertEqual(page.outline({"data": {"xml": self.VIEW}}), page.outline(self.VIEW))
 
 
 class WalkTest(unittest.TestCase):
