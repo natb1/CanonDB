@@ -31,7 +31,7 @@
         "skills/interview/SKILL.md"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3195",
-      "rounds": 9
+      "rounds": 10
     },
     {
       "question": "context",
@@ -131,7 +131,7 @@
         "tools/test_inplace.py"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3191",
-      "rounds": 8
+      "rounds": 9
     },
     {
       "question": "docs-encoding",
@@ -315,7 +315,7 @@
         "tools/test_portable.py"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3196",
-      "rounds": 1
+      "rounds": 2
     },
     {
       "question": "docs-encoding",

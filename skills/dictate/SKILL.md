@@ -143,7 +143,9 @@ tab whole is **two calls**, and the second is not optional: an in-page link need
 only the document mints one, and a body write mints new ones. Both payloads come from the
 tooling, so neither is composed by hand. A body's replace names every block of the tab, so it
 carries no hash; its guard is the rev of the read its outline came from, which `apply.py` reads
-off the outline file and refuses to do without.
+off the outline file, refuses to do without, and prints on the call as `ifRev` — the document
+holds a call to the rev it names and not an operation — so the payload is sent as printed, and a
+section write the same. A tab just made, holding only its heading, is written whole this way.
 
 For each tab, with its outline in `$SCRATCH/outlines/<question>.xml` — the `xml` of a write's
 ack, or a read with `projection: outline`:

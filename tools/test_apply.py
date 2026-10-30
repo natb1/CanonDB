@@ -184,6 +184,18 @@ class BodyTest(unittest.TestCase):
         with self.assertRaises(apply.Unresolved):
             apply.body_ops(graph, "canon", [b for b in whole if b.heading], 1)
 
+    def test_a_tab_just_made_is_written_whole(self):
+        """A new tab holds its heading and nothing else, and that one block is
+        the whole tab, not a reduced outline of one."""
+        graph = load("valid")
+        fresh = apply.parse_outline(
+            "<doc node='n' rev='1' sinceRev='0'><paragraph id='mq2x81a0kfd.0' "
+            "rev='1' h='0a6ad76c' heading='1'><text id='.1'>canon</text>"
+            "</paragraph></doc>")
+        ops = apply.body_ops(graph, "canon", fresh, 1)
+        self.assertEqual(ops[0]["target"]["ids"], ["mq2x81a0kfd.0"])
+        self.assertEqual(ops[0]["with"]["from"]["content"], render.body(graph, "canon"))
+
     def test_an_outline_that_folds_blocks_is_refused(self):
         """Replacing only the blocks a `sinceRev` read shows would leave the
         folded ones on the page beside the fresh body."""
@@ -365,6 +377,51 @@ class RevTest(unittest.TestCase):
         with self.assertRaises(apply.Unresolved) as caught:
             apply.body_ops(graph, "canon", outline, None)
         self.assertIn("rev", caught.exception.missing[0])
+
+
+    def test_the_call_carries_the_rev_the_document_holds(self):
+        """The document holds a call to its ifRev and not an operation, so the
+        guard goes on the payload as well as on the replace."""
+        graph = load("valid")
+        outline = apply.parse_outline(outline_of(graph, "canon"))
+        body = apply.body_ops(graph, "canon", outline, 7)
+        self.assertEqual(apply.call(body, 7), {"ifRev": 7, "ops": body})
+        with self.assertRaises(apply.Unresolved):
+            apply.call(body, None)
+
+
+class CliTest(unittest.TestCase):
+    """What `apply.py` prints is what is sent, so the guard is read off it."""
+
+    def run_cli(self, *extra):
+        import contextlib, io, json, os, sys, tempfile
+        here = os.path.dirname(os.path.abspath(__file__))
+        sys.path.insert(0, here)
+        import apply as cli_apply
+        graph = load("valid")
+        with tempfile.TemporaryDirectory() as outlines:
+            with open(os.path.join(outlines, "canon.xml"), "w", encoding="utf-8") as fh:
+                fh.write(outline_of(graph, "canon").replace("rev='1'", "rev='5'", 1))
+            out = io.StringIO()
+            argv = sys.argv
+            sys.argv = ["apply.py", os.path.join(here, "fixtures", "valid.json"), "canon",
+                        "--outlines", outlines] + list(extra)
+            try:
+                with contextlib.redirect_stdout(out):
+                    code = cli_apply.main()
+            finally:
+                sys.argv = argv
+        self.assertEqual(code, 0)
+        return json.loads(out.getvalue())
+
+    def test_a_body_write_is_guarded_on_the_call(self):
+        printed = self.run_cli("--body")
+        self.assertEqual(printed["ifRev"], 5)
+        self.assertEqual(printed["ops"][0]["ifRev"], 5)
+
+    def test_a_section_write_is_guarded_on_the_call(self):
+        printed = self.run_cli("--body", "--section", "hinge")
+        self.assertEqual(printed["ifRev"], 5)
 
 
 class SectionTest(unittest.TestCase):

@@ -6,6 +6,7 @@ document mints those. So writing a tab is two calls, and this is what turns the
 renderer's output into the payload of each.
 
     body_ops    replace every top-level block of a tab with the rendered body
+    call        the payload a body or section write is sent as, guarded by rev
     link_ops    put each sidecar link on the words it belongs on
     unlink_ops  take off a mark the sidecar no longer asks for
 
@@ -78,6 +79,24 @@ def outline_rev(xml: str) -> Optional[int]:
     """
     m = _REV.search(xml or "")
     return int(m.group(1)) if m else None
+
+
+def call(ops: List[dict], rev: Optional[int]) -> dict:
+    """The payload a body or section write is sent as: its operations, and
+    the outline's rev on the call itself.
+
+    The document holds a call to the ``ifRev`` it names and refuses one sent
+    over a later page; an ``ifRev`` on an operation it takes and does not
+    hold, beside a hash or without one, on a replace of several blocks and on
+    an insert alike. So the rev the operations carry, which a several-block
+    replace may not go without, guards nothing by itself, and this is where
+    the guard is: a write built from an outline the page has since moved past
+    is refused whole rather than sent over what another hand wrote.
+    """
+    if rev is None:
+        raise Unresolved(["the outline carries no rev, and a body or section "
+                          "write is guarded by it"])
+    return {"ifRev": rev, "ops": ops}
 
 
 class Unresolved(Exception):
@@ -262,7 +281,10 @@ def body_ops(graph: Graph, qid: str, outline: List[Block],
 
     Every top-level block is named, so the tab is left holding exactly what the
     renderer produced and nothing that was there before. ``rev`` is the
-    outline's (``outline_rev``), and the operation's guard.
+    outline's (``outline_rev``): the operation carries it, since the document
+    refuses a several-block replace that names none, and ``call`` puts it
+    where the document holds it. A tab just made, whose one block is its
+    heading, is written by the same replace.
     """
     if rev is None:
         raise Unresolved(["%s: the outline carries no rev, and a whole-block replace "
@@ -278,10 +300,12 @@ def body_ops(graph: Graph, qid: str, outline: List[Block],
         raise Unresolved(["%s: the outline folds or retires %d block(s) it "
                           "does not show, so it is not the whole tab"
                           % (qid, len(folded))])
-    if all(block.heading for block in outline):
+    if len(outline) > 1 and all(block.heading for block in outline):
         # a tab is headings and the prose under them; an outline of headings
         # alone is a reduced one, kept for resolving link targets. Replacing
         # only the blocks it names would leave the prose of the old tab behind.
+        # A tab just made holds its heading and nothing else, and its one
+        # block is the whole of it.
         raise Unresolved(["%s: the outline holds headings only, so it is not "
                           "the whole tab" % qid])
     payload = render.links(graph, qid)
@@ -368,6 +392,8 @@ def section_ops(graph: Graph, qid: str, outline: List[Block], rev: Optional[int]
     into it; this retires only the links into the section, and ``relink``
     finds no other stale, since every other block keeps its id. An insert
     retires none. The chips sent beside the markdown are the section's own.
+    Either is sent through ``call``, which guards it by ``rev``: an insert
+    takes no guard of its own.
     """
     if rev is None:
         raise Unresolved(["%s: the outline carries no rev, and a whole-block replace "
