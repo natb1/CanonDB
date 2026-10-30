@@ -58,8 +58,8 @@ yourself: a read tells you what the page holds, not what it means. Where the run
 project whole as a graph file — a new question, a state, a check over every tab of the project
 — read each of its tabs' bodies whole (`view` with `sinceRev` 0), and the tabs of the parties
 it cites, save the reads as `$SCRATCH/views/<question>.json`, spell them with
-`tools/page.py $SCRATCH/views/*.json -o $SCRATCH/tabs` (which writes each tab's `rev` beside
-it), and build the graph with `tools/read.py <document read> $SCRATCH/tabs --project <project>
+`tools/page.py $SCRATCH/views/*.json -o $SCRATCH/tabs --outlines $SCRATCH/outlines` (which
+writes each tab's `rev` beside it, and the same read as the outline step 4 writes from), and build the graph with `tools/read.py <document read> $SCRATCH/tabs --project <project>
 -o $SCRATCH/graph.json`; a change to the specification reads every tab of every project and
 builds the graph without `--project` (schema in
 `tools/hypo/model.py`; the enum the states point at is read from `.principal/notebook.json`, or
@@ -148,7 +148,8 @@ holds a call to the rev it names and not an operation — so the payload is sent
 section write the same. A tab just made, holding only its heading, is written whole this way.
 
 For each tab, with its outline in `$SCRATCH/outlines/<question>.xml` — the `xml` of a write's
-ack, or a read with `projection: outline`:
+ack, a read with `projection: outline`, or what `page.py --outlines` wrote from the tab's whole
+view, every id whole and its retired blocks left out:
 
 1. `tools/apply.py $SCRATCH/graph.json <question> --outlines $SCRATCH/outlines --body` → send it,
    and save the ack's outline over the old one, because the ids have changed.
