@@ -3,7 +3,7 @@
 import re
 import unittest
 
-import test_render  # the fixture loader and its graphs
+import test_render  # the fixture loader, its graphs, and a party's works
 import test_verify  # the page as the document would export one
 from hypo import apply, model, render, text, verify
 
@@ -400,14 +400,25 @@ class SectionTest(unittest.TestCase):
         wanted = set(re.findall(r"<\?claude block ([0-9A-Za-z_]+)\?>", content))
         self.assertEqual(sent, wanted)
 
-    def test_a_section_the_page_or_the_render_lacks_is_refused(self):
-        with self.assertRaises(apply.Unresolved):
+    def test_a_section_the_render_lacks_is_refused(self):
+        with self.assertRaises(apply.Unresolved) as caught:
             apply.section_ops(self.graph, "canon", self.outline, 3, "cited by")
+        self.assertIn("render", caught.exception.missing[0])
+
+    def test_a_section_the_page_lacks_is_opened_after_the_one_before_it(self):
+        """The hinge stands last; a page without it takes it after the last
+        block of the section before it, heading and all, in one insert."""
         start, _ = self.span("hinge")
         without = [b for i, b in enumerate(self.outline) if i < start]
-        with self.assertRaises(apply.Unresolved) as caught:
-            apply.section_ops(self.graph, "canon", without, 3, "hinge")
-        self.assertIn("page", caught.exception.missing[0])
+        ops = apply.section_ops(self.graph, "canon", without, 3, "hinge")
+        self.assertEqual(len(ops), 1)
+        self.assertEqual(ops[0]["op"], "insert")
+        self.assertEqual(ops[0]["side"], "after")
+        self.assertEqual(ops[0]["target"], {"kind": "blocks", "ids": [without[-1].id]})
+        content = ops[0]["source"]["from"]["content"]
+        self.assertTrue(content.startswith("## Hinge"))
+        self.assertIn(content, render.body(self.graph, "canon"))
+
 
     def test_a_fold_inside_the_section_is_refused(self):
         start, end = self.span("hinge")
@@ -428,3 +439,72 @@ class SectionTest(unittest.TestCase):
             self.assertIn(op, every)
         with self.assertRaises(apply.Unresolved):
             apply.link_ops(self.graph, "canon", by_tab, self.graph.artifact, "nowhere")
+
+
+class WorksSectionTest(unittest.TestCase):
+    """A party's first work opens its Works section in one insert, after the
+    last block of Applications, or of whatever stands before it on the page."""
+
+    def setUp(self):
+        self.graph = test_render.with_works(load("valid"))
+        self.graph.artifact = "https://claude.ai/code/artifact/abc-123"
+        bare = load("valid")  # the page as it stood before the works
+        self.outline = apply.parse_outline(outline_of(bare, "plato"))
+
+    def heading(self, name, outline=None):
+        return next(i for i, b in enumerate(outline or self.outline)
+                    if b.heading == 2 and b.text == name)
+
+    def test_the_section_goes_after_the_last_block_of_the_one_before_it(self):
+        self.assertNotIn("Works", [b.text for b in self.outline if b.heading == 2])
+        ops = apply.section_ops(self.graph, "plato", self.outline, 3, "works")
+        last = self.outline[self.heading("Cited by") - 1]
+        self.assertEqual(ops, [{
+            "op": "insert", "target": {"kind": "blocks", "ids": [last.id]},
+            "side": "after",
+            "source": {"as": "markdown", "from": {"kind": "inline", "content": ops[0][
+                "source"]["from"]["content"]}}}])
+        content = ops[0]["source"]["from"]["content"]
+        self.assertTrue(content.startswith("## Works\n\n### ❦ PLATO-EUTH"))
+        self.assertNotIn("## Cited by", content)
+        self.assertIn(content, render.body(self.graph, "plato"))
+        self.assertNotIn("blocks", ops[0]["source"])  # a work carries no chip
+
+    def test_after_applications_where_the_page_has_them(self):
+        bare = load("valid")
+        for graph in (self.graph, bare):
+            graph.get("plato").theses[0].applications.append(model.Application(
+                name="a reading", what="a page of notes", link="notes/plato.md",
+                standing="postulate"))
+        outline = apply.parse_outline(outline_of(bare, "plato"))
+        ops = apply.section_ops(self.graph, "plato", outline, 3, "works")
+        last = outline[self.heading("Cited by", outline) - 1]
+        self.assertEqual(ops[0]["target"]["ids"], [last.id])
+        self.assertTrue(any(b.heading == 3 and b.text.startswith("⚙")
+                            for b in outline[:self.heading("Cited by", outline)]))
+
+    def test_a_fold_where_it_opens_is_refused(self):
+        at = self.heading("Cited by")
+        folded = self.outline[:at] + [apply.Block("", "gap", 0, "")] + self.outline[at:]
+        with self.assertRaises(apply.Unresolved) as caught:
+            apply.section_ops(self.graph, "plato", folded, 3, "works")
+        self.assertIn("folds", caught.exception.missing[0])
+
+    def test_a_fold_anywhere_is_refused_since_it_may_hide_the_section(self):
+        folded = self.outline[:2] + [apply.Block("", "gap", 0, "")] + self.outline[2:]
+        with self.assertRaises(apply.Unresolved):
+            apply.section_ops(self.graph, "plato", folded, 3, "works")
+
+    def test_with_no_section_before_it_it_opens_after_the_masthead(self):
+        first = self.heading("Thesis")
+        masthead = self.outline[:first]
+        rest = self.outline[self.heading("Cited by"):]
+        ops = apply.section_ops(self.graph, "plato", masthead + rest, 3, "works")
+        self.assertEqual(ops[0]["target"]["ids"], [masthead[-1].id])
+
+    def test_once_written_its_links_are_none(self):
+        """A work carries no link, and an insert retires none: there is
+        nothing for the links call of that write to put back."""
+        by_tab = outlines(self.graph)
+        self.assertEqual(apply.link_ops(self.graph, "plato", by_tab,
+                                        self.graph.artifact, "works"), [])

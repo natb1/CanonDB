@@ -960,5 +960,77 @@ class EndStatedTest(unittest.TestCase):
         self.assertEqual([f.question for f in findings], ["plato"])
         self.assertIn("no end of ours", findings[0].message)
 
+class WorksTest(unittest.TestCase):
+    """A party's works define the keys every tab's prose cites."""
+
+    def setUp(self):
+        self.graph = load("valid")
+        self.graph.get("plato").works = [model.Work(key="PLATO-EUTH", work="Euthyphro"),
+                                         model.Work(key="RB-5", verified="yes")]
+
+    def cite(self, qid, key, escaped=False):
+        thesis = self.graph.get(qid).theses[0]
+        thesis.text += (" \\[%s\\]" if escaped else " [%s]") % key
+
+    def test_a_registered_key_is_cited_from_any_tab(self):
+        self.cite("ti-esti", "PLATO-EUTH")
+        self.cite("canon", "RB-5", escaped=True)
+        self.assertEqual([f.line() for f in spec.run(self.graph)], [])
+
+    def test_a_key_is_found_bare_or_behind_backslashes(self):
+        self.cite("ti-esti", "SHOSTACK-FOUR")
+        self.cite("canon", "MARCUS-5.20", escaped=True)
+        findings = spec.run(self.graph, only=["cite-registered"])
+        self.assertEqual([(f.question, f.severity) for f in findings],
+                         [("ti-esti", spec.ERROR), ("canon", spec.ERROR)])
+        self.assertIn("[SHOSTACK-FOUR]", findings[0].message)
+        self.assertIn("[MARCUS-5.20]", findings[1].message)
+
+    def test_every_free_text_is_read(self):
+        q = self.graph.get("ti-esti")
+        q.notes.append(model.Note(section="thesis", body="see [LEROY-GLOMB-2018]"))
+        q.theses[0].applications[0].note = "after [RB-6]"
+        q.hinge.end += " [RB-7]"
+        findings = spec.run(self.graph, only=["cite-registered"])
+        self.assertEqual(len(findings), 3)
+
+    def test_over_a_partial_graph_it_is_a_warning(self):
+        """The party defining a key is joined by a tradition edge, so a
+        scoped read may not hold it."""
+        self.graph.scope = ["canon"]
+        self.cite("canon", "SHOSTACK-FOUR")
+        findings = spec.run(self.graph, only=["cite-registered"])
+        self.assertEqual([f.severity for f in findings], [spec.WARN])
+
+    def test_a_rejected_work_is_found_in_any_case(self):
+        self.graph.get("plato").works[1].status = "REJECTED"
+        self.cite("canon", "RB-5")
+        findings = spec.run(self.graph, only=["cite-rejected"])
+        self.assertEqual([f.question for f in findings], ["canon"])
+        self.assertIn("plato", findings[0].message)
+
+    def test_a_key_twice_across_parties_is_reported_once(self):
+        self.graph.get("ti-esti").works = [model.Work(key="RB-5")]
+        findings = spec.run(self.graph, only=["work-key-unique"])
+        self.assertEqual(len(findings), 1)
+        self.assertIn("plato", findings[0].message)
+
+    def test_a_note_that_would_read_as_the_line_is_reported(self):
+        self.graph.get("plato").works[1] = model.Work(key="RB-5", note="date: unknown")
+        findings = spec.run(self.graph, only=["work-fields"])
+        self.assertEqual(len(findings), 1)
+        self.assertIn("read back as the line", findings[0].message)
+        self.graph.get("plato").works[1].verified = "yes"
+        self.assertEqual(spec.run(self.graph, only=["work-fields"]), [])
+
+    def test_a_url_with_a_space_or_a_lone_parenthesis_is_reported(self):
+        works = self.graph.get("plato").works
+        works[0].url = "https://en.wikipedia.org/wiki/Euthyphro_(dialogue)"
+        self.assertEqual(spec.run(self.graph, only=["work-fields"]), [])
+        for url in ("https://example.org/a b", "https://example.org/a)"):
+            works[0].url = url
+            self.assertTrue(spec.run(self.graph, only=["work-fields"]), url)
+
+
 if __name__ == "__main__":
     unittest.main()

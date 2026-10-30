@@ -24,7 +24,7 @@ from typing import Callable, Dict, Iterable, Iterator, List, Optional, Set, Tupl
 
 from . import project, text
 from .model import (ANSWERERS, CANON, CITATION_HEADINGS, CLAIM, GLYPHS, TRADITION, Graph, KINDS,
-                    MODES, RELATIONS, SECTIONS, STANDINGS, STATES)
+                    MODES, RELATIONS, SECTIONS, STANDINGS, STATES, Work)
 
 ERROR = "ERROR"
 WARN = "WARN"
@@ -47,6 +47,13 @@ class Check:
     description: str
     severity: str
     fn: Callable[[Graph], Yield]
+    #: the severity over a partial graph, where it is not ``severity``: a
+    #: rule whose finding may be owed only to a tab the read did not take
+    #: is reported there and does not block
+    scoped: Optional[str] = None
+
+    def severity_over(self, graph: Graph) -> str:
+        return self.scoped if graph.partial and self.scoped else self.severity
 
 
 @dataclass
@@ -68,9 +75,10 @@ class Finding:
 CHECKS: List[Check] = []
 
 
-def check(cid: str, description: str, severity: str = ERROR):
+def check(cid: str, description: str, severity: str = ERROR,
+          scoped: Optional[str] = None):
     def register(fn: Callable[[Graph], Yield]) -> Callable[[Graph], Yield]:
-        CHECKS.append(Check(cid, description, severity, fn))
+        CHECKS.append(Check(cid, description, severity, fn, scoped))
         return fn
     return register
 
@@ -1368,6 +1376,8 @@ def _parted(q) -> Iterator[Tuple[str, str]]:
     if q.hinge is not None:
         for name, part in q.hinge.parts():
             yield "the hinge's %s" % name, part
+    for work in q.works:
+        yield "the note on %s %s" % (GLYPHS["work"], work.key), work.note
 
 
 @check("text-unquoted",
@@ -1389,8 +1399,8 @@ def text_unquoted(graph: Graph) -> Yield:
     The same holds of a block opening on ``#``, which the reader takes for a
     heading and ends the text at, and of a block that is one of the two
     citation headings, which opens the citations; and it holds of every text
-    the reader parts into blocks — a definition's body and the hinge's four
-    parts as much as an answer's text.
+    the reader parts into blocks — a definition's body, the hinge's four
+    parts and a work's note as much as an answer's text.
     """
     for q in graph.questions:
         for what, held in _parted(q):
@@ -1462,6 +1472,181 @@ def fields_parted(graph: Graph) -> Yield:
                                      "of its line" % (GLYPHS["application"], app.name, field))
 
 
+# -- a party's works ---------------------------------------------------------
+
+#: what a work's key must be: capitals, digits, stops and hyphens, opening on a
+#: capital and closing on a capital or a digit — the shape a citation is
+#: found by, so a key of any other shape is one no citation can name
+WORK_KEY = re.compile(r"^[A-Z][A-Z0-9.-]*[A-Z0-9]$")
+
+#: a key cited in prose, in its brackets, read off the plain text: a key the
+#: page spelled behind backslashes, ``\[RB-5\]``, is the same citation
+CITED = re.compile(r"\[([A-Z][A-Z0-9.-]*[A-Z0-9])\]")
+
+#: the status that sets a work aside
+REJECTED = "rejected"
+
+
+@check("works-on-party", "only a party's tab lists works")
+def works_on_party(graph: Graph) -> Yield:
+    """A work is what a party is read from. The author's own questions are
+    answered here and read from nothing, and a key the author's prose cites
+    is defined by the party whose reading it is, which is the one home the
+    registry has."""
+    for q in graph.questions:
+        if q.works and not q.tradition:
+            yield q.id, ("lists %d work(s), and only a party's tab is read from works: "
+                         "%s" % (len(q.works), ", ".join(w.key for w in q.works)))
+
+
+@check("work-key-shape",
+       "every work's key is capitals, digits, stops and hyphens, as a citation names one")
+def work_key_shape(graph: Graph) -> Yield:
+    for q in graph.questions:
+        for work in q.works:
+            if not WORK_KEY.match(work.key):
+                yield q.id, ("the work keyed %r: a key opens on a capital and holds "
+                             "capitals, digits, stops and hyphens, closing on a capital "
+                             "or a digit, or no citation can name it" % work.key)
+
+
+@check("work-key-unique", "a work's key is defined once in the whole graph")
+def work_key_unique(graph: Graph) -> Yield:
+    """One key, one work: a citation names a key and nothing else, so a key
+    two works carry cites whichever the reader meets first. Across parties as
+    much as within one, since the export is one registry."""
+    where: Dict[str, List[str]] = {}
+    for q in graph.questions:
+        for work in q.works:
+            where.setdefault(work.key, []).append(q.id)
+    for key, owners in where.items():
+        if len(owners) > 1:
+            yield owners[0], "the key %s is defined here and again on %s" % (
+                key, ", ".join("this same tab" if o == owners[0] else o
+                               for o in owners[1:]))
+
+
+@check("work-fields",
+       "no field of a work carries · or a line break, and its url is one word")
+def work_fields(graph: Graph) -> Yield:
+    """A work's fields are written as one line, each labelled, parted by
+    ``·``, and read back by the separators; a field carrying one is read as
+    two, and a line break ends the line. The note is a paragraph of its own
+    and may carry the separator, but no line break, and where no field is
+    filled it may not open with a label, or it is read back as the line. The
+    url is a link's target, which holds no space and no parenthesis but in a
+    pair."""
+    labels = tuple("%s: " % name for name in Work.FIELDS)
+    for q in graph.questions:
+        for work in q.works:
+            for name, value in work.fields():
+                if "·" in value:
+                    yield q.id, ("the work keyed %s: its %s carries ·, which parts the "
+                                 "fields of its line" % (work.key, name))
+                if "\n" in value:
+                    yield q.id, ("the work keyed %s: its %s breaks a line, and is written "
+                                 "on one" % (work.key, name))
+            if work.url and not re.fullmatch(Work.URL, work.url):
+                yield q.id, ("the work keyed %s: its url holds a space or an unpaired "
+                             "parenthesis, and would not read back off its link: %r"
+                             % (work.key, _clip(work.url)))
+            if "\n" in work.note:
+                yield q.id, ("the work keyed %s: its note breaks a line, and is written "
+                             "as one paragraph" % work.key)
+            elif (work.note.startswith(labels)
+                  and not any(value for _, value in work.fields())):
+                yield q.id, ("the work keyed %s: its note opens with a field's label and "
+                             "no field is filled, so it would be read back as the line: %r"
+                             % (work.key, _clip(work.note)))
+
+
+def _cited_prose(q) -> Iterator[Tuple[str, str]]:
+    """Every free text a question carries, each with what it is: whatever
+    may cite a work. Canon's words among them, since a landed answer cites as
+    surely as a held one, and the answer's hinge, which says what it was
+    drawn from."""
+    yield "the question", q.question
+    if q.hinge is not None:
+        for name, part in q.hinge.parts():
+            yield "the hinge's %s" % name, part
+        yield "the end's cue", q.hinge.cue
+    for definition in q.definitions:
+        yield "%s %s" % (GLYPHS["glossary"], definition.word), definition.body
+        if definition.tradition is not None:
+            yield ("the note on %s %s" % (GLYPHS["glossary"], definition.word),
+                   definition.tradition.note)
+    for note in q.notes:
+        yield "a note on %s" % note.section, note.body
+    for thesis in q.theses:
+        yield "the answer %r" % _clip(thesis.title, 40), thesis.text
+        for term in thesis.terms:
+            if term.deadlock:
+                yield ("the deadlock on %r" % _clip(term.title, 40),
+                       "%s %s" % (term.deadlock.counter, term.deadlock.attenuation))
+            yield "the suspension on %r" % _clip(term.title, 40), term.suspended
+            yield "the cue on %r" % _clip(term.title, 40), term.cue
+        for edge in thesis.traditions:
+            yield "the citation of %s" % edge.to, "%s %s" % (edge.note, edge.counter)
+        for app in thesis.applications:
+            yield "%s %s" % (GLYPHS["application"], app.name), "%s %s" % (app.what, app.note)
+    for work in q.works:
+        yield "the note on %s %s" % (GLYPHS["work"], work.key), work.note
+
+
+def _citations(graph: Graph) -> Iterator[Tuple[str, str, str]]:
+    """(question, what, key) per key cited, in graph order, each once per
+    part. Read off the plain text, so a key the page spelled behind
+    backslashes is found as surely as one typed bare."""
+    for q in graph.questions:
+        for what, prose in _cited_prose(q):
+            if not prose or "[" not in prose:
+                continue
+            seen: Set[str] = set()
+            for key in CITED.findall(text.plain(prose)):
+                if key not in seen:
+                    seen.add(key)
+                    yield q.id, what, key
+
+
+def _registry(graph: Graph) -> Dict[str, Tuple[str, Work]]:
+    """key -> (the party defining it, the work), the first where two do."""
+    out: Dict[str, Tuple[str, Work]] = {}
+    for q in graph.questions:
+        for work in q.works:
+            out.setdefault(work.key, (q.id, work))
+    return out
+
+
+@check("cite-registered",
+       "every key cited in brackets is a work some party's tab lists; a warning over a "
+       "partial graph", ERROR, WARN)
+def cite_registered(graph: Graph) -> Yield:
+    """A citation names a work by its key, and the key is defined on the tab
+    of the party read from the work, which is where a reader following the
+    citation goes. A key no party defines points at nothing.
+
+    Over a partial graph it is a warning: the read takes the tabs a dictation
+    touches and their ancestors, and the party defining a key is joined by a
+    tradition edge and not a term, so it may stand outside the read."""
+    known = _registry(graph)
+    for qid, what, key in _citations(graph):
+        if key not in known:
+            yield qid, "%s cites [%s], which no party's tab lists among its works" % (
+                what, key)
+
+
+@check("cite-rejected", "no key cited in brackets names a work its party has rejected")
+def cite_rejected(graph: Graph) -> Yield:
+    """A work its party has rejected is one it is no longer read from, kept
+    on the tab so the key is not taken again for something else. A citation
+    of it rests on what was set aside."""
+    known = _registry(graph)
+    for qid, what, key in _citations(graph):
+        found = known.get(key)
+        if found and found[1].status.strip().lower() == REJECTED:
+            yield qid, "%s cites [%s], a work %s has rejected" % (what, key, found[0])
+
+
 @check("dictation-pending",
        "no note opens with pending: a clause of a dictation no run has applied stands on "
        "its tab as one until a run takes it in", WARN)
@@ -1510,8 +1695,9 @@ def run(graph: Graph, only: Optional[Iterable[str]] = None) -> List[Finding]:
     for spec in CHECKS:
         if wanted and spec.id not in wanted:
             continue
+        severity = spec.severity_over(graph)
         for qid, message in spec.fn(graph):
-            findings.append(Finding(spec.id, spec.severity, qid, message))
+            findings.append(Finding(spec.id, severity, qid, message))
     return findings
 
 

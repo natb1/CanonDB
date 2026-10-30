@@ -296,6 +296,48 @@
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3195",
       "rounds": 1
+    },
+    {
+      "question": "docs-encoding",
+      "application": "the works",
+      "files": [
+        "tools/hypo/model.py",
+        "tools/hypo/render.py",
+        "tools/hypo/read.py",
+        "tools/hypo/apply.py",
+        "tools/hypo/appline.py",
+        "tools/apply.py",
+        "tools/application.py",
+        "tools/test_render.py",
+        "tools/test_read.py",
+        "tools/test_apply.py",
+        "tools/test_verify.py",
+        "tools/test_portable.py"
+      ],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3196",
+      "rounds": 1
+    },
+    {
+      "question": "docs-encoding",
+      "application": "the registry",
+      "files": [
+        "tools/hypo/registry.py",
+        "tools/registry.py",
+        "tools/test_registry.py",
+        "tools/hypo/spec.py",
+        "tools/test_spec.py",
+        "tools/fixtures/invalid-works-on-party.json",
+        "tools/fixtures/invalid-work-key-shape.json",
+        "tools/fixtures/invalid-work-key-unique.json",
+        "tools/fixtures/invalid-work-fields.json",
+        "tools/fixtures/invalid-cite-registered.json",
+        "tools/fixtures/invalid-cite-rejected.json",
+        "tools/hypo/__init__.py",
+        "tools/test_cli.py",
+        "README.md"
+      ],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3196",
+      "rounds": 1
     }
   ]
 }

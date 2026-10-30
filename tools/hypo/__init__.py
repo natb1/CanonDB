@@ -14,6 +14,7 @@ from its reads of the document, and renders canonical markdown back from it.
     inplace  a glossary entry, a term, an answer's words, a hinge's provenance, in place
     verify   the page against the renderer, links included
     portable the notebook parted from its document, for a party raising its own
+    registry every party's works, as the registry a repository's check reads
     turn     which question a canon turn is put to, and the lineage it carries
     frontier what could be put, read off the page without a graph file
     gaps     a bootstrap round's review: links against the checkout, files against the manifest
@@ -35,4 +36,4 @@ which is exactly what happened.
 
 __all__ = ["model", "spec", "project", "render", "read", "apply", "verify",
            "portable", "turn", "text", "cli", "page", "appline", "inplace",
-           "frontier", "gaps"]
+           "frontier", "gaps", "registry"]

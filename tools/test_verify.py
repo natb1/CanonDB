@@ -72,6 +72,17 @@ class WholeTabTest(unittest.TestCase):
                 page = page_of(self.graph, q.id, self.links(q.id))
                 self.assertTrue(verify.verify(self.graph, q.id, page).ok())
 
+    def test_a_party_s_works_are_blocks_the_page_carries_as_written(self):
+        """A work's url is a link to somewhere else, which is content and no
+        link of the sidecar's: a tab written with works is clean, and a work
+        the page carries that the graph does not is a difference."""
+        test_render.with_works(self.graph)
+        page = page_of(self.graph, "plato", self.links("plato"))
+        self.assertIn("### ❦ RB-5\n\nverified: yes", page)
+        self.assertTrue(verify.verify(self.graph, "plato", page).ok())
+        self.graph.get("plato").works.pop()
+        self.assertFalse(verify.verify(self.graph, "plato", page).ok())
+
     def test_a_cue_is_a_block_the_page_carries_as_written(self):
         """A cue is a labelled paragraph under its term or under the end, and
         the page check reads it as the renderer's own block: a tab written

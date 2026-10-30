@@ -24,11 +24,11 @@ heading, since that is what a link's target names.
 from __future__ import annotations
 
 import re
-from typing import Dict, List, NamedTuple, Optional
+from typing import Dict, List, NamedTuple, Optional, Tuple
 from xml.etree import ElementTree
 
 from . import page, render, text, verify
-from .model import Graph
+from .model import SECTIONS, Graph
 
 #: the wrapper an outline comes in, and the one thing that must not be parsed.
 #: A doctype is how an XML parser is made to expand entities without end or
@@ -321,17 +321,53 @@ def section_headings(body: str, section: str) -> List[str]:
     return []
 
 
+def _page_section(outline: List[Block], wanted: str) -> Optional[int]:
+    """Where the outline shows the ``## `` heading of section ``wanted``: its
+    index, or None. An outline elides a heading's words, so a heading whose
+    words open the name and are elided is taken for it."""
+    return next((i for i, block in enumerate(outline)
+                 if block.heading == 2 and block.text
+                 and wanted.startswith(block.text.rstrip(_ELIDED).lower())
+                 and (block.text.endswith(_ELIDED) or block.text.lower() == wanted)),
+                None)
+
+
+def _section_end(outline: List[Block], start: int) -> int:
+    """Where the section whose heading stands at ``start`` ends: the next
+    ``## `` heading, or the end of the tab."""
+    return next((i for i in range(start + 1, len(outline)) if outline[i].heading == 2),
+                len(outline))
+
+
+def _chipped(graph: Graph, qid: str, markdown: str) -> dict:
+    """The source of a section write: its markdown, and the chips of the
+    tab's blocks map that the markdown spells, and no others."""
+    keys = set(_CHIP_KEY.findall(markdown))
+    chips = {key: value for key, value in render.links(graph, qid)["blocks"].items()
+             if key in keys}
+    with_ = {"as": "markdown", "from": {"kind": "inline", "content": markdown}}
+    if chips:
+        with_["blocks"] = chips
+    return with_
+
+
 def section_ops(graph: Graph, qid: str, outline: List[Block], rev: Optional[int],
                 section: str) -> List[dict]:
-    """Replace one ``## `` section of a tab with its rendered blocks: one
-    operation, naming the blocks the outline shows from the section's heading
-    to the next section's.
+    """Write one ``## `` section of a tab as rendered: one operation.
+
+    Where the page has the section, a replace naming the blocks the outline
+    shows from the section's heading to the next section's. Where it lacks
+    one the render has, an insert of the whole section, its heading
+    included, after the last block of the nearest section before it in the
+    renderer's order (``SECTIONS``) that the page has, or after the
+    masthead where it has none of them: a party's first work opens its
+    Works section, and that is no reason to rewrite the tab.
 
     The path between a part written in place and a tab written whole. A body
     write mints new ids for every block on the tab and so retires every link
     into it; this retires only the links into the section, and ``relink``
-    finds no other stale, since every other block keeps its id. The chips
-    sent beside the markdown are the section's own.
+    finds no other stale, since every other block keeps its id. An insert
+    retires none. The chips sent beside the markdown are the section's own.
     """
     if rev is None:
         raise Unresolved(["%s: the outline carries no rev, and a whole-block replace "
@@ -342,30 +378,61 @@ def section_ops(graph: Graph, qid: str, outline: List[Block], rev: Optional[int]
                      if name and name.lower() == wanted), None)
     if rendered is None:
         raise Unresolved(["%s: the render has no section %r" % (qid, section)])
-    start = next((i for i, block in enumerate(outline)
-                  if block.heading == 2 and block.text
-                  and wanted.startswith(block.text.rstrip(_ELIDED).lower())
-                  and (block.text.endswith(_ELIDED) or block.text.lower() == wanted)),
-                 None)
+    markdown = render.SEPARATOR.join(rendered)
+    start = _page_section(outline, wanted)
     if start is None:
-        raise Unresolved(["%s: the page has no section %r; a section the page lacks "
-                          "is written with the body" % (qid, section)])
-    end = next((i for i in range(start + 1, len(outline)) if outline[i].heading == 2),
-               len(outline))
-    span = outline[start:end]
+        return [_section_insert(graph, qid, outline, section, markdown)]
+    span = outline[start:_section_end(outline, start)]
     if any(block.kind in ("gap", "gone") for block in span):
         raise Unresolved(["%s: the outline folds or retires a block inside %r, so it "
                           "does not show the section whole" % (qid, section)])
     ids = [block.id for block in span if block.id]
-    markdown = render.SEPARATOR.join(rendered)
-    keys = set(_CHIP_KEY.findall(markdown))
-    chips = {key: value for key, value in render.links(graph, qid)["blocks"].items()
-             if key in keys}
-    with_ = {"as": "markdown", "from": {"kind": "inline", "content": markdown}}
-    if chips:
-        with_["blocks"] = chips
     return [{"op": "replace", "target": {"kind": "blocks", "ids": ids},
-             "ifRev": rev, "with": with_}]
+             "ifRev": rev, "with": _chipped(graph, qid, markdown)}]
+
+
+def _section_insert(graph: Graph, qid: str, outline: List[Block], section: str,
+                    markdown: str) -> dict:
+    """The insert that opens a section the page lacks, after the last block
+    of what stands before it.
+
+    What stands before it is the nearest section ahead of it in the
+    renderer's order that the page has, or, where the page has none, the
+    masthead: everything above the first ``## ``. Its last block has to be
+    shown, so a fold or a retired block in that span is refused, as it is in
+    the span a replace names; an insert after a block that is not the last
+    would open the section inside the one before it.
+    """
+    wanted = section.strip().lower()
+    if any(block.kind == "gap" for block in outline):
+        # a sinceRev read folds what did not change, and the section may be
+        # folded with it: absent from the outline is not absent from the page
+        raise Unresolved(["%s: the outline shows no section %r but folds blocks it "
+                          "does not show, so whether the page lacks it cannot be told"
+                          % (qid, section)])
+    order = list(SECTIONS)
+    ahead = order[:order.index(wanted)] if wanted in order else []
+    start, end = None, None
+    for name in reversed(ahead):
+        start = _page_section(outline, name)
+        if start is not None:
+            end = _section_end(outline, start)
+            break
+    if start is None:
+        start = 0
+        end = next((i for i, block in enumerate(outline) if block.heading == 2),
+                   len(outline))
+    span = outline[start:end]
+    if any(block.kind in ("gap", "gone") for block in span):
+        raise Unresolved(["%s: the page has no section %r, and the outline folds or "
+                          "retires a block where it opens, so its last block cannot be "
+                          "told" % (qid, section)])
+    after = next((block.id for block in reversed(span) if block.id), None)
+    if after is None:
+        raise Unresolved(["%s: the page has no section %r, and the outline shows no "
+                          "block for it to open after" % (qid, section)])
+    return {"op": "insert", "target": {"kind": "blocks", "ids": [after]},
+            "side": "after", "source": _chipped(graph, qid, markdown)}
 
 
 def link_ops(graph: Graph, qid: str, by_tab: Dict[str, List[Block]],

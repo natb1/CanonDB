@@ -75,17 +75,20 @@ RESERVED = ("lease",)
 #: that no other run puts it while the canon turn is out.
 CLAIM = "claimed by"
 
-#: The section a note may be attached to, as the renderer names them.
-SECTIONS = ("thesis", "glossary", "terms", "applications", "cited by",
-            "hinge")
+#: The section a note may be attached to, as the renderer names them, and in
+#: the order it writes them: a write that opens a section the page lacks
+#: places it after the nearest one before it here.
+SECTIONS = ("thesis", "glossary", "terms", "applications", "works",
+            "cited by", "hinge")
 
 #: The glyph that opens each kind of heading on a tab — an answer, a glossary
-#: entry, a term, a mention, an application, a hinge part — and the one that
-#: opens the lineage line above the title. The renderer writes them and the
-#: reader, the frontier and every in-place writer read them, so they are
-#: spelled here once; a glyph changed here changes on every side at once.
+#: entry, a term, a mention, an application, a party's work, a hinge part —
+#: and the one that opens the lineage line above the title. The renderer
+#: writes them and the reader, the frontier and every in-place writer read
+#: them, so they are spelled here once; a glyph changed here changes on every
+#: side at once.
 GLYPHS = {"thesis": "◆", "glossary": "≡", "term": "▸", "mention": "↗",
-          "application": "⚙", "hinge": "⚓", "lineage": "⌂"}
+          "application": "⚙", "work": "❦", "hinge": "⚓", "lineage": "⌂"}
 
 NOTEBOOK = "notebook"
 CANON = "canon"
@@ -389,6 +392,60 @@ class Application:
 
 
 @dataclass
+class Work:
+    """A work a party is read from, under the key its prose cites it by.
+
+    A party is another author's view, reconstructed, and the reconstruction
+    cites what it was read from by a bracketed key — ``[RB-5]`` — the way a
+    repository's prose does. The keys were defined in a registry a
+    repository kept for itself, so what a party's tab rested on was stated
+    where the notebook could not see it, and a notebook edit citing a new
+    work waited on a commit elsewhere before any check would pass it. The
+    registry is the party's: each party's tab lists its works, one home per
+    datum, and a repository's check reads an export of them (``registry``)
+    in place of a registry of its own, so no notebook edit waits on a
+    repository.
+
+    Every field but the key is optional, and the page writes only those that
+    are filled. ``status`` is what the work stands as; ``rejected`` is the
+    one value a check reads, since a key cited from a work set aside is a
+    citation of nothing.
+    """
+
+    key: str
+    work: str = ""
+    author: str = ""
+    locus: str = ""
+    date: str = ""
+    domain: str = ""
+    verified: str = ""
+    status: str = ""
+    url: str = ""
+    note: str = ""
+
+    #: the fields the page labels, in the order its one line writes them;
+    #: the note is not among them, since it stands as a paragraph of its own
+    FIELDS = ("work", "author", "locus", "date", "domain", "verified",
+              "status", "url")
+
+    #: a url the page can write as a link's target and read back whole: no
+    #: space, and parentheses only in pairs, one deep
+    URL = r"(?:[^()\s]|\([^()\s]*\))*"
+
+    def fields(self) -> Iterator[Tuple[str, str]]:
+        """Every labelled field, each named, in page order, filled or not."""
+        for name in self.FIELDS:
+            yield name, getattr(self, name)
+
+    @staticmethod
+    def read(r: _Reader, data: Any, where: str) -> "Work":
+        d = r.obj(data, where)
+        return Work(key=r.text(d, "key", where),
+                    **{name: r.text(d, name, where, required=False)
+                       for name in Work.FIELDS + ("note",)})
+
+
+@dataclass
 class Thesis:
     """An articulated answer to exactly one question.
 
@@ -543,6 +600,9 @@ class Question:
     definitions: List[Definition] = field(default_factory=list)
     notes: List[Note] = field(default_factory=list)
     hinge: Optional[Hinge] = None
+    #: the works a party is read from, each under the key its prose cites it
+    #: by; a question of the author's carries none (``works-on-party``)
+    works: List[Work] = field(default_factory=list)
 
     @property
     def tradition(self) -> bool:
@@ -614,6 +674,8 @@ class Question:
             notes=[Note.read(r, v, "%s.notes[%d]" % (here, i))
                    for i, v in enumerate(r.seq(d, "notes", here))],
             hinge=hinge,
+            works=[Work.read(r, v, "%s.works[%d]" % (here, i))
+                   for i, v in enumerate(r.seq(d, "works", here))],
         )
 
 

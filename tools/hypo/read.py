@@ -19,7 +19,8 @@ from __future__ import annotations
 import re
 from typing import Dict, Iterable, List, Optional, Set, Tuple
 
-from .model import AUTHOR, CITATION_HEADINGS, GLYPHS, RESERVED, SECTIONS, TRADITION, Hinge
+from .model import (AUTHOR, CITATION_HEADINGS, GLYPHS, RESERVED, SECTIONS, TRADITION, Hinge,
+                    Work)
 from . import render, text
 from .render import INSTEAD, SEPARATOR, SHADOW, chip_key
 
@@ -73,7 +74,8 @@ CRUMB_TAIL = re.compile(r"[\s›]+$")
 #: a section with any other glyph is a heading the grammar does not hold
 MARKERS = {"thesis": (GLYPHS["thesis"],), "glossary": (GLYPHS["glossary"],),
            "terms": (GLYPHS["term"], GLYPHS["mention"]),
-           "applications": (GLYPHS["application"],), "hinge": (GLYPHS["hinge"],)}
+           "applications": (GLYPHS["application"],), "works": (GLYPHS["work"],),
+           "hinge": (GLYPHS["hinge"],)}
 
 #: what opens the lineage line, the one block above a tab's title
 LINEAGE = GLYPHS["lineage"]
@@ -397,6 +399,46 @@ def _notes(blocks: List[str], section: str) -> List[dict]:
     return notes
 
 
+#: a work's url as a line may spell it: the renderer's link, whose words are
+#: the url and whose target is kept; an autolink; or the url bare, as a read
+#: spells a link the document made of the words alone. A target may hold a
+#: pair of parentheses, as an encyclopedia's do, and ``work-fields`` holds
+#: that a url holds no other
+_URL = re.compile(r"^(?:\[(?:[^\]\\]|\\.)*\]\((?P<href>%s)\)|<(?P<auto>[^>]*)>|(?P<bare>\S+))$"
+                  % Work.URL)
+
+
+def work_fields(block: str) -> Optional[Dict[str, str]]:
+    """A work's line back into its fields, or None where the block is not one.
+
+    Every part the separator parts must open with a field's label, each label
+    once and in ``Work.FIELDS`` order, as ``render.work_line`` writes them; a
+    block that does not open with a label is the work's note. The url is read
+    off its link's target and not its words, which are the url again behind
+    whatever backslashes the page spells it with.
+    """
+    if not block.startswith(tuple("%s: " % name for name in Work.FIELDS)):
+        return None
+    out: Dict[str, str] = {}
+    last = -1
+    for part in block.split(render.WORK_SEPARATOR):
+        name, sep, value = part.partition(": ")
+        if not sep or name not in Work.FIELDS or Work.FIELDS.index(name) <= last:
+            raise ParseError("a work's line is malformed at %r: its fields are "
+                             "labelled, once each, in the order %s"
+                             % (part[:40], ", ".join(Work.FIELDS)))
+        last = Work.FIELDS.index(name)
+        if name == "url":
+            url = _URL.match(value.strip())
+            if not url:
+                raise ParseError("a work's url is neither a link nor one word: %r"
+                                 % value[:60])
+            value = next(found for found in url.group("href", "auto", "bare")
+                         if found is not None)
+        out[name] = value
+    return out
+
+
 def _edge(heading: str, labels: Iterable[str] = ()) -> Tuple[str, str]:
     """``<title> → <chip>`` from a term or mention heading."""
     title, _, target = heading.rpartition("→")
@@ -657,6 +699,23 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
         hinge[part] = SEPARATOR.join(body)
     if hinge:
         q["hinge"] = hinge
+
+    # a party's works: the key under its heading, the labelled line where any
+    # field is filled, and the note as what follows it. Left off a question
+    # that carries none, as the graph file leaves it off, since only a party
+    # carries any
+    works = []
+    for key, body in _subsections(named.get("works", []), GLYPHS["work"]):
+        work: dict = {"key": key}
+        fields = work_fields(body[0]) if body else None
+        if fields is not None:
+            work.update(fields)
+            body = body[1:]
+        if body:
+            work["note"] = SEPARATOR.join(body)
+        works.append(work)
+    if works:
+        q["works"] = works
 
     q["notes"] = [note for section in SECTIONS
                   for note in _notes(named.get(section, []), section)]
