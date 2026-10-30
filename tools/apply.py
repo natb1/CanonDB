@@ -24,6 +24,9 @@ outline accounts for.
 The body's replace names every block of the tab, so it carries no hash; its
 guard is the rev of the read the outline came from, read off the outline
 file, and an outline printing none is refused rather than sent unguarded.
+`--body` prints the whole payload, with that rev on the call as `ifRev`,
+since the document holds a call to it and not an operation: send it as
+printed. A tab just made, holding only its heading, is written the same way.
 
     apply.py graph.json canon --outlines out/ --body --section hinge
     apply.py graph.json canon --outlines out/ --links --section hinge
@@ -141,7 +144,10 @@ def main(argv=None) -> int:
             print("   no outline on disk for: %s" % ", ".join(absent), file=sys.stderr)
         return 1
 
-    print(json.dumps({"ops": payload}, indent=2, ensure_ascii=False))
+    # a body or section write is guarded on the call, where the document
+    # holds an ifRev; links and unlinks go on words a find names
+    out = ops.call(payload, rev) if args.body else {"ops": payload}
+    print(json.dumps(out, indent=2, ensure_ascii=False))
     return 0
 
 
