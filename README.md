@@ -30,13 +30,16 @@ is private, and this record is where it is tested.
 
 ## The entry points and the readings
 
-Five entry points, each a grant of what a turn may carry. `/principal:ask` puts the next
+Six entry points, each a grant of what a turn may carry. `/principal:ask` puts the next
 question to the AI in a clean context, and with `--again` puts a landed one again.
-`/principal:dictate` changes the notebook. `/principal:bootstrap` builds what the notebook
-describes ahead of canon. `/principal:consult` takes a situation in the user's words and returns
-the clauses that bear on it, reading only and drawing nothing. `/principal:interview` puts a root
-question the principal answers to the user, through a questioner that has read nothing of the
-notebook, and ends in a dictation the user runs.
+`/principal:dictate` changes the notebook, and may draw the change with the principal first as
+a line of questions whose admissions are compacted into the plan. `/principal:bootstrap` builds
+what the notebook describes ahead of canon. `/principal:consult` takes a situation in the user's
+words and returns the clauses and cases that bear on it, reading only and drawing nothing.
+`/principal:anticipate` drafts the user's own answer to a question from the record, each source
+quoted, for the user to confirm or correct. `/principal:interview` puts a question the principal
+answers, or the project's end, to the user through a questioner that has read nothing of the
+notebook, keeps a line doc of admissions, and hands over to a comparing run the user runs.
 
 The readings are projections over the record, computed and stored nowhere: `tools/frontier.py`
 (the frontier, and with `--principal` the questions only the user can answer whose lineage has
@@ -47,7 +50,10 @@ past the rev the hinge's provenance records it read at, or whose rev is not reco
 `tools/project.py --pressure` (the pressure stored beside the one the record derives where none
 is). `tools/registry.py export` is one more, written to a file: every party's works, each
 under the key prose cites it by, which a repository's check reads in place of a registry of its
-own. The notebook is its source: the file is exported again, never edited, and never committed by
+own. `tools/digest.py --project <p>` is another: a project's end and method, its words, its
+clauses with their cues and its cases, as the instructions a Claude Project's sessions open
+with. `tools/line.py check` reads a line doc's export against the graph: every admission cited
+by a row of its plan, every row citing one, every tab a row names present. The notebook is its source: the file is exported again, never edited, and never committed by
 the notebook's tooling.
 
 ## Installing the plugin

@@ -226,3 +226,23 @@ class CueTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CaseTest(unittest.TestCase):
+    """A question may carry cases, each a situation the user decided with
+    the verdict and its reason; a question without any reads as before."""
+
+    def test_a_case_is_read_and_defaults_to_none(self):
+        graph = model.load(fixture("invalid-case-complete"))
+        case = graph.get("ti-esti").cases[0]
+        self.assertEqual((case.name, case.verdict, case.clause),
+                         ("The vote taken on the day", "", ""))
+        self.assertEqual(graph.get("canon").cases, [])
+
+    def test_a_case_needs_its_name(self):
+        def mutate(data):
+            root = next(q for q in data["questions"] if q["id"] == "ti-esti")
+            root["cases"] = [{"situation": "s", "verdict": "v", "reason": "r"}]
+        with self.assertRaises(model.ShapeError) as caught:
+            rewrite("valid", mutate)
+        self.assertIn("cases[0]: missing 'name'", " ".join(caught.exception.problems))

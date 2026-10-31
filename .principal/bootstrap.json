@@ -28,10 +28,11 @@
         "tools/hypo/gaps.py",
         "tools/test_gaps.py",
         "skills/consult/SKILL.md",
-        "skills/interview/SKILL.md"
+        "skills/interview/SKILL.md",
+        "skills/anticipate/SKILL.md"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3195",
-      "rounds": 11
+      "rounds": 12
     },
     {
       "question": "context",
@@ -42,7 +43,7 @@
         "CLAUDE.md"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3195",
-      "rounds": 5
+      "rounds": 6
     },
     {
       "question": "dictate",
@@ -51,7 +52,7 @@
         "skills/dictate/SKILL.md"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
-      "rounds": 6
+      "rounds": 7
     },
     {
       "question": "wording",
@@ -60,7 +61,7 @@
         "skills/dictate/SKILL.md"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
-      "rounds": 2
+      "rounds": 3
     },
     {
       "question": "priority",
@@ -99,7 +100,7 @@
         "tools/fixtures/invalid-claim-open.json"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
-      "rounds": 5
+      "rounds": 6
     },
     {
       "question": "docs-encoding",
@@ -131,7 +132,7 @@
         "tools/test_inplace.py"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3191",
-      "rounds": 9
+      "rounds": 10
     },
     {
       "question": "docs-encoding",
@@ -219,10 +220,19 @@
         "tools/fixtures/invalid-vocabulary.json",
         "tools/fixtures/valid.json",
         "tools/test_scope.py",
-        ".gitignore"
+        ".gitignore",
+        "tools/hypo/line.py",
+        "tools/line.py",
+        "tools/test_line.py",
+        "tools/fixtures/line-doc.md",
+        "tools/fixtures/invalid-cases-on-author.json",
+        "tools/fixtures/invalid-case-complete.json",
+        "tools/hypo/digest.py",
+        "tools/digest.py",
+        "tools/test_digest.py"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
-      "rounds": 7
+      "rounds": 8
     },
     {
       "question": "recognition",

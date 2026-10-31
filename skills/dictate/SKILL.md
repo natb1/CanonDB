@@ -198,6 +198,86 @@ notebook's content: it lives in the artifact, which is shared between users as i
 a turn may carry is decided by the configuration of the entry point that runs it — a skill, an
 agent, a gate — and never by which branch is checked out.
 
+## The line
+
+A dictation may be drawn rather than handed over: the principal asks for a line, or the run
+sees that what is being dictated has not been examined and offers one. The line is the elenchus
+turned on the principal with the notebook in the room: the run holds the notebook, so a
+contradiction between what the principal says and what the notebook records is found live,
+which is what tells this line from the interview's (`/principal:interview`), whose questioner
+holds nothing. Nothing is written to the notebook while the line runs. It ends in a plan, step
+2 above, and the plan runs as any dictation does.
+
+**One question at a time.** Each question is drawn from an admission and the next from the
+answer; the questioner asserts nothing, and a view of the questioner's enters as a question or
+not at all (**Drafting a line** below). A principle the principal declares as established is
+confirmed against the notebook at the step it is made: where it is recorded, or that it is not;
+one the notebook does not record is tracked under declarations and resolved in the line or
+recorded as an open question at the compaction. A principle the principal arrives at
+analytically has its line recorded: the admissions it rests on, in order, which the compaction
+makes the notebook's lineage, the question the principle answers, the terms above it and the
+hinge's provenance.
+
+**The four-part step.** From the second step on, each of the questioner's turns has four parts
+in this order: what tradition says for and against the previous answer, each party with its
+registry status, a key the notebook's works define or none yet; the digressions pinned at this
+step, each with a brief response and its tradition; hyperlinked references, if any; and the
+next step, which is a question, a recognition of aporia, or a return from a digression.
+
+**What is watched for.** A contradiction between two admissions, or between an admission and
+the notebook, named where it stands. A digression, a new question, a question that breaks a
+prior one down, a thing to do, a technique such as a case, registered and resolved by tradition
+and further questions, or held. The moment the dialogue shows the project's end would be better
+defined: the end is in scope whenever the dictation contradicts it or it no longer optimizes for
+the dictation, and the questioner says so. Every tradition referenced, analyses of other
+traditions included, tracked with its registry status for the dictation. Every technique
+tradition offers, applied: the case question as the coverage test; holding a digression at a
+stated hypothesis and climbing only when forced; collection and division to break a question
+down; the tracked digression with its return; objections, counter and determination at the
+compaction; the three replies to a counterexample, barring the monster, barring the exception
+and incorporating the lemma; reflective equilibrium as the loop. Where what-is-X finds no
+essence, X is held by its cases and their connections: a term's cue is already that, a case on
+the tab is one more, and a glossary body may give cases.
+
+**The line doc.** The record the line keeps is a document of admissions, never a transcript:
+each admission short, in the principal's words, numbered, nothing verbatim at length. It is a
+Claude Doc of the project the checkout keeps, made when the line opens, with these sections:
+how the line is run; directives, each clear directive of the principal's with its status;
+admissions, numbered; the line, each step's four parts; held questions; aporiai; declarations,
+each with the admissions it rests on in order; digressions; contradictions found; tradition
+cited, with registry status; decisions reached; and the plan. The items of every section but
+the admissions and the plan are numbered too, with a letter prefix of their own, and a row of
+the plan cites by number what it carries. `tools/line.py check <doc.md> [<graph.json>]` reads
+the markdown export of the doc: every admission is cited by a row of the plan, every row cites
+an admission, every tab a row names is in the graph, and every pinned item is closed or cited.
+`tools/line.py rows <doc.md> --json` turns the plan section into rows.
+
+**The compaction.** When the principal is satisfied, the line is compacted into the plan, open
+questions included. What the compaction extracts is what reproduces an answer, each kind to its
+home: cases, each case put with the principal's verdict, the reason and the clause it tests, on
+the tab of the clause (`tools/inplace.py case insert`); the order of appeal when principles
+conflict or run out, as a method clause or a question of its own; distinctions with the test
+that draws each, in glossary bodies; derivations, the admissions each principle rests on in
+order, as the answer's clause order and the lineage; the principal's readings of each tradition,
+on the tradition lines' notes; dispositions, as clauses of the answer; presuppositions and
+aporiai, on the hinge's question half and the attenuation; and goals, confirmed against the
+roots. A pair of words is distinguished only where required to avoid a contradiction. The
+plan's rows cite the admissions by number, and `line.py check` passes before the plan runs.
+
+**Retirement.** The line doc lives until the plan is executed and is retired after; what it
+holds that must survive, the plan, the tradition drafts and the pending notes, is compacted into
+the notebook and the skill first. A re-derivation's questioner never reads a line doc. Nothing is
+lost by the retirement, and no transcript is kept at any point.
+
+**Where the line is shared.** One procedure with two parameters, who answers and whether the
+questioner holds the notebook, is run by four entry points: `/principal:ask`, where the AI
+answers and the agent holds the lineage alone; `/principal:interview`, where the principal
+answers to a questioner that holds nothing, and a comparing run that holds the notebook reads
+the draw afterwards; this skill, where the principal answers to a questioner that holds the
+notebook; and `/principal:consult`, which draws nothing. `/principal:anticipate` is the line's
+other end: it drafts the principal's answer from the record, and the correction becomes a case
+or a dictation.
+
 ## Several sessions
 
 The notebook is one document that several sessions, and the principal's own hand, write at
@@ -489,6 +569,20 @@ a procedure rather than a script.
   has landed. Blocking and lineage already part there — at the principal's questions and at
   landed answers. Where else they differ waits on a question-to-question blocking edge recorded
   in its own right; the debt is that edge, not wherever it happens to be written down.
+
+- **A line is drawn, not scripted.** Whether a question is drawn from an admission, whether the
+  tradition cited bears on the answer, and whether a declaration is really recorded in the
+  notebook, are read. `line.py` holds the half a script can: that every admission reached the
+  plan, that every row rests on one, and that every tab a row names exists.
+- **The line doc is admissions, never a transcript.** No script tells a short admission in the
+  principal's words from a verbatim record; read every admission you write for length and
+  voice.
+- **The project's end is in scope when the dialogue reaches it.** Nothing computes when a
+  dictation contradicts the end, or when the end stops optimizing for the dictation; the
+  questioner watches for the moment and says so.
+- **The compaction extracts eight kinds.** Which admission is a case, a distinction, a
+  disposition or a derivation is read, and the home each goes to is the renderer's part for it;
+  a kind left in the line doc is lost at the retirement.
 
 ## Drafting a line
 

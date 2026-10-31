@@ -1034,3 +1034,40 @@ class WorksTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CaseTest(unittest.TestCase):
+    """A case is the user's verdict on a situation: whole, on the author's
+    tab, filed under a term of that tab, and judged for reach as the user's
+    words are."""
+
+    def setUp(self):
+        self.graph = load("valid")
+        self.case = model.Case(
+            name="The vote taken on the day",
+            situation="a side is asked to act on an entry it did not mark",
+            verdict="it waits", reason="nothing stands on an unmarked entry")
+        self.graph.get("canon").cases = [self.case]
+
+    def test_a_whole_case_on_the_author_s_tab_passes(self):
+        self.assertEqual([f.line() for f in spec.run(self.graph)], [])
+
+    def test_a_clause_names_a_term_of_the_tab(self):
+        self.case.clause = "Authority held down"
+        self.assertEqual([f.line() for f in spec.run(self.graph)], [])
+        self.case.clause = "A term the tab has not got"
+        findings = spec.run(self.graph, only=["case-complete"])
+        self.assertEqual([f.question for f in findings], ["canon"])
+        self.assertIn("no term of this tab", findings[0].message)
+
+    def test_each_missing_part_is_named(self):
+        self.case.situation = ""
+        self.case.reason = " "
+        findings = spec.run(self.graph, only=["case-complete"])
+        self.assertIn("lacks its situation and reason", findings[0].message)
+
+    def test_a_case_is_judged_for_reach_where_it_is_written(self):
+        self.case.reason += ", whatever grade it would carry"
+        findings = spec.run(self.graph, only=["reach"])
+        self.assertEqual([f.question for f in findings], ["canon"])
+        self.assertIn("the case 'The vote taken on the day'", findings[0].message)
