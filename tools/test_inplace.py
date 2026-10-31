@@ -236,6 +236,60 @@ class TermTest(unittest.TestCase):
             inplace.term_delete(self.view, heading, [self.thesis])
 
 
+class CaseTest(unittest.TestCase):
+    def setUp(self):
+        self.graph = load()
+        self.case = model.Case(
+            name="The vote taken on the day",
+            situation="a side is asked to act on an entry it did not mark",
+            verdict="it waits", reason="nothing stands on an unmarked entry",
+            clause="Authority held down")
+
+    def test_an_inserted_case_reads_back_as_the_graph_holding_it(self):
+        """Opening the section after the terms' last block, where the
+        renderer would put it."""
+        view, by_id = view_of(self.graph, "canon")
+        last = block_of(by_id, "cue: an act is proposed")
+        ops, content = inplace.case_insert(
+            last, self.case.name, self.case.situation, self.case.verdict,
+            self.case.reason, self.case.clause, open_section=True)
+        self.graph.get("canon").cases = [self.case]
+        self.assertEqual(parsed(rewrite(by_id, last, after=content), self.graph),
+                         parsed(render.body(self.graph, "canon"), self.graph))
+        self.assertEqual(ops[0]["target"], {"kind": "blocks", "ids": [last]})
+
+    def test_a_second_case_goes_after_the_first_s_last_line(self):
+        self.graph.get("canon").cases = [self.case]
+        view, by_id = view_of(self.graph, "canon")
+        last = block_of(by_id, "clause: Authority")
+        ops, content = inplace.case_insert(last, "The second", "s", "v", "r")
+        self.graph.get("canon").cases.append(
+            model.Case(name="The second", situation="s", verdict="v", reason="r"))
+        self.assertEqual(parsed(rewrite(by_id, last, after=content), self.graph),
+                         parsed(render.body(self.graph, "canon"), self.graph))
+
+    def test_a_part_that_is_not_one_paragraph_is_refused(self):
+        with self.assertRaises(appline.Refused):
+            inplace.case_insert("x", "N", "s", "", "r")
+        with self.assertRaises(appline.Refused):
+            inplace.case_insert("x", "N", "s", "v", "> a note")
+        with self.assertRaises(appline.Refused):
+            inplace.case_insert("x", "N", "verdict: s", "v", "r")
+
+    def test_delete_takes_the_heading_and_its_lines(self):
+        self.graph.get("canon").cases = [self.case]
+        view, by_id = view_of(self.graph, "canon")
+        heading = block_of(by_id, "### ⚖ The vote")
+        lines = [block_of(by_id, "case: "), block_of(by_id, "verdict: "),
+                 block_of(by_id, "reason: "), block_of(by_id, "clause: ")]
+        ops = inplace.case_delete(view, heading, lines)
+        self.assertEqual([o["target"]["ids"][0] for o in ops], [heading] + lines)
+        with self.assertRaises(appline.Refused):
+            inplace.case_delete(view, heading, [block_of(by_id, "cue: ")])
+        with self.assertRaises(appline.Refused):
+            inplace.case_delete(view, heading, [])
+
+
 class IncomingTest(unittest.TestCase):
     def setUp(self):
         self.graph = load()

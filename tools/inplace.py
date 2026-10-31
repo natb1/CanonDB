@@ -7,6 +7,9 @@
     inplace.py term insert --after ID --title T --to Q --to-tab TAB --anchor A [--anchor A ...]
                            [--thesis-read READ --thesis ID] [--open-section]
     inplace.py term delete READ --heading ID --block ID [--block ID ...]
+    inplace.py case insert --after ID --name N --situation S --verdict V --reason R
+                           [--clause C] [--open-section]
+    inplace.py case delete READ --heading ID --block ID [--block ID ...]
     inplace.py incoming insert READ --list ID --anchor A --from Q --from-tab TAB [--after-item ID]
     inplace.py incoming delete READ --list ID --item ID
     inplace.py thesis replace READ --block ID --text T [--anchor A ...] [--markdown]
@@ -104,6 +107,22 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--heading", required=True)
     p.add_argument("--block", action="append", default=[])
 
+    case = parts.add_parser("case").add_subparsers(dest="mode", required=True)
+    p = case.add_parser("insert")
+    p.add_argument("--after", required=True,
+                   help="the last block of the Cases section, or of the section before it")
+    p.add_argument("--name", required=True)
+    p.add_argument("--situation", required=True)
+    p.add_argument("--verdict", required=True)
+    p.add_argument("--reason", required=True)
+    p.add_argument("--clause", default="", help="the title of the term the verdict applies")
+    p.add_argument("--open-section", action="store_true",
+                   help="open the tab's Cases section with it")
+    p = case.add_parser("delete")
+    p.add_argument("read")
+    p.add_argument("--heading", required=True)
+    p.add_argument("--block", action="append", default=[])
+
     incoming = parts.add_parser("incoming").add_subparsers(dest="mode", required=True)
     p = incoming.add_parser("insert")
     p.add_argument("read")
@@ -193,6 +212,17 @@ def _ops(args) -> list:
         return ops
     if part == "term" and mode == "delete":
         return inplace.term_delete(cli.source(args.read), args.heading, args.block)
+    if part == "case" and mode == "insert":
+        ops, content = inplace.case_insert(args.after, args.name, args.situation,
+                                           args.verdict, args.reason, args.clause,
+                                           args.open_section)
+        say("new: %s" % content)
+        if args.clause:
+            say("unchecked: the clause is held against the tab's terms by check.py, "
+                "not here")
+        return ops
+    if part == "case" and mode == "delete":
+        return inplace.case_delete(cli.source(args.read), args.heading, args.block)
     if part == "incoming" and mode == "insert":
         ops, line = inplace.incoming_insert(cli.source(args.read), args.header, args.anchor,
                                             args.raiser, args.raiser_tab, args.after_item)

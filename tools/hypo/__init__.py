@@ -20,6 +20,8 @@ from its reads of the document, and renders canonical markdown back from it.
     gaps     a bootstrap round's review: links against the checkout, files against the manifest
     page     a tab as the document reads it, spelled as the reader takes it
     text     plain text from markdown, and where a run of it stands
+    line     a line doc against its plan: every admission carried, every row resting on one
+    digest   a project's end, words, clauses and cases as one page for a Project's sessions
     cli      what every command-line entry point does before its own work
 
 Enforcement is by interface: the renderer is the only sanctioned way to produce
@@ -36,4 +38,4 @@ which is exactly what happened.
 
 __all__ = ["model", "spec", "project", "render", "read", "apply", "verify",
            "portable", "turn", "text", "cli", "page", "appline", "inplace",
-           "frontier", "gaps", "registry"]
+           "frontier", "gaps", "registry", "line", "digest"]

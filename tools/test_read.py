@@ -654,3 +654,40 @@ class HingePartsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CaseTest(unittest.TestCase):
+    """A case comes back whole off its labelled lines, and a line under a
+    case the renderer does not write is refused rather than lost."""
+
+    def setUp(self):
+        self.graph = load("valid")
+        self.ids = chip_ids(self.graph)
+        self.graph.get("canon").cases = [model.Case(
+            name="The vote taken on the day",
+            situation="a side is asked to act on an entry it did not mark",
+            verdict="it waits", reason="nothing stands on an unmarked entry",
+            clause="Authority held down")]
+
+    def test_a_case_round_trips(self):
+        parsed = read.parse_tab(render.body(self.graph, "canon"), self.ids)
+        self.assertEqual(parsed["cases"], [{
+            "name": "The vote taken on the day",
+            "situation": "a side is asked to act on an entry it did not mark",
+            "verdict": "it waits", "reason": "nothing stands on an unmarked entry",
+            "clause": "Authority held down"}])
+        self.assertNotIn("cases", read.parse_tab(render.body(self.graph, "ti-esti"),
+                                                 self.ids))
+
+    def test_a_note_on_the_section_is_a_note_and_not_a_line(self):
+        self.graph.get("canon").notes.append(model.Note(section="cases", body="One more owed."))
+        parsed = read.parse_tab(render.body(self.graph, "canon"), self.ids)
+        self.assertEqual(len(parsed["cases"]), 1)
+        self.assertIn({"section": "cases", "body": "One more owed."}, parsed["notes"])
+
+    def test_a_line_the_renderer_does_not_write_is_refused(self):
+        page = render.body(self.graph, "canon").replace(
+            "verdict: it waits", "verdict: it waits\n\nIt waited last time too.")
+        with self.assertRaises(read.ParseError) as caught:
+            read.parse_tab(page, self.ids)
+        self.assertIn("under the case", str(caught.exception))

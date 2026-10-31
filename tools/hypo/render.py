@@ -383,6 +383,36 @@ def _term_blocks(graph: Graph, q: Question) -> List[str]:
     return blocks
 
 
+def _case_blocks(q: Question) -> List[str]:
+    """One subsection per case the user has decided, in the graph's order:
+    its name as the heading, then the situation, the verdict, the reason and
+    the clause it applies, each a labelled paragraph of its own.
+
+    Labelled lines and not one paragraph: a reader meeting a like situation
+    matches it on the situation alone, and the verdict and its reason are
+    read once the match is made; the reader reads each back by its label,
+    as it reads a term's cue.
+    """
+    blocks: List[str] = []
+    for case in q.cases:
+        blocks.append("### %s" % case_heading(case.name))
+        for label, words in case_lines(case):
+            blocks.append("%s: %s" % (label, words))
+    return blocks
+
+
+def case_heading(name: str) -> str:
+    """A case's heading without its level: the glyph and the name."""
+    return "%s %s" % (GLYPHS["case"], name)
+
+
+def case_lines(case) -> List[Tuple[str, str]]:
+    """The labelled lines a case is written as, in page order, those filled."""
+    return [(label, words) for label, words in
+            (("case", case.situation), ("verdict", case.verdict),
+             ("reason", case.reason), ("clause", case.clause)) if words]
+
+
 def _application_blocks(q: Question) -> List[str]:
     """One subsection per artifact, saying which thesis it comes from.
 
@@ -635,6 +665,7 @@ def body(graph: Graph, qid: str, par: Parents = None) -> str:
     for name, section in (("thesis", thesis_blocks),
                           ("glossary", _glossary_blocks(q)),
                           ("terms", _term_blocks(graph, q)),
+                          ("cases", _case_blocks(q)),
                           ("applications", _application_blocks(q)),
                           ("works", _work_blocks(q)),
                           ("cited by", _cited_by_blocks(graph, q, par)),

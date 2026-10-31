@@ -78,17 +78,19 @@ CLAIM = "claimed by"
 #: The section a note may be attached to, as the renderer names them, and in
 #: the order it writes them: a write that opens a section the page lacks
 #: places it after the nearest one before it here.
-SECTIONS = ("thesis", "glossary", "terms", "applications", "works",
+SECTIONS = ("thesis", "glossary", "terms", "cases", "applications", "works",
             "cited by", "hinge")
 
 #: The glyph that opens each kind of heading on a tab — an answer, a glossary
-#: entry, a term, a mention, an application, a party's work, a hinge part —
+#: entry, a term, a mention, a case, an application, a party's work, a hinge
+#: part —
 #: and the one that opens the lineage line above the title. The renderer
 #: writes them and the reader, the frontier and every in-place writer read
 #: them, so they are spelled here once; a glyph changed here changes on every
 #: side at once.
 GLYPHS = {"thesis": "◆", "glossary": "≡", "term": "▸", "mention": "↗",
-          "application": "⚙", "work": "❦", "hinge": "⚓", "lineage": "⌂"}
+          "case": "⚖", "application": "⚙", "work": "❦", "hinge": "⚓",
+          "lineage": "⌂"}
 
 NOTEBOOK = "notebook"
 CANON = "canon"
@@ -236,6 +238,40 @@ class Term:
             deadlock=deadlock,
             suspended=r.text(d, "suspended", where, required=False),
             cue=r.text(d, "cue", where, required=False),
+        )
+
+
+@dataclass
+class Case:
+    """A case: a situation the user has decided, with the verdict and its
+    reason, kept so that the record reproduces the user's answer to the
+    like situation and not only the clause it followed from.
+
+    A clause states a rule; a case shows where its line falls, which is
+    what a reader of the record needs when the situation in front of them is
+    near the line. The verdict is the user's and the reason is the user's,
+    in the user's words; the clause, where named, is the term on this tab
+    whose rule the verdict applies, so that a case is filed under what it
+    is a case of. Only the author's questions carry cases: a party's tab is
+    a reading of a work, and a work's examples are the work's.
+    """
+
+    name: str
+    situation: str
+    verdict: str
+    reason: str
+    #: the title of the term on this tab the verdict applies, where one does
+    clause: str = ""
+
+    @staticmethod
+    def read(r: _Reader, data: Any, where: str) -> "Case":
+        d = r.obj(data, where)
+        return Case(
+            name=r.text(d, "name", where),
+            situation=r.text(d, "situation", where, required=False),
+            verdict=r.text(d, "verdict", where, required=False),
+            reason=r.text(d, "reason", where, required=False),
+            clause=r.text(d, "clause", where, required=False),
         )
 
 
@@ -603,6 +639,9 @@ class Question:
     #: the works a party is read from, each under the key its prose cites it
     #: by; a question of the author's carries none (``works-on-party``)
     works: List[Work] = field(default_factory=list)
+    #: the cases the user has decided on this question, each under its name;
+    #: a party's question carries none (``cases-on-author``)
+    cases: List[Case] = field(default_factory=list)
 
     @property
     def tradition(self) -> bool:
@@ -676,6 +715,8 @@ class Question:
             hinge=hinge,
             works=[Work.read(r, v, "%s.works[%d]" % (here, i))
                    for i, v in enumerate(r.seq(d, "works", here))],
+            cases=[Case.read(r, v, "%s.cases[%d]" % (here, i))
+                   for i, v in enumerate(r.seq(d, "cases", here))],
         )
 
 
