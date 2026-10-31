@@ -957,6 +957,11 @@ def _prose(q) -> Iterator[Tuple[str, str]]:
         for app in thesis.applications:
             yield ("%s %s" % (GLYPHS["application"], app.name),
                    "%s %s %s" % (app.name, app.what, app.note))
+    for case in q.cases:
+        # a case is the user's words through: the situation decided, the
+        # verdict and its reason
+        yield "the case %r" % _clip(case.name), "%s %s %s %s" % (
+            case.name, case.situation, case.verdict, case.reason)
 
 
 @check("reach", "a defined word is used where its sense can be reached")
@@ -1485,6 +1490,41 @@ CITED = re.compile(r"\[([A-Z][A-Z0-9.-]*[A-Z0-9])\]")
 
 #: the status that sets a work aside
 REJECTED = "rejected"
+
+
+@check("cases-on-author", "only the author's tab carries cases")
+def cases_on_author(graph: Graph) -> Yield:
+    """A case is a situation the user decided, with the verdict and its
+    reason: the user's, so it stands on a question of the user's. A party's
+    tab is a reading of a work, and a work's examples are the work's, read
+    off it as the party's answer and never decided here."""
+    for q in graph.questions:
+        if q.cases and q.tradition:
+            yield q.id, ("carries %d case(s), and only the author's tab records a "
+                         "verdict: %s" % (len(q.cases), ", ".join(c.name for c in q.cases)))
+
+
+@check("case-complete",
+       "a case has a situation, a verdict and a reason, and its clause is a term of its tab")
+def case_complete(graph: Graph) -> Yield:
+    """A case reproduces the user's answer to a like situation only whole:
+    the situation is what is matched, the verdict is the answer, and the
+    reason is what makes it the user's answer and not a ruling. The clause,
+    where the case names one, is the term on the same tab whose rule the
+    verdict applies, named by its title, so that a case is filed under what
+    it is a case of and a term withdrawn leaves no case pointing at nothing."""
+    for q in graph.questions:
+        titles = {t.title for t in q.terms()}
+        for case in q.cases:
+            missing = [part for part, words in (("situation", case.situation),
+                                                ("verdict", case.verdict),
+                                                ("reason", case.reason))
+                       if not words.strip()]
+            if missing:
+                yield q.id, "the case %r lacks its %s" % (case.name, " and ".join(missing))
+            if case.clause and case.clause not in titles:
+                yield q.id, ("the case %r applies the clause %r, which is no term of "
+                             "this tab" % (case.name, _clip(case.clause)))
 
 
 @check("works-on-party", "only a party's tab lists works")

@@ -276,7 +276,7 @@ class EntryPointTest(unittest.TestCase):
     def test_every_tool_runs_by_its_path(self):
         """The skills run a tool by its path, so each has its shebang and its
         mode bits, and exits 0 on ``--help`` as a process."""
-        self.assertEqual(len(self.SCRIPTS), 21, self.SCRIPTS)
+        self.assertEqual(len(self.SCRIPTS), 23, self.SCRIPTS)
         for script in self.SCRIPTS:
             with self.subTest(script=script):
                 done = subprocess.run([os.path.join(HERE, script), "--help"],

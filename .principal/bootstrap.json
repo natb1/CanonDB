@@ -28,10 +28,11 @@
         "tools/hypo/gaps.py",
         "tools/test_gaps.py",
         "skills/consult/SKILL.md",
-        "skills/interview/SKILL.md"
+        "skills/interview/SKILL.md",
+        "skills/anticipate/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3195",
-      "rounds": 11
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3199",
+      "rounds": 12
     },
     {
       "question": "context",
@@ -41,8 +42,8 @@
         ".claude/settings.json",
         "CLAUDE.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3195",
-      "rounds": 5
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3199",
+      "rounds": 6
     },
     {
       "question": "dictate",
@@ -50,8 +51,8 @@
       "files": [
         "skills/dictate/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
-      "rounds": 6
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3199",
+      "rounds": 7
     },
     {
       "question": "wording",
@@ -59,8 +60,8 @@
       "files": [
         "skills/dictate/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
-      "rounds": 2
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3199",
+      "rounds": 3
     },
     {
       "question": "priority",
@@ -98,8 +99,8 @@
         "tools/fixtures/invalid-project-order.json",
         "tools/fixtures/invalid-claim-open.json"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
-      "rounds": 5
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3199",
+      "rounds": 6
     },
     {
       "question": "docs-encoding",
@@ -130,8 +131,8 @@
         "tools/inplace.py",
         "tools/test_inplace.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3191",
-      "rounds": 9
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3199",
+      "rounds": 10
     },
     {
       "question": "docs-encoding",
@@ -219,10 +220,19 @@
         "tools/fixtures/invalid-vocabulary.json",
         "tools/fixtures/valid.json",
         "tools/test_scope.py",
-        ".gitignore"
+        ".gitignore",
+        "tools/hypo/line.py",
+        "tools/line.py",
+        "tools/test_line.py",
+        "tools/fixtures/line-doc.md",
+        "tools/fixtures/invalid-cases-on-author.json",
+        "tools/fixtures/invalid-case-complete.json",
+        "tools/hypo/digest.py",
+        "tools/digest.py",
+        "tools/test_digest.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
-      "rounds": 7
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3199",
+      "rounds": 8
     },
     {
       "question": "recognition",

@@ -32,19 +32,24 @@ clauses bear on everything below it. Never a party's tab, and never the reserved
 
 **2 — Read the clauses, in place.** Per author tab, a `search` for `▸ ` finds every term, the
 clauses that raise questions; a `search` for `⚓ ` finds the hinge's parts, the end and the
-method among them; the thesis headline (`◆`) is on the same read. Read a whole tab only where
-a clause's words are not enough to tell whether it bears on the situation.
+method among them; a `search` for `⚖ ` finds every case, a situation once put to the user with
+the user's verdict, the reason and the clause it tests; the thesis headline (`◆`) is on the
+same read. Read a whole tab only where a clause's words are not enough to tell whether it bears
+on the situation.
 
 **3 — Match, by reading.** A clause bears on the situation when the situation is one the clause
 governs: an offer of income on a clause about trading agency, a request for help on a clause
 about what is owed, a new account or device on a clause about custody. The match is read, not
 computed, and a doubtful match is reported as doubtful. Where a clause carries a cue, the
-situation it governs written beside it, the cue decides.
+situation it governs written beside it, the cue decides; and a case is matched as a cue is,
+by the situation it records, so that a situation like one the user has already judged brings
+back the verdict and the reason with the clause it tested.
 
 **4 — Report.** For each clause that bears: the tab and the project it stands on, the clause
 verbatim, the end it serves (the root's end, quoted in part where the clause does not say),
 and what stands on the clause: a deadlock and its attenuation, a suspension and what it waits
-on, a cue and the situation it governs, a pending note. Order by the project's order, earlier
+on, a cue and the situation it governs, a case the clause was tested by, with its verdict and
+reason, a pending note. Order by the project's order, earlier
 first, then by the tab. Then stop.
 
 **5 — Nothing is written.** No note, no claim, no transcript, no file. A situation no clause
@@ -56,6 +61,9 @@ where it goes, when the user chooses.
 - **No recommendation.** The clauses are the user's own words or the AI's answers the user
   merged, and the run adds nothing to them. "What should I do" is answered by the clauses
   standing there, and by nothing the run composes.
+- **A case is the user's verdict on its own situation.** It is quoted as it stands, situation,
+  verdict and reason; whether the situation in hand is like it is read, and a likeness short of
+  the case's own terms is reported as doubtful, never as the verdict.
 - **No principle named for the situation.** The run says which clauses bear; it never says what
   the situation "is" in the notebook's terms. Naming it is the user's reading.
 - **The user's words are not restated.** The situation is quoted as given where it is quoted

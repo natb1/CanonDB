@@ -70,13 +70,14 @@ would land nowhere.
 
 from __future__ import annotations
 
+import dataclasses
 import re
 import xml.etree.ElementTree as ET
 from typing import Dict, List, NamedTuple, Optional, Sequence, Tuple
 
 from . import appline, page, read, render, spec, text
 from .appline import Refused, block, blocks, rev
-from .model import GLYPHS, Term
+from .model import GLYPHS, Case, Term
 
 #: the glyphs that open each part's heading, as the renderer writes them
 GLOSSARY, TERM, THESIS = GLYPHS["glossary"], GLYPHS["term"], GLYPHS["thesis"]
@@ -326,7 +327,8 @@ def _plain_block(words: str, what: str) -> None:
         raise Refused("%s opens like a heading, a note, a list or a table: %r"
                       % (what, stripped[:40]))
     for label in ("assent: ", "question: ", "suspended: ", "deadlock: ",
-                  "attenuation: ", "cue: "):
+                  "attenuation: ", "cue: ", "case: ", "verdict: ", "reason: ",
+                  "clause: "):
         if stripped.startswith(label):
             raise Refused("%s opens with %r, which the reader takes as a line of "
                           "its own" % (what, label))
@@ -454,6 +456,58 @@ def term_delete(source, heading: str, under: Sequence[str]) -> List[dict]:
         if not (text.startswith("*") or text.startswith(("suspended: ", "deadlock: ",
                                                          "attenuation: ", "cue: "))):
             raise Refused("block %s is not a line of a term: %r" % (bid, text[:60]))
+    return appline.guarded_delete(source, [heading] + list(under))
+
+
+# -- a case --------------------------------------------------------------
+
+CASE = GLYPHS["case"]
+
+
+def case_insert(after: str, name: str, situation: str, verdict: str, reason: str,
+                clause: str = "", open_section: bool = False) -> Tuple[List[dict], str]:
+    """A case's heading and its labelled lines after ``after``, which is the
+    last block of the tab's Cases section, or of the section before it where
+    the tab has none and ``open_section`` opens one.
+
+    The three parts ``case-complete`` holds are held here, before the case
+    reaches the page; the clause is checked against the tab's terms by the
+    graph check, since no read is taken with it.
+    """
+    name = name.strip()
+    if not name or "\n" in name or MARKUP.search(name):
+        raise Refused("a case's name is one line of plain letters: %r" % name)
+    for what, words in (("situation", situation), ("verdict", verdict), ("reason", reason)):
+        _plain_block(words, "the case's %s" % what)
+    if clause.strip():
+        _plain_block(clause, "the case's clause")
+    case = Case(name=name, situation=situation.strip(), verdict=verdict.strip(),
+                reason=reason.strip(), clause=clause.strip())
+    lines = ["### %s" % render.case_heading(name)]
+    lines += ["%s: %s" % (label, words) for label, words in render.case_lines(case)]
+    got = _read_back(_tab(("Cases", lines)))
+    wanted = {k: v for k, v in dataclasses.asdict(case).items() if v}
+    if got.get("cases") != [wanted]:
+        raise Refused("the case does not read back as written: %r" % got.get("cases"))
+    content = render.SEPARATOR.join(lines)
+    if open_section:
+        content = "## Cases" + render.SEPARATOR + content
+    op = {"op": "insert", "target": {"kind": "blocks", "ids": [after]},
+          "side": "after", "source": appline.inline_markdown(content)}
+    return [op], content
+
+
+def case_delete(source, heading: str, under: Sequence[str]) -> List[dict]:
+    """A case withdrawn: its heading and its labelled lines, each guarded."""
+    _heading(source, heading, CASE)
+    if not under:
+        raise Refused("name the case's lines, or they are left under the heading "
+                      "above them")
+    labels = tuple("%s: " % label for label in ("case", "verdict", "reason", "clause"))
+    for bid in under:
+        text = page.inline(_paragraph(source, bid))
+        if not text.startswith(labels):
+            raise Refused("block %s is not a line of a case: %r" % (bid, text[:60]))
     return appline.guarded_delete(source, [heading] + list(under))
 
 

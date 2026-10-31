@@ -55,6 +55,13 @@ SUSPENDED_LINE = re.compile(r"^suspended: (?P<suspended>.*)$", re.S)
 ATTENUATION_LINE = re.compile(r"^attenuation: (?P<attenuation>.*)$", re.S)
 #: the situation a clause governs, under a term or under the hinge's end
 CUE_LINE = re.compile(r"^cue: (?P<cue>.*)$", re.S)
+#: a case's labelled lines, under its heading; ``case:`` is the situation
+CASE_LINES = {"case": re.compile(r"^case: (?P<words>.*)$", re.S),
+              "verdict": re.compile(r"^verdict: (?P<words>.*)$", re.S),
+              "reason": re.compile(r"^reason: (?P<words>.*)$", re.S),
+              "clause": re.compile(r"^clause: (?P<words>.*)$", re.S)}
+CASE_FIELDS = {"case": "situation", "verdict": "verdict", "reason": "reason",
+               "clause": "clause"}
 APPLICATION_LINE = re.compile(
     r"^(?P<what>.*?) · %s (?P<thesis>.*?) · (?P<link>[^·]*?) · "
     r"(?P<standing>[^·(]+?)(?: \((?P<clause>[^)]*)\))?(?: · (?P<note>.*))?$"
@@ -73,7 +80,7 @@ CRUMB_TAIL = re.compile(r"[\s›]+$")
 #: the heading glyphs the renderer writes under each section; a ``### `` under
 #: a section with any other glyph is a heading the grammar does not hold
 MARKERS = {"thesis": (GLYPHS["thesis"],), "glossary": (GLYPHS["glossary"],),
-           "terms": (GLYPHS["term"], GLYPHS["mention"]),
+           "terms": (GLYPHS["term"], GLYPHS["mention"]), "cases": (GLYPHS["case"],),
            "applications": (GLYPHS["application"],), "works": (GLYPHS["work"],),
            "hinge": (GLYPHS["hinge"],)}
 
@@ -716,6 +723,25 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
         works.append(work)
     if works:
         q["works"] = works
+
+    # the user's cases: the name under its heading and the labelled lines
+    # under it, each read by its label and left off where the page has none.
+    # Left off a question that carries none, as the graph file leaves it off
+    cases = []
+    for name, body in _subsections(named.get("cases", []), GLYPHS["case"]):
+        case: dict = {"name": name}
+        for block in body:
+            for label, pattern in CASE_LINES.items():
+                found = pattern.match(block)
+                if found:
+                    case[CASE_FIELDS[label]] = found.group("words")
+                    break
+            else:
+                raise ParseError("a line under the case %r the renderer does not write, "
+                                 "which would be lost: %r" % (name, block[:50]))
+        cases.append(case)
+    if cases:
+        q["cases"] = cases
 
     q["notes"] = [note for section in SECTIONS
                   for note in _notes(named.get(section, []), section)]

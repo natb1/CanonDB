@@ -973,3 +973,32 @@ class WorksLayoutTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CaseTest(unittest.TestCase):
+    """A case is a subsection of its own section, between the terms and
+    the applications: its name as the heading and each filled part as a
+    labelled line, so the reader reads it back by the labels."""
+
+    def setUp(self):
+        self.graph = load("valid")
+        self.graph.get("canon").cases = [model.Case(
+            name="The vote taken on the day",
+            situation="a side is asked to act on an entry it did not mark",
+            verdict="it waits", reason="nothing stands on an unmarked entry",
+            clause="Authority held down")]
+
+    def test_the_section_stands_after_the_terms(self):
+        page = render.body(self.graph, "canon")
+        self.assertIn("\n\n## Cases\n\n### ⚖ The vote taken on the day\n\n"
+                      "case: a side is asked to act on an entry it did not mark\n\n"
+                      "verdict: it waits\n\nreason: nothing stands on an unmarked entry\n\n"
+                      "clause: Authority held down\n\n## Hinge", page)
+        self.assertLess(page.index("## Terms"), page.index("## Cases"))
+
+    def test_an_empty_part_is_left_off(self):
+        self.graph.get("canon").cases[0].clause = ""
+        self.assertNotIn("clause:", render.body(self.graph, "canon"))
+
+    def test_a_tab_with_no_cases_has_no_section(self):
+        self.assertNotIn("## Cases", render.body(load("valid"), "canon"))
