@@ -4,7 +4,7 @@ A reading of the notebook used to run on the calendar: the sitting read the
 week and the backlog the month. What makes a reading due is not the date but
 something the record holds, and this lists it: by project, each thing that
 is due, the kind of trigger that made it so, why, and the next step that
-would take it in. Six kinds the record can read, the sixth only where the
+would take it in. Seven kinds the record can read, the last only where the
 rev it compares is recorded:
 
 - ``again``: a landed answer the AI gave, dated by the model or by the canon
@@ -13,6 +13,10 @@ rev it compares is recorded:
   count);
 - ``pending``: a note opening with *pending*, a clause of a dictation no run
   has applied;
+- ``divergence``: a note opening with *divergence*, data that contradicts
+  the principle of its tab, with the action that would resolve it, whose it
+  is and its price; it stands until the action is done or the principle is
+  refined;
 - ``suspended``: a clause whose acceptance is withheld while its thread is
   open;
 - ``backstop``: a question whose hinge records no amendment within the
@@ -35,7 +39,7 @@ import re
 from datetime import date
 from typing import List, NamedTuple, Optional, Tuple
 
-from . import again, drift, project
+from . import again, divergence, drift, project
 from .model import Graph, Question
 
 #: how a hinge's thesis part dates an amendment
@@ -45,7 +49,7 @@ PENDING = "pending"
 #: how a hinge's provenance records the rev an upstream question was read
 #: at: the clause's machine-read part, which prose may follow after a comma
 UPSTREAM = re.compile(r"upstream: (?P<id>[A-Za-z0-9_-]+) at rev (?P<rev>\d+)")
-KINDS = ("again", "drift", "pending", "suspended", "backstop", "upstream")
+KINDS = ("again", "drift", "pending", "divergence", "suspended", "backstop", "upstream")
 
 
 class Row(NamedTuple):
@@ -111,6 +115,19 @@ def rows(graph: Graph, model: Optional[str] = None, moved: Optional[again.Moved]
                 out.append(Row(q.project, q.id, "pending",
                                "a pending note on %s: %s" % (note.section, _clip(note.body)),
                                "take it in: /principal:dictate in the project's checkout"))
+        for note in q.notes:
+            parts = divergence.parse(note.body)
+            if parts is None:
+                continue
+            gaps = divergence.missing(parts)
+            if gaps:
+                step = "track it: the note names no %s" % ", ".join(gaps)
+            else:
+                step = "%s (%s's, budget %s; price: %s)" % (
+                    parts["action"], parts["whose"], parts["budget"], _clip(str(parts["price"]), 40))
+            out.append(Row(q.project, q.id, "divergence",
+                           "the data diverges on %s: %s" % (note.section, _clip(str(parts["data"]))),
+                           step))
         for thesis in q.theses:
             for term in thesis.terms:
                 if term.suspended.strip():
@@ -158,6 +175,12 @@ def rows(graph: Graph, model: Optional[str] = None, moved: Optional[again.Moved]
         for uid, _ in upstream_clauses(r.hinge.thesis):
             up = by_id.get(uid)
             covered.add(up.project if up is not None else uid)
+        # an earlier project that raises this entry carries the dependency on
+        # the edge itself: the clause that raises it, when it moves, makes the
+        # answer due again, and no rev need be recorded beside it
+        for src in project.in_edges(graph).get(rid, []):
+            if src in by_id:
+                covered.add(by_id[src].project)
         for earlier in roots[:i]:
             e = by_id.get(earlier)
             name = e.project if e is not None else ""

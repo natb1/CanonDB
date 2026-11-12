@@ -572,6 +572,49 @@ def incoming_insert(source, header: str, anchor: str, raiser: str,
     return [op], line
 
 
+def lineage_replace(source, bid: str, ancestry: Sequence[Tuple[str, str]]
+                    ) -> Tuple[List[dict], str]:
+    """The breadcrumb of a tab, rewritten where it stands: the lineage the
+    projection now gives, each step a chip. ``ancestry`` is (question, tab)
+    from the top down, without the tab's own question; empty for a tab that
+    nothing raises. A tab's breadcrumb changes without its body changing
+    when something above it gains a raiser, as a project's entry does when
+    an earlier project raises it, and then every tab beneath it wants its
+    first block rewritten and nothing else."""
+    node = block(source, bid)
+    was = "".join(node.itertext()).strip()
+    if node.tag != "paragraph" or not was.startswith(read.LINEAGE):
+        raise Refused("block %s is not the breadcrumb: %r" % (bid, was[:40]))
+    line = "%s %s" % (read.LINEAGE, " › ".join(render.chip(a) for a, _ in ancestry)
+                      if ancestry else "root")
+    chips = {render.chip_key(a): {"type": "mention", "ref": "file/%s" % tab}
+             for a, tab in ancestry}
+    op = {"op": "replace", "target": {"kind": "blocks", "ids": [bid]},
+          "ifHash": node.get("h", ""), "ifRev": appline.rev(source),
+          "with": appline.inline_markdown(line, chips)}
+    return [op], line
+
+
+def incoming_first(source, title: str, anchor: str, raiser: str, raiser_tab: str
+                   ) -> Tuple[List[dict], str]:
+    """The header list of a tab that had none, its first item: written after
+    the title, where the renderer puts it. A tab nothing raised carries no
+    list; when a question of an earlier project comes to raise it, the list
+    begins here, and a further item is ``incoming_insert``'s."""
+    node = block(source, title)
+    if node.tag != "paragraph" or node.get("heading") != "1":
+        raise Refused("block %s is not the tab's title" % title)
+    line = render.incoming_item(_anchor(anchor), raiser)
+    got = _read_back("%s root\n\n# here\n\n%s\n" % (read.LINEAGE, line),
+                     {render.chip_key(raiser): raiser})
+    if got["incoming"] != [(read.strip_chips(anchor), raiser)]:
+        raise Refused("the item does not read back as written: %r" % got["incoming"])
+    chips = {render.chip_key(raiser): {"type": "mention", "ref": "file/%s" % raiser_tab}}
+    op = {"op": "insert", "target": {"kind": "blocks", "ids": [title]},
+          "side": "after", "source": appline.inline_markdown(line, chips)}
+    return [op], line
+
+
 def incoming_delete(source, header: str, item: str) -> List[dict]:
     """One item off a header list, guarded; the list's last item goes with the
     list, which the document keeps whole."""

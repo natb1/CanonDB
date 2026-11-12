@@ -57,12 +57,20 @@ def projects(graph: Graph) -> List[str]:
 
 
 def candidates(graph: Graph) -> Dict[str, List[str]]:
-    """project -> its questions that are not a tradition and have no incoming
-    term edge, lexicographically: a project's root, where it has one."""
+    """project -> its questions that are not a tradition and that nothing in
+    the project itself raises, lexicographically: a project's entry, where it
+    has one. An entry may be raised from an earlier project, which is how one
+    project's end is a question of another's; what makes it the entry is
+    that no question of its own project stands above it."""
     ins = in_edges(graph)
+    by_id = graph.by_id()
     out: Dict[str, List[str]] = {p: [] for p in projects(graph)}
     for q in sorted(graph.questions, key=lambda x: x.id):
-        if not q.tradition and not ins.get(q.id):
+        if q.tradition:
+            continue
+        own = [s for s in ins.get(q.id, [])
+               if s in by_id and not by_id[s].tradition and by_id[s].project == q.project]
+        if not own:
             out.setdefault(q.project, []).append(q.id)
     return out
 
@@ -96,12 +104,32 @@ def tradition_roots(graph: Graph) -> List[str]:
     return sorted(q.id for q in graph.questions if q.tradition and not ins.get(q.id))
 
 
+def raised_entries(graph: Graph) -> List[str]:
+    """The project entries that a question of an earlier project raises, in
+    project order: each stands in the one tree under its raiser, and is
+    marked as an entry by its order, in the p series."""
+    ins = in_edges(graph)
+    return [r for r in project_roots(graph) if ins.get(r)]
+
+
 def roots(graph: Graph) -> List[str]:
-    """Every top-level question of the lineage: each project's root, in
-    project order, then the tradition roots."""
-    top = project_roots(graph)
+    """Every top-level question of the lineage: each project's entry that
+    nothing raises, in project order, then the tradition roots."""
+    ins = in_edges(graph)
+    top = [r for r in project_roots(graph) if not ins.get(r)]
     top.extend(r for r in tradition_roots(graph) if r not in top)
     return top
+
+
+def members(graph: Graph, name: str) -> Set[str]:
+    """Every question a project's lineage reaches: its entry and whatever the
+    entry's term edges lead to, at any depth. A question raised from two
+    projects is a member of both, whichever tab tree it is placed in."""
+    found = candidates(graph).get(name) or []
+    out: Set[str] = set()
+    for rid in found[:1]:
+        out |= reachable_from(graph, rid)
+    return out
 
 
 def tradition_project_root(graph: Graph) -> Optional[str]:
@@ -251,7 +279,10 @@ def tree(graph: Graph) -> Dict[Optional[str], List[str]]:
 def orders(graph: Graph) -> Dict[str, str]:
     """question id -> its order string among its siblings in the tab tray.
 
-    Siblings take a0, a1, a2, … lexicographically by id. A notebook of one
+    Siblings take a0, a1, a2, … lexicographically by id; a project's entry
+    that an earlier project raises stands among its raiser's children with an
+    order in the p series, p0, p1, … in project order, which is what marks a
+    subtree of the one tree as a project. A notebook of one
     project puts its root at top level with order a0 and the tradition roots
     at top level too, lexicographically, with b0, b1, …. A notebook of
     several puts each project's root at top level, a0, a1, … in project
@@ -265,12 +296,16 @@ def orders(graph: Graph) -> Dict[str, str]:
     padding and keeps the orders it had.
     """
     out: Dict[str, str] = {}
+    raised = raised_entries(graph)
     for parent, children in placement_children(graph).items():
         if parent is None:
             continue
-        for i, child in enumerate(children):
-            out[child] = "a" + _index(i, len(children))
-    tops = project_roots(graph)
+        plain = [c for c in children if c not in raised]
+        for i, child in enumerate(plain):
+            out[child] = "a" + _index(i, len(plain))
+    for i, rid in enumerate(raised):
+        out[rid] = "p" + _index(i, len(raised))
+    tops = [r for r in project_roots(graph) if r not in raised]
     for i, rid in enumerate(tops):
         out[rid] = "a" + _index(i, len(tops))
     if tradition_project_root(graph) is None:

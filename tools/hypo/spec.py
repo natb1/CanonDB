@@ -259,8 +259,8 @@ def term_total(graph: Graph) -> Yield:
 
 
 @check("one-root",
-       "each project has exactly one question with no incoming term edge, and it is "
-       "not a tradition")
+       "each project has exactly one question that nothing in the project raises, and "
+       "it is not a tradition")
 def one_root(graph: Graph) -> Yield:
     """The kind says what a question with no raiser may be, and
     ``scope-closed`` leans on it over a partial graph, so a root's kind and
@@ -273,10 +273,15 @@ def one_root(graph: Graph) -> Yield:
     """
     ins = project.in_edges(graph)
     for q in graph.questions:
-        if q.kind == "root" and ins.get(q.id) and not q.tradition:
-            # a tradition's head with a raiser is ``tradition-isolated``'s
+        by_id = graph.by_id()
+        own = sorted(s for s in ins.get(q.id, [])
+                     if s in by_id and by_id[s].project == q.project)
+        if q.kind == "root" and own and not q.tradition:
+            # a tradition's head with a raiser is ``tradition-isolated``'s;
+            # a raiser in an earlier project is what makes a project's end a
+            # question of another's, and ``project-order`` holds its direction
             yield q.id, ("its kind is root, and a term edge leads to it from %s"
-                         % ", ".join(sorted(ins[q.id])))
+                         % ", ".join(own))
         elif q.kind != "root" and not ins.get(q.id) and not graph.partial:
             yield q.id, "nothing raises it, and its kind is %r rather than root" % q.kind
     found = project.candidates(graph)
@@ -355,8 +360,8 @@ def tradition_isolated(graph: Graph) -> Yield:
 
 
 @check("project-order",
-       "a term edge stays inside its project, and a mention leaves it only for an earlier "
-       "project or the tradition project")
+       "a term edge leaves its project only for a later one, and a mention only for an "
+       "earlier one or the tradition project")
 def project_order(graph: Graph) -> Yield:
     """A notebook of several projects keeps each project's lineage its own:
     a turn carries canon above its question, and canon is kept per project,
@@ -380,8 +385,11 @@ def project_order(graph: Graph) -> Yield:
             target = by_id.get(term.to)
             if target is None or target.tradition or target.project == q.project:
                 continue
-            yield q.id, ("term %r raises %s, a question of project %s; a term edge "
-                         "stays inside project %s, and a mention is what crosses"
+            if rank.get(q.project, len(rank)) < rank.get(target.project, len(rank)):
+                continue
+            yield q.id, ("term %r raises %s, a question of project %s, which stands "
+                         "before project %s; a term edge crosses only from an earlier "
+                         "project to a later one"
                          % (term.title, target.id, target.project, q.project))
         for mention in q.mentions():
             target = by_id.get(mention.to)
@@ -1705,6 +1713,28 @@ def dictation_pending(graph: Graph) -> Yield:
             if words.lower().startswith("pending"):
                 yield q.id, ("a pending note on %s, a clause no run has yet applied: %s"
                              % (note.section, _clip(words)))
+
+
+@check("divergence-complete",
+       "a divergence note names its data, the action that would resolve it, whose the "
+       "action is and its price")
+def divergence_complete(graph: Graph) -> Yield:
+    """Data that contradicts a principle is tracked on the principle's tab as
+    a note opening with the word *divergence*. The principle stands; what
+    the record owes is the action that would resolve the divergence, whose
+    it is, the user's or the AI's, and its price, which is the action
+    required. A note that names less has recorded a complaint and tracked
+    nothing: no one can allocate budget to an action nobody named."""
+    from . import divergence
+    for q in graph.questions:
+        for note in q.notes:
+            parts = divergence.parse(note.body)
+            if parts is None:
+                continue
+            gaps = divergence.missing(parts)
+            if gaps:
+                yield q.id, ("a divergence note on %s names no %s: %s"
+                             % (note.section, ", ".join(gaps), _clip(note.body)))
 
 
 @check("claim-open",
