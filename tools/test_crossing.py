@@ -105,5 +105,25 @@ class TurnStaysInsideItsProjectTest(unittest.TestCase):
         self.assertIn("ti-esti", turn.above(graph, "canon"))
 
 
+class ScopedWriteKeepsItsChipsTest(unittest.TestCase):
+    """A graph read for a scope holds some of the notebook's questions. A
+    write rendered from it would place a chip to a question it does not hold
+    with no tab behind it, and the chip on the page would be lost."""
+
+    def test_a_body_whose_chip_has_no_tab_is_refused(self):
+        from hypo import apply
+        graph = load("valid")
+        victim = graph.get("ti-esti").theses[0].terms[0].to
+        graph.questions = [q for q in graph.questions if q.id != victim]
+        with self.assertRaises(apply.Unresolved) as caught:
+            apply._chips_resolved("ti-esti", "words <?claude block m_gone?>", {})
+        self.assertIn("m_gone", str(caught.exception.args[0]))
+
+    def test_a_body_whose_chips_all_resolve_passes(self):
+        from hypo import apply
+        apply._chips_resolved("q", "words <?claude block m_here?>",
+                              {"m_here": {"type": "mention", "ref": "file/t"}})
+
+
 if __name__ == "__main__":
     unittest.main()

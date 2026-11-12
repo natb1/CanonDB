@@ -32,6 +32,15 @@ ADMISSIONS = "admissions"
 PLAN = "the plan"
 PINNED = ("held questions", "digressions", "contradictions found", "aporiai",
           "declarations")
+#: what belongs to a project outside the line's scope: each item leaves by a
+#: carrier, a row of the plan that takes it to its own project, or is closed
+PARKED = "parked for other projects"
+#: what the questioner decided and did not ask: each rests on an admission
+MECHANISMS = "mechanisms decided"
+#: a line of aporia, sealed before its question and stated after the answer
+SEALED = re.compile(r"\bSealed\b")
+STATED = re.compile(r"^- (?P<id>[A-Z]{1,2}\d+), stated\b")
+ADOPTED = re.compile(r"\bAdopted by the user\b")
 
 #: an item's id: capitals then digits, as the doc numbers its lists
 ID = re.compile(r"\b([A-Z]{1,2})(\d+)\b")
@@ -101,6 +110,8 @@ class Doc:
     """A line doc's sections, each its items in order."""
     sections: Dict[str, List[Item]] = field(default_factory=dict)
     title: str = ""
+    #: every bullet of a section as it stands, numbered or not
+    lines: Dict[str, List[str]] = field(default_factory=dict)
 
     def items(self, section: str) -> List[Item]:
         return self.sections.get(section, [])
@@ -134,10 +145,12 @@ def parse(markdown: str) -> Doc:
         if block.startswith("## "):
             section = block[3:].strip().lower()
             doc.sections.setdefault(section, [])
+            doc.lines.setdefault(section, [])
             continue
         if section is None:
             continue
         for line in block.splitlines():
+            doc.lines.setdefault(section, []).append(line.strip())
             found = ITEM.match(line.strip())
             if found:
                 doc.sections[section].append(Item(section, found.group("id"),
@@ -190,12 +203,34 @@ def check(doc: Doc, questions: Optional[Set[str]] = None) -> List[Finding]:
         else:
             out.append(Finding(WARN, "admission %s, the notebook's own, is cited by no "
                                      "row: %s" % (admission.id, _clip(admission.text))))
+    stated = {m.group("id") for line in doc.lines.get("aporiai", [])
+              for m in [STATED.match(line)] if m}
     for section in PINNED:
         for item in doc.items(section):
             if item.id in cited or item.closed:
                 continue
+            if section == "aporiai" and SEALED.search(item.text) and item.id in stated:
+                continue  # a sealed line, stated after its answer, is on the record
             out.append(Finding(WARN, "%s %s is neither closed nor cited by a row: %s"
                                % (section, item.id, _clip(item.text))))
+    for item in doc.items(PARKED):
+        if item.id in cited or item.closed:
+            continue
+        out.append(Finding(ERROR, "parked item %s has no carrier: no row of the plan takes "
+                                  "it to its own project, and it is not closed: %s"
+                           % (item.id, _clip(item.text))))
+    admitted = {a.id for a in doc.admissions()}
+    for item in doc.items(MECHANISMS):
+        if ADOPTED.search(item.text) or item.closed:
+            continue
+        if not any(c in admitted for c in item.cites()):
+            out.append(Finding(ERROR, "mechanism %s rests on no admission: one the admitted "
+                                      "principles do not decide is not decided, and its "
+                                      "principle is asked: %s" % (item.id, _clip(item.text))))
+    for item in doc.items("aporiai"):
+        if SEALED.search(item.text) and item.id not in stated:
+            out.append(Finding(WARN, "the sealed line %s was never stated: what its answer "
+                                     "was tested against is not on the record" % item.id))
     for name in (ADMISSIONS,):
         if name not in doc.sections:
             out.append(Finding(ERROR, "the doc has no section '%s'" % name.title()))
