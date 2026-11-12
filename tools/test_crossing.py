@@ -84,5 +84,26 @@ class ReaderTest(unittest.TestCase):
         self.assertEqual(set(read.projects(tabs).values()), {""})
 
 
+
+class TurnStaysInsideItsProjectTest(unittest.TestCase):
+    """Canon is kept per project. A question of an earlier project that
+    raises a later project's entry constrains it in the notebook; it is not
+    canon a turn of the later project carries, and it blocks nothing there."""
+
+    def test_a_held_raiser_in_another_project_blocks_nothing(self):
+        graph = crossed()
+        root, second = graph.get("ti-esti"), graph.get("second")
+        self.assertNotIn("second", project.blocked_behind(graph, "ti-esti"))
+        fired = [f.line() for f in spec.run(graph, only=["put-in-order"])
+                 if f.question == "second"]
+        self.assertEqual(fired, [])
+
+    def test_a_turns_lineage_stops_at_its_projects_entry(self):
+        from hypo import turn
+        graph = crossed()
+        self.assertEqual(turn.above(graph, "second"), [])
+        self.assertIn("ti-esti", turn.above(graph, "canon"))
+
+
 if __name__ == "__main__":
     unittest.main()

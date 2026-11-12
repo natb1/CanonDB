@@ -151,7 +151,12 @@ def rows(graph: Graph, model: Optional[str] = None, moved: Optional[again.Moved]
         # the rev an upstream question was read at, where the provenance
         # records it: moved past since, or gone from the graph, is due; not
         # moved is nothing, and a rev the graph does not hold is not guessed
+        raisers = project.in_edges(graph).get(q.id, [])
         for uid, at in upstream_clauses(q.hinge.thesis if q.hinge is not None else ""):
+            if uid in raisers:
+                # the upstream now raises this question: the edge carries the
+                # dependency, and the rev once recorded beside it is history
+                continue
             up = by_id.get(uid)
             if up is None:
                 out.append(Row(q.project, q.id, "upstream",

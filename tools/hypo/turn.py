@@ -65,14 +65,22 @@ def above(graph: Graph, qid: str) -> List[str]:
     by_id = graph.by_id()
     ins = project.in_edges(graph)
     seen: Set[str] = set()
-    queue = [s for s in ins.get(qid, []) if by_id.get(s) and by_id[s].answerer == AI]
+    mine = by_id[qid].project if qid in by_id else ""
+
+    def carried(s: str) -> bool:
+        # a turn carries the canon of its own project and no other's: canon is
+        # kept per project, each in its own repository, so a question of an
+        # earlier project that raises this project's entry is a constraint the
+        # notebook's review reads across the edge and never canon in a turn
+        return bool(by_id.get(s)) and by_id[s].answerer == AI and by_id[s].project == mine
+
+    queue = [s for s in ins.get(qid, []) if carried(s)]
     while queue:
         cur = queue.pop()
         if cur in seen:
             continue
         seen.add(cur)
-        queue.extend(s for s in ins.get(cur, [])
-                     if by_id.get(s) and by_id[s].answerer == AI)
+        queue.extend(s for s in ins.get(cur, []) if carried(s))
     seen.discard(qid)
     dist = project.distances(graph)
     return sorted(seen, key=lambda s: (dist.get(s, project.INF), s))
