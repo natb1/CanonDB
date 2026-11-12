@@ -42,7 +42,7 @@
         ".claude/settings.json",
         "CLAUDE.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
       "rounds": 7
     },
     {
@@ -51,7 +51,7 @@
       "files": [
         "skills/dictate/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
       "rounds": 8
     },
     {
@@ -60,7 +60,7 @@
       "files": [
         "skills/dictate/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
       "rounds": 4
     },
     {
@@ -99,7 +99,7 @@
         "tools/fixtures/invalid-project-order.json",
         "tools/fixtures/invalid-claim-open.json"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
       "rounds": 7
     },
     {
@@ -131,7 +131,7 @@
         "tools/inplace.py",
         "tools/test_inplace.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
       "rounds": 11
     },
     {
@@ -241,7 +241,7 @@
         "tools/test_spec.py",
         "tools/test_text.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
       "rounds": 9
     },
     {
@@ -314,7 +314,7 @@
         "tools/hypo/due.py",
         "tools/test_due.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
       "rounds": 2
     },
     {
