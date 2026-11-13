@@ -54,7 +54,7 @@ own. `tools/digest.py --project <p>` is another: a project's end and method, its
 clauses with their cues and its cases, as the instructions a Claude Project's sessions open
 with. `tools/line.py check` reads a line doc's export against the graph: every admission cited
 by a row of its plan, every row citing one, every tab a row names present. The notebook is its source: the file is exported again, never edited, and never committed by
-the notebook's tooling.
+the notebook's tooling. `tools/shares.py` gives each principle the share of the root it carries, in equal parts unless pressure corrects them, and proposes arrangements that need less pressure; `tools/divergence.py` lists the data that contradicts a principle, each with the action that would resolve it; and `tools/crossing.py` reads the edges that run from one project to the entry of a later one, which is the derivation reading.
 
 ## Installing the plugin
 

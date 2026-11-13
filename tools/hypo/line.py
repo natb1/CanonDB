@@ -32,6 +32,22 @@ ADMISSIONS = "admissions"
 PLAN = "the plan"
 PINNED = ("held questions", "digressions", "contradictions found", "aporiai",
           "declarations")
+#: what belongs to a project outside the line's scope: each item leaves by a
+#: carrier, a row of the plan that takes it to its own project, or is closed
+PARKED = "parked for other projects"
+#: what the questioner decided and did not ask: each rests on an admission
+MECHANISMS = "mechanisms decided"
+#: a line of aporia, sealed before its question and stated after the answer
+SEALED = re.compile(r"\bSealed\b")
+STATED = re.compile(r"^- (?P<id>[A-Z]{1,2}\d+), stated\b")
+ADOPTED = re.compile(r"\bAdopted by the user\b")
+#: the test of the dictation: each item a question put after the notebook was
+#: updated, the record's answer sealed before it and graded after
+FIDELITY = "fidelity rounds"
+GRADES = ("agrees", "verdict only", "short of the edge", "diverges", "silent")
+GRADE = re.compile(r"\bGrade: (?P<grade>%s)\b" % "|".join(GRADES))
+REMEDY = re.compile(r"\bRemedy: ")
+REDRAWN = re.compile(r"\bRedrawn: ")
 
 #: an item's id: capitals then digits, as the doc numbers its lists
 ID = re.compile(r"\b([A-Z]{1,2})(\d+)\b")
@@ -101,6 +117,8 @@ class Doc:
     """A line doc's sections, each its items in order."""
     sections: Dict[str, List[Item]] = field(default_factory=dict)
     title: str = ""
+    #: every bullet of a section as it stands, numbered or not
+    lines: Dict[str, List[str]] = field(default_factory=dict)
 
     def items(self, section: str) -> List[Item]:
         return self.sections.get(section, [])
@@ -134,10 +152,12 @@ def parse(markdown: str) -> Doc:
         if block.startswith("## "):
             section = block[3:].strip().lower()
             doc.sections.setdefault(section, [])
+            doc.lines.setdefault(section, [])
             continue
         if section is None:
             continue
         for line in block.splitlines():
+            doc.lines.setdefault(section, []).append(line.strip())
             found = ITEM.match(line.strip())
             if found:
                 doc.sections[section].append(Item(section, found.group("id"),
@@ -190,15 +210,72 @@ def check(doc: Doc, questions: Optional[Set[str]] = None) -> List[Finding]:
         else:
             out.append(Finding(WARN, "admission %s, the notebook's own, is cited by no "
                                      "row: %s" % (admission.id, _clip(admission.text))))
+    stated = {m.group("id") for line in doc.lines.get("aporiai", [])
+              for m in [STATED.match(line)] if m}
     for section in PINNED:
         for item in doc.items(section):
             if item.id in cited or item.closed:
                 continue
+            if section == "aporiai" and SEALED.search(item.text) and item.id in stated:
+                continue  # a sealed line, stated after its answer, is on the record
             out.append(Finding(WARN, "%s %s is neither closed nor cited by a row: %s"
                                % (section, item.id, _clip(item.text))))
+    for item in doc.items(PARKED):
+        if item.id in cited or item.closed:
+            continue
+        out.append(Finding(ERROR, "parked item %s has no carrier: no row of the plan takes "
+                                  "it to its own project, and it is not closed: %s"
+                           % (item.id, _clip(item.text))))
+    admitted = {a.id for a in doc.admissions()}
+    for item in doc.items(MECHANISMS):
+        if ADOPTED.search(item.text) or item.closed:
+            continue
+        if not any(c in admitted for c in item.cites()):
+            out.append(Finding(ERROR, "mechanism %s rests on no admission: one the admitted "
+                                      "principles do not decide is not decided, and its "
+                                      "principle is asked: %s" % (item.id, _clip(item.text))))
+    for item in doc.items("aporiai"):
+        if SEALED.search(item.text) and item.id not in stated:
+            out.append(Finding(WARN, "the sealed line %s was never stated: what its answer "
+                                     "was tested against is not on the record" % item.id))
+    out.extend(_fidelity(doc))
     for name in (ADMISSIONS,):
         if name not in doc.sections:
             out.append(Finding(ERROR, "the doc has no section '%s'" % name.title()))
+    return out
+
+
+def _fidelity(doc: Doc) -> List[Finding]:
+    """The fidelity rounds: every item sealed is stated and graded, and every
+    grade but agrees names its remedy, which is then drawn again."""
+    out: List[Finding] = []
+    stated: Dict[str, str] = {}
+    for text in doc.lines.get(FIDELITY, []):
+        m = STATED.match(text)
+        if m:
+            stated[m.group("id")] = text
+    for item in doc.items(FIDELITY):
+        if not SEALED.search(item.text):
+            continue
+        said = stated.get(item.id)
+        if said is None:
+            out.append(Finding(ERROR, "the prediction %s was sealed and never stated: the "
+                                      "dictation is not tested until it is" % item.id))
+            continue
+        grade = GRADE.search(said)
+        if not grade:
+            out.append(Finding(ERROR, "the prediction %s is stated with no grade: one of %s"
+                               % (item.id, ", ".join(GRADES))))
+            continue
+        if grade.group("grade") == "agrees":
+            continue
+        if not REMEDY.search(said):
+            out.append(Finding(ERROR, "the prediction %s is graded %s and names no remedy: "
+                                      "a failure to predict is a gap, in the notebook or in "
+                                      "how it is read" % (item.id, grade.group("grade"))))
+        elif not REDRAWN.search(said):
+            out.append(Finding(WARN, "the remedy for %s was not tested: the prediction is "
+                                     "drawn again from the notebook alone" % item.id))
     return out
 
 

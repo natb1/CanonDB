@@ -42,8 +42,8 @@
         ".claude/settings.json",
         "CLAUDE.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3199",
-      "rounds": 6
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
+      "rounds": 7
     },
     {
       "question": "dictate",
@@ -51,8 +51,8 @@
       "files": [
         "skills/dictate/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3199",
-      "rounds": 7
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
+      "rounds": 9
     },
     {
       "question": "wording",
@@ -60,8 +60,8 @@
       "files": [
         "skills/dictate/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3199",
-      "rounds": 3
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
+      "rounds": 4
     },
     {
       "question": "priority",
@@ -99,8 +99,8 @@
         "tools/fixtures/invalid-project-order.json",
         "tools/fixtures/invalid-claim-open.json"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3199",
-      "rounds": 6
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
+      "rounds": 7
     },
     {
       "question": "docs-encoding",
@@ -131,8 +131,8 @@
         "tools/inplace.py",
         "tools/test_inplace.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3199",
-      "rounds": 10
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
+      "rounds": 11
     },
     {
       "question": "docs-encoding",
@@ -160,23 +160,11 @@
       "question": "hypomnemata",
       "application": "hypomnemata tooling",
       "files": [
-        "tools/hypo/model.py",
-        "tools/hypo/spec.py",
-        "tools/hypo/render.py",
-        "tools/hypo/project.py",
-        "tools/hypo/cli.py",
-        "tools/hypo/text.py",
+        ".gitignore",
         "tools/check.py",
-        "tools/project.py",
-        "tools/render.py",
-        "tools/lineage.py",
-        "tools/hypo/__init__.py",
-        "tools/test_model.py",
-        "tools/test_spec.py",
-        "tools/test_render.py",
-        "tools/test_text.py",
-        "tools/test_cli.py",
-        "tools/support.py",
+        "tools/crossing.py",
+        "tools/digest.py",
+        "tools/divergence.py",
         "tools/fixtures/invalid-acyclic.json",
         "tools/fixtures/invalid-anchor-grain.json",
         "tools/fixtures/invalid-anchor-substring.json",
@@ -184,10 +172,13 @@
         "tools/fixtures/invalid-answer-cardinality.json",
         "tools/fixtures/invalid-answerer-set.json",
         "tools/fixtures/invalid-assent-present.json",
+        "tools/fixtures/invalid-case-complete.json",
+        "tools/fixtures/invalid-cases-on-author.json",
         "tools/fixtures/invalid-deadlock-complete.json",
         "tools/fixtures/invalid-definition-anchorable.json",
-        "tools/fixtures/invalid-dictation-pending.json",
         "tools/fixtures/invalid-definition-once.json",
+        "tools/fixtures/invalid-dictation-pending.json",
+        "tools/fixtures/invalid-divergence-complete.json",
         "tools/fixtures/invalid-divergence-counter.json",
         "tools/fixtures/invalid-end-stated.json",
         "tools/fixtures/invalid-fields-parted.json",
@@ -218,21 +209,40 @@
         "tools/fixtures/invalid-user-named.json",
         "tools/fixtures/invalid-verbatim-collision.json",
         "tools/fixtures/invalid-vocabulary.json",
-        "tools/fixtures/valid.json",
-        "tools/test_scope.py",
-        ".gitignore",
-        "tools/hypo/line.py",
-        "tools/line.py",
-        "tools/test_line.py",
         "tools/fixtures/line-doc.md",
-        "tools/fixtures/invalid-cases-on-author.json",
-        "tools/fixtures/invalid-case-complete.json",
+        "tools/fixtures/valid.json",
+        "tools/hypo/__init__.py",
+        "tools/hypo/cli.py",
+        "tools/hypo/crossing.py",
         "tools/hypo/digest.py",
-        "tools/digest.py",
-        "tools/test_digest.py"
+        "tools/hypo/divergence.py",
+        "tools/hypo/line.py",
+        "tools/hypo/model.py",
+        "tools/hypo/project.py",
+        "tools/hypo/render.py",
+        "tools/hypo/share.py",
+        "tools/hypo/spec.py",
+        "tools/hypo/text.py",
+        "tools/line.py",
+        "tools/lineage.py",
+        "tools/project.py",
+        "tools/render.py",
+        "tools/shares.py",
+        "tools/support.py",
+        "tools/test_cli.py",
+        "tools/test_crossing.py",
+        "tools/test_digest.py",
+        "tools/test_divergence.py",
+        "tools/test_line.py",
+        "tools/test_model.py",
+        "tools/test_render.py",
+        "tools/test_scope.py",
+        "tools/test_share.py",
+        "tools/test_spec.py",
+        "tools/test_text.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3199",
-      "rounds": 8
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
+      "rounds": 10
     },
     {
       "question": "recognition",
@@ -304,8 +314,8 @@
         "tools/hypo/due.py",
         "tools/test_due.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3195",
-      "rounds": 1
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
+      "rounds": 2
     },
     {
       "question": "docs-encoding",

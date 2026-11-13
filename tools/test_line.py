@@ -125,3 +125,124 @@ class CliTest(unittest.TestCase):
             done = run("line.py", "check", fixture("line-doc.md"), path)
             self.assertEqual(done.returncode, 1)
             self.assertIn("ERROR shape", done.stderr)
+
+
+SCOPED = """# A line
+
+## Admissions
+
+- B1. The user decides.
+- B2. Mechanisms rest on principles.
+
+## Mechanisms decided
+
+- M1. The record is one line. Justified by B2. Decided at S3.
+{mechanism}
+
+## Parked for other projects
+
+- P1. Ledger. A question of the ledger's own. Carrier: a pending note.
+{parked}
+
+## Aporiai
+
+- L1. On S2's question. Sealed before the question was put; stated at S3.
+{stated}
+
+## The plan
+
+- A1. The answer gains a clause. B1, B2.
+{row}
+"""
+
+
+class ScopedLineTest(unittest.TestCase):
+    """A line with a declared scope parks what belongs to another project,
+    lists the mechanisms the questioner decided, and seals what a critical
+    answer is tested against."""
+
+    def findings(self, **parts):
+        fill = {"mechanism": "", "parked": "", "stated": "- L1, stated at S3. It met it.",
+                "row": "- F1. Ledger: a pending note holding P1. B1."}
+        fill.update(parts)
+        return line.check(line.parse(SCOPED.format(**fill)))
+
+    def test_a_whole_line_passes(self):
+        self.assertEqual([f.line() for f in self.findings()], [])
+
+    def test_a_parked_item_without_a_carrier_fails(self):
+        found = self.findings(parked="- P2. Ordo. Another project's question.")
+        self.assertEqual([f.severity for f in found], [line.ERROR])
+        self.assertIn("parked item P2 has no carrier", found[0].message)
+
+    def test_a_parked_item_that_is_closed_needs_no_carrier(self):
+        found = self.findings(parked="- P2. Ordo. Another project's question. Closed by B1.")
+        self.assertEqual(found, [])
+
+    def test_a_mechanism_resting_on_no_admission_fails(self):
+        found = self.findings(mechanism="- M2. The queue sorts by depth. Decided at S4.")
+        self.assertEqual([f.severity for f in found], [line.ERROR])
+        self.assertIn("mechanism M2 rests on no admission", found[0].message)
+
+    def test_a_mechanism_the_user_adopted_needs_no_citation(self):
+        found = self.findings(mechanism="- M2. Parked items leave by a carrier. Adopted by the user.")
+        self.assertEqual(found, [])
+
+    def test_a_sealed_line_never_stated_is_reported(self):
+        found = self.findings(stated="")
+        self.assertEqual({f.severity for f in found}, {line.WARN})
+        self.assertTrue(any("sealed line L1 was never stated" in f.message for f in found))
+
+
+FIDELITY = """# A line
+
+## Admissions
+
+- B1. The record is good when it reproduces the user's answers.
+
+## Fidelity rounds
+
+- F1. Sealed 0123456789abcdef. Put in round 1.
+{stated}
+
+## The plan
+
+- A1. A case on the tab. B1.
+"""
+
+
+class FidelityTest(unittest.TestCase):
+    """After the notebook is updated the dictation is tested: the record's
+    answer sealed before each question, graded after, every failure remedied."""
+
+    def findings(self, stated):
+        return line.check(line.parse(FIDELITY.format(stated=stated)))
+
+    def test_a_prediction_that_agrees_passes(self):
+        self.assertEqual(self.findings("- F1, stated at S2. Grade: agrees."), [])
+
+    def test_a_sealed_prediction_never_stated_fails(self):
+        found = self.findings("")
+        self.assertEqual([f.severity for f in found], [line.ERROR])
+        self.assertIn("F1 was sealed and never stated", found[0].message)
+
+    def test_a_stated_prediction_without_a_grade_fails(self):
+        found = self.findings("- F1, stated at S2. It was close.")
+        self.assertEqual([f.severity for f in found], [line.ERROR])
+        self.assertIn("with no grade", found[0].message)
+
+    def test_a_failure_without_a_remedy_fails(self):
+        found = self.findings("- F1, stated at S2. Grade: diverges. Class: misread.")
+        self.assertEqual([f.severity for f in found], [line.ERROR])
+        self.assertIn("names no remedy", found[0].message)
+
+    def test_a_remedy_not_drawn_again_is_reported(self):
+        found = self.findings("- F1, stated at S2. Grade: verdict only. Remedy: a case.")
+        self.assertEqual([f.severity for f in found], [line.WARN])
+        self.assertIn("was not tested", found[0].message)
+
+    def test_a_remedy_drawn_again_passes(self):
+        found = self.findings("- F1, stated at S2. Grade: diverges. Remedy: a case on the "
+                              "tab. Redrawn: agrees.")
+        self.assertEqual(found, [])
+
