@@ -41,6 +41,13 @@ MECHANISMS = "mechanisms decided"
 SEALED = re.compile(r"\bSealed\b")
 STATED = re.compile(r"^- (?P<id>[A-Z]{1,2}\d+), stated\b")
 ADOPTED = re.compile(r"\bAdopted by the user\b")
+#: the test of the dictation: each item a question put after the notebook was
+#: updated, the record's answer sealed before it and graded after
+FIDELITY = "fidelity rounds"
+GRADES = ("agrees", "verdict only", "short of the edge", "diverges", "silent")
+GRADE = re.compile(r"\bGrade: (?P<grade>%s)\b" % "|".join(GRADES))
+REMEDY = re.compile(r"\bRemedy: ")
+REDRAWN = re.compile(r"\bRedrawn: ")
 
 #: an item's id: capitals then digits, as the doc numbers its lists
 ID = re.compile(r"\b([A-Z]{1,2})(\d+)\b")
@@ -231,9 +238,44 @@ def check(doc: Doc, questions: Optional[Set[str]] = None) -> List[Finding]:
         if SEALED.search(item.text) and item.id not in stated:
             out.append(Finding(WARN, "the sealed line %s was never stated: what its answer "
                                      "was tested against is not on the record" % item.id))
+    out.extend(_fidelity(doc))
     for name in (ADMISSIONS,):
         if name not in doc.sections:
             out.append(Finding(ERROR, "the doc has no section '%s'" % name.title()))
+    return out
+
+
+def _fidelity(doc: Doc) -> List[Finding]:
+    """The fidelity rounds: every item sealed is stated and graded, and every
+    grade but agrees names its remedy, which is then drawn again."""
+    out: List[Finding] = []
+    stated: Dict[str, str] = {}
+    for text in doc.lines.get(FIDELITY, []):
+        m = STATED.match(text)
+        if m:
+            stated[m.group("id")] = text
+    for item in doc.items(FIDELITY):
+        if not SEALED.search(item.text):
+            continue
+        said = stated.get(item.id)
+        if said is None:
+            out.append(Finding(ERROR, "the prediction %s was sealed and never stated: the "
+                                      "dictation is not tested until it is" % item.id))
+            continue
+        grade = GRADE.search(said)
+        if not grade:
+            out.append(Finding(ERROR, "the prediction %s is stated with no grade: one of %s"
+                               % (item.id, ", ".join(GRADES))))
+            continue
+        if grade.group("grade") == "agrees":
+            continue
+        if not REMEDY.search(said):
+            out.append(Finding(ERROR, "the prediction %s is graded %s and names no remedy: "
+                                      "a failure to predict is a gap, in the notebook or in "
+                                      "how it is read" % (item.id, grade.group("grade"))))
+        elif not REDRAWN.search(said):
+            out.append(Finding(WARN, "the remedy for %s was not tested: the prediction is "
+                                     "drawn again from the notebook alone" % item.id))
     return out
 
 

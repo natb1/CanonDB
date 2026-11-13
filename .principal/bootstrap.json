@@ -52,7 +52,7 @@
         "skills/dictate/SKILL.md"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
-      "rounds": 8
+      "rounds": 9
     },
     {
       "question": "wording",
@@ -242,7 +242,7 @@
         "tools/test_text.py"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
-      "rounds": 9
+      "rounds": 10
     },
     {
       "question": "recognition",

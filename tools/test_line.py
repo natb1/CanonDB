@@ -192,3 +192,57 @@ class ScopedLineTest(unittest.TestCase):
         found = self.findings(stated="")
         self.assertEqual({f.severity for f in found}, {line.WARN})
         self.assertTrue(any("sealed line L1 was never stated" in f.message for f in found))
+
+
+FIDELITY = """# A line
+
+## Admissions
+
+- B1. The record is good when it reproduces the user's answers.
+
+## Fidelity rounds
+
+- F1. Sealed 0123456789abcdef. Put in round 1.
+{stated}
+
+## The plan
+
+- A1. A case on the tab. B1.
+"""
+
+
+class FidelityTest(unittest.TestCase):
+    """After the notebook is updated the dictation is tested: the record's
+    answer sealed before each question, graded after, every failure remedied."""
+
+    def findings(self, stated):
+        return line.check(line.parse(FIDELITY.format(stated=stated)))
+
+    def test_a_prediction_that_agrees_passes(self):
+        self.assertEqual(self.findings("- F1, stated at S2. Grade: agrees."), [])
+
+    def test_a_sealed_prediction_never_stated_fails(self):
+        found = self.findings("")
+        self.assertEqual([f.severity for f in found], [line.ERROR])
+        self.assertIn("F1 was sealed and never stated", found[0].message)
+
+    def test_a_stated_prediction_without_a_grade_fails(self):
+        found = self.findings("- F1, stated at S2. It was close.")
+        self.assertEqual([f.severity for f in found], [line.ERROR])
+        self.assertIn("with no grade", found[0].message)
+
+    def test_a_failure_without_a_remedy_fails(self):
+        found = self.findings("- F1, stated at S2. Grade: diverges. Class: misread.")
+        self.assertEqual([f.severity for f in found], [line.ERROR])
+        self.assertIn("names no remedy", found[0].message)
+
+    def test_a_remedy_not_drawn_again_is_reported(self):
+        found = self.findings("- F1, stated at S2. Grade: verdict only. Remedy: a case.")
+        self.assertEqual([f.severity for f in found], [line.WARN])
+        self.assertIn("was not tested", found[0].message)
+
+    def test_a_remedy_drawn_again_passes(self):
+        found = self.findings("- F1, stated at S2. Grade: diverges. Remedy: a case on the "
+                              "tab. Redrawn: agrees.")
+        self.assertEqual(found, [])
+

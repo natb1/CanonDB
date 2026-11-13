@@ -252,7 +252,7 @@ Claude Doc of the project the checkout keeps, made when the line opens, with the
 how the line is run; directives, each clear directive of the principal's with its status;
 admissions, numbered; the line, each step's four parts; held questions; aporiai; declarations,
 each with the admissions it rests on in order; digressions; contradictions found; tradition
-cited, with registry status; decisions reached; and the plan. The items of every section but
+cited, with registry status; decisions reached; fidelity rounds, once the notebook is updated; and the plan. The items of every section but
 the admissions and the plan are numbered too, with a letter prefix of their own, and a row of
 the plan cites by number what it carries. `tools/line.py check <doc.md> [<graph.json>]` reads
 the markdown export of the doc: every admission is cited by a row of the plan, every row cites
@@ -316,10 +316,51 @@ Where a requirement cannot be met, the principal chooses in the line between ref
 notebook and the action; the line does not stop at a restated principle but goes on until the
 whole is consistent.
 
-**Retirement.** The line doc lives until the plan is executed and is retired after; what it
+**Retirement.** The line doc lives until the plan is executed and its fidelity round has
+passed, and is retired after; what it
 holds that must survive, the plan, the tradition drafts and the pending notes, is compacted into
 the notebook and the skill first. A re-derivation's questioner never reads a line doc. Nothing is
 lost by the retirement, and no transcript is kept at any point.
+
+**The fidelity round.** A dictation is tested once the notebook holds it: the record is good
+when a reader holding only the notebook answers as the principal does. After the re-check, and
+before the line doc is retired, put a round of questions on what was dictated, three or so at a
+time, and go on in rounds until one passes whole. Each question is drawn from a clause or a case
+the dictation wrote, and is never the notebook's own question or wording: it comes from a new
+angle, another party's position, or an edge, two clauses that meet, a clause at its limit, a
+case with the easy exits closed. It asks for a verdict in one concrete case and then the reason.
+
+Before a question is put, the record's answer is drawn and sealed as a line of aporia is: one
+verdict and one deciding reason, a prediction hedged across outcomes not being a test; the
+clauses and cases it rests on and those that pull the other way, found by matching the question
+against every cue and case of the projects in scope as a consult does, never from the tabs you
+happen to remember; what the principal is expected to add; and, apart, what you remember of the
+line that the notebook does not carry. The sealed text is kept in the checkout's `.work/`,
+which outlives the session's scratch, and only the item's number and the file's fingerprint go
+in the line doc, in a section named Fidelity rounds: `- F1. Sealed <fingerprint>.`
+
+After the answer the item is stated there in full, `- F1, stated at S2. …`, with its grade:
+`Grade: agrees`, the same verdict for the same reason; `verdict only`, the reason differs;
+`short of the edge`, the answer agrees in general and gives no verdict in the case, which the
+next round's question closes; `diverges`; or `silent`, the record does not decide and the
+prediction said so. Any grade but agrees is a failure to predict, and a failure is a gap that is
+remedied so that it does not come back. It is classed first: the record is wrong, the record is
+silent, or the record was misread, and a misreading is still a gap, in the wording that invited
+it, in how the record is found, a cue or a link wanting, or in this procedure. The stated line
+names the remedy, `Remedy: …`: a case on the tab of the clause, the misreading itself recorded
+as a case whose verdict is a regression where a reader took a clause for what the principal has
+denied; a clause reworded; a cue; a note for the run that rewrites a tab; an entry of this
+skill. What the principal adds that was not predicted is taken in the same way, whatever the
+grade. A sentence of the notebook's that you put to the principal and that the principal denies
+is the gravest finding: find the words that gave it and change them.
+
+The remedy is then tested, `Redrawn: …`: the question is put again to a reader that holds only
+the notebook, an agent started with the document and none of this conversation, and its answer
+is compared with the principal's. A remedy that does not change the clean reader's answer has
+remedied nothing. `tools/line.py check` holds the section's shape: an item sealed and never
+stated fails, as does one stated with no grade or graded short of agrees with no remedy, and a
+remedy not drawn again is reported. The remedies are in-place writes or rows of a further plan,
+as any dictation's; the round's own admissions are numbered with the rest.
 
 **Where the line is shared.** One procedure with two parameters, who answers and whether the
 questioner holds the notebook, is run by four entry points: `/principal:ask`, where the AI
@@ -652,6 +693,15 @@ a procedure rather than a script.
   the line's expected exit into the question: a view enters as a question or not at all.
 - **Agreement is not the finding.** An answer that suits what you expected is tested as any
   other; a bare yes to a draft meets none of what the draft was tested against, and says so.
+- **A fidelity question is new.** Nothing checks that a question is not the notebook's own in
+  other words, or that it stands at an edge; a round the record passes easily has tested the
+  questions and not the record. Close the exits the principal took last time.
+- **The prediction is the record's, not yours.** What you remember of the line is not in the
+  notebook, and it both helps and misleads: keep it apart in the sealed text, and where the two
+  differ the record has lost something whatever the principal answers. Never state as the
+  notebook's a sentence you inferred from it.
+- **A misreading is a gap.** That the notebook, read whole, would have given the answer excuses
+  nothing: the next reader will read as you did. The remedy changes what a reader meets.
 - **Read the notebook before asking what it answers.** A declaration is confirmed against the
   notebook at the step it is made, and a question the notebook already answers is not put.
 
