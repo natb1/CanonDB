@@ -25,14 +25,22 @@ holds one. Each tool is named in both spellings the surfaces give it,
 `mcp__claude_ai_Claude_Docs__…` and `mcp__Claude_Docs__…`; a name the surface lacks grants
 nothing.
 
-A notebook may hold several projects, each a root at the top level, with `tradition` a project
-of its own whose root holds every party beneath it; where it does, `.principal/notebook.json`
+A notebook may hold several projects, with `tradition` a project of its own whose root holds
+every party beneath it. A project is a subtree scoped so that its end is a question of the
+project that contains it: its entry stands at the top level, or, where a question of an earlier
+project raises it, under that raiser with an order in the p series, which is what marks the
+subtree as a project in the one tree; where it does, `.principal/notebook.json`
 names the project this checkout keeps under `project`, and the run's **author tabs** are that
 project's: the tabs under its root. Its reads, its checks, its selection and its tab patch are
 that project's too — `read.py --project`, and `next.py`, `frontier.py`, `again.py` and
 `project.py --project`, which take the project from the file — and the parties it cites are
-read with it wherever a rule reaches them. No term edge crosses projects; a mention crosses
-only to a project earlier in the order the roots stand in, or to `tradition` (`project-order`).
+read with it wherever a rule reaches them. A term edge crosses only from an earlier project to
+a later one, a mention only to an earlier one or to `tradition` (`project-order`); a scoped
+read takes the ancestors of what it reads, the raiser in the earlier project among them, and a
+run never writes above its own entry. A turn carries Claude's own nodes and no one else's: a
+question of an earlier project above an entry that the user holds as a prior is a constraint the
+notebook's review reads across the edge (`tools/crossing.py`), is never in a turn and blocks
+nothing; one that is already Claude's is carried, so a turn has the whole of Claude's line.
 The tab named `lease` is reserved: it is no question, the reader never takes it for one, and it
 holds the leases, the pin and the notebook's provenance (**Several sessions** below).
 
@@ -240,16 +248,22 @@ essence, X is held by its cases and their connections: a term's cue is already t
 the tab is one more, and a glossary body may give cases.
 
 **The line doc.** The record the line keeps is a document of admissions, never a transcript:
-each admission short, in the principal's words, numbered, nothing verbatim at length. It is a
+each admission short, in the principal's words, numbered, nothing verbatim at length. No date, sum or
+person's name enters it; a person the principal speaks of is named by the place they hold. An
+item that cites another by number is read with it: at the retirement a number that anything
+carried still cites is carried with its text. It is a
 Claude Doc of the project the checkout keeps, made when the line opens, with these sections:
 how the line is run; directives, each clear directive of the principal's with its status;
 admissions, numbered; the line, each step's four parts; held questions; aporiai; declarations,
 each with the admissions it rests on in order; digressions; contradictions found; tradition
-cited, with registry status; decisions reached; and the plan. The items of every section but
+cited, with registry status; decisions reached; adversarial review and fidelity rounds, once the notebook is updated;
+and the plan. The items of every section but
 the admissions and the plan are numbered too, with a letter prefix of their own, and a row of
 the plan cites by number what it carries. `tools/line.py check <doc.md> [<graph.json>]` reads
 the markdown export of the doc: every admission is cited by a row of the plan, every row cites
-an admission, every tab a row names is in the graph, and every pinned item is closed or cited.
+an admission, every tab a row names is in the graph, and every pinned item is closed or cited. A
+parked item with no carrier row fails it, as does a mechanism that cites no admission; a sealed
+line never stated is reported.
 `tools/line.py rows <doc.md> --json` turns the plan section into rows.
 
 **The compaction.** When the principal is satisfied, the line is compacted into the plan, open
@@ -264,10 +278,117 @@ aporiai, on the hinge's question half and the attenuation; and goals, confirmed 
 roots. A pair of words is distinguished only where required to avoid a contradiction. The
 plan's rows cite the admissions by number, and `line.py check` passes before the plan runs.
 
-**Retirement.** The line doc lives until the plan is executed and is retired after; what it
+**Scope.** The projects the line is for are declared when it opens, written at the head of the
+line doc, and changed only by a directive. Before a question is put it is tested: would the
+answer change a tab in scope? If not, the item is parked, in a section of the line doc named
+Parked for other projects, with its project, its state when parked and its carrier, said in one
+line under the step's pinned part, and it is not asked. A question about the join between a
+project in scope and one outside is in scope; a question inside the other project is not. A
+project out of scope is read only for what it says of the join, and nothing of its substance is
+inferred from the notebook where a repository holds its state. On resuming a line after a break,
+read again what the line has cited and say what moved before the next step. At the compaction a
+parked item leaves by a carrier and never as an edit of this line's plan: a pending note on its
+project's tab, an ask on the queue where the principal answers it, or a dictation named for that
+project's checkout.
+
+**Principles are asked, mechanisms decided.** The line is about the principal's principles and
+about what only the principal can tell. An ambiguity about a mechanism means a principle is not
+yet established, and that principle is what is asked, in the principal's own terms and with a
+case, never in the tooling's. A case is preferred to a list of options, and where options are
+listed each carries its consequence for the principal in a line. A mechanism the admitted principles decide is the questioner's to
+decide, and it is listed in a section of the line doc named Mechanisms decided, each with the
+admissions and the traditions that justify it and the step it was decided at; one the admitted
+principles do not decide is not decided. That section is a fifth part of the step from the first
+decision on, and it is where the principal sees that the principles were applied as meant, so at
+the compaction it is put to the principal item by item before the plan runs, and a reading of the
+questioner's own is put as a case and not as an item to tick. Where cases only repeat an answer,
+a draft is put for correction instead: the structure as the questioner reads it, each line the
+principal's only once confirmed.
+
+**The answer is explored, not taken.** A critical question is one whose answer could end in
+aporia. Before it is put, write what the answer is tested against, the admissions and the
+notebook's clauses it could contradict and the horns you see, to a file outside the line doc,
+and put only the item's number and the file's fingerprint in the doc's Aporiai section. At the
+step after the answer, state the item in full with what the answer did to it: met it, escaped it
+by a distinction, fell into it, or left it open; an open one is where the next question comes
+from. No answer closes a line until the line has been stated to the principal. A concept the
+principal says is not understood is broken down again, by a different route, until the
+intention is consistent; the notebook's own phrase put unexplained is the questioner's fault.
+
+**No action is taken in a dictation.** Data that contradicts a principle is tracked: a note on
+the principle's tab opening with the word *divergence*, with the action that would resolve it,
+whose it is and its price (`tools/divergence.py note`, then `tools/inplace.py note insert`).
+Where a requirement cannot be met, the principal chooses in the line between refining the
+notebook and the action; the line does not stop at a restated principle but goes on until the
+whole is consistent.
+
+**Retirement.** The line doc lives until the plan is executed, an adversarial review has
+returned nothing and its fidelity round has passed, and is retired after; what it
 holds that must survive, the plan, the tradition drafts and the pending notes, is compacted into
 the notebook and the skill first. A re-derivation's questioner never reads a line doc. Nothing is
 lost by the retirement, and no transcript is kept at any point.
+
+**The adversarial review.** A run reports its own plan as executed more readily than it
+executed it: a row written to another tab than it named, one of three cases written and three
+reported, a pending note standing for an answer. So once the notebook is written and re-checked,
+and before the fidelity round, the record is reviewed by a reader that did not do the writing:
+an agent started with the line doc, the notebook and the checkout, none of this conversation,
+and the brief to find what would be lost were the line doc deleted now. It goes section by
+section. Every row of the plan: is its content where the row says, all of it, and as an answer
+where the row says answer? Every mechanism decided: built, stated in the notebook, or listed as
+open, with its wording and justification somewhere that will outlive the doc? Every held
+question, contradiction, digression, declaration and line of aporia not closed in the doc:
+carried in full, never by a pointer back to the doc? Every parked item: its carrier actually
+written? Every reading of tradition cited: on the tab it bears on as a line, or as a note
+opening with the word *pending* for the run that rewrites the tab, never left in the doc?
+Every directive: in this skill or in the notebook? And every entry of a successor doc that
+describes this one: is it true? Its findings are numbered in a section of the line doc named
+Adversarial review, `- V1. …`, and each is resolved where it belongs, in the notebook, as an
+item tracked on the Rule's queue, or as an open item of a line doc that is still drawn, and
+closed there with where it went, `Closed: …`. A doc kept only to hold what was not carried is
+not a home: it will be lost. The review is run again after the resolving, by a fresh reader,
+until one returns nothing, and only then is the doc retired. `tools/line.py check` fails a
+finding neither closed nor carried by a row, and fails a doc with fidelity rounds and no review.
+
+**The fidelity round.** A dictation is tested once the notebook holds it: the record is good
+when a reader holding only the notebook answers as the principal does. After the re-check, and
+before the line doc is retired, put a round of questions on what was dictated, three or so at a
+time, and go on in rounds until one passes whole. Each question is drawn from a clause or a case
+the dictation wrote, and is never the notebook's own question or wording: it comes from a new
+angle, another party's position, or an edge, two clauses that meet, a clause at its limit, a
+case with the easy exits closed. It asks for a verdict in one concrete case and then the reason.
+
+Before a question is put, the record's answer is drawn and sealed as a line of aporia is: one
+verdict and one deciding reason, a prediction hedged across outcomes not being a test; the
+clauses and cases it rests on and those that pull the other way, found by matching the question
+against every cue and case of the projects in scope as a consult does, never from the tabs you
+happen to remember; what the principal is expected to add; and, apart, what you remember of the
+line that the notebook does not carry. The sealed text is kept in the checkout's `.work/`,
+which outlives the session's scratch, and only the item's number and the file's fingerprint go
+in the line doc, in a section named Fidelity rounds: `- F1. Sealed <fingerprint>.`
+
+After the answer the item is stated there in full, `- F1, stated at S2. …`, with its grade:
+`Grade: agrees`, the same verdict for the same reason; `verdict only`, the reason differs;
+`short of the edge`, the answer agrees in general and gives no verdict in the case, which the
+next round's question closes; `diverges`; or `silent`, the record does not decide and the
+prediction said so. Any grade but agrees is a failure to predict, and a failure is a gap that is
+remedied so that it does not come back. It is classed first: the record is wrong, the record is
+silent, or the record was misread, and a misreading is still a gap, in the wording that invited
+it, in how the record is found, a cue or a link wanting, or in this procedure. The stated line
+names the remedy, `Remedy: …`: a case on the tab of the clause, the misreading itself recorded
+as a case whose verdict is a regression where a reader took a clause for what the principal has
+denied; a clause reworded; a cue; a note for the run that rewrites a tab; an entry of this
+skill. What the principal adds that was not predicted is taken in the same way, whatever the
+grade. A sentence of the notebook's that you put to the principal and that the principal denies
+is the gravest finding: find the words that gave it and change them.
+
+The remedy is then tested, `Redrawn: …`: the question is put again to a reader that holds only
+the notebook, an agent started with the document and none of this conversation, and its answer
+is compared with the principal's. A remedy that does not change the clean reader's answer has
+remedied nothing. `tools/line.py check` holds the section's shape: an item sealed and never
+stated fails, as does one stated with no grade or graded short of agrees with no remedy, and a
+remedy not drawn again is reported. The remedies are in-place writes or rows of a further plan,
+as any dictation's; the round's own admissions are numbered with the rest.
 
 **Where the line is shared.** One procedure with two parameters, who answers and whether the
 questioner holds the notebook, is run by four entry points: `/principal:ask`, where the AI
@@ -301,7 +422,10 @@ once. A write in place is guarded block by block and needs nothing more. What el
   prints the plugin commit. Where it is not this plugin's, `git merge-base --is-ancestor <pin>
   <this plugin's commit>` in a CanonDB checkout must succeed before anything is written —
   older tooling never writes over newer — and the run that writes names its own commit with
-  `lease.py pin <read> --write <commit> --session <id>`.
+  `lease.py pin <read> --write <commit> --session <id>`. A pull request merged by squash leaves
+  the pinned commit out of main's history, and the ancestor check then fails over tooling that
+  is the same: compare the two trees (`git diff --stat <pin> <main>`), and where they are equal
+  write the pin anew and say so.
 - **Every update carries an `opId`**, `<session>-<step>-<n>`, so that a call retried after a
   dropped connection replays rather than writing twice.
 
@@ -424,7 +548,8 @@ a procedure rather than a script.
   words, the answer's hinge among them. What it cannot find is a pronoun: he, him, his or himself
   standing for the user is the same fault, and whom a pronoun stands for is read, since a party's
   tab says "he" of its author and an answer says it of Euthyphro. Write the user, or the
-  principal where the role is meant, and never a pronoun for either. Canon's words are left as
+  principal where the role is meant, and never a pronoun for either. The same holds of anyone
+  the user speaks of: the spouse is named the spouse, with no name and no pronoun. Canon's words are left as
   they stand: a landed question or answer keeps "a human" if it says so.
 - **A defined word yields to canon's words.** The words of a landed answer cannot change, so a
   word the notebook defines must not be one of them. `priority` and `title` gave way to
@@ -583,6 +708,47 @@ a procedure rather than a script.
 - **The compaction extracts eight kinds.** Which admission is a case, a distinction, a
   disposition or a derivation is read, and the home each goes to is the renderer's part for it;
   a kind left in the line doc is lost at the retirement.
+
+- **Whether a question is in scope is read.** The test, would the answer change a tab in
+  scope, is the questioner's to apply before every step, and nothing applies it for you. An
+  item carried from an earlier line is the usual way out of scope: it names another project,
+  and following it into that project's substance is how a line loses its subject.
+- **Whether admitted principles decide a mechanism is read.** `line.py check` holds that a
+  mechanism cites an admission; whether the admission decides it, or was read more narrowly or
+  widely than the principal meant, only the principal can say, which is why the list is put
+  item by item at the compaction, and why a correction afterwards is an ordinary dictation.
+- **A sealed line is written before the question.** The fingerprint shows the file was not
+  changed after; nothing shows it was written first but the order you do it in. And never put
+  the line's expected exit into the question: a view enters as a question or not at all.
+- **Affirm nothing to please.** The line refuses flattery: an answer is not praised, a draft is
+  not softened into what the principal seems to want, and where you lean toward agreeing you
+  break the concept down again with what tradition says against it. The principal's other guard,
+  beside the list of mechanisms, is a dictation the principal begins when what is observed is
+  not good enough; it waits on the principal noticing, so say what you see.
+- **Agreement is not the finding.** An answer that suits what you expected is tested as any
+  other; a bare yes to a draft meets none of what the draft was tested against, and says so.
+- **The writer does not review its own record.** You will read your plan as done because you
+  remember doing it. The review is a different reader's, and its brief is adversarial: what is
+  lost if the doc goes now. Report a departure from the plan as a departure, with the count
+  written against the count owed.
+- **A pointer is not a carrier.** "It stands in that line's doc" carries nothing once the doc is
+  retired. An item is carried when its words are where the next run will read them.
+- **A principle is divided beneath itself, never beside itself.** What refines a principle is
+  written as derived from it, so that writing a region out re-divides its share and cannot
+  enlarge it; and a case whose verdict the shares get wrong is recorded on the tab and names the
+  siblings it concerns. An action that ends or lessens the capacity to act is priced as every
+  principle it leaves unsupported afterwards: name them all to `tools/shares.py --price`.
+- **A fidelity question is new.** Nothing checks that a question is not the notebook's own in
+  other words, or that it stands at an edge; a round the record passes easily has tested the
+  questions and not the record. Close the exits the principal took last time.
+- **The prediction is the record's, not yours.** What you remember of the line is not in the
+  notebook, and it both helps and misleads: keep it apart in the sealed text, and where the two
+  differ the record has lost something whatever the principal answers. Never state as the
+  notebook's a sentence you inferred from it.
+- **A misreading is a gap.** That the notebook, read whole, would have given the answer excuses
+  nothing: the next reader will read as you did. The remedy changes what a reader meets.
+- **Read the notebook before asking what it answers.** A declaration is confirmed against the
+  notebook at the step it is made, and a question the notebook already answers is not put.
 
 ## Drafting a line
 

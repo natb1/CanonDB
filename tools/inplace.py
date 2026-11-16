@@ -123,7 +123,19 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--heading", required=True)
     p.add_argument("--block", action="append", default=[])
 
+    lineage = parts.add_parser("lineage").add_subparsers(dest="mode", required=True)
+    p = lineage.add_parser("replace")
+    p.add_argument("read")
+    p.add_argument("--block", required=True, help="the breadcrumb, the tab's first block")
+    p.add_argument("--graph", required=True, help="the graph the lineage is read off")
+    p.add_argument("--question", required=True)
     incoming = parts.add_parser("incoming").add_subparsers(dest="mode", required=True)
+    p = incoming.add_parser("first")
+    p.add_argument("read")
+    p.add_argument("--title", required=True, help="the tab's title block")
+    p.add_argument("--anchor", required=True)
+    p.add_argument("--raiser", required=True)
+    p.add_argument("--raiser-tab", required=True)
     p = incoming.add_parser("insert")
     p.add_argument("read")
     p.add_argument("--list", required=True, dest="header")
@@ -223,6 +235,22 @@ def _ops(args) -> list:
         return ops
     if part == "case" and mode == "delete":
         return inplace.case_delete(cli.source(args.read), args.heading, args.block)
+    if part == "lineage" and mode == "replace":
+        graph = cli.load_graph(args.graph)
+        if graph is None:
+            raise inplace.Refused("no graph at %s" % args.graph)
+        from hypo import project
+        by_id = graph.by_id()
+        steps = project.lineage(graph, args.question)[:-1]
+        ops, line = inplace.lineage_replace(cli.source(args.read), args.block,
+                                            [(a, by_id[a].tab) for a in steps])
+        print(line, file=sys.stderr)
+        return ops
+    if part == "incoming" and mode == "first":
+        ops, line = inplace.incoming_first(cli.source(args.read), args.title, args.anchor,
+                                           args.raiser, args.raiser_tab)
+        print(line, file=sys.stderr)
+        return ops
     if part == "incoming" and mode == "insert":
         ops, line = inplace.incoming_insert(cli.source(args.read), args.header, args.anchor,
                                             args.raiser, args.raiser_tab, args.after_item)

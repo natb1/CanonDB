@@ -275,6 +275,21 @@ def resolve(graph: Graph, target: str, by_tab: Dict[str, List[Block]],
     return "%s#%s.%s" % (artifact, tab, bid)
 
 
+def _chips_resolved(qid: str, content: str, blocks: Dict[str, dict]) -> None:
+    """Every chip the markdown places has a tab to refer to. A graph read for
+    a scope holds only some of the notebook's questions, and a chip to one it
+    does not hold has no entry in the map: the document would then write the
+    token as nothing and the chip that stood there would be gone, which no
+    check over the graph can see. So the write is refused, and names what to
+    read."""
+    absent = sorted({key for key in render.CHIP_TOKEN.findall(content)
+                     if key not in (blocks or {})})
+    if absent:
+        raise Unresolved(["%s: the render places chips the graph holds no tab for (%s); "
+                          "read those questions' tabs with the scope before the write, "
+                          "or the chips are lost" % (qid, ", ".join(absent))])
+
+
 def body_ops(graph: Graph, qid: str, outline: List[Block],
              rev: Optional[int]) -> List[dict]:
     """Replace the whole tab with the rendered body: one operation.
@@ -311,6 +326,7 @@ def body_ops(graph: Graph, qid: str, outline: List[Block],
     payload = render.links(graph, qid)
     with_ = {"as": "markdown",
              "from": {"kind": "inline", "content": render.body(graph, qid)}}
+    _chips_resolved(qid, with_["from"]["content"], payload["blocks"])
     if payload["blocks"]:
         with_["blocks"] = payload["blocks"]
     return [{"op": "replace", "target": {"kind": "blocks", "ids": ids},
@@ -369,6 +385,7 @@ def _chipped(graph: Graph, qid: str, markdown: str) -> dict:
     keys = set(_CHIP_KEY.findall(markdown))
     chips = {key: value for key, value in render.links(graph, qid)["blocks"].items()
              if key in keys}
+    _chips_resolved(qid, markdown, chips)
     with_ = {"as": "markdown", "from": {"kind": "inline", "content": markdown}}
     if chips:
         with_["blocks"] = chips

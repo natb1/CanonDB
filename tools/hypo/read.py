@@ -124,14 +124,32 @@ def reserved(tabs: Dict[str, dict]) -> Set[str]:
     return {t for t in tabs if _top(tabs, t) in heads}
 
 
+#: the order series that marks a project's entry standing under its raiser
+ENTRY = "p"
+
+
+def _entry(tabs: Dict[str, dict], tab_id: str) -> bool:
+    """Whether a tab is a project's entry: a top-level tab of the a series,
+    or a tab anywhere whose order is in the p series."""
+    meta = tabs.get(tab_id, {})
+    order = str(meta.get("order", ""))
+    if str(meta.get("name", "")) in RESERVED:
+        return False
+    if not meta.get("subtabOf"):
+        return order.startswith("a")
+    return order.startswith(ENTRY)
+
+
 def projects(tabs: Dict[str, dict]) -> Dict[str, str]:
     """tab id -> the project the tab is in, from the tab list.
 
-    A notebook may hold several projects, each a root at the top level with
-    an order in the a series; a tab is in the project of the top-level tab it
-    stands under. A notebook of one project has one such tab, and every tab
-    in it is in the empty project, as every question of a graph file that
-    names no projects is. The b series and the reserved tabs are no project.
+    A notebook may hold several projects. A project's entry is a top-level
+    tab with an order in the a series, or, where an earlier project raises
+    it, a tab under its raiser with an order in the p series; a tab is in
+    the project of the nearest entry it stands under, itself if it is one. A
+    notebook of one project has one entry, and every tab in it is in the
+    empty project, as every question of a graph file that names no projects
+    is. The b series and the reserved tabs are no project.
     """
     tops = project_order(tabs)
     if len(tops) < 2:
@@ -139,18 +157,29 @@ def projects(tabs: Dict[str, dict]) -> Dict[str, str]:
     names = {t: str(tabs[t].get("name", t)) for t in tabs}
     out: Dict[str, str] = {}
     for tab_id in tabs:
-        top = _top(tabs, tab_id)
-        out[tab_id] = names[top] if names.get(top) in tops else ""
+        seen: Set[str] = set()
+        cur: Optional[str] = tab_id
+        found = ""
+        while cur and cur in tabs and cur not in seen:
+            if _entry(tabs, cur):
+                found = names[cur]
+                break
+            seen.add(cur)
+            cur = tabs[cur].get("subtabOf")
+        out[tab_id] = found if found in tops else ""
     return out
 
 
 def project_order(tabs: Dict[str, dict]) -> List[str]:
-    """The projects' names in the order their roots stand at the top level."""
-    tops = [(str(meta.get("order", "")), str(meta.get("name", t)))
+    """The projects' names in the order their entries stand: the top-level
+    ones by their order, then the raised ones by theirs."""
+    tops = [(0, str(meta.get("order", "")), str(meta.get("name", t)))
             for t, meta in tabs.items()
-            if not meta.get("subtabOf") and str(meta.get("order", "")).startswith("a")
-            and str(meta.get("name", "")) not in RESERVED]
-    return [name for _, name in sorted(tops)]
+            if not meta.get("subtabOf") and _entry(tabs, t)]
+    tops += [(1, str(meta.get("order", "")), str(meta.get("name", t)))
+             for t, meta in tabs.items()
+             if meta.get("subtabOf") and _entry(tabs, t)]
+    return [name for _, _, name in sorted(tops)]
 
 
 def parties(tabs: Dict[str, dict]) -> Dict[str, str]:

@@ -644,6 +644,18 @@ class Question:
     cases: List[Case] = field(default_factory=list)
 
     @property
+    def claude(self) -> bool:
+        """The question holds an answer in Claude's own words.
+
+        Derived and not stored: an answer the user holds as a prior stays
+        held, and one given in a turn is in thread or landed, so an answer
+        past held is Claude's. Such a question is a node of Claude's graph,
+        whichever project it stands in; every other question of the author's
+        is the user's.
+        """
+        return any(t.state != STATES[0] for t in self.theses)
+
+    @property
     def tradition(self) -> bool:
         """Whether this question is a root of its own lineage.
 
