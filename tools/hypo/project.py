@@ -483,9 +483,10 @@ def blocked_behind(graph: Graph, qid: str) -> Set[str]:
             if child is None or nxt in seen or child.answerer != AI:
                 continue
             if child.project != q.project:
-                # blocking is what a turn carries, and a turn carries its own
-                # project's canon alone: an edge into a later project's entry
-                # constrains that project in the notebook and blocks nothing
+                # blocking is what a turn waits on, and a turn waits on nothing
+                # across a project's edge: a question there is carried where it
+                # is already Claude's and is a constraint read in the notebook
+                # where the user holds it, and either way it blocks nothing
                 continue
             seen.add(nxt)
             queue.append(nxt)

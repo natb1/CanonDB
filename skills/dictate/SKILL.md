@@ -37,9 +37,10 @@ that project's too — `read.py --project`, and `next.py`, `frontier.py`, `again
 read with it wherever a rule reaches them. A term edge crosses only from an earlier project to
 a later one, a mention only to an earlier one or to `tradition` (`project-order`); a scoped
 read takes the ancestors of what it reads, the raiser in the earlier project among them, and a
-run never writes above its own entry. A turn stays inside its project: the questions of an
-earlier project above an entry are constraints the notebook's review reads across the edge
-(`tools/crossing.py`), never canon a turn carries, and they block nothing.
+run never writes above its own entry. A turn carries Claude's own nodes and no one else's: a
+question of an earlier project above an entry that the user holds as a prior is a constraint the
+notebook's review reads across the edge (`tools/crossing.py`), is never in a turn and blocks
+nothing; one that is already Claude's is carried, so a turn has the whole of Claude's line.
 The tab named `lease` is reserved: it is no question, the reader never takes it for one, and it
 holds the leases, the pin and the notebook's provenance (**Several sessions** below).
 

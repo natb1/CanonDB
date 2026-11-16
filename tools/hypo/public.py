@@ -20,8 +20,9 @@ user's reading of it, are never shown.
 
 ``leaks`` is the check the copy is made behind: a run of words that stands
 both in what is shown and in what is masked is a quotation of the masked
-part, and fails. ``question`` holds a question drafted for Claude to the
-same rule before it is put.
+part, and fails, as does a masked tab's address spelled in what is shown.
+``question`` holds a question drafted for Claude to the same rule before it
+is put.
 """
 
 from __future__ import annotations
@@ -176,11 +177,32 @@ def leaks(graph: Graph, run: int = RUN) -> List[Leak]:
                     continue
                 seen.add(other)
                 out.append(Leak(q.id, other, " ".join(key)))
+        if q.claude:
+            # an answer of Claude's that spells a masked tab's address: the
+            # edge to it is shown under a fingerprint, the address never
+            mine = [t.text for t in own(q)] + ([q.hinge.question] if q.hinge else [])
+            for other in links(graph, mine):
+                if other != q.id and other not in seen:
+                    out.append(Leak(q.id, other, "a link into its tab"))
+    return out
+
+
+def links(graph: Graph, words: Iterable[str]) -> List[str]:
+    """The masked nodes ``words`` link into: a tab's id spelled in the text,
+    as an address of the notebook spells it."""
+    out: List[str] = []
+    joined = "\n".join(words)
+    for q in graph.questions:
+        if q.claude or marks(q):
+            continue
+        if q.tab and q.tab in joined and q.id not in out:
+            out.append(q.id)
     return out
 
 
 def question(graph: Graph, drafted: str, run: int = QUESTION_RUN) -> List[Leak]:
-    """What a question drafted for Claude quotes of the masked part."""
+    """What a question drafted for Claude quotes of the masked part, or links
+    into."""
     hidden: Dict[Tuple[str, ...], str] = {}
     for q in graph.questions:
         for key in _runs(masked(q), run):
@@ -192,6 +214,9 @@ def question(graph: Graph, drafted: str, run: int = QUESTION_RUN) -> List[Leak]:
         if other is not None and other not in seen:
             seen.add(other)
             out.append(Leak("the question", other, " ".join(key)))
+    for other in links(graph, [drafted]):
+        if other not in seen:
+            out.append(Leak("the question", other, "a link into its tab"))
     return out
 
 

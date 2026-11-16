@@ -121,6 +121,19 @@ class LeakTest(unittest.TestCase):
         found = public.question(graph, "Given that the household keeps seven grey geese, what follows?")
         self.assertEqual([leak.masked for leak in found], ["attenuation"])
 
+    def test_a_drafted_question_that_links_into_a_masked_tab_is_caught(self):
+        graph = load("valid")
+        tab = graph.get("attenuation").tab
+        found = public.question(graph, "See https://example.invalid/doc#%s.block for what is meant." % tab)
+        self.assertEqual([(leak.masked, leak.words) for leak in found],
+                         [("attenuation", "a link into its tab")])
+
+    def test_an_answer_of_claudes_that_spells_a_masked_tabs_address_is_a_leak(self):
+        graph = load("valid")
+        public.own(graph.get("ti-esti"))[0].text += " (#%s.x)" % graph.get("attenuation").tab
+        self.assertIn(("ti-esti", "attenuation"),
+                      [(leak.shown, leak.masked) for leak in public.leaks(graph)])
+
     def test_a_drafted_question_in_new_words_passes(self):
         self.assertEqual(public.question(load("valid"), "What does working with a person need of you?"), [])
 

@@ -104,7 +104,9 @@ which fails where it quotes a node the user has not marked as fit to show; read 
 presupposes, and see that the hinge's question half of its tab says so, a stipulation where the
 user means it and a leak where the wording gave it away; and show the principal the question as
 the public text it is, and wait for approval. A run on the user's side may draft a question, and
-this one is such a run; drafting is not approval. An attenuation is put in the same way and no
+this one is such a run; drafting is not approval. A question Claude's own graph raises of itself,
+up from what an answer presupposed or down from a clause, is drafted from Claude's nodes alone
+and is checked in the same way. An attenuation is put in the same way and no
 other: a further question that states the user's position at the divergence as far as it is fit
 to be public, and Claude's answer under it. Where the user's reason is not fit to be public the
 position may be put without its ground, and where that does not bring the actions together the
