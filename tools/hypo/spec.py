@@ -363,11 +363,12 @@ def tradition_isolated(graph: Graph) -> Yield:
        "a term edge leaves its project only for a later one, and a mention only for an "
        "earlier one or the tradition project")
 def project_order(graph: Graph) -> Yield:
-    """A notebook of several projects keeps each project's lineage its own:
-    a turn carries canon above its question, and canon is kept per project,
-    each in its own repository. So a term edge never crosses from one
-    project to another — it would put one project's question under
-    another's — and the one thing that may cross is a mention, which points
+    """A notebook of several projects is one graph, and a project is a part
+    of it whose entry is raised from an earlier project. So a term edge may
+    leave its project, and only for a later one: the earlier project's
+    clause is what the later one answers to, as a constraint read in the
+    notebook, and a turn carries across that edge only what is already
+    Claude's own. The other thing that may cross is a mention, which points
     without raising. A mention runs only one way: to a project earlier in the
     order the projects depend on one another, the order their roots stand
     in, so that a project depended on never points at what depends on it;
