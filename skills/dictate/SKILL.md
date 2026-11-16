@@ -549,7 +549,7 @@ a procedure rather than a script.
   standing for the user is the same fault, and whom a pronoun stands for is read, since a party's
   tab says "he" of its author and an answer says it of Euthyphro. Write the user, or the
   principal where the role is meant, and never a pronoun for either. The same holds of anyone
-  the user speaks of: the spouse is named the spouse, with no name and no pronoun. Canon's words are left as
+  the user speaks of: a person is named by the place they hold, with no name and no pronoun. Canon's words are left as
   they stand: a landed question or answer keeps "a human" if it says so.
 - **A defined word yields to canon's words.** The words of a landed answer cannot change, so a
   word the notebook defines must not be one of them. `priority` and `title` gave way to
