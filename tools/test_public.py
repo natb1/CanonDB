@@ -96,25 +96,49 @@ class LeakTest(unittest.TestCase):
     def test_the_fixture_shows_nothing_masked(self):
         self.assertEqual(public.leaks(load("valid")), [])
 
-    def test_a_run_of_masked_words_in_a_shown_answer_is_a_leak(self):
-        found = public.leaks(self.leaking())
-        self.assertEqual([(leak.shown, leak.masked) for leak in found],
+    def test_an_answer_of_claudes_like_a_masked_node_is_agreement_and_no_leak(self):
+        graph = self.leaking()
+        self.assertEqual(public.leaks(graph), [])
+        self.assertEqual([(s.shown, s.masked) for s in public.similar(graph)],
                          [("ti-esti", "attenuation")])
 
-    def test_a_shorter_run_is_no_quotation(self):
+    def test_a_question_put_to_claude_that_repeats_masked_words_is_a_leak(self):
+        graph = load("valid")
+        secret = "the household keeps seven grey geese behind the old mill"
+        graph.get("attenuation").theses[0].text += " " + secret
+        graph.get("ti-esti").question += " Given that " + secret + "?"
+        self.assertEqual([(leak.shown, leak.masked) for leak in public.leaks(graph)],
+                         [("ti-esti", "attenuation")])
+
+    def test_a_marked_section_that_repeats_an_unmarked_tabs_words_is_a_leak(self):
+        graph = marked("canon", "public: thesis")
+        secret = "the household keeps seven grey geese behind the old mill"
+        graph.get("party").theses[0].text += " " + secret
+        graph.get("canon").theses[0].text += " " + secret
+        self.assertIn(("canon", "party"),
+                      [(leak.shown, leak.masked) for leak in public.leaks(graph)])
+
+    def test_a_shorter_run_is_no_likeness(self):
         graph = load("valid")
         graph.get("attenuation").theses[0].text += " seven grey geese behind"
         public.own(graph.get("ti-esti"))[0].text += " seven grey geese behind"
-        self.assertEqual(public.leaks(graph), [])
+        self.assertEqual(public.similar(graph), [])
 
-    def test_a_node_quoting_the_clause_that_raises_it_is_no_leak(self):
+    def test_a_node_quoting_the_clause_that_raises_it_is_not_listed(self):
         graph = load("valid")
         root = graph.get("ti-esti")
         child = root.theses[0].terms[0].to
         clause = "a clause of nine words that raises the child node"
         public.own(root)[0].text += " " + clause
         graph.get(child).theses[0].text += " " + clause
-        self.assertEqual(public.leaks(graph), [])
+        self.assertEqual(public.similar(graph), [])
+
+    def test_the_hinge_on_a_tab_of_claudes_is_the_users_and_is_not_shown(self):
+        graph = load("valid")
+        root = graph.get("ti-esti")
+        node = next(n for n in public.copy(graph, SALT)["nodes"] if n["id"] == "ti-esti")
+        self.assertNotIn("asking", node)
+        self.assertIn(root.hinge.question, public.masked(root))
 
     def test_a_drafted_question_that_quotes_a_masked_node_is_caught(self):
         graph = self.leaking()

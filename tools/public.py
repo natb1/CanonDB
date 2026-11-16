@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """public.py check <graph.json> | question <graph.json> <file> | copy <graph.json> -o DIR --salt-file FILE — the copy of the notebook that may be shown.
 
-``check`` lists every run of words that stands both in what the copy shows
-and in what it masks, and exits 2 where there is one. ``question`` holds a
+``check`` lists what could have carried masked words into what the copy
+shows, a question or a marked section that repeats a run of them or a masked
+tab's address, and exits 2 where there is one; a likeness between an answer
+of Claude's and a masked node is listed and fails nothing, since it is
+agreement. ``question`` holds a
 question drafted for Claude to the same rule before it is put: it is public
 with everything in it. ``copy`` writes the copy, ``graph.json`` and one page
 a node, and writes nothing where ``check`` would fail. Claude's graph is
@@ -57,10 +60,15 @@ def main(argv=None) -> int:
             print("the question quotes nothing masked; what it presupposes is still to be read")
         return 2 if found else 0
     found = public.leaks(graph)
+    alike = public.similar(graph)
+    for leak in alike:
+        print("%s, an answer of Claude's, is like a masked node (%s): \"%s …\"; no leak, "
+              "the answer having been given with nothing of the user's in the turn"
+              % (leak.shown, leak.masked, leak.words))
     if args.mode == "check":
         _report(found, "")
         if not found:
-            print("nothing shown quotes what is masked")
+            print("nothing masked could have reached what is shown")
         return 2 if found else 0
     if found:
         _report(found, "")

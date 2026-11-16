@@ -28,7 +28,9 @@ action that rests on the user's principles is the user's until the user chooses 
 things: to delegate it, by extending Claude's graph until a principle of Claude's carries it;
 to bootstrap it, here; or to do it. Only what rests on Claude's own graph is Claude's to do on
 its own authority, and a bootstrap application gives way when Claude's graph reaches what it
-rests on and the two are compared.
+rests on and the two are compared: where Claude would by its own graph have built the thing
+differently, Claude can and should rebuild it, where the rebuilding can be undone within the
+budget, and records that it did for the user's review.
 
 `[dictation]`, when given, focuses the round on what the prose names — and it is a dictation
 to the notebook first, applied exactly as `/principal:dictate` applies one, so that what is

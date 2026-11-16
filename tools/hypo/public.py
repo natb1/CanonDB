@@ -11,18 +11,25 @@ user has marked the node. A mark is a note on the tab opening with the word
     public: thesis, glossary
 
 A node of Claude's is a question holding an answer in Claude's own words.
-The copy shows its question, those answers and what the asking presupposed;
-the rest of its tab is the user's and follows the user's marks. A masked
-node is named by a fingerprint of its id under a salt the user keeps, so
-the copy does not give the tab's name. A party is shown by name where a
-shown answer cites it and is masked otherwise, and its lines, which are the
-user's reading of it, are never shown.
+The copy shows its question and those answers. The rest of its tab, the
+hinge included, is the user's until Claude has written its own, and follows
+the user's marks: what an asking presupposed is for the one answering to
+say, in the turn that answers. A masked node is named by a fingerprint of
+its id under a salt the user keeps, so the copy does not give the tab's
+name. A party is shown by name where a shown answer cites it and is masked
+otherwise, and its lines, which are the user's reading of it, are never
+shown.
 
-``leaks`` is the check the copy is made behind: a run of words that stands
-both in what is shown and in what is masked is a quotation of the masked
-part, and fails, as does a masked tab's address spelled in what is shown.
-``question`` holds a question drafted for Claude to the same rule before it
-is put.
+What the copy is made behind is a check of how words could have got from
+the masked part to the shown one, and never of likeness alone. An answer of
+Claude's is given in a turn that holds nothing of the user's, so where its
+words are like the user's the two agree, and that is no leak: ``similar``
+lists such runs for the user to see and fails nothing. The question is the
+one channel into Claude's graph and is drafted on the user's side, so a run
+of masked words in a question is a leak, and so is a masked tab's address
+spelled anywhere in what is shown: ``leaks`` lists those and the copy is
+not made while one stands. ``question`` holds a question drafted for Claude
+to the same rule before it is put.
 """
 
 from __future__ import annotations
@@ -101,8 +108,6 @@ def shown(q: Question) -> List[str]:
         out.append(q.question)
         for thesis in own(q):
             out += [thesis.title, thesis.text]
-        if q.hinge is not None:
-            out.append(q.hinge.question)
     for name in marked:
         out += sections[name]
     if marked:
@@ -127,11 +132,10 @@ def masked(q: Question) -> List[str]:
                     words += [thesis.title, thesis.text]
                 words += [e.note + " " + e.counter for e in thesis.traditions]
         out += words
-    if not q.claude:
-        if not marked:
-            out.append(q.question)
-        if q.hinge is not None:
-            out.append(q.hinge.question)
+    if not q.claude and not marked:
+        out.append(q.question)
+    if q.hinge is not None and "hinge" not in marked:
+        out.append(q.hinge.question)
     out += [n.body for n in q.notes]
     return [w for w in out if w and w.strip()]
 
@@ -154,36 +158,71 @@ def stub(qid: str, salt: str) -> str:
     return "n-" + hashlib.sha256(("%s:%s" % (salt, qid)).encode("utf-8")).hexdigest()[:12]
 
 
-def leaks(graph: Graph, run: int = RUN) -> List[Leak]:
-    """Runs of words that stand both in what is shown and in what is masked.
-
-    A masked node's raising clause stands, word for word, in its parent's
-    answer, which is the lineage; where the parent is shown and the child is
-    not, the clause is the parent's own and no quotation of the child, so
-    a run shared with a node the shown one raises is not counted; nor is a
-    run shared between the shown and the masked parts of one tab.
-    """
+def _hidden(graph: Graph, run: int) -> Dict[Tuple[str, ...], List[str]]:
     hidden: Dict[Tuple[str, ...], List[str]] = {}
     for q in graph.questions:
         for key in _runs(masked(q), run):
             hidden.setdefault(key, []).append(q.id)
+    return hidden
+
+
+def _shared(graph: Graph, q: Question, parts: List[str], run: int,
+            hidden: Dict[Tuple[str, ...], List[str]]) -> List[Leak]:
+    """Runs ``parts`` of ``q`` share with masked nodes other than ``q`` and
+    than the nodes ``q`` raises, whose quoting of its clause is the lineage."""
+    raised = {term.to for thesis in q.theses for term in thesis.terms}
+    out: List[Leak] = []
+    seen: Set[str] = set()
+    for key in _runs(parts, run):
+        for other in hidden.get(key, ()):
+            if other == q.id or other in raised or other in seen:
+                continue
+            seen.add(other)
+            out.append(Leak(q.id, other, " ".join(key)))
+    return out
+
+
+def similar(graph: Graph, run: int = RUN) -> List[Leak]:
+    """Runs of words an answer of Claude's shares with a masked node.
+
+    No leak: the answer was given in a turn that held nothing of the user's,
+    so the likeness is agreement. Listed so that the user, whose act the
+    copy is, sees them before it is made.
+    """
+    hidden = _hidden(graph, run)
     out: List[Leak] = []
     for q in graph.questions:
-        raised = {term.to for thesis in q.theses for term in thesis.terms}
-        seen: Set[str] = set()
-        for key in _runs(shown(q), run):
-            for other in hidden.get(key, ()):
-                if other == q.id or other in raised or other in seen:
-                    continue
-                seen.add(other)
-                out.append(Leak(q.id, other, " ".join(key)))
         if q.claude:
-            # an answer of Claude's that spells a masked tab's address: the
-            # edge to it is shown under a fingerprint, the address never
-            mine = [t.text for t in own(q)] + ([q.hinge.question] if q.hinge else [])
-            for other in links(graph, mine):
-                if other != q.id and other not in seen:
-                    out.append(Leak(q.id, other, "a link into its tab"))
+            mine: List[str] = []
+            for thesis in own(q):
+                mine += [thesis.title, thesis.text]
+            out += _shared(graph, q, mine, run, hidden)
+    return out
+
+
+def leaks(graph: Graph, run: int = RUN) -> List[Leak]:
+    """What could have carried masked words into what is shown.
+
+    The question put to Claude, which is drafted on the user's side: a run
+    of words it shares with a masked node. A section the user has marked:
+    a run it shares with one the user has not, since the mark may have been
+    meant for less. And a masked tab's address spelled in anything shown.
+    An answer of Claude's is not looked at for likeness (``similar``).
+    """
+    hidden = _hidden(graph, run)
+    out: List[Leak] = []
+    for q in graph.questions:
+        marked = marks(q)
+        parts: List[str] = [q.question] if q.claude or marked else []
+        sections = _sections(q)
+        for name in marked:
+            parts += sections[name]
+        found = _shared(graph, q, parts, run, hidden)
+        out += found
+        seen = {leak.masked for leak in found}
+        for other in links(graph, shown(q)):
+            if other != q.id and other not in seen:
+                out.append(Leak(q.id, other, "a link into its tab"))
     return out
 
 
@@ -251,8 +290,6 @@ def copy(graph: Graph, salt: str) -> Dict[str, object]:
             node["question"] = q.question
             if q.claude:
                 node["answers"] = [{"title": t.title, "text": t.text} for t in own(q)]
-                if q.hinge is not None and q.hinge.question.strip():
-                    node["asking"] = q.hinge.question
             if "thesis" in marked:
                 node["answers"] = [{"title": t.title, "text": t.text} for t in q.theses]
             if "glossary" in marked:
@@ -261,6 +298,7 @@ def copy(graph: Graph, salt: str) -> Dict[str, object]:
                 node["cases"] = [{"name": c.name, "case": c.situation, "verdict": c.verdict,
                                   "reason": c.reason} for c in q.cases]
             if "hinge" in marked and q.hinge is not None:
+                node["asking"] = q.hinge.question
                 node["end"], node["method"] = q.hinge.end, q.hinge.method
         nodes.append(node)
         for thesis in q.theses:

@@ -101,9 +101,13 @@ The question is public with everything in it, since what a question puts into th
 written into Claude's graph, in so many words or by what it presupposes. So before it is put:
 write the question to a file and run `tools/public.py question $SCRATCH/graph.json <file>`,
 which fails where it quotes a node the user has not marked as fit to show; read it for what it
-presupposes, and see that the hinge's question half of its tab says so, a stipulation where the
-user means it and a leak where the wording gave it away; and show the principal the question as
-the public text it is, and wait for approval. A run on the user's side may draft a question, and
+presupposes and keep that reading on the user's side, as a note on the user's own tab; see that
+it tells Claude of the user's life no more than the answer needs; and show the principal the
+question as the public text it is, and wait for approval. A question may reveal something of the
+user's life where the answer needs it: no more than is needed, and nothing the principal has not
+approved. What the asking presupposed is the answerer's to say, in the turn that answers, and is
+recorded with the answer as Claude's own; nothing of a hinge the user keeps is carried to the
+turn. A run on the user's side may draft a question, and
 this one is such a run; drafting is not approval. A question Claude's own graph raises of itself,
 up from what an answer presupposed or down from a clause, is drafted from Claude's nodes alone
 and is checked in the same way. An attenuation is put in the same way and no
@@ -204,7 +208,12 @@ What this run holds by reading, because no script decides it.
   words, a name, passes it: reading the question as a stranger would is yours, and the
   approval is the principal's.
 - **What a question presupposes is read.** Nothing computes what a wording put into an answer.
-  Write it on the hinge before the turn, where a later reader can weigh the answer by it.
+  Keep your reading on the user's side, where a later reader can weigh the answer by it; the
+  hinge of Claude's node is Claude's to state.
+- **Likeness is no leak.** Where an answer comes back in words like the user's, the two agree:
+  the turn held nothing of the user's, and `public.py check` lists the likeness and fails
+  nothing. A leak is likeness that came by a channel, and the question is the only one, which
+  is why the question is what is checked.
 - **The agent reads its packet and nothing behind it.** The plugin's `hooks/canon-gate.py`
   admits the lineage this run wrote and refuses the rest, canon on disk included, and nothing
   lists what counts as canon: it is what is under `canon/`. So the lineage must be whole, and
