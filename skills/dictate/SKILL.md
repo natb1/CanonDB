@@ -290,7 +290,8 @@ project's checkout.
 **Principles are asked, mechanisms decided.** The line is about the principal's principles and
 about what only the principal can tell. An ambiguity about a mechanism means a principle is not
 yet established, and that principle is what is asked, in the principal's own terms and with a
-case, never in the tooling's. A mechanism the admitted principles decide is the questioner's to
+case, never in the tooling's. A case is preferred to a list of options, and where options are
+listed each carries its consequence for the principal in a line. A mechanism the admitted principles decide is the questioner's to
 decide, and it is listed in a section of the line doc named Mechanisms decided, each with the
 admissions and the traditions that justify it and the step it was decided at; one the admitted
 principles do not decide is not decided. That section is a fifth part of the step from the first
