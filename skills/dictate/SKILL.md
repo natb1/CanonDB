@@ -247,7 +247,10 @@ essence, X is held by its cases and their connections: a term's cue is already t
 the tab is one more, and a glossary body may give cases.
 
 **The line doc.** The record the line keeps is a document of admissions, never a transcript:
-each admission short, in the principal's words, numbered, nothing verbatim at length. It is a
+each admission short, in the principal's words, numbered, nothing verbatim at length. No date, sum or
+person's name enters it; a person the principal speaks of is named by the place they hold. An
+item that cites another by number is read with it: at the retirement a number that anything
+carried still cites is carried with its text. It is a
 Claude Doc of the project the checkout keeps, made when the line opens, with these sections:
 how the line is run; directives, each clear directive of the principal's with its status;
 admissions, numbered; the line, each step's four parts; held questions; aporiai; declarations,
