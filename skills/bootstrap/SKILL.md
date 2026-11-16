@@ -20,6 +20,16 @@ can supply it. What it builds is timelier and less strict, and it says so in two
 bootstrap application is a **postulate** in the notebook, and every one is recorded in
 `.principal/bootstrap.json`, the manifest of what bootstrap built and still owns.
 
+Bootstrap builds from the user's notebook and not from Claude's own graph. It is a stopgap:
+the user wants the implementation now and knowingly bypasses the building of Claude's graph and
+the confidence in autonomous alignment that graph gives. So a round is never autonomous. The
+user initiates it, this run executes it, the plan waits for approval and the author merges. An
+action that rests on the user's principles is the user's until the user chooses one of three
+things: to delegate it, by extending Claude's graph until a principle of Claude's carries it;
+to bootstrap it, here; or to do it. Only what rests on Claude's own graph is Claude's to do on
+its own authority, and a bootstrap application gives way when Claude's graph reaches what it
+rests on and the two are compared.
+
 `[dictation]`, when given, focuses the round on what the prose names — and it is a dictation
 to the notebook first, applied exactly as `/principal:dictate` applies one, so that what is
 built is what the notebook says and never more. Without it, the round reviews every

@@ -13,6 +13,14 @@ configuration is the grant. This run selects the question and composes nothing o
 agent reads. Never answer a canon question in this run, and never launch the agent from any
 other.
 
+What a turn builds is Claude's own graph, in Claude's words, and it holds Claude's own nodes
+and the question and nothing else. Nothing of the user's graph is in it: a prior the user holds
+is never carried, in this project or from another, and `tools/lineage.py` refuses to write one
+into a packet. The line it does carry runs on across a project's edge wherever the question
+there is already Claude's, so a turn has the whole of Claude's line above it. This is for
+alignment first, since an answer is Claude's only if nothing of the user's pushed it there, and
+for privacy second: Claude's graph is public, and the question is the one channel into it.
+
 `[question]` names the question to put, by id. Without it, the run puts the question the
 frontier puts first. With it, the run puts that question only if the frontier says it can be
 put, and says what it waits on otherwise.
@@ -88,6 +96,19 @@ the notebook, would collide with the answer this question will draw, say so now:
 admission, and propose the question that would carry it. That question is a compaction, and
 putting it instead is the principal's act. Stop there; a dictation changes the question, and
 this entry point is run again.
+
+The question is public with everything in it, since what a question puts into the answer is
+written into Claude's graph, in so many words or by what it presupposes. So before it is put:
+write the question to a file and run `tools/public.py question $SCRATCH/graph.json <file>`,
+which fails where it quotes a node the user has not marked as fit to show; read it for what it
+presupposes, and see that the hinge's question half of its tab says so, a stipulation where the
+user means it and a leak where the wording gave it away; and show the principal the question as
+the public text it is, and wait for approval. A run on the user's side may draft a question, and
+this one is such a run; drafting is not approval. An attenuation is put in the same way and no
+other: a further question that states the user's position at the divergence as far as it is fit
+to be public, and Claude's answer under it. Where the user's reason is not fit to be public the
+position may be put without its ground, and where that does not bring the actions together the
+action stays the user's.
 
 **4 — Write the packet.** `tools/lineage.py $SCRATCH/graph.json <question> -o $SCRATCH/packet/lineage.md`,
 with the same `--thread` as step 2. The directory must be named `packet` and the file
@@ -176,6 +197,12 @@ What this run holds by reading, because no script decides it.
   what an answer collides with elsewhere is found here or not at all. It is found before the
   question is put where it can be, which is the cheaper compaction, and after where it cannot.
 - **The answer is the AI's.** Verbatim, and never reflowed to pass a check.
+- **The question is public, and the check reads runs of words only.** `public.py question`
+  finds a quotation of a masked node. A paraphrase of one, a fact about the user said in new
+  words, a name, passes it: reading the question as a stranger would is yours, and the
+  approval is the principal's.
+- **What a question presupposes is read.** Nothing computes what a wording put into an answer.
+  Write it on the hinge before the turn, where a later reader can weigh the answer by it.
 - **The agent reads its packet and nothing behind it.** The plugin's `hooks/canon-gate.py`
   admits the lineage this run wrote and refuses the rest, canon on disk included, and nothing
   lists what counts as canon: it is what is under `canon/`. So the lineage must be whole, and

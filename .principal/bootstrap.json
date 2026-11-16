@@ -31,8 +31,8 @@
         "skills/interview/SKILL.md",
         "skills/anticipate/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3199",
-      "rounds": 12
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
+      "rounds": 13
     },
     {
       "question": "context",
@@ -242,7 +242,7 @@
         "tools/test_text.py"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
-      "rounds": 10
+      "rounds": 11
     },
     {
       "question": "recognition",
@@ -357,6 +357,17 @@
         "README.md"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3196",
+      "rounds": 1
+    },
+    {
+      "question": "hypomnemata",
+      "application": "the public copy",
+      "files": [
+        "tools/hypo/public.py",
+        "tools/public.py",
+        "tools/test_public.py"
+      ],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
       "rounds": 1
     }
   ]

@@ -58,9 +58,12 @@ def above(graph: Graph, qid: str) -> List[str]:
     """The questions the AI answers above ``qid``, by a path through the AI's
     questions; nearest the root first, ties by id.
 
-    This is the lineage as a turn carries it: a question the principal
-    answers is never put, so nothing of it reaches a turn, and neither does
-    anything above it by way of it alone.
+    This is the lineage as a turn carries it: Claude's own graph and nothing
+    of the user's. A question the principal answers is never put, so nothing
+    of it reaches a turn, and neither does anything above it by way of it
+    alone. The path runs on across a project's edge where the question there
+    is already Claude's, so a turn carries the whole of Claude's line, and
+    stops where the question there is a prior the user holds.
     """
     by_id = graph.by_id()
     ins = project.in_edges(graph)
@@ -68,11 +71,17 @@ def above(graph: Graph, qid: str) -> List[str]:
     mine = by_id[qid].project if qid in by_id else ""
 
     def carried(s: str) -> bool:
-        # a turn carries the canon of its own project and no other's: canon is
-        # kept per project, each in its own repository, so a question of an
-        # earlier project that raises this project's entry is a constraint the
-        # notebook's review reads across the edge and never canon in a turn
-        return bool(by_id.get(s)) and by_id[s].answerer == AI and by_id[s].project == mine
+        # a turn carries Claude's own nodes and no one else's. Above the
+        # question, in its own project, every question the AI answers is on
+        # the path, and one still held is owed before the turn. Across a
+        # project's edge only a node already Claude's is on it: a question of
+        # an earlier project that the user holds as a prior constrains the
+        # later one in the notebook and at the review, is never put into a
+        # turn, and is not waited on
+        q = by_id.get(s)
+        if q is None or q.answerer != AI:
+            return False
+        return q.project == mine or q.claude
 
     queue = [s for s in ins.get(qid, []) if carried(s)]
     while queue:
@@ -162,6 +171,11 @@ def lineage(graph: Graph, qid: str, thread: Iterable[str] = ()) -> str:
     for other in above(graph, qid):
         thesis = carried(by_id[other], thread)
         assert thesis is not None
+        if thesis.state == STATES[0]:
+            # held is a prior of the user's: carried() never returns one, and
+            # this keeps it so whatever carried() comes to return
+            raise ValueError("%s, above it, is a prior the user holds: a turn "
+                             "carries Claude's own words alone" % other)
         parts.append("%s\n\n%s" % (by_id[other].question.strip(), thesis.text.strip()))
     parts.append(q.question.strip())
     return ("\n\n%s\n\n" % RULE).join(parts) + "\n"

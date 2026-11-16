@@ -85,24 +85,44 @@ class ReaderTest(unittest.TestCase):
 
 
 
-class TurnStaysInsideItsProjectTest(unittest.TestCase):
-    """Canon is kept per project. A question of an earlier project that
-    raises a later project's entry constrains it in the notebook; it is not
-    canon a turn of the later project carries, and it blocks nothing there."""
+class TurnCarriesClaudesLineTest(unittest.TestCase):
+    """A turn carries Claude's own nodes, across projects, and nothing of the
+    user's. A question of an earlier project that the user holds as a prior
+    constrains the later project in the notebook; it is never in a turn and
+    blocks nothing there. One that is already Claude's is carried."""
 
     def test_a_held_raiser_in_another_project_blocks_nothing(self):
         graph = crossed()
-        root, second = graph.get("ti-esti"), graph.get("second")
+        for thesis in graph.get("ti-esti").theses:
+            thesis.state = "held"
+        self.assertFalse(graph.get("ti-esti").claude)
         self.assertNotIn("second", project.blocked_behind(graph, "ti-esti"))
         fired = [f.line() for f in spec.run(graph, only=["put-in-order"])
                  if f.question == "second"]
         self.assertEqual(fired, [])
 
-    def test_a_turns_lineage_stops_at_its_projects_entry(self):
+    def test_a_prior_the_user_holds_is_not_in_another_projects_turn(self):
         from hypo import turn
         graph = crossed()
+        for thesis in graph.get("ti-esti").theses:
+            thesis.state = "held"
         self.assertEqual(turn.above(graph, "second"), [])
-        self.assertIn("ti-esti", turn.above(graph, "canon"))
+        self.assertEqual(turn.waits(graph, "second"), [])
+        self.assertNotIn(graph.get("ti-esti").theses[0].text.strip(),
+                         turn.lineage(graph, "second"))
+
+    def test_a_node_of_claudes_is_carried_across_the_edge(self):
+        from hypo import turn
+        graph = crossed()
+        root = graph.get("ti-esti")
+        self.assertTrue(root.claude)
+        self.assertEqual(turn.above(graph, "second"), ["ti-esti"])
+        carried = turn.carried(root, ["ti-esti"])
+        self.assertIn(carried.text.strip(), turn.lineage(graph, "second", ["ti-esti"]))
+
+    def test_inside_a_project_the_line_runs_as_before(self):
+        from hypo import turn
+        self.assertIn("ti-esti", turn.above(crossed(), "canon"))
 
 
 class ScopedWriteKeepsItsChipsTest(unittest.TestCase):
