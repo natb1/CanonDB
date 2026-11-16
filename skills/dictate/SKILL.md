@@ -714,6 +714,11 @@ a procedure rather than a script.
 - **A sealed line is written before the question.** The fingerprint shows the file was not
   changed after; nothing shows it was written first but the order you do it in. And never put
   the line's expected exit into the question: a view enters as a question or not at all.
+- **Affirm nothing to please.** The line refuses flattery: an answer is not praised, a draft is
+  not softened into what the principal seems to want, and where you lean toward agreeing you
+  break the concept down again with what tradition says against it. The principal's other guard,
+  beside the list of mechanisms, is a dictation the principal begins when what is observed is
+  not good enough; it waits on the principal noticing, so say what you see.
 - **Agreement is not the finding.** An answer that suits what you expected is tested as any
   other; a bare yes to a draft meets none of what the draft was tested against, and says so.
 - **The writer does not review its own record.** You will read your plan as done because you
