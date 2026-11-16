@@ -200,6 +200,11 @@ FIDELITY = """# A line
 
 - B1. The record is good when it reproduces the user's answers.
 
+## Adversarial review
+
+- V1. The case the plan's row owed was not on the tab. Closed: written on the tab.
+{review}
+
 ## Fidelity rounds
 
 - F1. Sealed 0123456789abcdef. Put in round 1.
@@ -215,8 +220,28 @@ class FidelityTest(unittest.TestCase):
     """After the notebook is updated the dictation is tested: the record's
     answer sealed before each question, graded after, every failure remedied."""
 
-    def findings(self, stated):
-        return line.check(line.parse(FIDELITY.format(stated=stated)))
+    def findings(self, stated, review=""):
+        return line.check(line.parse(FIDELITY.format(stated=stated, review=review)))
+
+    def test_a_review_finding_left_open_fails(self):
+        found = self.findings("- F1, stated at S2. Grade: agrees.",
+                              review="- V2. A reading of tradition stands only in this doc.")
+        self.assertEqual([f.severity for f in found], [line.ERROR])
+        self.assertIn("finding V2 is neither closed nor carried", found[0].message)
+
+    def test_a_review_finding_carried_by_a_row_passes(self):
+        doc = FIDELITY.format(stated="- F1, stated at S2. Grade: agrees.",
+                              review="- V2. A reading of tradition stands only in this doc.")
+        doc += "- A2. A note on the tab holding V2. B1.\n"
+        self.assertEqual(line.check(line.parse(doc)), [])
+
+    def test_fidelity_rounds_without_a_review_fail(self):
+        doc = FIDELITY.format(stated="- F1, stated at S2. Grade: agrees.", review="")
+        doc = doc.replace("## Adversarial review\n\n- V1. The case the plan's row owed was "
+                          "not on the tab. Closed: written on the tab.\n", "")
+        found = line.check(line.parse(doc))
+        self.assertEqual([f.severity for f in found], [line.ERROR])
+        self.assertIn("no section 'Adversarial Review'", found[0].message)
 
     def test_a_prediction_that_agrees_passes(self):
         self.assertEqual(self.findings("- F1, stated at S2. Grade: agrees."), [])

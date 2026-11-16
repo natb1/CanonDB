@@ -252,7 +252,8 @@ Claude Doc of the project the checkout keeps, made when the line opens, with the
 how the line is run; directives, each clear directive of the principal's with its status;
 admissions, numbered; the line, each step's four parts; held questions; aporiai; declarations,
 each with the admissions it rests on in order; digressions; contradictions found; tradition
-cited, with registry status; decisions reached; fidelity rounds, once the notebook is updated; and the plan. The items of every section but
+cited, with registry status; decisions reached; adversarial review and fidelity rounds, once the notebook is updated;
+and the plan. The items of every section but
 the admissions and the plan are numbered too, with a letter prefix of their own, and a row of
 the plan cites by number what it carries. `tools/line.py check <doc.md> [<graph.json>]` reads
 the markdown export of the doc: every admission is cited by a row of the plan, every row cites
@@ -316,11 +317,33 @@ Where a requirement cannot be met, the principal chooses in the line between ref
 notebook and the action; the line does not stop at a restated principle but goes on until the
 whole is consistent.
 
-**Retirement.** The line doc lives until the plan is executed and its fidelity round has
-passed, and is retired after; what it
+**Retirement.** The line doc lives until the plan is executed, an adversarial review has
+returned nothing and its fidelity round has passed, and is retired after; what it
 holds that must survive, the plan, the tradition drafts and the pending notes, is compacted into
 the notebook and the skill first. A re-derivation's questioner never reads a line doc. Nothing is
 lost by the retirement, and no transcript is kept at any point.
+
+**The adversarial review.** A run reports its own plan as executed more readily than it
+executed it: a row written to another tab than it named, one of three cases written and three
+reported, a pending note standing for an answer. So once the notebook is written and re-checked,
+and before the fidelity round, the record is reviewed by a reader that did not do the writing:
+an agent started with the line doc, the notebook and the checkout, none of this conversation,
+and the brief to find what would be lost were the line doc deleted now. It goes section by
+section. Every row of the plan: is its content where the row says, all of it, and as an answer
+where the row says answer? Every mechanism decided: built, stated in the notebook, or listed as
+open, with its wording and justification somewhere that will outlive the doc? Every held
+question, contradiction, digression, declaration and line of aporia not closed in the doc:
+carried in full, never by a pointer back to the doc? Every parked item: its carrier actually
+written? Every reading of tradition cited: on the tab it bears on as a line, or as a note
+opening with the word *pending* for the run that rewrites the tab, never left in the doc?
+Every directive: in this skill or in the notebook? And every entry of a successor doc that
+describes this one: is it true? Its findings are numbered in a section of the line doc named
+Adversarial review, `- V1. …`, and each is resolved where it belongs, in the notebook, as an
+item tracked on the Rule's queue, or as an open item of a line doc that is still drawn, and
+closed there with where it went, `Closed: …`. A doc kept only to hold what was not carried is
+not a home: it will be lost. The review is run again after the resolving, by a fresh reader,
+until one returns nothing, and only then is the doc retired. `tools/line.py check` fails a
+finding neither closed nor carried by a row, and fails a doc with fidelity rounds and no review.
 
 **The fidelity round.** A dictation is tested once the notebook holds it: the record is good
 when a reader holding only the notebook answers as the principal does. After the re-check, and
@@ -693,6 +716,17 @@ a procedure rather than a script.
   the line's expected exit into the question: a view enters as a question or not at all.
 - **Agreement is not the finding.** An answer that suits what you expected is tested as any
   other; a bare yes to a draft meets none of what the draft was tested against, and says so.
+- **The writer does not review its own record.** You will read your plan as done because you
+  remember doing it. The review is a different reader's, and its brief is adversarial: what is
+  lost if the doc goes now. Report a departure from the plan as a departure, with the count
+  written against the count owed.
+- **A pointer is not a carrier.** "It stands in that line's doc" carries nothing once the doc is
+  retired. An item is carried when its words are where the next run will read them.
+- **A principle is divided beneath itself, never beside itself.** What refines a principle is
+  written as derived from it, so that writing a region out re-divides its share and cannot
+  enlarge it; and a case whose verdict the shares get wrong is recorded on the tab and names the
+  siblings it concerns. An action that ends or lessens the capacity to act is priced as every
+  principle it leaves unsupported afterwards: name them all to `tools/shares.py --price`.
 - **A fidelity question is new.** Nothing checks that a question is not the notebook's own in
   other words, or that it stands at an edge; a round the record passes easily has tested the
   questions and not the record. Close the exits the principal took last time.

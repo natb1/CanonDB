@@ -48,6 +48,9 @@ GRADES = ("agrees", "verdict only", "short of the edge", "diverges", "silent")
 GRADE = re.compile(r"\bGrade: (?P<grade>%s)\b" % "|".join(GRADES))
 REMEDY = re.compile(r"\bRemedy: ")
 REDRAWN = re.compile(r"\bRedrawn: ")
+#: what a reader that did not do the writing found missing from the record
+#: once the plan had run: each finding closed where it now stands, or carried
+REVIEW = "adversarial review"
 
 #: an item's id: capitals then digits, as the doc numbers its lists
 ID = re.compile(r"\b([A-Z]{1,2})(\d+)\b")
@@ -238,10 +241,30 @@ def check(doc: Doc, questions: Optional[Set[str]] = None) -> List[Finding]:
         if SEALED.search(item.text) and item.id not in stated:
             out.append(Finding(WARN, "the sealed line %s was never stated: what its answer "
                                      "was tested against is not on the record" % item.id))
+    out.extend(_review(doc))
     out.extend(_fidelity(doc))
     for name in (ADMISSIONS,):
         if name not in doc.sections:
             out.append(Finding(ERROR, "the doc has no section '%s'" % name.title()))
+    return out
+
+
+def _review(doc: Doc) -> List[Finding]:
+    """The adversarial review: a finding of what the record lacks is closed
+    where it now stands or carried by a row, and the record is reviewed
+    before it is tested."""
+    out: List[Finding] = []
+    cited = {c for row in doc.rows() for c in row.cites()}
+    for item in doc.items(REVIEW):
+        if item.closed or item.id in cited:
+            continue
+        out.append(Finding(ERROR, "the review's finding %s is neither closed nor carried by "
+                                  "a row: what the record lacks is written where it belongs "
+                                  "before the doc is retired: %s" % (item.id, _clip(item.text))))
+    if doc.items(FIDELITY) and REVIEW not in doc.sections:
+        out.append(Finding(ERROR, "the doc has fidelity rounds and no section 'Adversarial "
+                                  "Review': the record is reviewed against the line before "
+                                  "it is tested"))
     return out
 
 
