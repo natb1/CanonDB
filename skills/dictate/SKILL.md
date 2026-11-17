@@ -743,6 +743,13 @@ a procedure rather than a script.
   enlarge it; and a case whose verdict the shares get wrong is recorded on the tab and names the
   siblings it concerns. An action that ends or lessens the capacity to act is priced as every
   principle it leaves unsupported afterwards: name them all to `tools/shares.py --price`.
+- **Where the record weighs, predict the weighing.** One verdict and one reason is the form
+  where the notebook gives a rule. Where it gives a reckoning, of where things stand, of the
+  chances, and then of feeling, the prediction names the factors that decide and which way each
+  cuts, and a flat verdict there is yours and will fail. Read a *never* in the notebook as what a
+  reckoning comes to in a clear case unless the notebook says it is a bar, and where a case is
+  too undefined to decide, predict that. Check a question for a second reading before it is put:
+  a case the principal misreads has tested nothing and is put again, plainer.
 - **A fidelity question is new.** Nothing checks that a question is not the notebook's own in
   other words, or that it stands at an edge; a round the record passes easily has tested the
   questions and not the record. Close the exits the principal took last time.
