@@ -391,7 +391,14 @@ watch for: a caution of the notebook's read as a general ban, where it was given
 This principal allows an act under a named condition, within the budget, approved, sound,
 reviewed, far more often than forbids it. So read a caution at the scope it was given, and where
 the record is silent try first the reading that the act is allowed under a condition, and name
-the condition in the prediction.
+the condition in the prediction. That allowance has a bound, found when the first pattern was
+over-corrected: it is for Claude's actions on its own graph as it stands. What is the
+principal's own act stays the principal's and explicit every time, the putting of a question,
+the marking of what may be shown, the building straight from the notebook, the making of a
+copy; and everything of the principal's is masked until it is explicitly unmasked. And grade
+against the sealed reason and not the verdict alone: a deciding reason of the principal's that
+you did not seal is a failure to predict and never an addition, and where you doubt, take the
+stricter grade, since a round you pass yourself too easily tests nothing.
 
 The remedy is then tested, `Redrawn: …`: the question is put again to a reader that holds only
 the notebook, an agent started with the document and none of this conversation, and its answer

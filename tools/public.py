@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""public.py check <graph.json> | question <graph.json> <file> | copy <graph.json> -o DIR --salt-file FILE — the copy of the notebook that may be shown.
+"""public.py check <graph.json> | question <graph.json> <file> | mark <graph.json> <question> <section>... | copy <graph.json> -o DIR --salt-file FILE — the copy of the notebook that may be shown.
 
 ``check`` lists what could have carried masked words into what the copy
 shows, a question that repeats a run of them or a masked tab's address, and
@@ -11,7 +11,11 @@ question drafted for Claude to the same rule before it is put: it is public
 with everything in it. ``copy`` writes the copy, ``graph.json`` and one page
 a node, and writes nothing where ``check`` would fail. Claude's graph is
 shown whole; of the user's, a node is shown only where its tab carries a
-note opening with the word public. The salt names the masked nodes and is
+note opening with the word public. ``mark`` prints the words of a mark over the sections named, as they read
+now, for the user to put on the tab as a note: everything is masked until it
+is explicitly unmasked, and a mark covers the words it was made over, so a
+section changed since is masked again and every mode says so. The salt names
+the masked nodes and is
 the user's to keep: the same salt gives the same names, and without it a
 name cannot be matched to a tab.
 """
@@ -45,6 +49,10 @@ def main(argv=None) -> int:
     p = sub.add_parser("question")
     p.add_argument("graph")
     p.add_argument("file", help="the drafted question, or - for stdin")
+    p = sub.add_parser("mark")
+    p.add_argument("graph")
+    p.add_argument("question")
+    p.add_argument("sections", nargs="+", metavar="SECTION")
     p = sub.add_parser("copy")
     p.add_argument("graph")
     p.add_argument("-o", "--out", required=True, metavar="DIR")
@@ -56,6 +64,21 @@ def main(argv=None) -> int:
     graph = cli.load_graph(args.graph)
     if graph is None:
         return 1
+    if args.mode == "mark":
+        q = graph.by_id().get(args.question)
+        unknown = [n for n in args.sections if n not in public.SECTIONS]
+        if q is None or unknown:
+            print("no such question" if q is None else
+                  "no such section: %s (one of %s)" % (", ".join(unknown),
+                                                       ", ".join(public.SECTIONS)),
+                  file=sys.stderr)
+            return 1
+        print(public.mark(q, args.sections))
+        return 0
+    for q in graph.questions:
+        for name in public.lapsed(q):
+            print("%s: the mark on %s no longer matches what the section says, or gives no "
+                  "fingerprint; masked until marked again" % (q.id, name))
     if args.mode == "question":
         drafted = sys.stdin.read() if args.file == "-" else open(args.file, encoding="utf-8").read()
         found = public.question(graph, drafted)

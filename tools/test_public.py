@@ -13,8 +13,17 @@ SALT = "a salt long enough to keep"
 
 
 def marked(qid, words):
+    """The fixture with a note on ``qid``. ``public: thesis`` and the like
+    are given their fingerprints as the tab reads now; ``public: all``
+    names every section; anything else goes on as written."""
     graph = load("valid")
-    graph.get(qid).notes.append(model.Note(section="thesis", body=words))
+    q = graph.get(qid)
+    if words.startswith("public: "):
+        names = words[len("public: "):].split(", ")
+        if names == ["all"]:
+            names = list(model.SECTIONS)
+        words = public.mark(q, names)
+    q.notes.append(model.Note(section="thesis", body=words))
     return graph
 
 
@@ -68,6 +77,29 @@ class CopyTest(unittest.TestCase):
         self.assertEqual(public.marks(marked("canon", "public: all").get("canon")),
                          set(model.SECTIONS))
 
+    def test_a_mark_with_no_fingerprint_marks_nothing(self):
+        graph = load("valid")
+        graph.get("canon").notes.append(model.Note(section="thesis", body="public: thesis"))
+        self.assertEqual(public.marks(graph.get("canon")), set())
+        self.assertEqual(public.lapsed(graph.get("canon")), ["thesis"])
+
+    def test_a_section_changed_after_its_mark_is_masked_again(self):
+        graph = marked("canon", "public: thesis")
+        canon = graph.get("canon")
+        self.assertEqual(public.marks(canon), {"thesis"})
+        canon.theses[0].text += " One paragraph more."
+        self.assertEqual(public.marks(canon), set())
+        self.assertEqual(public.lapsed(canon), ["thesis"])
+        node = next(n for n in public.copy(graph, SALT)["nodes"]
+                    if n["id"] == public.stub("canon", SALT))
+        self.assertTrue(node["masked"])
+
+    def test_a_mark_on_one_section_does_not_lapse_when_another_changes(self):
+        graph = marked("canon", "public: thesis")
+        canon = graph.get("canon")
+        canon.definitions.append(model.Definition(word="newword", body="A new entry."))
+        self.assertEqual(public.marks(canon), {"thesis"})
+
     def test_a_note_that_is_no_mark_marks_nothing(self):
         self.assertEqual(public.marks(marked("canon", "pending: thesis").get("canon")), set())
 
@@ -111,10 +143,12 @@ class LeakTest(unittest.TestCase):
                          [("ti-esti", "attenuation")])
 
     def test_a_marked_section_like_an_unmarked_tab_is_to_consider_and_no_leak(self):
-        graph = marked("canon", "public: thesis")
+        graph = load("valid")
         secret = "the household keeps seven grey geese behind the old mill"
         graph.get("party").theses[0].text += " " + secret
-        graph.get("canon").theses[0].text += " " + secret
+        canon = graph.get("canon")
+        canon.theses[0].text += " " + secret
+        canon.notes.append(model.Note(section="thesis", body=public.mark(canon, ["thesis"])))
         self.assertEqual(public.leaks(graph), [])
         self.assertIn(("canon", "party"),
                       [(leak.shown, leak.masked) for leak in public.consider(graph)])
@@ -197,11 +231,18 @@ class CommandTest(unittest.TestCase):
         for q in data["questions"]:
             if q["id"] == "canon":
                 q["theses"][0]["text"] += " " + secret
-                q.setdefault("notes", []).append({"section": "thesis", "body": "public: thesis"})
+                q.setdefault("notes", []).append({"section": "thesis", "body": "MARK"})
             if q["id"] == "party":
                 q["theses"][0]["text"] += " " + secret
         with tempfile.TemporaryDirectory() as out:
             graph, salt = os.path.join(out, "g.json"), os.path.join(out, "salt")
+            with open(graph, "w", encoding="utf-8") as fh:
+                _json.dump(data, fh)
+            words = run("public", "mark", graph, "canon", "thesis").stdout.strip()
+            for q in data["questions"]:
+                for note in q.get("notes", []):
+                    if note["body"] == "MARK":
+                        note["body"] = words
             with open(graph, "w", encoding="utf-8") as fh:
                 _json.dump(data, fh)
             with open(salt, "w", encoding="utf-8") as fh:
