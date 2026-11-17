@@ -720,6 +720,11 @@ a procedure rather than a script.
 - **A sealed line is written before the question.** The fingerprint shows the file was not
   changed after; nothing shows it was written first but the order you do it in. And never put
   the line's expected exit into the question: a view enters as a question or not at all.
+- **A case rests on the record.** A case put to the principal is built from what the notebook
+  states. A premise you inferred, that one thing serves only itself, that a principle is not
+  justified by the one above it, is asked first or left out; where the principal denies a case
+  for its premise, the fault is your reading of the graph and it is remedied as a failure to
+  predict is, never counted as a test the record passed.
 - **Affirm nothing to please.** The line refuses flattery: an answer is not praised, a draft is
   not softened into what the principal seems to want, and where you lean toward agreeing you
   break the concept down again with what tradition says against it. The principal's other guard,
