@@ -155,6 +155,16 @@ to be public, and Claude's answer under it. Where the user's reason is not fit t
 position may be put without its ground, and where that does not bring the actions together the
 action stays the user's.
 
+Where no principle of Claude's graph decides and no case covers, Claude may still act: within
+the budget, in alignment with the cases, and consistent with what the principal expects of how
+the principles generalize, on whatever priors, context and senses it has. The principal expects
+actions to follow from principles, so the record of such an act says that it rested on no
+principle of Claude's graph, and the question that would draw the principle may be raised on
+that graph under the four conditions. That Claude's authority to act alone does not turn on
+circumstance is said of whose the decision is and by what rule, which is the same everywhere;
+what the rule finds right in a case depends on the case. The guard of an attenuation is the
+cases, which live in the harness and not in Claude.
+
 **4 — Write the packet.** `tools/lineage.py $SCRATCH/graph.json <question> -o $SCRATCH/packet/lineage.md`,
 with the same `--thread` as step 2. The directory must be named `packet` and the file
 `lineage.md`, because that is the one path outside the checkout the agent's gate lets
