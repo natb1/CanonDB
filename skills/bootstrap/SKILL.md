@@ -22,7 +22,8 @@ bootstrap application is a **postulate** in the notebook, and every one is recor
 
 Bootstrap builds from the user's notebook and not from Claude's own graph. It is a stopgap:
 the user wants the implementation now and knowingly bypasses the building of Claude's graph and
-the confidence in autonomous alignment that graph gives. So a round is never autonomous. The
+the confidence in autonomous alignment that graph gives. So a round is never autonomous, and it is only ever explicit:
+it is done once when asked, and being asked once licenses nothing the next time. The
 user initiates it, this run executes it, the plan waits for approval and the author merges. An
 action that rests on the user's principles is the user's until the user chooses one of three
 things: to delegate it, by extending Claude's graph until a principle of Claude's carries it;

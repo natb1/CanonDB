@@ -31,6 +31,16 @@ is dated — drawn from a model other than the one answering now, or against can
 since moved above the question — and records what comes back as a further answer on the tab,
 beside the one that landed. `[question]` with it names which, and must be among them.
 
+An answer of Claude's is never cut and never rewritten, so that Claude's graph stays in Claude's
+words. The principal changes it in one way: an answer is withdrawn whole and drawn again under a
+new question. That is done where something leaked into it unmeant, where a better line is
+wanted, or where the principal disagrees with it; and then the line and the context that led to
+the answer are reviewed, and the question is not simply put again, so that what comes back is
+consistent. The answers given beneath a withdrawn one were given with it in the turn and are
+due to be drawn again. No tool withdraws an answer yet: where the principal calls for it, say
+what would be withdrawn and what beneath it falls due, and leave the page as it is until the
+principal's dictation changes it.
+
 The notebook is the document `.principal/notebook.json` names at the project's root. `tools/`
 below is the plugin's own, at `${CLAUDE_PLUGIN_ROOT}/tools/`, and `$SCRATCH` is the session's
 scratch directory. The document tools this run reads the notebook with, and records the answer
