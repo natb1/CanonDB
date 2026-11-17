@@ -382,6 +382,17 @@ skill. What the principal adds that was not predicted is taken in the same way, 
 grade. A sentence of the notebook's that you put to the principal and that the principal denies
 is the gravest finding: find the words that gave it and change them.
 
+Failures that lean the same way are a pattern, and a pattern is a finding of its own. Once two
+predictions have failed in the same direction, say what the direction is, in the line doc and to
+the principal, and carry it where the next reader will meet it: a clause of the notebook's
+answer on how its record is read, or an entry of this skill. Never leave it to a session's
+memory alone, which the next run may not hold. One pattern is already recorded and is yours to
+watch for: a caution of the notebook's read as a general ban, where it was given for one thing.
+This principal allows an act under a named condition, within the budget, approved, sound,
+reviewed, far more often than forbids it. So read a caution at the scope it was given, and where
+the record is silent try first the reading that the act is allowed under a condition, and name
+the condition in the prediction.
+
 The remedy is then tested, `Redrawn: …`: the question is put again to a reader that holds only
 the notebook, an agent started with the document and none of this conversation, and its answer
 is compared with the principal's. A remedy that does not change the clean reader's answer has
@@ -750,6 +761,9 @@ a procedure rather than a script.
   reckoning comes to in a clear case unless the notebook says it is a bar, and where a case is
   too undefined to decide, predict that. Check a question for a second reading before it is put:
   a case the principal misreads has tested nothing and is put again, plainer.
+- **A pattern in your failures is yours to see.** Nothing counts which way your predictions
+  failed. Look back over the graded items of every round before sealing the next, and where two
+  lean the same way, name the lean and write it into the notebook or this skill before going on.
 - **A fidelity question is new.** Nothing checks that a question is not the notebook's own in
   other words, or that it stands at an edge; a round the record passes easily has tested the
   questions and not the record. Close the exits the principal took last time.
