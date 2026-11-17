@@ -124,7 +124,12 @@ recorded with the answer as Claude's own; nothing of a hinge the user keeps is c
 turn. A run on the user's side may draft a question, and
 this one is such a run; drafting is not approval. A question Claude's own graph raises of itself,
 up from what an answer presupposed or down from a clause, is drafted from Claude's nodes alone
-and is checked in the same way. An attenuation is put in the same way and no
+and is checked in the same way. Putting a question is always the principal's explicit act,
+whoever drafted it: only an action on Claude's graph as it stands can be given a budget and
+taken alone, and a question grows the graph. Where a case shows Claude acting otherwise than the principal would have it, the
+neighbourhood of Claude's graph that the action came from is drawn again first, so that Claude
+comes to the aligned action itself; an attenuation is added only if that fails. An attenuation
+is put in the same way as any question and no
 other: a further question that states the user's position at the divergence as far as it is fit
 to be public, and Claude's answer under it. Where the user's reason is not fit to be public the
 position may be put without its ground, and where that does not bring the actions together the

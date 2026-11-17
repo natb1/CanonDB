@@ -5,10 +5,15 @@ built in turns that hold Claude's own nodes and the question and nothing
 else, so nothing private to the user can be in it, and whatever a question
 put there is public with it. The user's is private, and of it the copy shows
 that a node stands and what it is joined to, never its words, unless the
-user has marked the node. A mark is a note on the tab opening with the word
-*public*, naming the sections that may be shown or ``all``:
+user has marked the node. Everything is masked until it is explicitly
+unmasked. A mark is a note on the tab opening with the word *public*, naming
+each section that may be shown with a fingerprint of the section as it read
+when the mark was made (``public.py mark`` writes one):
 
-    public: thesis, glossary
+    public: thesis 3fa91c20, glossary 77b0e4d1
+
+A section changed after its mark no longer matches the fingerprint and is
+masked again until the user marks it anew.
 
 A node of Claude's is a question holding an answer in Claude's own words.
 The copy shows its question and those answers. The rest of its tab, the
@@ -46,7 +51,6 @@ from . import text
 from .model import SECTIONS, STATES, Graph, Question
 
 OPENING = "public"
-ALL = "all"
 #: how many words in a row, shared by a shown text and a masked one, make a
 #: quotation; a drafted question is held to a shorter run, being new words
 RUN = 6
@@ -60,21 +64,60 @@ class Leak(NamedTuple):
     words: str
 
 
-def marks(q: Question) -> Set[str]:
-    """The sections of ``q``'s tab the user has marked as fit to show."""
-    out: Set[str] = set()
+def seal(parts: Iterable[str]) -> str:
+    """The fingerprint a mark carries of the words it was made over."""
+    words = " ".join(" ".join(part.split()) for part in parts if part and part.strip())
+    return hashlib.sha256(words.encode("utf-8")).hexdigest()[:8]
+
+
+def _claims(q: Question) -> Dict[str, str]:
+    """Each section a mark on ``q`` names, with the fingerprint it gives; the
+    fingerprint is empty where the mark gives none."""
+    out: Dict[str, str] = {}
     for note in q.notes:
         body = " ".join(note.body.split())
         if not body.lower().startswith(OPENING):
             continue
-        rest = body[len(OPENING):].lstrip(": ").lower()
-        for name in re.split(r"[,;]\s*|\s+and\s+", rest):
-            name = name.strip(" .")
-            if name == ALL:
-                out.update(SECTIONS)
-            elif name in SECTIONS:
-                out.add(name)
+        rest = body[len(OPENING):].lstrip(": ")
+        for item in re.split(r"[,;]\s*|\s+and\s+", rest):
+            words = item.strip(" .").lower().split()
+            mark = ""
+            if words and re.fullmatch(r"[0-9a-f]{8}", words[-1]):
+                mark = words.pop()
+            name = " ".join(words)
+            if name in SECTIONS:
+                out[name] = mark
     return out
+
+
+def marks(q: Question) -> Set[str]:
+    """The sections of ``q``'s tab the user has marked as fit to show, and
+    that still read as they did when the mark was made.
+
+    Everything is masked until it is explicitly unmasked, so a mark covers
+    the words it was made over and nothing written since: it carries a
+    fingerprint of the section, and a section that no longer matches it is
+    masked again until the user marks it anew. A mark with no fingerprint
+    marks nothing.
+    """
+    sections = _sections_of(q)
+    return {name for name, mark in _claims(q).items()
+            if mark and mark == seal(sections[name])}
+
+
+def lapsed(q: Question) -> List[str]:
+    """Sections a mark names whose words have changed since, or whose mark
+    gives no fingerprint: masked until marked again."""
+    sections = _sections_of(q)
+    return sorted(name for name, mark in _claims(q).items()
+                  if not mark or mark != seal(sections[name]))
+
+
+def mark(q: Question, names: Iterable[str]) -> str:
+    """The words of a mark over ``names`` as ``q``'s tab reads now."""
+    sections = _sections_of(q)
+    chosen = [n for n in SECTIONS if n in set(names)]
+    return "%s: %s" % (OPENING, ", ".join("%s %s" % (n, seal(sections[n])) for n in chosen))
 
 
 def own(q: Question) -> List:
@@ -82,9 +125,10 @@ def own(q: Question) -> List:
     return [t for t in q.theses if t.state != STATES[0]]
 
 
-def _sections(q: Question) -> Dict[str, List[str]]:
+def _sections_of(q: Question) -> Dict[str, List[str]]:
     """Every word on the tab, by the section it stands in."""
     out: Dict[str, List[str]] = {name: [] for name in SECTIONS}
+    out["thesis"].append(q.question)
     for thesis in q.theses:
         out["thesis"] += [thesis.title, thesis.text]
         out["thesis"] += [e.note + " " + e.counter for e in thesis.traditions]
@@ -99,7 +143,8 @@ def _sections(q: Question) -> Dict[str, List[str]]:
     for w in q.works:
         out["works"] += [w.work, w.note]
     if q.hinge is not None:
-        out["hinge"] += [q.hinge.end, q.hinge.method, q.hinge.thesis, q.hinge.cue]
+        out["hinge"] += [q.hinge.question, q.hinge.end, q.hinge.method, q.hinge.thesis,
+                         q.hinge.cue]
     return out
 
 
@@ -107,7 +152,7 @@ def shown(q: Question) -> List[str]:
     """The words of ``q``'s tab the copy shows."""
     out: List[str] = []
     marked = marks(q)
-    sections = _sections(q)
+    sections = _sections_of(q)
     if q.claude:
         out.append(q.question)
         for thesis in own(q):
@@ -122,7 +167,7 @@ def shown(q: Question) -> List[str]:
 def masked(q: Question) -> List[str]:
     """The words of ``q``'s tab the copy does not show."""
     marked = marks(q)
-    sections = _sections(q)
+    sections = _sections_of(q)
     out: List[str] = []
     for name in SECTIONS:
         if name in marked:
@@ -239,7 +284,7 @@ def consider(graph: Graph, run: int = RUN) -> List[Leak]:
         marked = marks(q)
         if not marked:
             continue
-        sections = _sections(q)
+        sections = _sections_of(q)
         parts: List[str] = [q.question]
         for name in marked:
             parts += sections[name]
