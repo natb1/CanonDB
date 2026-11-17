@@ -400,7 +400,11 @@ drafted on the principal's side, the marking of what may be shown, the building 
 copy; and everything of the principal's is masked until it is explicitly unmasked. And grade
 against the sealed reason and not the verdict alone: a deciding reason of the principal's that
 you did not seal is a failure to predict and never an addition, and where you doubt, take the
-stricter grade, since a round you pass yourself too easily tests nothing.
+stricter grade, since a round you pass yourself too easily tests nothing. The pattern came
+back after it was written here, so one step is added to the sealing: a prediction that the
+principal would forbid an act of Claude's, or allow it only on a condition, is sealed only with
+the sentence of the notebook that forbids it in terms, quoted; where there is none, the sealed
+verdict is that the act is allowed.
 
 The remedy is then tested, `Redrawn: …`: the question is put again to a reader that holds only
 the notebook, an agent started with the document and none of this conversation, and its answer
@@ -426,6 +430,47 @@ the answers to a fidelity round are admissions like any others and are read agai
 Every mechanism decided, listed with what justifies it. And a recommendation the principal asks
 for is given as a draft for correction with the readings you chose marked, each line the
 principal's only once confirmed.
+
+**The cycle.** A line may carry the making of Claude's own graph with it. By the principal's
+instruction it does so now, while the process is still being developed; what follows is that
+process as it stands, and it changes by dictation. One neighbourhood of the graph is worked at a
+time, in six moves. *Ask*: a question goes to the principal only for what no admitted principle
+decides, a principle, a contradiction, or a divergence that Claude's answers or a failed case
+have shown; one at a time, the record's answer sealed first. *Draft the case*: every question is
+put as a concrete situation, so every answer gives a case, its situation, verdict and reason,
+written in the line doc at once and asked of no one. *The batch point*: after a few answers,
+when a contradiction closes, or before the principal leaves, three short lists are put for
+approval together: the cases as drafted; the expectations about generalization drafted from
+them, each said of a kind of situation, with where it holds and where it stops; and the
+questions drafted for Claude's graph, each checked with `tools/public.py question` and read for
+what its wording gives away. The principal approves, corrects or strikes each; approval is what
+makes a case or an expectation public and binding on Claude, and what puts a question. *Record*:
+the principal's sentences, the cases and the expectations go onto the notebook's tabs together
+at the batch point and not before, except that a sentence already on the notebook which an
+answer shows wrong is corrected at once; a reading of yours is never written there until it is
+confirmed. *Claude's turns*: once approved, each question goes to a clean context that holds
+Claude's nodes and the question alone, in the background, while the line goes on in the next
+neighbourhood; when a turn returns, the answer is recorded verbatim as Claude's node, the
+neighbourhood's cases are put to Claude's graph as situations without their verdicts, and what
+Claude would do is set beside each verdict. *Feed back*: the next step opens, before any new
+question, with Claude's principles in its own words, where its actions agree with the cases and
+where they differ, and the actions its graph would queue; the principal confirms the agreement
+or names a divergence, and a divergence is the next question's subject. The principal's
+attention is the scarce thing: background work never holds up a question, confirmations are
+batched, and nothing is asked that the record or an admitted principle decides.
+
+**A change of scope.** The principal may widen, narrow or redirect the line in mid course. The
+request is written among the directives in the principal's words, and the declared scope is
+restated. Then every item that stands open, held, pinned, parked, drafted for correction or
+owed, is given one of four places, and none is dropped except on the principal's word: folded
+into the new scope, carried at a stated place in the order, parked with its carrier, or
+deferred with the event that brings it back. The agenda at the head of the line doc is that
+list, kept at every step; the principal is shown the counts and the items that changed place.
+
+**What comes first.** An unremedied failure in a neighbourhood the new work reads comes before
+anything, since what is built on a wrong record compounds. Then the principal's newest request,
+with the open items it depends on pulled forward beside it. Then the rest, in the order they
+had. Nothing waits unseen: at each batch point the waiting items are shown in one line.
 
 **Where the line is shared.** One procedure with two parameters, who answers and whether the
 questioner holds the notebook, is run by four entry points: `/principal:ask`, where the AI
@@ -754,6 +799,10 @@ a procedure rather than a script.
   mechanism cites an admission; whether the admission decides it, or was read more narrowly or
   widely than the principal meant, only the principal can say, which is why the list is put
   item by item at the compaction, and why a correction afterwards is an ordinary dictation.
+- **The agenda is kept by hand.** Nothing checks that a change of scope left no open item
+  behind but the agenda. Sweep the whole line doc for it, every page of a long one, and never
+  the items you remember; a line doc too long for one read is read in pages, the second by the
+  `from` its first read names.
 - **A sealed line is written before the question.** The fingerprint shows the file was not
   changed after; nothing shows it was written first but the order you do it in. And never put
   the line's expected exit into the question: a view enters as a question or not at all.
@@ -764,7 +813,8 @@ a procedure rather than a script.
   predict is, never counted as a test the record passed. A premise carried over from the
   principal's own graph to Claude's is such an inference: what the notebook says of how the
   principal acts is not thereby said of Claude, and a case built on the likeness is asked for
-  its premise first.
+  its premise first. And a premise the principal has doubted is not built on again, in
+  a question or in a mechanism, until the principal has admitted it.
 - **Affirm nothing to please.** The line refuses flattery: an answer is not praised, a draft is
   not softened into what the principal seems to want, and where you lean toward agreeing you
   break the concept down again with what tradition says against it. The principal's other guard,
