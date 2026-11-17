@@ -110,13 +110,17 @@ class LeakTest(unittest.TestCase):
         self.assertEqual([(leak.shown, leak.masked) for leak in public.leaks(graph)],
                          [("ti-esti", "attenuation")])
 
-    def test_a_marked_section_that_repeats_an_unmarked_tabs_words_is_a_leak(self):
+    def test_a_marked_section_like_an_unmarked_tab_is_to_consider_and_no_leak(self):
         graph = marked("canon", "public: thesis")
         secret = "the household keeps seven grey geese behind the old mill"
         graph.get("party").theses[0].text += " " + secret
         graph.get("canon").theses[0].text += " " + secret
+        self.assertEqual(public.leaks(graph), [])
         self.assertIn(("canon", "party"),
-                      [(leak.shown, leak.masked) for leak in public.leaks(graph)])
+                      [(leak.shown, leak.masked) for leak in public.consider(graph)])
+
+    def test_an_unmarked_graph_has_nothing_to_consider(self):
+        self.assertEqual(public.consider(load("valid")), [])
 
     def test_a_shorter_run_is_no_likeness(self):
         graph = load("valid")
@@ -184,6 +188,30 @@ class CommandTest(unittest.TestCase):
                     everything += fh.read()
             self.assertIn(public.own(graph.get("ti-esti"))[0].text.strip()[:60], everything)
             self.assertNotIn(graph.get("canon").theses[0].text.strip()[:60], everything)
+
+    def test_copy_waits_until_a_likeness_of_a_marked_section_is_considered(self):
+        import json as _json
+        with open(fixture("valid"), encoding="utf-8") as fh:
+            data = _json.load(fh)
+        secret = "the household keeps seven grey geese behind the old mill"
+        for q in data["questions"]:
+            if q["id"] == "canon":
+                q["theses"][0]["text"] += " " + secret
+                q.setdefault("notes", []).append({"section": "thesis", "body": "public: thesis"})
+            if q["id"] == "party":
+                q["theses"][0]["text"] += " " + secret
+        with tempfile.TemporaryDirectory() as out:
+            graph, salt = os.path.join(out, "g.json"), os.path.join(out, "salt")
+            with open(graph, "w", encoding="utf-8") as fh:
+                _json.dump(data, fh)
+            with open(salt, "w", encoding="utf-8") as fh:
+                fh.write(SALT)
+            held = run("public", "copy", graph, "-o", os.path.join(out, "copy"), "--salt-file", salt)
+            self.assertEqual(held.returncode, 2)
+            self.assertFalse(os.path.exists(os.path.join(out, "copy")))
+            done = run("public", "copy", graph, "-o", os.path.join(out, "copy"),
+                       "--salt-file", salt, "--considered")
+            self.assertEqual(done.returncode, 0, done.stderr)
 
     def test_a_short_salt_is_refused(self):
         with tempfile.TemporaryDirectory() as out:

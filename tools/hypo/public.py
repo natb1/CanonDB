@@ -28,8 +28,12 @@ lists such runs for the user to see and fails nothing. The question is the
 one channel into Claude's graph and is drafted on the user's side, so a run
 of masked words in a question is a leak, and so is a masked tab's address
 spelled anywhere in what is shown: ``leaks`` lists those and the copy is
-not made while one stands. ``question`` holds a question drafted for Claude
-to the same rule before it is put.
+not made while one stands. A section the user marked may be shown whatever
+it is like, the marking being sound; where it is like a masked tab
+``consider`` lists the run, since the mark may have taken in something
+sensitive by accident or the words may merely stand in two contexts, and
+the copy waits on the user's having considered it. ``question`` holds a
+question drafted for Claude to the same rule as ``leaks`` before it is put.
 """
 
 from __future__ import annotations
@@ -204,25 +208,42 @@ def leaks(graph: Graph, run: int = RUN) -> List[Leak]:
     """What could have carried masked words into what is shown.
 
     The question put to Claude, which is drafted on the user's side: a run
-    of words it shares with a masked node. A section the user has marked:
-    a run it shares with one the user has not, since the mark may have been
-    meant for less. And a masked tab's address spelled in anything shown.
-    An answer of Claude's is not looked at for likeness (``similar``).
+    of words it shares with a masked node. And a masked tab's address
+    spelled in anything shown. An answer of Claude's is not looked at for
+    likeness (``similar``), nor is a section the user marked (``consider``).
     """
     hidden = _hidden(graph, run)
     out: List[Leak] = []
     for q in graph.questions:
-        marked = marks(q)
-        parts: List[str] = [q.question] if q.claude or marked else []
-        sections = _sections(q)
-        for name in marked:
-            parts += sections[name]
-        found = _shared(graph, q, parts, run, hidden)
+        found = _shared(graph, q, [q.question], run, hidden) if q.claude else []
         out += found
         seen = {leak.masked for leak in found}
         for other in links(graph, shown(q)):
             if other != q.id and other not in seen:
                 out.append(Leak(q.id, other, "a link into its tab"))
+    return out
+
+
+def consider(graph: Graph, run: int = RUN) -> List[Leak]:
+    """Runs of words a section the user marked shares with a masked node.
+
+    What the user has marked may be shown whatever it is like, so long as
+    the marking is sound. A likeness to a masked tab may mean the mark took
+    in something sensitive by accident, or only that the same words stand
+    in two contexts, which is fine: it is for the user to consider, and the
+    copy is made once the user has.
+    """
+    hidden = _hidden(graph, run)
+    out: List[Leak] = []
+    for q in graph.questions:
+        marked = marks(q)
+        if not marked:
+            continue
+        sections = _sections(q)
+        parts: List[str] = [q.question]
+        for name in marked:
+            parts += sections[name]
+        out += _shared(graph, q, parts, run, hidden)
     return out
 
 

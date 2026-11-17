@@ -31,8 +31,8 @@
         "skills/interview/SKILL.md",
         "skills/anticipate/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3201",
-      "rounds": 14
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3205",
+      "rounds": 15
     },
     {
       "question": "context",
@@ -42,8 +42,8 @@
         ".claude/settings.json",
         "CLAUDE.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3201",
-      "rounds": 8
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3205",
+      "rounds": 9
     },
     {
       "question": "dictate",
@@ -367,8 +367,8 @@
         "tools/public.py",
         "tools/test_public.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3201",
-      "rounds": 2
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3205",
+      "rounds": 3
     }
   ]
 }
