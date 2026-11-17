@@ -140,10 +140,10 @@ and from it a better line is put on Claude's graph, so that Claude comes to the 
 on principle and not by a patch; an attenuation is added only if that fails. What Claude is to
 choose alone is the action the principal would choose, come to from Claude's own principles. So
 an act that raises Claude's capacity is weighed from the principal's side: what gaps that
-capacity closes for the principal, against what the review costs the principal; a trade the
-principal would still take, or one that captures. An act that brings capture or inefficiency is
-met in the same way: the cases extended, Claude's principles extended, and failing that an
-attenuation. An attenuation is a
+capacity closes for the principal, against what the review costs the principal; a transaction
+the principal would still choose, or one that creates capture. An act that brings capture or
+inefficiency is met in the same way: the cases extended and Claude's principles extended, or
+failing that an attenuation. An attenuation is a
 principle Claude is bound by that is not in Claude's words and not drawn from Claude's own
 principles: it stands in Claude's graph in the principal's words, as the question put it. No
 tool yet keeps the cases as a suite, measures how Claude's actions generalize, or gates a change
