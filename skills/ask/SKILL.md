@@ -34,10 +34,14 @@ beside the one that landed. `[question]` with it names which, and must be among 
 An answer of Claude's is never cut and never rewritten, so that Claude's graph stays in Claude's
 words. The principal changes it in one way: an answer is withdrawn whole and drawn again under a
 new question. That is done where something leaked into it unmeant, where a better line is
-wanted, or where the principal disagrees with it; and then the line and the context that led to
+wanted, where the principal disagrees with it, or where the principal comes to regret what an
+approved question told; and then the line and the context that led to
 the answer are reviewed, and the question is not simply put again, so that what comes back is
 consistent. The answers given beneath a withdrawn one were given with it in the turn and are
-due to be drawn again. No tool withdraws an answer yet: where the principal calls for it, say
+due to be drawn again. While an answer beneath a withdrawn one waits to be drawn again, an action that Claude would
+still give the same priority on the sparser graph that remains, and that is within the budget,
+is still valid: only the budget for undoing and the priority of the action restrict what
+Claude does alone. No tool withdraws an answer yet: where the principal calls for it, say
 what would be withdrawn and what beneath it falls due, and leave the page as it is until the
 principal's dictation changes it.
 
