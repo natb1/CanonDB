@@ -362,7 +362,9 @@ Before a question is put, the record's answer is drawn and sealed as a line of a
 verdict and one deciding reason, a prediction hedged across outcomes not being a test; the
 clauses and cases it rests on and those that pull the other way, found by matching the question
 against every cue and case of the projects in scope as a consult does, never from the tabs you
-happen to remember; what the principal is expected to add; and, apart, what you remember of the
+happen to remember, and where the question reaches across a join to a tab of a project outside
+the scope, that tab's cues and cases too, read as they stand now and not as an earlier read left
+them; what the principal is expected to add; and, apart, what you remember of the
 line that the notebook does not carry. The sealed text is kept in the checkout's `.work/`,
 which outlives the session's scratch, and only the item's number and the file's fingerprint go
 in the line doc, in a section named Fidelity rounds: `- F1. Sealed <fingerprint>.`
