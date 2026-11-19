@@ -1738,6 +1738,36 @@ def divergence_complete(graph: Graph) -> Yield:
                              % (note.section, ", ".join(gaps), _clip(note.body)))
 
 
+@check("open-complete",
+       "an open note names what is open, its kind, whose move it is, what raised it and "
+       "what brings it back")
+def open_complete(graph: Graph) -> Yield:
+    """What a line leaves open is written on the tab it bears on as a note
+    opening with the word *open*, and stands there until it is taken up.
+    What the record owes is what is open, its kind, whose move it is, what
+    raised it and what brings it back. A note that names less cannot be
+    weighed or returned to: no one knows whose move it is or when it comes
+    back. Open notes are listed and counted, never driven to none, so the
+    check holds each note's parts and not their number. A part it does not
+    know, or one given twice, is held as an error too: it would be dropped
+    from the record in silence. Every tab is held, tradition tabs too, which
+    the listing skips, as the divergence pair does."""
+    from . import residue
+    for q in graph.questions:
+        for note in q.notes:
+            parts = residue.parse(note.body)
+            if parts is None:
+                continue
+            gaps = residue.missing(parts)
+            if gaps:
+                yield q.id, ("an open note on %s names no %s: %s"
+                             % (note.section, ", ".join(gaps), _clip(note.body)))
+            strays = residue.strays(parts)
+            if strays:
+                yield q.id, ("an open note on %s holds %s: %s"
+                             % (note.section, "; ".join(strays), _clip(note.body)))
+
+
 @check("claim-open",
        "no question stands claimed: a claim lasts from the put to the record", WARN)
 def claim_open(graph: Graph) -> Yield:

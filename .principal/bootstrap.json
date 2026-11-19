@@ -10,8 +10,8 @@
         "hooks/hooks.json",
         "tools/test_gate.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/31",
-      "rounds": 3
+      "pull_request": "",
+      "rounds": 4
     },
     {
       "question": "context",
@@ -31,8 +31,8 @@
         "skills/interview/SKILL.md",
         "skills/anticipate/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3208",
-      "rounds": 22
+      "pull_request": "",
+      "rounds": 23
     },
     {
       "question": "context",
@@ -42,8 +42,8 @@
         ".claude/settings.json",
         "CLAUDE.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3207",
-      "rounds": 10
+      "pull_request": "",
+      "rounds": 11
     },
     {
       "question": "dictate",
@@ -131,8 +131,8 @@
         "tools/inplace.py",
         "tools/test_inplace.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
-      "rounds": 11
+      "pull_request": "",
+      "rounds": 12
     },
     {
       "question": "docs-encoding",
@@ -241,8 +241,8 @@
         "tools/test_spec.py",
         "tools/test_text.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3200",
-      "rounds": 11
+      "pull_request": "",
+      "rounds": 12
     },
     {
       "question": "recognition",
@@ -356,8 +356,8 @@
         "tools/test_cli.py",
         "README.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3196",
-      "rounds": 1
+      "pull_request": "",
+      "rounds": 2
     },
     {
       "question": "hypomnemata",
@@ -369,6 +369,94 @@
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3207",
       "rounds": 4
+    },
+    {
+      "question": "dictate",
+      "application": "the single interview",
+      "files": [
+        "skills/sit/SKILL.md",
+        "tools/test_sit_skill.py"
+      ],
+      "pull_request": "",
+      "rounds": 1
+    },
+    {
+      "question": "dictate",
+      "application": "the coordinator",
+      "files": [
+        "agents/coordinator.md",
+        ".claude/agents/coordinator.md"
+      ],
+      "pull_request": "",
+      "rounds": 1
+    },
+    {
+      "question": "dictate",
+      "application": "the board",
+      "files": [
+        "tools/board.py",
+        "tools/hypo/board.py",
+        "tools/test_board.py",
+        "web/board.html"
+      ],
+      "pull_request": "",
+      "rounds": 1
+    },
+    {
+      "question": "context",
+      "application": "the helpers",
+      "files": [
+        "agents/checker.md",
+        ".claude/agents/checker.md",
+        "agents/clean-reader.md",
+        ".claude/agents/clean-reader.md",
+        "agents/fetcher.md",
+        ".claude/agents/fetcher.md",
+        "agents/grader.md",
+        ".claude/agents/grader.md",
+        "agents/interviewer.md",
+        ".claude/agents/interviewer.md",
+        "agents/recorder.md",
+        ".claude/agents/recorder.md",
+        "agents/reviewer.md",
+        ".claude/agents/reviewer.md",
+        "hooks/notebook-gate.py",
+        "hooks/kind-bash-gate.py",
+        "hooks/kind-write-gate.py",
+        "hooks/reader-gate.py",
+        "hooks/kinds.py",
+        "tools/test_agents.py",
+        "tools/test_notebook_gate.py",
+        "tools/test_kind_bash_gate.py",
+        "tools/test_kind_write_gate.py",
+        "tools/test_reader_gate.py",
+        "tools/test_gate_kinds.py"
+      ],
+      "pull_request": "",
+      "rounds": 1
+    },
+    {
+      "question": "hypomnemata",
+      "application": "the open line",
+      "files": [
+        "tools/residue.py",
+        "tools/hypo/residue.py",
+        "tools/test_residue.py",
+        "tools/fixtures/invalid-open-complete.json"
+      ],
+      "pull_request": "",
+      "rounds": 1
+    },
+    {
+      "question": "hypomnemata",
+      "application": "the lift",
+      "files": [
+        "tools/views.py",
+        "tools/hypo/views.py",
+        "tools/test_views.py"
+      ],
+      "pull_request": "",
+      "rounds": 1
     }
   ]
 }
