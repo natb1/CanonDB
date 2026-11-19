@@ -124,16 +124,53 @@ recorded with the answer as Claude's own; nothing of a hinge the user keeps is c
 turn. A run on the user's side may draft a question, and
 this one is such a run; drafting is not approval. A question Claude's own graph raises of itself,
 up from what an answer presupposed or down from a clause, is drafted from Claude's nodes alone
-and is checked in the same way. Putting a question is always the principal's explicit act,
-whoever drafted it: only an action on Claude's graph as it stands can be given a budget and
-taken alone, and a question grows the graph. Where a case shows Claude acting otherwise than the principal would have it, the
-neighbourhood of Claude's graph that the action came from is drawn again first, so that Claude
-comes to the aligned action itself; an attenuation is added only if that fails. An attenuation
+and is checked in the same way. A question drafted on the principal's side is put only by the
+principal's explicit act. Claude may change its own graph alone, by the questions its own graph
+raises, answered in turns that hold its nodes alone, under four conditions: the work of
+changing it is paid from Claude's budget for action; what Claude then does is still bounded by
+the budget for undoing; the cases that test Claude's actions still pass, its actions staying
+consistent with what is known of what the principal would have it do; and the principal is told
+of any change in how its actions generalize, since actions may still pass those cases and
+generalize otherwise. A difference between the two graphs that no case has tested does not bar
+Claude from acting alone: no case, and nothing expected of how its actions generalize, has yet
+been violated. It is for the principal to recognize an action that is not aligned, whether a
+case shows it or the action passed the cases. As soon as it is recognized, Claude can reverse
+its own action; then the cause is worked on, and how the principles generalize in that
+neighbourhood is reviewed. The review is a dictation with the principal, as any is: it better
+articulates the principal's own graph there, and from it the line is established on Claude's
+graph, with an attenuation only if the drawing again fails; the cases, and what the principal
+expects of how Claude's actions generalize, are established with it, so that the difference
+cannot come back unseen and the like is done on principle and not by a patch. Claude is
+expected to test the result of each action it takes alone, and to see that it is consistent
+with the cases and with what the principal expects of how its actions generalize; the principal
+does not review each action, and raises the matter only when a case of misalignment is
+identified. So the cases and the expectations, each approved by the principal, reach Claude and
+are public as a question is. What Claude is to
+choose alone is the action the principal would choose, come to from Claude's own principles. So
+an act that raises Claude's capacity is weighed from the principal's side: what gaps that
+capacity closes for the principal, against what the review costs the principal; a transaction
+the principal would still choose, or one that creates capture. An act that brings capture or
+inefficiency is met in the same way: the cases extended and Claude's principles extended, or
+failing that an attenuation. An attenuation is a
+principle Claude is bound by that is not in Claude's words and not drawn from Claude's own
+principles: it stands in Claude's graph in the principal's words, as the question put it. No
+tool yet keeps the cases as a suite, measures how Claude's actions generalize, or gates a change
+Claude makes to its own graph; until one does, say what the suite would have to show and leave
+the change to the principal. An attenuation
 is put in the same way as any question and no
 other: a further question that states the user's position at the divergence as far as it is fit
 to be public, and Claude's answer under it. Where the user's reason is not fit to be public the
 position may be put without its ground, and where that does not bring the actions together the
 action stays the user's.
+
+Where no principle of Claude's graph decides and no case covers, Claude may still act: within
+the budget, in alignment with the cases, and consistent with what the principal expects of how
+the principles generalize, on whatever priors, context and senses it has. The principal does
+not expect that situation to arise: mechanically an action follows from principles, being
+chosen to lessen the gaps between principles and what is observed. That Claude's authority to act alone does not turn on
+circumstance is said of whose the decision is and by what rule, which is the same everywhere;
+what the rule finds right in a case depends on the case. The guard of an attenuation is the
+cases, which live in the harness and not in Claude.
 
 **4 — Write the packet.** `tools/lineage.py $SCRATCH/graph.json <question> -o $SCRATCH/packet/lineage.md`,
 with the same `--thread` as step 2. The directory must be named `packet` and the file

@@ -31,8 +31,8 @@
         "skills/interview/SKILL.md",
         "skills/anticipate/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3207",
-      "rounds": 17
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3208",
+      "rounds": 22
     },
     {
       "question": "context",
@@ -51,8 +51,8 @@
       "files": [
         "skills/dictate/SKILL.md"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3207",
-      "rounds": 11
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3208",
+      "rounds": 15
     },
     {
       "question": "wording",

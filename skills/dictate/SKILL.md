@@ -362,7 +362,9 @@ Before a question is put, the record's answer is drawn and sealed as a line of a
 verdict and one deciding reason, a prediction hedged across outcomes not being a test; the
 clauses and cases it rests on and those that pull the other way, found by matching the question
 against every cue and case of the projects in scope as a consult does, never from the tabs you
-happen to remember; what the principal is expected to add; and, apart, what you remember of the
+happen to remember, and where the question reaches across a join to a tab of a project outside
+the scope, that tab's cues and cases too, read as they stand now and not as an earlier read left
+them; what the principal is expected to add; and, apart, what you remember of the
 line that the notebook does not carry. The sealed text is kept in the checkout's `.work/`,
 which outlives the session's scratch, and only the item's number and the file's fingerprint go
 in the line doc, in a section named Fidelity rounds: `- F1. Sealed <fingerprint>.`
@@ -393,12 +395,16 @@ reviewed, far more often than forbids it. So read a caution at the scope it was 
 the record is silent try first the reading that the act is allowed under a condition, and name
 the condition in the prediction. That allowance has a bound, found when the first pattern was
 over-corrected: it is for Claude's actions on its own graph as it stands. What is the
-principal's own act stays the principal's and explicit every time, the putting of a question,
-the marking of what may be shown, the building straight from the notebook, the making of a
+principal's own act stays the principal's and explicit every time, the putting of a question
+drafted on the principal's side, the marking of what may be shown, the building straight from the notebook, the making of a
 copy; and everything of the principal's is masked until it is explicitly unmasked. And grade
 against the sealed reason and not the verdict alone: a deciding reason of the principal's that
 you did not seal is a failure to predict and never an addition, and where you doubt, take the
-stricter grade, since a round you pass yourself too easily tests nothing.
+stricter grade, since a round you pass yourself too easily tests nothing. The pattern came
+back after it was written here, so one step is added to the sealing: a prediction that the
+principal would forbid an act of Claude's, or allow it only on a condition, is sealed only with
+the sentence of the notebook that forbids it in terms, quoted; where there is none, the sealed
+verdict is that the act is allowed.
 
 The remedy is then tested, `Redrawn: …`: the question is put again to a reader that holds only
 the notebook, an agent started with the document and none of this conversation, and its answer
@@ -407,6 +413,23 @@ remedied nothing. `tools/line.py check` holds the section's shape: an item seale
 stated fails, as does one stated with no grade or graded short of agrees with no remedy, and a
 remedy not drawn again is reported. The remedies are in-place writes or rows of a further plan,
 as any dictation's; the round's own admissions are numbered with the rest.
+
+**Every interviewing phase is the line.** A run alternates between asking and writing: a line
+is drawn and compacted, the notebook is written, a review finds something, a round of the
+fidelity test is put and answered, an answer opens new ground. Each time questions are put to
+the principal again the phase is the line, with everything the line has, and nothing of it is
+dropped because the run is busy grading or remedying. After each answer, what tradition says for
+and against it, each party with its registry status, and among the traditions the established
+methods of the answer's own field: for an answer about testing, change or control, the practice
+of software validation and the work on the alignment of AI. Before a critical question, its
+line of aporia sealed, and stated after. Before every question, a fidelity item or not, the
+record's answer sealed, one verdict and one reason, since drawing it is also what gathers the
+context needed to answer as the principal would. A contradiction between two admissions, or
+between an admission and what an earlier step wrote into the notebook, named where it stands;
+the answers to a fidelity round are admissions like any others and are read against the rest.
+Every mechanism decided, listed with what justifies it. And a recommendation the principal asks
+for is given as a draft for correction with the readings you chose marked, each line the
+principal's only once confirmed.
 
 **Where the line is shared.** One procedure with two parameters, who answers and whether the
 questioner holds the notebook, is run by four entry points: `/principal:ask`, where the AI
@@ -742,7 +765,11 @@ a procedure rather than a script.
   states. A premise you inferred, that one thing serves only itself, that a principle is not
   justified by the one above it, is asked first or left out; where the principal denies a case
   for its premise, the fault is your reading of the graph and it is remedied as a failure to
-  predict is, never counted as a test the record passed.
+  predict is, never counted as a test the record passed. A premise carried over from the
+  principal's own graph to Claude's is such an inference: what the notebook says of how the
+  principal acts is not thereby said of Claude, and a case built on the likeness is asked for
+  its premise first. And a premise the principal has doubted is not built on again, in
+  a question or in a mechanism, until the principal has admitted it.
 - **Affirm nothing to please.** The line refuses flattery: an answer is not praised, a draft is
   not softened into what the principal seems to want, and where you lean toward agreeing you
   break the concept down again with what tradition says against it. The principal's other guard,
@@ -768,6 +795,10 @@ a procedure rather than a script.
   reckoning comes to in a clear case unless the notebook says it is a bar, and where a case is
   too undefined to decide, predict that. Check a question for a second reading before it is put:
   a case the principal misreads has tested nothing and is put again, plainer.
+- **The techniques do not lapse between phases.** Nothing checks that the step after a
+  fidelity answer had its tradition, or that a question put after a write had its sealed line
+  and its sealed answer. Tradition is the one that falls away first. Before each message that
+  puts a question, look for the parts of the step and for the sealed files.
 - **A pattern in your failures is yours to see.** Nothing counts which way your predictions
   failed. Look back over the graded items of every round before sealing the next, and where two
   lean the same way, name the lean and write it into the notebook or this skill before going on.
