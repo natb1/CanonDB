@@ -10,7 +10,7 @@
         "hooks/hooks.json",
         "tools/test_gate.py"
       ],
-      "pull_request": "",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
       "rounds": 4
     },
     {
@@ -31,7 +31,7 @@
         "skills/interview/SKILL.md",
         "skills/anticipate/SKILL.md"
       ],
-      "pull_request": "",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
       "rounds": 23
     },
     {
@@ -42,7 +42,7 @@
         ".claude/settings.json",
         "CLAUDE.md"
       ],
-      "pull_request": "",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
       "rounds": 11
     },
     {
@@ -131,7 +131,7 @@
         "tools/inplace.py",
         "tools/test_inplace.py"
       ],
-      "pull_request": "",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
       "rounds": 12
     },
     {
@@ -241,7 +241,7 @@
         "tools/test_spec.py",
         "tools/test_text.py"
       ],
-      "pull_request": "",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
       "rounds": 12
     },
     {
@@ -356,7 +356,7 @@
         "tools/test_cli.py",
         "README.md"
       ],
-      "pull_request": "",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
       "rounds": 2
     },
     {
@@ -377,7 +377,7 @@
         "skills/sit/SKILL.md",
         "tools/test_sit_skill.py"
       ],
-      "pull_request": "",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
       "rounds": 1
     },
     {
@@ -387,7 +387,7 @@
         "agents/coordinator.md",
         ".claude/agents/coordinator.md"
       ],
-      "pull_request": "",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
       "rounds": 1
     },
     {
@@ -399,7 +399,7 @@
         "tools/test_board.py",
         "web/board.html"
       ],
-      "pull_request": "",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
       "rounds": 1
     },
     {
@@ -432,7 +432,7 @@
         "tools/test_reader_gate.py",
         "tools/test_gate_kinds.py"
       ],
-      "pull_request": "",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
       "rounds": 1
     },
     {
@@ -444,7 +444,7 @@
         "tools/test_residue.py",
         "tools/fixtures/invalid-open-complete.json"
       ],
-      "pull_request": "",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
       "rounds": 1
     },
     {
@@ -455,7 +455,7 @@
         "tools/hypo/views.py",
         "tools/test_views.py"
       ],
-      "pull_request": "",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
       "rounds": 1
     }
   ]
