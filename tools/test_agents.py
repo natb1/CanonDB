@@ -266,6 +266,20 @@ class BodyTest(unittest.TestCase):
         body = flat(self.bodies["clean-reader"])
         self.assertIn("You read that file and the notebook, and nothing else", body)
 
+    def test_the_clean_reader_is_given_no_answer_and_predicts_a_refusal_to_pick(self):
+        body = flat(self.bodies["clean-reader"])
+        self.assertNotIn("given, what the principal has admitted", body)
+        self.assertIn("the prediction is that the principal declines to pick and says what is "
+                      "missing", body)
+
+    def test_the_interviewer_puts_every_ask_on_the_page_and_builds_nothing(self):
+        body = flat(self.bodies["interviewer"])
+        self.assertIn("every ask as one action on the page, one at a time and in order", body)
+        self.assertIn("You write no code, no page and no tooling yourself", body)
+        self.assertIn("of the page's store you write all three documents, its current action "
+                      "and the day's marks, each by one data write of your own as the entry "
+                      "point says, and the Rule only at the principal's word", body)
+
     def test_the_grader_carries_the_five_grades_of_the_principal_s_answer(self):
         body = flat(self.bodies["grader"])
         for line in ("- `agrees`: the principal's answer has the same verdict as the "

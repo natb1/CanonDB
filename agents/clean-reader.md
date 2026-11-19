@@ -43,6 +43,8 @@ end before you rely on any part of it.
   as what a reckoning comes to in a clear case, unless the notebook says it is a bar.
 - Where the record hands the matter to feeling, say that, and do not decide it for the principal.
 - Where a case is too undefined to decide, predict that.
+- Where the notebook cannot decide the case, the prediction is that the principal declines to
+  pick and says what is missing; name what is missing.
 - Say what the notebook does not tell: where it is silent, the prediction is that it is silent,
   and the silence is not filled from anywhere else.
 - Read a caution at the scope it was given, never as a general ban. This has a bound: it is for

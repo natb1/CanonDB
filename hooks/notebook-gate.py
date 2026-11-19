@@ -58,6 +58,16 @@ of these whose address is the notebook's; a call of the four naming nothing
 the gate can read as an id is no opinion. What they would do to the
 notebook is not checked here; none is a helper's to do.
 
+Local files. `ArtifactData` writes a read to `<out_dir>/<collection>/<doc
+id>.json` and sends a local JSON file named by `file_path`, at the top or
+in a member of a list. For a kind of this plugin each such path, and an
+export's directory and file under it, is held to the kind's
+own directory below a scratch root, held as `kinds.py` holds a path:
+`coordinator` for the coordinator and `speaker` for the interviewer, where
+the sitting's entry point keeps their exports and batches; every other kind
+is refused any. A collection or a document id that climbs (`..`) or is not
+a string is refused.
+
 The bare recorder's residue, left by decision. Whether the bare name is the
 writer is read from the file named `recorder.md` in the project's
 `.claude/agents/`, not from the definition the harness resolved: a second
@@ -176,6 +186,9 @@ REFUSED = ("only the recorder writes the notebook; hand back the rows for a "
            "record job instead")
 UNCLEAR = ("this write does not say plainly which document it is for; name the "
            "document by its id in the container, and send nothing else in its place")
+
+FILES = ("this kind's data calls keep their local files under its own directory; "
+         "give an out_dir or a file_path there, or none")
 
 
 class Unclear(Exception):
@@ -335,7 +348,61 @@ def _ref(part, fields: list, parts: list = None) -> None:
         parts.append(ref)
 
 
-def named(tool: str, tool_input) -> list:
+def local_paths(tool_input) -> list:
+    """The local paths an `ArtifactData` call writes or reads: its export's
+    directory, the collection's directory and the document's file under
+    it, and every `file_path`, at the top or in a member of a list."""
+    if not isinstance(tool_input, dict):
+        raise Unclear("the input")
+    out = []
+    members = [tool_input]
+    for value in tool_input.values():
+        if isinstance(value, str) and value.lstrip().startswith("["):
+            try:
+                value = json.loads(value)
+            except ValueError as exc:
+                raise Unclear("a list") from exc
+        if isinstance(value, list):
+            members.extend(m for m in value if isinstance(m, dict))
+    for member in members:
+        found = member.get("file_path")
+        if found is not None:
+            out.append(found)
+    where = tool_input.get("out_dir")
+    if where is not None:
+        if not isinstance(where, str):
+            raise Unclear("out_dir")
+        out.append(where)
+        below = []
+        for key in ("collection", "doc_id"):
+            part = tool_input.get(key)
+            if part is None:
+                continue
+            if not isinstance(part, str) or ".." in part.split("/") or part.startswith("/"):
+                raise Unclear(key)
+            below.append(part + (".json" if key == "doc_id" else ""))
+            out.append(os.path.join(where, *below))
+    return out
+
+
+def held_files(kind: str, tool_input, cwd, env) -> bool:
+    """Whether every local path of an `ArtifactData` call is one the kind
+    may write: under its own directory below a scratch root for the
+    coordinator and the interviewer, and none for any other kind."""
+    paths = local_paths(tool_input)
+    if not paths:
+        return True
+    if kind not in ("coordinator", SPEAKER):
+        return False
+    own_dir = "speaker" if kind == SPEAKER else "coordinator"
+
+    def may(path):
+        where = KINDS_MODULE.held(path, cwd, env)
+        return bool(where) and KINDS_MODULE.under(where, own_dir, env, last=True)
+    return all(isinstance(p, str) and may(p) for p in paths)
+
+
+def named(tool: str, tool_input, parts: list = None) -> list:
     """The fields of a call of a naming tool, or of a delete, that hold an
     address: `url`, `from_url` and `type_url`, an artifact a published file
     is copied from, the container's id and a project ref's id."""
@@ -351,7 +418,7 @@ def named(tool: str, tool_input) -> list:
     container = _object(tool_input.get("container"), "container")
     if container is not None and container.get("id") not in (None, ""):
         fields.append(container["id"])
-    _ref(tool_input.get("ref"), fields)
+    _ref(tool_input.get("ref"), fields, parts)
     return fields
 
 
@@ -422,10 +489,22 @@ def decide(call, env=None, plugin=None, own: str = AGENTS) -> dict:
         # no delete of the notebook
         try:
             cwd = call.get("cwd")
+            if tool == "ArtifactData":
+                kind = own_kind(agent, plugin, cwd, env, own)
+                if kind and not held_files(kind, call.get("tool_input"), cwd, env):
+                    return _answer("deny", FILES)
             notebook = find_notebook(cwd if isinstance(cwd, str) and cwd else None, env)
+            parts = []
             if notebook is not None and any(_aimed(f, notebook)
-                                            for f in named(tool, call.get("tool_input"))):
+                                            for f in named(tool, call.get("tool_input"), parts)):
                 return _answer("deny", REFUSED)
+            if parts and tool in DELETES and (
+                    writes(agent, plugin, cwd, env, own)
+                    or own_kind(agent, plugin, cwd, env, own) == SPEAKER):
+                # a delete by a ref to a part of a document, which the
+                # connector may follow into the notebook: the recorder and
+                # the interviewer, whom the rest of the gate lets through
+                return _answer("deny", UNCLEAR)
         except (Unclear, TypeError, ValueError, RecursionError):
             if tool in NAMING:
                 return _answer("deny", UNCLEAR)

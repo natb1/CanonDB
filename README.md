@@ -40,9 +40,12 @@ words and returns the clauses and cases that bear on it, reading only and drawin
 quoted, for the user to confirm or correct. `/principal:interview` puts a question the principal
 answers, or the project's end, to the user through a questioner that has read nothing of the
 notebook, keeps a line doc of admissions, and hands over to a comparing run the user runs.
-`/principal:sit` is the one session that speaks with the principal: it puts one act at a time,
-each question sealed by a clean reader before it is put and graded after, writes its own line
-doc and never the notebook, and hands every write to the notebook to a job on the board.
+`/principal:sit` is the one session that speaks with the principal, toward one goal: the
+smallest distance between what the principal's principles ask and what the principal does. It
+puts one action at a time on its page, each question alone and sealed by a clean reader before it
+is put and graded after, writes its own line doc and never the notebook, and hands every write to
+the notebook to a job on the board. It runs confined, in a session started as the interviewer
+kind, or open, in an ordinary session that may also brief helpers for building.
 
 The sitting's work is done by helpers of fixed kinds, defined under `agents/`: `clean-reader`
 (seals the notebook's answer to a question before it is put), `grader`, `fetcher`, `recorder`
@@ -203,7 +206,9 @@ is read and written through these entry points.
      read and write and the reader never takes for a question. For `/principal:sit`, add
      `"board": "<artifact address>"`: publish `web/board.html` once as a private artifact
      with the db capability and rules that let only its owner read and write, and put its
-     address in this key.
+     address in this key; and `"page": "<artifact address>"`: publish `web/ordo.html` once the
+     same way, with the db and user capabilities, and put its address in this key. Without a
+     `page` a sitting runs with no page and says so.
    - `bootstrap.json` — `{"applications": []}`, the manifest `/principal:bootstrap` keeps.
 
 3. Write the root question under `canon/`. Canon is what is under that directory, and nothing

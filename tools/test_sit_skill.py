@@ -31,6 +31,7 @@ from test_board import read_batch
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, ".."))
 SKILL = os.path.join(ROOT, "skills", "sit", "SKILL.md")
+PAGE = os.path.join(ROOT, "web", "ordo.html")
 COORDINATOR = os.path.join(ROOT, "agents", "coordinator.md")
 CHECKER = os.path.join(ROOT, "agents", "checker.md")
 GATE = os.path.join(ROOT, "hooks", "kind-bash-gate.py")
@@ -529,11 +530,454 @@ class SentenceTest(unittest.TestCase):
         self.assertIn("No directory on it is named `questions`, `answers`, `replies`, "
                       "`results`, `sealed`, `rows`, `check` or `coordinator`", self.skill)
 
+    def test_the_goal_stands_in_its_two_sentences(self):
+        self.assertIn("The sitting's goal is to make the distance between what the principal's "
+                      "principles ask and what the principal does as small as it can be, "
+                      "weighted by the share each principle carries. The goal is only the thing "
+                      "being optimized and constrains no mechanism.", self.skill)
+        goal = self.skill[self.skill.index("## The goal"):self.skill.index("## Before anything")]
+        for words in ("is mechanism, and may change",
+                      "a prediction of the principal that fails",
+                      "an override or a deferral of the action ranked first",
+                      "an action or a sitting not taken up",
+                      "Each is an observation and never a verdict",
+                      "or to a stated reason why none is owed",
+                      "Counts are mechanism and are never part of the goal"):
+            self.assertIn(words, goal)
+
+    def test_the_round_s_rules_each_have_their_key_sentence(self):
+        round_ = self.skill[self.skill.index("**3 — One action at a time: the round.**"):
+                            self.skill.index("**4 — The batch point.**")]
+        for words in (
+                "1. **One question at a time, put as one concrete case.**",
+                "Nothing accompanies it: no recommendation, no tradition on the question being "
+                "put, no list of what is sealed, no line telling the principal how to answer.",
+                "The tradition on the last answer, already given, stands in the action context "
+                "above it (rule 4): it is on that answer, never on the question now put.",
+                "The aporia the line is pursuing, with what each possible answer will be tested "
+                "against, is sealed by the speaker in a file of its own",
+                "Seals exist mechanically and are not listed to the principal.",
+                "3. **The question's file holds no answer.**",
+                "nothing of the sitting: no answer and no admission of the principal's",
+                "restated and never word for word",
+                "the prediction is that the principal declines to pick and says what is missing",
+                "First the answer as the speaker read it, a restatement and never word for word; "
+                "then tradition for and against the answer that was given",
+                "what was predicted, where the result diverged, and how or whether that gap is "
+                "addressed",
+                "unrevised when the next answer comes, it stands",
+                "Tradition readings go to the notebook only with the principal's approval.",
+                "5. **The principal may always override the action ranked first**",
+                "An override is an observation of a gap, never a verdict",
+                "the page keeps showing the deferred action beside the revised one",
+                "it is carried in every whole-document `set` of `ordo/current` until it is done "
+                "or the principal drops it",
+                "6. **The next action is one of four kinds: question, office, work, review.**",
+                "a review is put exactly as a question is",
+                "a review of mechanism may carry the speaker's recommendation, and a review that "
+                "states or changes a principle, a grant or a row stating a principle among them, "
+                "is put with no recommendation, as a question is",
+                "a prediction is sealed before every review as well, by the speaker itself",
+                "the file says who predicted",
+                "There are no checklists.",
+                "7. **Bells.**",
+                "only then does the speaker's own next action show",
+                "an item may be taken up",
+                "among a bell's unresolved items the page shows a taken one first, else the first "
+                "open one",
+                "A `work` action has no mark: it stays `next` in `ordo/current` until the speaker "
+                "changes it on the principal's word.",
+                "The page always shows the next bell",
+                "The page writes nothing",
+                "an overruled office item is an observation like any other override",
+                "8. **Every time the speaker stamps is read from the clock, never typed**",
+                "9. **The speaker, at the full tier, writes no code, page or tooling itself.**",
+                "the judge is never the tier judged",
+                "10. **Every ask of the principal is an action on the page, in order.**",
+                "The speaker never leaves an ask only in the session's text"):
+            self.assertIn(words, round_)
+        self.assertNotIn("Put the question, with the four parts of the step", self.skill)
+        self.assertNotIn("marks it as given", self.skill)
+
+    def test_round_two_the_count_the_brief_s_ask_and_no_speaker_write(self):
+        """Round two: S2, S4, S12."""
+        self.assertIn("Only a question of principle is counted", self.skill)
+        self.assertIn("An office item, a review and a work action are not counted.", self.skill)
+        self.assertNotIn("Every action put is counted as a question", self.skill)
+        self.assertIn("put on the page as the sitting's first action, a `review`, like any other",
+                      self.skill)
+        self.assertIn("The speaker never writes the notebook. Never work around a refusal.",
+                      self.skill)
+        self.assertNotIn("gives the word for the speaker to send that write itself", self.skill)
+
+    def test_two_ways_to_start_and_what_holds_in_the_open_one(self):
+        before = self.skill[self.skill.index("## Before anything"):
+                            self.skill.index("## Ground rules")]
+        for words in ("**The confined way.**", "**The open way.**",
+                      "the gates still bind every helper by its kind",
+                      "a helper that is no kind of this plugin is refused any write aimed at the "
+                      "notebook",
+                      "nothing but this text keeps the speaker itself off the notebook"):
+            self.assertIn(words, before)
+        self.assertNotIn("stops here, and tells the principal the command of ground rule 1",
+                         self.skill)
+        self.assertIn("**In the open way this text alone keeps the speaker off the notebook.**",
+                      self.skill)
+        self.assertIn("**A recorder's write may be refused by a permission check.**", self.skill)
+        self.assertIn("Never work around a refusal.", self.skill)
+
+    def test_the_departures_list_the_reversals(self):
+        departs = self.skill[self.skill.index("## Where this entry point departs"):]
+        for words in ("An ordinary session may run a sitting, the open way",
+                      "A question is put alone, where before",
+                      "Every ask of the principal is an action on the page"):
+            self.assertIn(words, departs)
+
     def test_the_attenuation_names_what_is_untested_and_left(self):
         for words in ("this is untested", "The guards have a blind spot outside the project",
                       "A reply on disk is the coordinator's copy",
                       "The shell and the files are bound for the helpers, not for the speaker"):
             self.assertIn(words, self.skill)
+
+
+class PageTest(unittest.TestCase):
+    """The page the round is put on, read as text, and the contract the skill
+    gives for its three documents."""
+
+    @classmethod
+    def setUpClass(cls):
+        with open(PAGE, encoding="utf-8") as fh:
+            cls.page = fh.read()
+        cls.script = cls.page[cls.page.index("<script>"):cls.page.index("</script>")]
+        text = flat(SKILL)
+        cls.contract = text[text.index("## The page"):text.index("## Procedure")]
+
+    def test_it_loads_no_script_from_another_host(self):
+        for tag in re.findall(r"<script\b[^>]*>", self.page):
+            self.assertNotIn("src=", tag)
+        self.assertEqual(self.page.count("<script"), 1)
+
+    def test_it_writes_nothing_and_takes_no_input(self):
+        verbs = r"(?:set|update|delete|add|batch|remove|put|write|commit)"
+        # a write in any spelling: a call, a subscript in any quoting, a verb held in a string
+        self.assertIsNone(re.search(r"\.\s*%s\s*\(" % verbs, self.script))
+        self.assertIsNone(re.search(r"\[\s*[\"'`]\s*%s\s*[\"'`]\s*\]" % verbs, self.script))
+        self.assertIsNone(re.search(r"[\"'`]%s[\"'`]" % verbs, self.script))
+        # the store is read only through db.doc(<path>).onSnapshot(
+        self.assertIsNone(re.search(r"\bdb\s*(?:\[|\.\s*(?!doc\())", self.script))
+        self.assertIsNone(re.search(r"[=(,:]\s*db\s*[;,)}]", self.script))
+        docs = [m.end() for m in re.finditer(r"\bdb\.doc\(", self.script)]
+        self.assertEqual(len(docs), 3)
+        for at in docs:
+            close = self.script.index(")", at)
+            self.assertTrue(self.script[close + 1:].startswith(".onSnapshot("),
+                            self.script[at - 7:close + 14])
+        # nothing goes out
+        for word in ("fetch", "XMLHttpRequest", "sendBeacon", "WebSocket", "EventSource",
+                     "postMessage", "import(", "window.open", "location", "localStorage",
+                     "sessionStorage", "indexedDB", "document.cookie", "eval", "Function("):
+            self.assertNotIn(word, self.script)
+        # no control, made in the source or at run time, in any quoting or case
+        controls = r"(?:button|input|textarea|select|form|option|details|dialog|a)"
+        self.assertIsNone(re.search(r"<\s*%s\b" % controls, self.page, re.I))
+        self.assertIsNone(re.search(r"[\"'`]\s*%s\s*[\"'`]" % controls, self.script, re.I))
+        for word in ("onclick", "addEventListener", "contenteditable", "contentEditable",
+                     "innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "tabindex"):
+            self.assertNotIn(word.lower(), self.page.lower())
+        self.assertNotIn("href", self.script)
+        made = re.findall(r"\bel\(\s*([\"'`])(\w+)\1", self.script)
+        self.assertTrue(made)
+        self.assertLessEqual({t for _, t in made}, {"p", "span", "b", "li", "div"})
+        self.assertEqual(re.findall(r"createElement\(\s*(\w+)\s*\)", self.script), ["tag"])
+
+    def test_the_session_s_action_waits_while_an_office_is_unresolved(self):
+        nxt = self.body("renderNext")
+        self.assertRegex(nxt, r"if\s*\(\s*st\.unres\.length\s*\)\s*renderOffice\(st\);\s*"
+                              r"else\s+renderSession\(\);")
+        self.assertEqual(self.script.count("renderSession("), 2)
+        office = self.body("renderOffice")
+        self.assertIn('$("next-prompt").textContent = it.label;', office)
+        self.assertNotIn('$("next-prompt").textContent = str(n', office)
+        self.assertIn("var it = st.unres[0]", office)
+        # a taken item first (S11)
+        self.assertRegex(self.body("officeNow"),
+                         r'unres: items\.filter\(function \(it\) \{ return it\.state === "taken"; \}\)'
+                         r'\s*\.concat\(items\.filter\(function \(it\) \{ return it\.state === "open"; \}\)\)')
+
+    def test_a_deferred_action_stays_shown(self):
+        for name in ("renderSession", "renderOffice"):
+            self.assertIn("renderDeferred(", self.body(name), name)
+        deferred = self.body("renderDeferred")
+        self.assertIn('$("next-deferred").hidden = !has;', deferred)
+        self.assertIn("var has = !!str(o.prompt);", deferred)
+        self.assertEqual(self.script.count('$("next-deferred").hidden'), 1)
+
+    def body(self, name):
+        """A function's body in the script, to its closing brace at two spaces."""
+        at = self.script.index("function %s(" % name)
+        return self.script[at:self.script.index("\n  }\n", at)]
+
+    def test_it_reads_no_field_the_contract_does_not_give(self):
+        code = re.sub(r"//[^\n]*", "", self.script)
+        code = re.sub(r"/(?:[^/\\\n*]|\\.)(?:[^/\\\n]|\\.)*/[gimsuy]*(?=[.,;)\s])", "/r/", code)
+        quoted = set(re.findall(r"\[\s*[\"'`](\w+)[\"'`]\s*\]", code))
+        code = re.sub(r'"(?:[^"\\]|\\.)*"', '""', code)
+        read = set(re.findall(r"\.\s*([A-Za-z_]\w*)", code)) | quoted
+        internal = {
+            # the language and the document
+            "appendChild", "catch", "className", "concat", "createElement", "createTextNode",
+            "every", "exec", "filter", "firstChild", "floor", "forEach", "getDate", "getDay",
+            "getElementById", "getFullYear", "getHours", "getMinutes", "getMonth", "hidden",
+            "indexOf", "isArray", "join", "keys", "length", "map", "push", "removeChild",
+            "replace", "setAttribute", "slice", "some", "sort", "stringify", "test",
+            "textContent", "toLowerCase",
+            # the store's read
+            "claude", "use", "doc", "onSnapshot", "data", "exists", "metadata", "fromCache",
+            "code",
+            # what the page computes
+            "b", "m", "ds", "rd", "md", "mins", "wd", "date", "key", "v", "state", "rung",
+            "unres", "applied", "nextItems"}
+        given = {"context", "next", "queue", "background", "updated",
+                 "heading", "paragraphs", "for", "against", "prediction", "notes", "who", "text",
+                 "kind", "line", "case", "prompt", "how", "deferred", "reason", "title",
+                 "day_start", "days", "bells", "time", "time_by_day", "name", "office", "label",
+                 "except_days", "off_from", "off_to", "ask"}
+        self.assertEqual(read - internal, given)
+        for field in ("predicted", "diverged", "addressed"):
+            self.assertIn('"%s"' % field, self.script)
+        self.assertNotIn("items", read - internal)
+
+    def test_it_holds_no_label_of_an_office_item(self):
+        rule = json.loads(re.search(r"\*\*`ordo/rule`\*\*.*?```json(.*?)```", self.contract)
+                          .group(1))
+        labels = [o if isinstance(o, str) else o["label"]
+                  for b in rule["bells"] for o in b["office"]]
+        self.assertTrue(labels)
+        for label in labels:
+            self.assertNotIn(label.lower(), self.page.lower())
+
+    def test_the_contract_names_every_field_the_page_reads(self):
+        top = {"current": set(re.findall(r"\bcurrent\.(\w+)", self.script)),
+               "rule": set(re.findall(r"\br\.(\w+)", self.script))}
+        self.assertEqual(top["current"], {"context", "next", "queue", "background", "updated"})
+        self.assertEqual(top["rule"], {"day_start", "days", "bells"})
+        nested = ("heading", "paragraphs", "for", "against", "prediction", "notes",
+                  "predicted", "diverged", "addressed", "who", "text",
+                  "kind", "line", "case", "prompt", "how", "deferred", "reason", "title",
+                  "time", "time_by_day", "name", "office", "label", "except_days",
+                  "off_from", "off_to", "ask")
+        for field in nested:
+            self.assertTrue(re.search(r"\.%s\b|\"%s\"" % (field, field), self.script), field)
+        for field in sorted(top["current"] | top["rule"]) + list(nested):
+            self.assertIn("`%s`" % field, self.contract, field)
+        for doc in ("`ordo/current`", "`ordo/rule`", "`ordo/ticks-<day>`"):
+            self.assertIn(doc, self.contract)
+        self.assertIn('db.doc("ordo/ticks-" + day)', self.script)
+
+    def test_the_contract_gives_every_mark_the_page_reads(self):
+        for state in ("taken", "overruled", "notdue"):
+            self.assertIn("/^%s(\\s|$)/" % state, self.script)
+            self.assertIn("`%s <ISO time>`" % state, self.contract)
+        self.assertRegex(self.body("markState"),
+                         r'return /\^\\d\{4\}-\\d\{2\}-\\d\{2\}T\\S\*\$/\.test\(v\) \? "done" : "open";')
+        self.assertIn("any other value being read as open", self.contract)
+        self.assertIn('keysFor("bell-"', self.script)
+        self.assertIn("`bell-<HHMM>-<slug>`", self.contract)
+
+    def test_the_page_is_named_and_kept_off_the_rule(self):
+        self.assertIn("Its address is the `page` key of `.principal/notebook.json`, beside "
+                      "`board`.", self.contract)
+        self.assertIn("with the `db` and `user` capabilities", self.contract)
+        self.assertIn("three sections in a fixed order, the action context, the next action "
+                      "and the helpers' action context", self.contract)
+        self.assertIn("one small data write to the document `ordo/current`", self.contract)
+        self.assertIn("never by republishing", self.contract)
+        self.assertIn("never into this repository", self.contract)
+        self.assertIn("names no `page`, the sitting runs without one and says so",
+                      self.contract)
+
+    def test_round_two_sentences_of_the_contract(self):
+        for words in ("The page is display only: it has no button and no input, its source holds "
+                      "no data, and it writes nothing.",
+                      "and the speaker writes all three, the day's marks included",
+                      "Each write sets `updated`, and the clock is read before it is stamped",
+                      "the speaker reads `ordo/current` with `ArtifactData` at `as_level` "
+                      "`interact` and again at `admin`; where either read returns a document",
+                      "the sitting runs without a page and says so",
+                      "also while an office is put, under \"After the office\"",
+                      "the first such item taken, else the first open one"):
+            self.assertIn(words, self.contract)
+        # the example's day start is an invented one, and the page's comment the same
+        self.assertIn('"day_start": "05:00"', self.contract)
+        self.assertIn("with day_start 05:00", self.page)
+
+
+#: a stubbed document and store, the page's script run against them in node;
+#: argv: the script's file, the ids the page's source hides, the scenarios
+HARNESS = r"""
+const fs = require("fs"), vm = require("vm");
+const [script, hiddenIds, scenarios] = process.argv.slice(2).map((a, i) =>
+  i === 0 ? fs.readFileSync(a, "utf8") : JSON.parse(fs.readFileSync(a, "utf8")));
+function run(sc) {
+  const out = { writes: [], net: [], made: [] };
+  const els = {};
+  function node(tag) {
+    const n = { tag, children: [], hidden: false, attrs: {}, className: "", _text: "",
+      appendChild(c) { this.children.push(c); return c; },
+      removeChild(c) { this.children.splice(this.children.indexOf(c), 1); },
+      setAttribute(k, v) { this.attrs[k] = String(v); },
+      get firstChild() { return this.children[0] || null; },
+      get textContent() { return this._text + this.children.map(c => c.textContent).join(""); },
+      set textContent(t) { this._text = String(t); this.children = []; } };
+    return n;
+  }
+  const document = {
+    getElementById(id) { if (!els[id]) { els[id] = node("x"); els[id].hidden = hiddenIds.includes(id); } return els[id]; },
+    createElement(tag) { out.made.push(String(tag).toLowerCase()); return node(tag); },
+    createTextNode(t) { const n = node("#text"); n._text = String(t); return n; },
+  };
+  const subs = {};
+  const db = { doc(path) { return new Proxy({ onSnapshot(cb) { subs[path] = cb; return () => {}; } }, {
+      get(t, k) { if (k in t) return t[k]; out.writes.push(path + "." + String(k)); return () => {}; } }); } };
+  const RealDate = Date, NOW = new RealDate(sc.now[0], sc.now[1], sc.now[2], sc.now[3], sc.now[4]).getTime();
+  class FakeDate extends RealDate {
+    constructor(...a) { if (a.length) super(...a); else super(NOW); }
+    static now() { return NOW; } }
+  const net = name => function () { out.net.push(name); };
+  const sandbox = { document, Date: FakeDate, JSON, Math, Object, Array, String, Number, isNaN,
+    console, setTimeout: () => 0, clearTimeout: () => {}, setInterval: () => 0, Promise,
+    fetch: net("fetch"), XMLHttpRequest: net("XMLHttpRequest"), WebSocket: net("WebSocket"),
+    navigator: { sendBeacon: net("sendBeacon") },
+    window: { claude: { use: async () => db } } };
+  vm.createContext(sandbox);
+  vm.runInContext(script, sandbox);
+  return new Promise(r => setImmediate(r)).then(() => {
+    const snap = d => ({ exists: d != null, data: () => d, metadata: { fromCache: false } });
+    subs["ordo/current"](snap(sc.current));
+    if (subs["ordo/rule"]) subs["ordo/rule"](snap(sc.rule));
+    const ticks = Object.keys(subs).find(k => k.startsWith("ordo/ticks-"));
+    if (ticks) subs[ticks](snap(sc.ticks));
+    out.ticksDoc = ticks || null;
+    out.els = {};
+    for (const [id, n] of Object.entries(els)) out.els[id] = { hidden: n.hidden, text: n.textContent };
+    out.all = Object.values(els).map(n => n.textContent).join("\n");
+    return out;
+  });
+}
+(async () => { const res = {}; for (const [k, sc] of Object.entries(scenarios)) res[k] = await run(sc);
+  process.stdout.write(JSON.stringify(res)); })();
+"""
+
+
+class PageBehaviourTest(unittest.TestCase):
+    """The page's script run against a stubbed document and store, where node
+    is installed; skipped where it is not."""
+
+    #: an invented Rule; the times and labels are no one's
+    RULE = {"bells": [{"time": "08:00", "name": "Morning",
+                       "office": ["Water the plants", "Feed the goldfish", "Wind the clock"]},
+                      {"time": "21:00", "name": "Evening", "office": ["Cover the seedlings"]}]}
+    CURRENT = {"next": {"kind": "question", "prompt": "Is watering still first?",
+                        "items": ["CHECKLIST-ITEM"],
+                        "deferred": {"prompt": "Write the letter.", "reason": "A passing feeling.",
+                                     "kind": "nonsense"}},
+               "queue": [{"kind": "review", "title": "Review the rows"}],
+               "updated": "2030-01-02T09:00:00Z"}
+    NOW = [2030, 0, 2, 9, 0]
+    KEYS = ("bell-0800-water-the-plants", "bell-0800-feed-the-goldfish",
+            "bell-0800-wind-the-clock")
+
+    @classmethod
+    def setUpClass(cls):
+        cls.node = shutil.which("node")
+        if not cls.node:
+            raise unittest.SkipTest("node is not installed")
+        with open(PAGE, encoding="utf-8") as fh:
+            page = fh.read()
+        cls.hidden = [m.group(1) for m in re.finditer(r"<[^>]*\bid=\"([^\"]+)\"[^>]*>", page)
+                      if re.search(r"\shidden[\s>]", m.group(0))]
+        cls.script = page[page.index("<script>") + len("<script>"):page.index("</script>")]
+        T, D = "2030-01-02T08:30:00.000Z", "2030-01-02T08:10:00.000Z"
+        k = cls.KEYS
+        scenarios = {
+            "quiet": {"now": [2030, 0, 2, 7, 0], "current": cls.CURRENT, "rule": cls.RULE,
+                      "ticks": None},
+            "rung": {"now": cls.NOW, "current": cls.CURRENT, "rule": cls.RULE, "ticks": None},
+            "taken": {"now": cls.NOW, "current": cls.CURRENT, "rule": cls.RULE,
+                      "ticks": {k[2]: "taken " + T}},
+            "junk": {"now": cls.NOW, "current": cls.CURRENT, "rule": cls.RULE,
+                     "ticks": {k[0]: "done", k[1]: D, k[2]: "overruled " + D}},
+            "resolved": {"now": cls.NOW, "current": cls.CURRENT, "rule": cls.RULE,
+                         "ticks": {k[0]: D, k[1]: "notdue " + D, k[2]: "overruled " + D}},
+            "norule": {"now": cls.NOW, "current": cls.CURRENT, "rule": None, "ticks": None},
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            paths = []
+            for name, data in (("page.js", cls.script), ("hidden.json", json.dumps(cls.hidden)),
+                               ("scenarios.json", json.dumps(scenarios)),
+                               ("harness.js", HARNESS)):
+                with open(os.path.join(tmp, name), "w", encoding="utf-8") as fh:
+                    fh.write(data)
+                paths.append(os.path.join(tmp, name))
+            done = subprocess.run([cls.node, paths[3]] + paths[:3], capture_output=True,
+                                  text=True, timeout=60, env=dict(os.environ, TZ="UTC"))
+        if done.returncode:
+            raise AssertionError(done.stderr)
+        cls.res = json.loads(done.stdout)
+
+    # the stub keeps no tree: a block's parts are read by their own ids
+    def shown(self, name, id_):
+        e = self.res[name]["els"].get(id_)
+        return e is not None and not e["hidden"]
+
+    def text(self, name, id_):
+        return self.res[name]["els"][id_]["text"]
+
+    def test_it_writes_nothing_sends_nothing_and_makes_no_control(self):
+        for name, out in self.res.items():
+            self.assertEqual(out["writes"], [], name)
+            self.assertEqual(out["net"], [], name)
+            self.assertLessEqual(set(out["made"]), {"p", "span", "b", "li", "div", "#text"}, name)
+
+    def test_no_checklist_is_rendered(self):
+        for name, out in self.res.items():
+            self.assertNotIn("CHECKLIST-ITEM", out["all"], name)
+
+    def test_the_session_s_action_with_no_office_open(self):
+        for name in ("quiet", "resolved", "norule"):
+            self.assertEqual(self.text(name, "next-prompt"), "Is watering still first?", name)
+            self.assertTrue(self.shown(name, "next-deferred"), name)
+            self.assertFalse(self.shown(name, "bell"), name)
+            self.assertFalse(self.shown(name, "office-after"), name)
+        self.assertEqual(self.text("quiet", "next-def-prompt"), "Write the letter.")
+        # a deferred kind the page does not know is shown as work
+        self.assertIn("work", self.text("quiet", "next-def-meta"))
+        self.assertIn("Next bell: Morning at 08:00.", self.text("quiet", "next-bell"))
+        self.assertEqual(self.res["rung"]["ticksDoc"], "ordo/ticks-2030-01-02")
+
+    def test_the_office_comes_before_the_session_s_action(self):
+        self.assertTrue(self.shown("rung", "bell"))
+        self.assertEqual(self.text("rung", "next-prompt"), "Water the plants")
+        self.assertEqual(self.text("rung", "next-kind"), "office")
+        self.assertNotIn("Is watering still first?", self.text("rung", "next-prompt"))
+        self.assertTrue(self.shown("rung", "office-after"))
+        self.assertEqual(self.text("rung", "office-after-prompt"), "Is watering still first?")
+        # S3: the deferred action stays shown under the office
+        self.assertTrue(self.shown("rung", "next-deferred"))
+        self.assertEqual(self.text("rung", "next-def-prompt"), "Write the letter.")
+        self.assertIn("not yet taken up", self.text("rung", "bell-msg"))
+
+    def test_a_taken_item_is_shown_first(self):
+        self.assertEqual(self.text("taken", "next-prompt"), "Wind the clock")
+        self.assertTrue(self.shown("taken", "under"))
+        self.assertIn("Then: Water the plants · Feed the goldfish",
+                      self.text("taken", "office-then"))
+        self.assertIn("under way", self.text("taken", "bell-msg"))
+
+    def test_a_mark_that_is_no_time_is_open(self):
+        self.assertEqual(self.text("junk", "next-prompt"), "Water the plants")
+        self.assertIn("1 of 3 office items left", self.text("junk", "bell-msg"))
+        self.assertIn("Done: Feed the goldfish", self.text("junk", "office-resolved"))
 
 
 if __name__ == "__main__":

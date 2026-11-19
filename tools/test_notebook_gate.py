@@ -663,6 +663,86 @@ class Round1cTest(Base):
             self.assertIn(tool, entry["matcher"].split("|"))
 
 
+class Round2Test(Base):
+    """The fourth review of the gates, on the notebook gate."""
+
+    BOARD = SITE + OTHER
+
+    def setUp(self):
+        super().setUp()
+        base = tempfile.mkdtemp(prefix="claude-", dir=os.path.realpath("/tmp"))
+        self.addCleanup(__import__("shutil").rmtree, base, ignore_errors=True)
+        self.scratch = os.path.join(base, "claude-1000", "p", "s", "scratchpad", "sit")
+        os.makedirs(self.scratch + "/coordinator/board")
+        os.makedirs(self.scratch + "/speaker/board")
+
+    def data(self, agent, **fields):
+        tool_input = {"url": self.BOARD}
+        tool_input.update(fields)
+        return call(self.root, agent, "ArtifactData", tool_input=tool_input)
+
+    def test_s1_the_reported_inputs_are_refused(self):
+        plugin = ROOT
+        for fields in ({"action": "get", "collection": ".principal", "doc_id": "notebook",
+                        "out_dir": self.root},
+                       {"action": "get", "collection": "hooks", "doc_id": "hooks",
+                        "out_dir": plugin},
+                       {"action": "set", "collection": "jobs", "doc_id": "x",
+                        "file_path": os.path.expanduser("~/.claude.json")}):
+            for agent in ("principal:coordinator", "principal:interviewer"):
+                with self.subTest(fields=fields, agent=agent):
+                    self.assertEqual(self.decision(self.data(agent, **fields)), "deny")
+
+    def test_s1_a_member_s_file_and_a_climbing_collection(self):
+        mine = self.scratch + "/coordinator/board"
+        self.assertEqual(self.decision(self.data(
+            "principal:coordinator", action="batch",
+            writes=[{"collection": "jobs", "doc_id": "a", "file_path": mine + "/w.json"},
+                    {"collection": "jobs", "doc_id": "b", "file_path": "/etc/passwd"}])),
+            "deny")
+        self.assertEqual(self.decision(self.data(
+            "principal:coordinator", action="get", collection="../../x", doc_id="y",
+            out_dir=mine)), "deny")
+        # the speaker's export, its collection under it, lands in the project's setup
+        self.assertEqual(self.decision(self.data(
+            "principal:interviewer", action="list", collection=".principal",
+            out_dir=self.root)), "deny")
+
+    def test_s1_each_kind_s_own_directory_is_admitted(self):
+        mine = self.scratch + "/coordinator/board"
+        self.silent(self.data("principal:coordinator", action="get", collection="meta",
+                              doc_id="board", out_dir=mine))
+        self.silent(self.data("principal:coordinator", action="batch",
+                              writes=[{"collection": "jobs", "doc_id": "a",
+                                       "file_path": mine + "/w.json"}]))
+        self.silent(self.data("principal:interviewer", action="list", collection="jobs",
+                              out_dir=self.scratch + "/speaker/board"))
+        # the coordinator, out of its own directory
+        self.assertEqual(self.decision(self.data(
+            "principal:coordinator", action="get", collection="meta", doc_id="board",
+            out_dir=self.scratch + "/speaker/board")), "deny")
+        # a kind that holds no such tool is refused any local file
+        self.assertEqual(self.decision(self.data(
+            "principal:fetcher", action="get", collection="meta", doc_id="board",
+            out_dir=mine)), "deny")
+        # with no local file, nothing changes
+        self.silent(self.data("principal:coordinator", action="get", collection="meta",
+                              doc_id="board"))
+        # the main thread keeps what it had
+        self.silent(self.data(None, action="get", collection=".principal", doc_id="n",
+                              out_dir=self.root))
+
+    def test_note_2_a_delete_by_a_ref_to_a_part(self):
+        for agent in ("principal:recorder", "recorder", "general-purpose"):
+            for container in (None, OTHER):
+                tool_input = {"ref": {"object": "node", "id": "n1"}}
+                if container:
+                    tool_input["container"] = {"kind": "project", "id": container}
+                for tool in (p + "delete" for p in PREFIXES):
+                    with self.subTest(agent=agent, container=container, tool=tool):
+                        self.unclear(call(self.root, agent, tool, tool_input=tool_input))
+
+
 class HooksFileTest(unittest.TestCase):
     """The plugin installs the gate beside the canon agent's, which stands as
     it was."""

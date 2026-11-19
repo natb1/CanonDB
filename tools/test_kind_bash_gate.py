@@ -374,6 +374,17 @@ class WhoTest(Gate):
     def test_another_tool_is_not_the_gate_s(self):
         self.silent("principal:checker", "git push", tool="Read")
 
+    def test_note_1_a_missing_tool_name_is_no_way_round(self):
+        for raw in ({"agent_type": "principal:checker", "cwd": self.project,
+                     "tool_input": {"command": "curl x"}},
+                    {"agent_type": "principal:checker", "cwd": self.project,
+                     "tool_name": None, "tool_input": {"command": "curl x"}},
+                    {"agent_type": "principal:fetcher", "cwd": self.project,
+                     "tool_input": {"command": "id"}}):
+            with self.subTest(raw=raw):
+                got = self.run_hook(None, "", raw=json.dumps(raw).encode())
+                self.assertEqual(got["hookSpecificOutput"]["permissionDecision"], "deny")
+
     def test_input_that_does_not_parse(self):
         got = self.run_hook(None, "", raw=b'{"agent_type": "principal:checker", oops')
         self.assertEqual(got["hookSpecificOutput"]["permissionDecision"], "deny")

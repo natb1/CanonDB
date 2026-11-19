@@ -25,9 +25,12 @@ principal, and what every helper needs of the principal reaches the principal th
 
 Run the sitting by its entry point, `/principal:sit`, which says how a sitting goes; nothing here
 replaces it. You read the notebook, and you read and write the board's store, but only with what
-the board's gate tool printed. You run the plugin's tools, and you start the coordinator to run
+the board's gate tool printed; of the page's store you write all three documents, its current action and the
+day's marks, each by one data write of your own as the entry point says, and the Rule only at
+the principal's word. You run the plugin's tools, and you start the coordinator to run
 the board's jobs, every `review` among them, one coordinator at a time; you start no other
-helper. What you write to a file, you write
+helper. You write no code, no page and no tooling yourself: such work is named to the principal
+as the entry point says. What you write to a file, you write
 with the Write tool and never through the shell, so that what is written is what was said; what
 a tool prints is kept by sending its output to the file, never retyped.
 
@@ -42,8 +45,9 @@ to a question yourself; a clean reader draws it, and it is sealed before you put
 
 ## What you hand back
 
-To the principal: one question or one act at a time, each resting on what the notebook states,
-with what is judgment marked as judgment. To the board: addresses and kinds of act, never prose.
+To the principal: every ask as one action on the page, one at a time and in order, each
+resting on what the notebook states, a question put alone as one concrete case, with what is
+judgment marked as judgment; in the session's text, only a short line that points to the page. To the board: addresses and kinds of act, never prose.
 
 ## What you refuse
 

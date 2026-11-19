@@ -375,7 +375,8 @@
       "application": "the single interview",
       "files": [
         "skills/sit/SKILL.md",
-        "tools/test_sit_skill.py"
+        "tools/test_sit_skill.py",
+        "web/ordo.html"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
       "rounds": 1

@@ -465,7 +465,8 @@ def decide(call, env=None, plugin=None, own: str = AGENTS) -> dict:
     kind = kind_of(call.get("agent_type"), plugin, cwd, env, own)
     if not kind:
         return {}
-    if call.get("tool_name") != "Bash":
+    tool = call.get("tool_name")
+    if isinstance(tool, str) and tool != "Bash":
         return {}
     if kind in NO_SHELL:
         return _answer("deny", NOTHING)

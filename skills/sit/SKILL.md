@@ -1,6 +1,6 @@
 ---
 name: sit
-description: The principal sits with the one session that speaks. It reads the board and the notebook, opens with a brief of what was done, observed, waits on the principal and stands open, then puts one act at a time, each question sealed by a clean reader before it is put and graded after, and hands every write to the notebook to a job on the board that a recorder carries out; it writes its own line doc and never the notebook, and it ends with lines still open. Invoke as /principal:sit, in a session started in the background as the interviewer kind.
+description: The principal sits with the one session that speaks. It reads the board and the notebook, opens with a brief of what was done, observed, waits on the principal and stands open, then puts one action at a time on its page, each question put alone, sealed by a clean reader before it is put and graded after, and hands every write to the notebook to a job on the board that a recorder carries out; it writes its own line doc and never the notebook, and it ends with lines still open. Invoke as /principal:sit, confined in a session started in the background as the interviewer kind, or open in an ordinary session.
 disable-model-invocation: true
 allowed-tools: mcp__claude_ai_Claude_Docs__read, mcp__claude_ai_Claude_Docs__guide, mcp__claude_ai_Claude_Docs__update, mcp__claude_ai_Claude_Docs__create, mcp__claude_ai_Claude_Docs__batch, mcp__Claude_Docs__read, mcp__Claude_Docs__guide, mcp__Claude_Docs__update, mcp__Claude_Docs__create, mcp__Claude_Docs__batch, ArtifactData
 ---
@@ -13,19 +13,21 @@ job on the board done by a helper of a fixed kind. The method of the questions i
 `/principal:dictate` (its **The line** section), and this skill does not repeat it: where that
 skill says how a thing is done, this one names the paragraph. `/principal:interview` is a
 questioner that has read nothing of the notebook; the sitting's speaker holds the notebook and
-the board, and is started as the interviewer kind only because that kind is the one that may
-prompt the principal. A sitting here is any one session of this entry point, and is not the
+the board, and, run the confined way, is started as the interviewer kind only because that kind
+is the one that may prompt the principal (**Before anything**). A sitting here is any one session of this entry point, and is not the
 annual sitting that `/principal:interview` speaks of.
 
 The arrangement is what this entry point is for and changes only by the principal's dictation:
 one session speaks, one kind writes the notebook, the board holds the work, the kinds of helper
 are fixed, and an act is one of four kinds. How it is carried out today is not the arrangement
 and will change as the harness does: a coordinator started under the speaking session runs the
-board, and the speaking session is started by the command line ground rule 1 gives.
+board, and the speaking session is started the confined way or the open way (**Before
+anything**).
 
 The notebook is the document `.principal/notebook.json` names at the project's root, read as
 `/principal:dictate` says. The board is the page published from `web/board.html`, with its own
-store, and it is named by `board` in the same file. `tools/` is the plugin's own, at
+store, and it is named by `board` in the same file; the page the round is put on is named by
+`page` there (**The page**). `tools/` is the plugin's own, at
 `${CLAUDE_PLUGIN_ROOT}/tools/`. `$SCRATCH` is the sitting's scratch directory, the session's own
 and outside the checkout: the questions, the sealed texts, the rows files and the board's exports
 are kept there and nowhere else, and they go with the session. Each question is a file of its
@@ -42,22 +44,48 @@ gates refuse it every other path. `$SCRATCH` is an absolute path spelled in lett
 session's own `~/.claude/jobs/<id>/tmp`: the session's scratchpad, `/tmp/claude-*/…/scratchpad/…`,
 is one, a job's `~/.claude/jobs/<id>/tmp/…` another, and the gates recognise no other root. No directory on it is named `questions`, `answers`,
 `replies`, `results`, `sealed`, `rows`, `check` or `coordinator`, since the gates read those
-names as the sitting's own. A file of this session's own
+names as the sitting's own, nor `speaker`. A local file an `ArtifactData` call of the speaker's
+writes or sends, an `out_dir` or a `file_path`, is under `$SCRATCH/speaker/`, and the
+coordinator's under `$SCRATCH/coordinator/`: the guard on the notebook refuses either kind any
+other. A file of this session's own
 words is written with the Write tool, never through the shell; what a tool prints is kept by
 sending its output to the file, never retyped. A file's fingerprint is its SHA-256 in
 hexadecimal (`sha256sum`). A sitting's id is
 `s` and the UTC time it opened in digits, `date -u +s%Y%m%d%H%M`. The kinds of helper are
 defined under the plugin's `agents/`: `clean-reader`, `fetcher`, `recorder`, `reviewer`,
 `grader`, `checker` and `coordinator`, with `interviewer` the kind of the speaking session. No
-helper is started that is not one of them: the guard on the notebook knows these kinds and no
-other.
+helper is started that is not one of them for work a kind carries: the guard on the notebook
+knows these kinds and no other.
+
+## The goal
+
+The sitting's goal is to make the distance between what the principal's principles ask and what the principal does as small as it can be, weighted by the share each principle carries. The goal is only the thing being optimized and constrains no mechanism.
+
+What follows in this section is mechanism, and may change. The distance is observed in three
+places: a prediction of the principal that fails; an override or a deferral of the action ranked
+first; and an action or a sitting not taken up. Each is an observation and never a verdict.
+Every observation leads to a tracked action, in *Opened*, a divergence note or a job, or to a
+stated reason why none is owed. The speaker's levers are three: questioning, to correct the
+graph; changing how the graph recommends, its timing, its sequencing, its offices and its
+habits; and proposing actions that raise the principal's capacity to act. Counts are mechanism
+and are never part of the goal: a count is read, and never driven.
 
 ## Before anything
 
-This session must have been started as the interviewer kind, since that is what the guard on the
-notebook binds. A session whose own instructions are not that kind's stops here, and tells the
-principal the command of ground rule 1. In an ordinary session the guard decides nothing, and
-nothing but this instruction would keep the speaker off the notebook.
+A sitting is run one of two ways, and the speaker says which to the principal when it opens. A
+session whose own instructions are the interviewer kind's runs the confined way; any other runs
+the open way.
+
+- **The confined way.** The session was started as the interviewer kind, by ground rule 1's
+  command line, and the guard on the notebook binds it as that kind. It starts no helper but the
+  coordinator.
+- **The open way.** An ordinary session may run a sitting too. It runs it as the confined way
+  does, and in it the speaker may also brief helpers directly for work the kinds do not carry,
+  building and research outside the notebook, by rule 9 of the round (procedure 3); it never
+  briefs one for work a kind carries. What holds in the open way: the gates still bind every
+  helper by its kind; a helper that is no kind of this plugin is refused any write aimed at the
+  notebook; and nothing but this text keeps the speaker itself off the notebook, since the guard
+  gives the session running this entry point no opinion.
 
 A sitting runs only on an installed copy of the plugin refreshed to the checkout: the gates that
 fire are the installed copy's, and a copy older than the checkout binds the kinds by older rules
@@ -75,12 +103,12 @@ kind only, the one name the gates always bind; a bare name is bound only as a fa
 project's copy is the plugin's or the project names a notebook.
 
 Where `.principal/notebook.json` names no `board`, stop and say so: this session has no tool that
-publishes one.
+publishes one. Where it names no `page`, the sitting runs without one and says so (**The page**).
 
 ## Ground rules
 
-1. **One session speaks.** It is the one running this entry point, started in the background by
-   name as the interviewer kind, and the principal attaches to it:
+1. **One session speaks.** It is the one running this entry point. Run the confined way, it is
+   started in the background by name as the interviewer kind, and the principal attaches to it:
 
    ```
    claude --bg --name <name> --agent principal:interviewer -- "/principal:sit"
@@ -94,7 +122,8 @@ publishes one.
    doc and `update` and `create` write it. Writes to the notebook go to the recorder as rows
    files (procedure 4) through a job on the board. What refuses this session a write to the
    notebook is the guard, the plugin's `hooks/notebook-gate.py`, which refuses every kind but the
-   recorder, the interviewer included; the tool list does not.
+   recorder, the interviewer included; the tool list does not. Run the open way, nothing refuses
+   it, and this text alone holds it (**Before anything**).
 3. **Everything that must outlive the sitting is on the notebook or the board.** The sitting's
    own record is the line doc of `/principal:dictate` (**The line doc**), with one section more,
    *Opened*, its items `- O1. …`. It is made when the sitting opens as a document of its own (a
@@ -106,9 +135,13 @@ publishes one.
    empties what stands there. The line doc is emptied at each batch point onto the notebook, and
    nothing stands only in it at the close.
 4. **An act is one of four kinds: to do, to observe, to ask, to grant.** Every act is put to the
-   principal, so every proposal is a question and is counted as one: the principal sets how many
-   the sitting may spend when it opens, and the number set and the number spent stand at the head
-   of the line doc. To observe is to collect what is the case, by the principal or by a helper,
+   principal as the next action, in one of the four kinds the round names (procedure 3, rule 6):
+   an act to ask is a `question`, an act to do or to observe a `work`, and a grant a `review`;
+   an `office` is the Rule's and no act of the speaker's. Only a question of principle is
+   counted: the principal sets how many the sitting may spend when it opens, and the number set
+   and the number spent stand at the head of the line doc. An office item, a review and a work
+   action are not counted. To observe is to collect what is the case, by the principal or by a
+   helper,
    and what was observed is recorded where the project keeps such things, a divergence note
    (`/principal:dictate`, **No action is taken in a dictation**) or the project's own
    repository, and never on the board.
@@ -116,9 +149,10 @@ publishes one.
    the root that a question carries, and with `--price` the sum over questions somebody named.
    Which questions an act serves or releases is the speaker's reading, and so is every order
    among acts beyond the shares of those questions, how likely an act is to help, and what it
-   costs: each is said to be judgment where it is said. Before an act is proposed, what the
+   costs: each is said to be judgment where it is said. Before an act is put, what the
    principal is expected to choose is sealed (procedure 3), and compared after: a different
-   choice is a failed prediction like any other.
+   choice is a failed prediction like any other, and an override of the action ranked first
+   (procedure 3, rule 5).
 6. **What is unsure in the ranking is a question.** A share that seems wrong, a pressure that
    seems missing, an act whose place in the lineage is unclear, is put to the principal like any
    other question, and is not settled by the speaker.
@@ -185,6 +219,179 @@ that each file is named for its tab and the views directory holds the tabs and n
 Where the harness gives no transcript path, the coordinator fails the `fetch` with the reason
 `helper` (see **Attenuation**).
 
+## The page
+
+The round is put on a page. Its address is the `page` key of `.principal/notebook.json`, beside
+`board`. It is the plugin's `web/ordo.html`, published once as a private artifact with the `db`
+and `user` capabilities and rules under which only its owner reads and writes,
+
+```
+{"db": {"rules": [{"path": "", "read": "owner", "write": "owner"}]}, "user": {}}
+```
+
+so that anyone else, or anyone signed out, sees it empty. It has three sections in a fixed
+order, the action context, the next action and the helpers' action context, and above them a
+bell notice while a rung bell's office is unresolved; under the next action stand the queue,
+as "Waiting, in order", and the line of the next bell. The page is display only: it has no
+button and no input, its source holds no data, and it writes nothing. It reads three documents
+of the collection `ordo` in its store, and the speaker writes all three, the day's marks
+included.
+
+Before any private data is written to the page's store in a sitting, the speaker reads
+`ordo/current` with `ArtifactData` at `as_level` `interact` and again at `admin`; where either
+read returns a document, the owner-only rule does not hold, and the sitting runs without a page
+and says so. What is published is the page's source, which holds no data; the store is read
+under the owner's rule alone, and this read is what tests it.
+
+The speaker changes it by one small data write to the document `ordo/current`, with
+`ArtifactData`, and never by republishing: a `set` of the whole document, pinned with
+`if_version` to the version last read (the first `set`, of a document not yet there, without
+it), when the action changes, so that nothing of the last one lingers, `next.deferred` aside
+(rule 5); an `update` when one field alone changes, nested objects merging and lists replaced
+whole. Each write sets `updated`, and the clock is read before it is stamped (procedure 3, rule
+8). A refusal is read and the document read again, never forced. The bells and their office
+items live in `ordo/rule`, which is the principal's private data: it is written only at the
+principal's word, and never into this repository, a line doc, the board or anything published.
+The day's marks live in `ordo/ticks-<day>`, which the speaker writes when the principal says in
+the session what became of an item.
+
+Where `.principal/notebook.json` names no `page`, the sitting runs without one and says so: the
+round is put in the session's own words, in the order the page would show it, and there are no
+bells.
+
+**`ordo/current`**, an invented example:
+
+```json
+{
+  "context": {
+    "heading": "Your answer, as read",
+    "paragraphs": ["The plants are watered before the post is opened, every day."],
+    "for": [{"who": "One party", "text": "What that party says for the answer."}],
+    "against": [{"who": "Another party", "text": "What that party says against it."}],
+    "prediction": {
+      "predicted": "Watering waits until the post is opened.",
+      "diverged": ["The answer put watering first."],
+      "addressed": "A case on the clause about mornings, at the next batch point."
+    },
+    "notes": ["A quiet note."]
+  },
+  "next": {
+    "kind": "question",
+    "line": "Line: mornings",
+    "case": "A morning on which the post holds a bill due that day.",
+    "prompt": "Is watering the plants still first?",
+    "deferred": {"prompt": "Water the plants.", "reason": "Set aside for now: a passing feeling.",
+                 "kind": "work", "line": "Line: mornings"}
+  },
+  "queue": [
+    {"kind": "work", "prompt": "Water the plants."},
+    {"kind": "review", "title": "Review the next rows"}
+  ],
+  "background": ["A helper is building a fix to the page."],
+  "updated": "2030-01-02T03:04:05Z"
+}
+```
+
+- `context`, the action context: `heading`; `paragraphs`, the answer as the speaker read it;
+  `for` and `against`, lists of objects with `who`, the party and its registry status, and
+  `text`, shown under "Tradition on the result" after
+  the paragraphs and hidden where both are empty; `prediction`, with `predicted`, `diverged` and
+  `addressed`, each a string or a list of strings, shown after the tradition as "Predicted",
+  "Where the result diverged" and "How the gap is addressed", an empty part left out and "No
+  prediction was sealed for this action." where all three are; and `notes`, quiet lines last.
+  The page keeps that order whatever the data's. Without `context` the section is hidden.
+- `next`, the next action: `kind`, one of `question`, `office`, `work` and `review`, any other
+  shown as `work`, every kind shown alike but for its pill; `line`; `case`; `prompt`, the one
+  field the card needs, without which it says "No action set yet."; `how`, a quiet last line,
+  never set for a question or a review (rule 1); and `deferred`, an object with `prompt`, `reason`,
+  `kind` and `line`, the action ranked first and set aside (rule 5), shown in the card under "Deferred,
+  still first by the measure" beside the revised choice, also while an office is put, under
+  "After the office", and not at all where its `prompt` is empty; its `kind` falls to `work` as
+  `next`'s does. There is no checklist: a review is a `prompt` like a question's, answered in the
+  session.
+- `queue`, the actions after `next`, in order (rule 10): each a whole action with the fields of
+  `next`, or a placeholder with `kind` and `title`, listed by its kind and its `title`, or its
+  `prompt` where it has no title; an entry with neither is dropped, and an empty `queue` hides
+  the list. The page never moves the queue: when `next` is answered or done, the speaker writes
+  the first entry as `next`, a placeholder made a whole action, and the rest as `queue`.
+- `background`, the helpers' action context: strings, what the helpers are doing, hidden where
+  empty.
+- `updated`: the time of the write, ISO 8601 in UTC, shown as the hour and minute it was made.
+
+**`ordo/rule`**, the principal's. An invented example:
+
+```json
+{
+  "day_start": "05:00",
+  "days": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+  "bells": [
+    {"time": "08:00", "name": "Morning",
+     "office": ["Water the plants", {"label": "Feed the goldfish", "ask": true}]},
+    {"time": "21:00", "time_by_day": {"sat": "22:30"}, "name": "Evening",
+     "office": [{"label": "Put out the recycling", "days": ["thu"]},
+                {"label": "Cover the seedlings", "off_from": "11-01", "off_to": "02-28"},
+                {"label": "Wind the clock", "except_days": ["sat"]}]}
+  ]
+}
+```
+
+- `day_start`, `HH:MM`, `00:00` where missing: the Rule's day begins then. Before it, the day
+  is the calendar day before, for the bells, every weekday filter, the off ranges and the
+  marks' date; a bell whose time is before `day_start` rings after midnight, at the end of the
+  Rule's day.
+- `days`: the weekdays the Rule rings on, each a name in any case read by its first three
+  letters or a number from 0 to 6, Sunday 0; every day where missing or empty.
+- `bells`, each with `time`, `HH:MM`, two digits each, on a 24-hour clock in the viewer's
+  local time, without
+  which the bell is ignored, and which names it in the marks' keys; `time_by_day`, a weekday to
+  `HH:MM`, moving the bell that day and not its keys; `name`; and `office`, a list of items, each
+  a label or an object with `label`, without which it is dropped, `days` and `except_days`,
+  weekdays it rings on or not, `off_from` and `off_to`, `MM-DD`, both needed, an inclusive
+  range of the year
+  it is off, wrapping the new year where `off_from` is the later, and `ask`, `true` where the
+  page cannot tell whether the item is due, so that the speaker asks and may mark it not due.
+  An item filtered out for the day is neither shown nor counted.
+- The page finds the latest bell rung on the Rule's day. While that bell has an item open or
+  taken, the notice stands, saying the office is not yet taken up, is under way, or how many
+  items are left, with the next bell under it; the next action is the first such item taken,
+  else the first open one, "Under way since" the time it was taken where it was, the others
+  after "Then:", those resolved listed as done, overruled or not due, a line asking the principal
+  to tell the session when it is done, and the speaker's own `next` in a quiet "After the office"
+  block, with its deferred action under it where one is set. Once every item is
+  resolved the notice goes and `next` shows. With no office unresolved, a quiet line under the
+  card names the next bell of the day and its items, or says no more bells ring today. An
+  earlier bell's unresolved items are not shown. It reads the clock again every thirty seconds.
+
+**`ordo/ticks-<day>`**, the marks: `<day>` the Rule's day as `YYYY-MM-DD`, the local date moved
+back a day before `day_start`. It is a flat map from an office item's key to a value. The key is
+`bell-<HHMM>-<slug>`, the bell's base `time` without its colon and the item's label as a slug:
+the label in lower case, every run of characters but `a-z` and `0-9` made one `-`, trimmed of `-`
+and cut to sixty characters, `item` where nothing is left; a label repeated in one bell's office
+takes `-2`, `-3` and so on, counted over the whole list with the items filtered out, so that a
+key does not shift from day to day. A label changed is a key changed. A value is `null`, or no
+key, open; `taken <ISO time>`, under way since then and still unresolved; an ISO time alone,
+done, any other value being read as open; `overruled <ISO time>`, overruled; and `notdue <ISO
+time>`, not due today. An item is
+unresolved while open or taken. The day's first mark is a `set` of the whole document, which
+does not yet exist; each later one an `update` of its key. An invented example:
+
+```json
+{"bell-0800-water-the-plants": "2030-01-02T08:10:00.000Z",
+ "bell-2100-wind-the-clock": "overruled 2030-01-02T21:05:00.000Z",
+ "bell-2100-cover-the-seedlings": "taken 2030-01-02T21:12:00.000Z"}
+```
+
+At each turn the speaker reads and writes (rule 7): the Rule's day from the local clock, then
+`ordo/rule` and `ordo/ticks-<that day>` by `get`; the bells rung so far, each at its time for
+that weekday; their items that apply that day, and each item's state from its key. While the
+latest bell has an item unresolved, the page is putting the office and not `next`, an item taken
+before any open one. When the
+principal says in the session that an item is under way, done, not now, not due, or open again,
+the speaker reads the clock and writes `taken`, the bare time, `overruled`, `notdue` or `null`.
+An item overruled or marked not due is the principal's word for the day, and is not put again.
+An earlier bell's unresolved items the page does not show: the speaker weighs whether they still
+matter, and puts them as actions on the page or lets them lapse with the day.
+
 ## Procedure
 
 **1 — Read.** Export the board with `ArtifactData`: a `list` of `jobs`, paged with
@@ -237,46 +444,116 @@ sitting took off because their line stands on the tab, how many it added, and ho
 open now, the first two from the count its line doc kept at its close and the third from this
 opening's listing, the third said plainly to be a count that is not driven to nothing; the acts
 that come first by the shares of what they serve, each with its reason, the reading marked as
-judgment, as an order and not yet a proposal; and the question of how many questions the
-principal will spend this sitting. Nothing else is asked until that number is set.
+judgment, as an order and not yet a proposal; and the question of how many questions of
+principle the principal will spend this sitting, put on the page as the sitting's first action,
+a `review`, like any other. Nothing else is asked until that number is set; the choice of a line
+from the acts that come first is then put on the page as the next action.
 
-**3 — One act at a time.** For a question:
+**3 — One action at a time: the round.** Each turn puts one next action, on the page where one
+is named, under ten rules. Rules 1 to 4 are a question's, and a review's as rule 6 says; 5 to 10
+bind every action.
 
-- Put it as one concrete case resting on what the notebook states (`/principal:dictate`,
-  **The fidelity round** for how a question is drawn, and **A case rests on the record** for its
-  premises).
-- Write the question to `$SCRATCH/questions/<n>.md`, `<n>` its number in the sitting, and add a
-  `seal` job for it (step 6); start the coordinator,
-  so that a clean reader draws the record's answer as the clean reader's definition says. This
-  session does not read the sealed file until the answer is in. What the speaker remembers of
-  the line that the notebook does not carry is sealed apart, by the speaker, in a file of its
-  own in `$SCRATCH/sealed/`. Only the two fingerprints go in the line doc's Fidelity rounds section, `- F1. Sealed
-  <fingerprint>.` The line doc's address is never an input of a seal job.
-- Put the question, with the four parts of the step (**The four-part step**), and count it.
-- After the answer, read the sealed file and state it in the line doc. Write the principal's
-  answer to `$SCRATCH/answers/<n>.md` as the admission the line doc records, never word for word, and add a
-  `grade` job over the sealed file and that answer. Class a failure as **The fidelity round**
-  classes it, and draft the remedy for the batch point. Once the remedy is written (step 4), a
-  fresh `seal` job with a new row in its id draws the prediction again, and a `grade` job over
-  its result and the same answer file grades it; the outcome is written in the line doc as
-  `Redrawn: …`.
-- What this opened: each further line the answer opened, in *Opened*, with what raised it and
-  what would bring it back (ground rule 8).
+1. **One question at a time, put as one concrete case.** It rests on what the notebook states
+   (`/principal:dictate`, **The fidelity round** for how a question is drawn, and **A case rests
+   on the record** for its premises). Nothing accompanies it: no recommendation, no tradition
+   on the question being put, no list of what is sealed, no line telling the principal how to
+   answer. The tradition on the last answer, already given, stands in the action context above
+   it (rule 4): it is on that answer, never on the question now put. It is counted as it is
+   put. A question the principal does not understand is put again, plainer, as one case; it is
+   never withdrawn and decided for the principal. No question is left unasked because readers
+   agree on its answer.
+2. **Seals come before it.** The record's prediction is sealed by a clean reader: write the
+   question to `$SCRATCH/questions/<n>.md`, `<n>` its number in the sitting, and add a `seal`
+   job for it (step 6); start the coordinator, so that a clean reader draws the record's answer
+   as the clean reader's definition says. This session does not read the sealed file until the
+   answer is in. The aporia the line is pursuing, with what each possible answer will be tested
+   against, is sealed by the speaker in a file of its own in `$SCRATCH/sealed/`, and carried
+   from question to question on that line: each question on the line seals it again as it then
+   stands. What the speaker remembers of the line that the notebook does not carry is sealed
+   apart, by the speaker, in a file of its own there too. Only the fingerprints go in the line
+   doc, the seal's in its Fidelity rounds section, `- F1. Sealed <fingerprint>.`, and the
+   aporia's in its Aporiai section. The line doc's address is never an input of a seal job.
+   Seals exist mechanically and are not listed to the principal.
+3. **The question's file holds no answer.** `$SCRATCH/questions/<n>.md` holds the question
+   and its case, and nothing of the sitting: no answer and no admission of the principal's,
+   since a clean reader may open any question of the sitting. What the principal admits is
+   recorded in the line's record, the line doc, restated and never word for word, and goes to
+   the notebook through the recorder at the batch point. The file tells the reader that where
+   the notebook cannot decide the case, the prediction is that the principal declines to pick
+   and says what is missing.
+4. **After the answer, in this order on the page.** First the answer as the speaker read it, a
+   restatement and never word for word; then tradition for and against the answer that was
+   given, each party with its registry status; then the predicted result, in three parts: what
+   was predicted, where the result diverged, and how or whether that gap is addressed. The
+   principal may revise the answer after reading the tradition; unrevised when the next answer
+   comes, it stands, and a revision is written over the answer's file and graded again.
+   Tradition readings go to the notebook only with the principal's approval. Behind the page:
+   read the sealed file and state it in the line doc; write the principal's answer to
+   `$SCRATCH/answers/<n>.md` as the admission the line doc records, never word for word, and add
+   a `grade` job over the sealed file and that answer. Class a failure as **The fidelity round**
+   classes it, and draft the remedy for the batch point. Once the remedy is written (step 4), a
+   fresh `seal` job with a new row in its id draws the prediction again, and a `grade` job over
+   its result and the same answer file grades it; the outcome is written in the line doc as
+   `Redrawn: …`. State the aporia too, with what the answer did to it, and carry what is open in
+   it to the next question on the line. What this opened: each further line the answer opened,
+   in *Opened*, with what raised it and what would bring it back (ground rule 8).
+5. **The principal may always override the action ranked first**: by a lasting change of a
+   share, by a further observation to be weighed, or by a transient feeling. An override is an
+   observation of a gap, never a verdict: it is recorded as the goal says, a lasting change of a
+   share goes to the batch point as rows, and a further observation is weighed and recorded
+   where ground rule 4 says. When a transient feeling moves the choice, the page keeps showing
+   the deferred action beside the revised one, as `next.deferred`: it is carried in every
+   whole-document `set` of `ordo/current` until it is done or the principal drops it.
+6. **The next action is one of four kinds: question, office, work, review.** A `question` is
+   put by rules 1 to 4; an `office` is an item of a bell (rule 7); a `work` is an act to do or to
+   observe; and a review is put exactly as a question is, one at a time, a case and a question
+   on the page, answered in the session. A review differs from a question in three things only:
+   a review of mechanism may carry the speaker's recommendation, and a review that states or
+   changes a principle, a grant or a row stating a principle among them, is put with no
+   recommendation, as a question is; it carries no tradition; and a prediction is sealed
+   before every review as well, by the speaker itself, in
+   `$SCRATCH/sealed/`, and the file says who predicted. The grants and the rows of a batch point
+   are put as reviews (step 4). There are no checklists. An act of another kind than a question
+   or a review is put with what it serves, sealed the same way as a question, and the
+   principal's choice is graded against the sealed one. What is chosen is then carried as its
+   kind asks: an act to observe is an `observe` job, which the speaker claims under the
+   sitting's id and carries out itself with its own tools, starting no helper for it, or the
+   principal's own observation, recorded where ground rule 4 says; an act to do that a rows file
+   can carry goes to the batch point, and one it cannot goes by rule 9, or by
+   `/principal:dictate` or `/principal:bootstrap`, named to the principal as an open note of kind
+   `change`; a grant is written at the batch point as a case on the tab of the clause it bears
+   on. Each ends with what it opened.
+7. **Bells.** The page shows a rung bell as a notice and makes that bell's office items the next
+   action, one at a time, until each is done, overruled or marked not due; only then does the
+   speaker's own next action show, and the rest of the time is a work block. Between open and
+   resolved an item may be taken up: the principal says so in the session, the speaker marks it
+   taken, and it stays the next action as under way until it is done, overruled or marked not
+   due; among a bell's unresolved items the page shows a taken one first, else the first open
+   one. A `work` action has no mark: it stays `next` in `ordo/current` until the speaker changes
+   it on the principal's word. The page writes nothing: the principal acknowledges each item and
+   each action in the session, and the speaker writes an item's mark, or `ordo/current` for an
+   action. The page always shows the next
+   bell, in the notice while an office is open and otherwise with its items under the card. The
+   speaker reads the day's marks at each turn (**The page**); an overruled office item is an
+   observation like any other override. An earlier bell's items left open are the speaker's to
+   read and weigh.
+8. **Every time the speaker stamps is read from the clock, never typed**: `date -u
+   +%Y-%m-%dT%H:%M:%SZ` for the board's `--now`, the page's `updated` and the time in a mark,
+   `date -u +s%Y%m%d%H%M` for a sitting's id, and the local `date`, in the zone the page is
+   viewed in, for the Rule's day.
+9. **The speaker, at the full tier, writes no code, page or tooling itself.** Such work is
+   briefed to a helper of the mid tier and reviewed adversarially by a helper of the full tier;
+   the judge is never the tier judged. Run the open way, the speaker briefs both directly, with
+   what each must read and must not, and puts what they hand back to the principal as a review;
+   run the confined way, it can start neither, and the work is named to the principal as an
+   open note of kind `change`.
+10. **Every ask of the principal is an action on the page, in order.** The speaker never leaves
+    an ask only in the session's text: what it writes in the session is short and points to the
+    page. The asks still pending are kept on the page as a queue the principal can see, in the
+    order they will be put, each a further action or a placeholder with a kind and a title.
 
-A question the principal does not understand is put again, plainer, as one case; it is never
-withdrawn and decided for the principal. No question is left unasked because readers agree on
-its answer.
-
-An act of another kind is proposed with the shares of what it serves, sealed and put the same
-way, and the principal's choice is graded against the sealed one. What is chosen is then carried
-as its kind asks: an act to observe is an `observe` job, which the speaker claims under the
-sitting's id and carries out itself with its own tools, starting no helper for it, or the
-principal's own observation, recorded where ground rule 4 says; an act to do that a rows file can carry goes to the batch
-point, and one it cannot goes by `/principal:dictate` or `/principal:bootstrap`, named to the
-principal as an open note of kind `change`; a grant is written at the batch point as a case on
-the tab of the clause it bears on. Each ends with what it opened.
-
-**4 — The batch point.** The rows are shown to the principal in words first: the sentences for
+**4 — The batch point.** The rows are shown to the principal in words first, put as reviews
+(rule 6 of procedure 3), one at a time: the sentences for
 the tabs, the cases, what is expected to generalize, the questions for the AI's own record, the
 open notes to add, and the open notes to take off because what they held now stands on the tab.
 What the principal approves is then made into a **rows file**, `$SCRATCH/rows/<job id>.json` for
@@ -367,8 +644,9 @@ the job awaited or says nothing is runnable, and export the board again, as step
 this session's next mode, since the coordinator writes the board through an export of its own.
 One coordinator runs at a time: the next is started
 only once the last has reported, since every coordinator works through the one
-`$SCRATCH/coordinator/` export. The coordinator is the only helper this session starts; every
-other piece of work is a job on the board, every `review` included.
+`$SCRATCH/coordinator/` export. The coordinator is the only helper this session starts for work
+a kind carries; every such piece of work is a job on the board, every `review` included. Work no
+kind carries is rule 9's (procedure 3), and only the open way starts a helper for it.
 
 **7 — Closing.** The close is a batch point like the others. Run `status` again and say what
 stands open: jobs not done, failures by kind, what waits on the principal, the questions spent
@@ -398,7 +676,8 @@ What no tool decides. Hold these by reading.
 - **The speaker is not a clean context.** It has heard the principal, so the record's answer it
   would draw is not the record's, and agreement between readers is no evidence the record is
   right: two clean readers that draw the same answer have read the same words. The principal's
-  answer is the test.
+  answer is the test. A prediction the speaker seals before a review is the speaker's own, and
+  its file says so.
 - **A clean reader is clean by instruction.** The connector's `read` reaches every document the
   account can read, the line doc among them. What keeps a clean reader to the notebook is its
   definition and that it was handed one address; a kind is tried before it is trusted, by
@@ -465,6 +744,25 @@ What no tool decides. Hold these by reading.
   watched is that nothing is lost and that the order the acts were proposed in is the one the
   shares give, never that the count falls; which line is in hand is the principal's choice, and
   a line closed to bring the number down is a line dropped.
+- **In the open way this text alone keeps the speaker off the notebook.** The gates still bind
+  every helper by its kind, and a helper that is no kind of this plugin is refused any write
+  aimed at the notebook; but the session running this entry point is the main thread, and the
+  guard gives it no opinion. A helper the speaker briefs by rule 9 is held off the notebook's
+  connector by the guard and off nothing else, and a shell line of its that starts a session of
+  its own starts a main thread no gate binds: its brief, and the review of its work by the full tier, are
+  what hold it to the work.
+- **A recorder's write may be refused by a permission check.** The harness may ask a permission
+  for a helper's call that cannot see the principal's approval at the batch point, and refuse
+  it. This is untested. Then the speaker puts it to the principal as an action on the page
+  (rule 10), and the principal either allows the tool by a permission rule or has the rows
+  written by `/principal:dictate`. The speaker never writes the notebook. Never work around a
+  refusal.
+- **The page shows what its documents hold, and was read as code.** Whether a rule of `owner`
+  for reading is accepted at publishing is untested, and no viewer has yet shown the page drawn;
+  whether a read comes back to its owner alone is read at each sitting before any private data
+  is written (**The page**). The page writes nothing, so a mark the
+  speaker does not write is never made; it re-reads the clock every thirty seconds, so a bell
+  rings on it up to that late.
 
 ## Where this entry point departs from the others
 
@@ -476,8 +774,9 @@ What no tool decides. Hold these by reading.
   `line.py check`, where `/principal:dictate` step 2 enters plan mode first and **The
   compaction** has `line.py check` pass before the plan runs; this session has no export to give
   `line.py` its markdown.
-- The record's answer is drawn by a `seal` job and never by the questioner, where
-  `/principal:dictate` **Every interviewing phase is the line** has the questioner seal it.
+- The record's answer to a question is drawn by a `seal` job and never by the questioner, where
+  `/principal:dictate` **Every interviewing phase is the line** has the questioner seal it;
+  before a review the speaker seals its own, and its file says who predicted.
 - The sealed text holds what the clean reader's definition hands back, where
   `/principal:dictate` **The fidelity round** also seals what the principal is expected to add.
 - The prediction is graded by a grader, where **The fidelity round** has the questioner grade
@@ -509,3 +808,40 @@ What no tool decides. Hold these by reading.
   does not list among its four.
 - The principal's `/principal:ask` session is a second session that prompts, the one exception
   to ground rule 1; `/principal:ask` itself is unchanged.
+- A question is put alone, with nothing beside it, where `/principal:dictate` **The four-part
+  step** puts tradition, digressions and references with each next step and **Principles are
+  asked, mechanisms decided** lists options with their consequences: tradition on an answer
+  comes after it (rule 4 of the round), and digressions and references stay in the line doc.
+- The line of aporia is sealed before every question on it and carried from one to the next,
+  where `/principal:dictate` **The answer is explored, not taken** seals one before a critical
+  question.
+- Readings of tradition go to the notebook only with the principal's approval, where
+  `/principal:dictate` **The adversarial review** finds every reading cited that is not on its
+  tab or a *pending* note.
+- The round is put on a page whose data the speaker writes, where `/principal:dictate` puts each
+  step in the conversation.
+- Building is briefed to a helper of the mid tier and reviewed by one of the full tier, where
+  `/principal:bootstrap` builds in its own session.
+
+What this entry point says now that reverses what it said before:
+
+- An ordinary session may run a sitting, the open way, where before a session not started as
+  the interviewer kind stopped at **Before anything**.
+- A helper not of the plugin's kinds may be started for work no kind carries, in the open way,
+  where before no helper was started that was not one of them and the coordinator was the only
+  helper the session started.
+- The guard is said to hold the speaker only in the confined way, where ground rule 2 said it
+  held the speaker without condition.
+- A question is put alone, where before it was put with the four parts of the step.
+- The aporia is sealed for every question on a line and carried along it, where before only
+  what the speaker remembers of the line was sealed apart.
+- The reader is told to predict that the principal declines to pick where the notebook cannot
+  decide, where before the file held the question alone.
+- Every act is put as the next action, in one of four kinds of the page, where before an act
+  was proposed as a question; the four kinds of act of ground rule 4 stand.
+- A different choice is also an override, an observation and never a verdict, where before it
+  was called a failed prediction alone.
+- The rows of a batch point are put as reviews, one at a time on the page as a question is,
+  where before they were shown in words whole.
+- Every ask of the principal is an action on the page, the pending ones a queue the principal
+  sees, where before the speaker put its acts in the session's text.
