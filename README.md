@@ -69,6 +69,13 @@ page's open lines: it checks them, flags those whose anchored sentences moved, s
 answer may bear on, orders them by the share they carry, their pressure and what they hold up,
 picks the week's lines of least weight, and prints the writes for the session to send; it closes
 a line only by the user's sentence quoted, and merges or drops one only at the user's word.
+`tools/predictions.py` prints the words of a failed prediction's divergence note, refusing a
+grade or a direction outside its lists, and reads those notes back from a graph and the notes
+graded since: it tallies them by kind, grade and direction with the lessons that recur, and
+stamps the tally with a fingerprint that a seal of the speaker's own must end with.
+`tools/hinges.py` places a line's answer of record with its presuppositions as hinges, each
+unjustified until a later answer of the AI's is linked to it, and lists every unjustified hinge
+of the AI's graph with the builds that rest on it.
 
 The readings are projections over the record, computed and stored nowhere: `tools/frontier.py`
 (the frontier, and with `--principal` the questions only the user can answer whose lineage has

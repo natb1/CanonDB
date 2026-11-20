@@ -24,7 +24,8 @@ Bootstrap builds from the user's notebook and not from Claude's own graph. It is
 the user wants the implementation now and knowingly bypasses the building of Claude's graph and
 the confidence in autonomous alignment that graph gives. So a round is never autonomous, and it is only ever explicit:
 it is done once when asked, and being asked once licenses nothing the next time. The
-user initiates it, this run executes it, the plan waits for approval and the author merges. An
+user initiates it, this run executes it, the plan waits for approval and the author merges, or this run at the
+principal's leave (rule 5). An
 action that rests on the user's principles is the user's until the user chooses one of three
 things: to delegate it, by extending Claude's graph until a principle of Claude's carries it;
 to bootstrap it, here; or to do it. Only what rests on Claude's own graph is Claude's to do on
@@ -68,8 +69,14 @@ nothing.
    lists what bootstrap owns. A file that exists and is not listed there is canon's, or the
    principal's own hand's, and this run does not change it. Canon is what is under `canon/`,
    and nothing there is written here: a file enters it at promulgation and no other way.
-5. **The author merges.** This run opens the pull request ready for review and stops. It never
-   merges, never pushes to `main`, and never marks its own work as canon.
+5. **The author merges, or this run at the principal's leave.** The principal: "You have
+   permission to merge pull requests unless otherwise stated. If you need to reload local
+   skills or plugin just merge the PR and give me an action to reload." So this run may merge
+   its pull request once its checks pass and the full tier's adversarial review of it has
+   returned nothing not resolved, unless the principal said otherwise; those two conditions are
+   mechanism, the run's and not the principal's words. Where the merge changes the plugin or a
+   skill, it gives the principal the action to reload the plugin. It never pushes to `main`
+   but by that merge, and never marks its own work as canon.
 
 ## Procedure
 
@@ -179,7 +186,8 @@ can decide is tooled, as `/principal:dictate` step 3 says. Run the plugin's test
 **7 — Publish.** Commit on the round's branch, push it, and open the pull request against
 `main`, ready for review, or push to the one already open. The body lists the applications
 built, by tab and name, the manifest's diff, and what step 3 listed and left. The author
-merges; that merge is what makes the branch `main`, and nothing here counts as canon for it.
+merges, or this run does as rule 5 allows; that merge is what makes the branch `main`, and
+nothing here counts as canon for it.
 
 **8 — Report.** The pull request, the applications built, the gaps left, and what step 2
 took into the notebook. Not the code: it is on the branch, where the author reads it.
@@ -243,4 +251,5 @@ Rules of this entry point that no tool decides. Hold these by reading.
   promise the merge keeps. A pull request the author closes leaves links at paths that do not
   exist, and the next round finds them as `missing`, which is right.
 - **The principal approves, the author merges, canon supersedes.** Three acts, and this run
-  does none of them: it waits on the first, publishes for the second, and yields to the third.
+  does none of them but a merge the principal's leave allows (rule 5): it waits on the first,
+  publishes for the second, and yields to the third.

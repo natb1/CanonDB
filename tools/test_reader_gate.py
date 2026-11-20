@@ -100,6 +100,9 @@ class ReaderGateTest(unittest.TestCase):
         for path in (s + "/answers/3.md", s + "/replies/s1-b1-r1-seal",
                      s + "/results/s1-b1-r1-seal.json", s + "/sealed/3.md",
                      s + "/rows/s1-b1-r1-record.json", s + "/replies/questions/3.md",
+                     # the record of predictions the speaker reads and the reader never
+                     s + "/speaker/stamp.txt", s + "/predictions/r1.txt",
+                     s + "/graph.json", s + "/lines/l1/1/place.json",
                      s + "/questions/../answers/3.md", s + "/questions",
                      s + "/q/questions.md", os.path.expanduser("~/.claude/projects/x.jsonl"),
                      "/etc/passwd", "questions/3.md", ""):

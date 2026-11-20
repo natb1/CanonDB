@@ -17,6 +17,30 @@ the board, and, run the confined way, is started as the interviewer kind only be
 is the one that may prompt the principal (**Before anything**). A sitting here is any one session of this entry point, and is not the
 annual sitting that `/principal:interview` speaks of.
 
+## After a compaction
+
+After a compaction the harness keeps only the head of this file, and nothing is done from what
+survives of it. Before the next write, ask or seal, the speaker reads again, in this order:
+
+1. This file, by its path, `${CLAUDE_PLUGIN_ROOT}/skills/sit/SKILL.md`, with the Read tool in
+   parts, by `offset` and `limit`, to its last line, under "What this entry point says now that
+   reverses": it is too long for one call.
+2. `$SCRATCH`, found where it was made: the session's scratchpad named in its own instructions,
+   or a job's `~/.claude/jobs/<id>/tmp`; then `ordo/current` and the open documents of `lines`,
+   with `ArtifactData`, exported to `$SCRATCH/speaker/lines` (**The open lines**). The store
+   stands over anything remembered, and a difference is said in the action context.
+3. The record of predictions: `tools/predictions.py stamp $SCRATCH/graph.json --added
+   $SCRATCH/predictions --at <time> > $SCRATCH/speaker/stamp.txt`, and what it printed read
+   whole (**The record of predictions**). A sealed file in `$SCRATCH/sealed/` whose answer is
+   not yet in `$SCRATCH/answers/` stands: it is not sealed again.
+4. The board, as step 1 of the procedure exports it, with `status`, and the line doc the last
+   `probe` names, whose head holds the questions set and spent.
+
+Where `$SCRATCH` or the line doc cannot be found again, the speaker says so in the action context
+and writes nothing more until the principal answers.
+
+## The arrangement
+
 The arrangement is what this entry point is for and changes only by the principal's dictation:
 one session speaks, one kind writes the notebook, the board holds the work, the kinds of helper
 are fixed, and an act is one of four kinds. How it is carried out today is not the arrangement
@@ -111,8 +135,13 @@ the plugin and start the sitting again. Helpers are started by the plugin's name
 kind only, the one name the gates always bind; a bare name is bound only as a fallback, where the
 project's copy is the plugin's or the project names a notebook.
 
-Where `.principal/notebook.json` names no `board`, stop and say so: this session has no tool that
-publishes one. Where it names no `page`, the sitting runs without one and says so (**The page**).
+Where `.principal/notebook.json` names no `board`, stop, and tell the principal what to do, in
+these words: "The project names no board. Publish the plugin's `web/board.html` once as a
+private artifact, with the db capability and rules that let only its owner read and write, and
+put its address in `.principal/notebook.json` as `board`. Publish `web/ordo.html` once as a
+private artifact, with the db and user capabilities and rules that let only its owner read and
+write, and put its address there as `page`. Then start the sitting again." This session publishes neither. Where it names a `board` and no `page`, the
+sitting runs without one and says so, with the same words for the page alone (**The page**).
 
 ## Ground rules
 
@@ -129,7 +158,8 @@ publishes one. Where it names no `page`, the sitting runs without one and says s
    procedure 5.
 2. **It writes its own record and never the notebook.** The connector's `batch` makes the line
    doc and `update` and `create` write it. Writes to the notebook go to the recorder as rows
-   files (procedure 4) through a job on the board. What refuses this session a write to the
+   files through a job on the board, made at a batch point (procedure 4) or at the round
+   (**Written as the round goes**). What refuses this session a write to the
    notebook is the guard, the plugin's `hooks/notebook-gate.py`, which refuses every kind but the
    recorder, the interviewer included; the tool list does not. Run the open way, nothing refuses
    it, and this text alone holds it (**Before anything**).
@@ -190,7 +220,14 @@ publishes one. Where it names no `page`, the sitting runs without one and says s
    proposed again. No reading of the speaker's that awaits confirmation, and no predicted answer,
    is ever written as such a note, since a clean reader reads those tabs; `residue.py note
    --read` is passed only a reading the principal has confirmed. A reading that is set down is
-   set down as the question it answers, and a prediction is not kept.
+   set down as the question it answers, and a prediction's sealed text is not kept. Three notes
+   are written at the round without a review of rows, and each is held off what a clean reader
+   could draw an answer from: a requirement the principal states, shown restated in the action
+   context before it is written; a reading of a party's tradition, which states the party's
+   position and never the answer it was given after, the question or its case; and a failed
+   prediction, which names who predicted, the kind of action, the grade and the direction, and
+   never the sealed text, the answer or the case (**Written as the round goes**, **The record of
+   predictions**).
 
 ## Which kind runs which job
 
@@ -291,8 +328,9 @@ forty-eight hours and writes `ordo/agenda`. A speaker that holds no tool that re
 principal's calendar, as the confined way's does not, writes no agenda and says so in the action
 context, and the panel then says "No calendar has been read.".
 
-Where `.principal/notebook.json` names no `page`, the sitting runs without one and says so: the
-round is put in the session's own words, in the order the page would show it, the action
+Where `.principal/notebook.json` names no `page`, the sitting runs without one and says so, and
+tells the principal to publish `web/ordo.html` once as above and put its address there as
+`page` (**Before anything** gives the words): the round is put in the session's own words, in the order the page would show it, the action
 context among them, and there are no bells.
 
 **`ordo/current`**, an invented example:
@@ -651,6 +689,59 @@ acts (rule 5 of the round): the user may always override it.
   user's choice, a merge with `--into <other line>`, and refuses a merge or a drop without
   the user's word; a drop or a merge flags the children it leaves.
 
+## The record of predictions
+
+What is learned about predicting the principal must not be transient: so the principal has
+said, and that no source of it be kept but the notebook. This section is built from those words,
+as a stopgap (**What the sitting serves**). There is no store of predictions and no store of
+lessons beside the notebook.
+
+**A failed prediction is a divergence.** A prediction the grader grades `verdict only`, `short of
+the edge` or `diverges`, the speaker's or a clean reader's, is recorded at the round as the
+notebook records any divergence (`/principal:dictate`, `tools/divergence.py`): a note opening
+with the word *divergence*, on the tab the notebook keeps for how the record predicts the user,
+whose data names the seal graded by its id, who predicted, the kind of action, the grade and
+the direction, and never the sealed text, the answer or the case, and whose `action` is the
+lesson, what would have kept the prediction from failing. The seal's id is the `seal` job's id
+for a clean reader's, and `<sitting>-<seal>` for the speaker's, so that two failures in the same
+words are two notes and a lesson that recurs word for word is counted twice. Its words are
+printed by `tools/predictions.py note --seal <seal id> --by <who> --kind <question|review|act>
+--grade "<the grader's grade>" --direction <direction> --lesson "<the lesson>" --price "<what
+applying it costs>" > $SCRATCH/predictions/<seal id>.txt`, one file a seal, a regrade of the
+same seal written over it; the direction
+one of `expected-more-limits`, `expected-fewer-limits`, `expected-less-change`,
+`expected-more-change`, `missed-recorded-sentence` and `other`, with `--text` where it is
+`other`, and needed for `verdict only` and `diverges`; and the note goes to the notebook through
+the recorder, as **Written as the round goes** says. A lesson two or more failed predictions
+carry, which the tally marks as not yet on the notebook, is written once more on that tab at
+the next batch point, as a divergence whose data opens with `a lesson recurs` and whose `action`
+is the lesson, put as a review like any row. An agreeing prediction, graded `agrees` or `silent`,
+is counted where every grade already is, in the line doc's Fidelity rounds section (`- F1,
+stated at S2. …` with its grade), which needs no new form; it is not written as a divergence,
+since nothing diverged. Where the notebook has no tab for how the record predicts the user, the
+speaker puts the making of one to the principal as an action on the page, and until it is made
+the notes wait in `$SCRATCH/predictions/` and in the line doc.
+
+**The lessons are record.** A clean reader reads the notebook, and so reads these notes and the
+lessons in them: what is learned reaches its prediction by the notebook alone. It is never
+handed the stamp or the tally, and nothing of either goes into `$SCRATCH/questions/` or a seal
+job's inputs.
+
+**Before every prediction of the speaker's own**, before each review: `tools/predictions.py
+stamp $SCRATCH/graph.json --added $SCRATCH/predictions --at <time> > $SCRATCH/speaker/stamp.txt`,
+over the opening's graph and the notes graded since, and read what it printed whole: the counts
+by kind, by who predicted, by grade and by direction, and the lessons two or more predictions
+carry. Then write the prediction with the Write tool to `$SCRATCH/sealed/<seal>.md`, `<seal>`
+`review-<n>`, saying who predicted and ending with a newline; append the stamp's last line,
+`tail -n 1 $SCRATCH/speaker/stamp.txt >> $SCRATCH/sealed/<seal>.md`; and run
+`tools/predictions.py check-seal $SCRATCH/sealed/<seal>.md --graph $SCRATCH/graph.json --stamp
+$SCRATCH/speaker/stamp.txt --added $SCRATCH/predictions`, which refuses a sealed file that does
+not end with `predictions-read: <sha256> <time>` for the record as it stands, and a stamp file
+that is not what `stamp` prints for it. Only then is its fingerprint taken. A note graded since
+the stamp is in `$SCRATCH/predictions/`, so the old stamp no longer passes: stamp, read and seal
+again. `$SCRATCH/predictions/` is made when the sitting opens, and holds note words and nothing
+else.
+
 ## Procedure
 
 **1 — Read.** Read `ordo/current` and the open documents of `lines` first (**The open
@@ -750,10 +841,18 @@ bind every action.
    was predicted, where the result diverged, and how or whether that gap is addressed. The
    principal may revise the answer after reading the tradition; unrevised when the next answer
    comes, it stands, and a revision is written over the answer's file and graded again.
-   Tradition readings go to the notebook only with the principal's approval. Behind the page:
+   The principal: "These traditions are good, make sure they are being recorded as we go."
+   Tradition readings are recorded as the round goes, without waiting for approval: each
+   reading given is written on the tab of the party it is of, at the round it is given, as a
+   note opening with the word *pending* that calls it a lead, never marked verified, stating the
+   party's position and never the answer it was given after, the question or its case, through
+   the recorder (**Written as the round goes**). A party's graph is expected to follow the
+   structure of the user's and the AI's; that change of form is not made here, and is carried
+   as an open line of kind `work` until it is. Behind the page:
    read the sealed file and state it in the line doc; write the principal's answer to
    `$SCRATCH/answers/<n>.md` as the admission the line doc records, never word for word, and add
-   a `grade` job over the sealed file and that answer. Class a failure as **The fidelity round**
+   a `grade` job over the sealed file and that answer; once it is graded, a failed prediction is
+   recorded and an agreeing one counted (**The record of predictions**). Class a failure as **The fidelity round**
    classes it, and draft the remedy for the batch point. Once the remedy is written (step 4), a
    fresh `seal` job with a new row in its id draws the prediction again, and a `grade` job over
    its result and the same answer file grades it; the outcome is written in the line doc as
@@ -776,12 +875,18 @@ bind every action.
    a review of mechanism carries the speaker's recommendation, in `next.recommendation`, its own
    field and never in the case, and a review that states or changes a principle, a grant or a
    row stating a principle among them, is put with no recommendation, as a question is, and the
-   page shows none; it carries no tradition; and a prediction is sealed
+   page shows none; a review that states or changes a principle carries no tradition, and a
+   review of mechanism is followed, after its answer, by tradition for and against that answer
+   as a question's is (rule 4), its readings recorded the same way, which is the speaker's
+   reading of the principal's word that the readings given after two reviews of mechanism were
+   good, and no rule the principal dictated; and a prediction is sealed
    before every review as well, by the speaker itself, in
-   `$SCRATCH/sealed/`, and the file says who predicted. The grants and the rows of a batch point
+   `$SCRATCH/sealed/`, and the file says who predicted and ends with the stamp of the record of
+   predictions (**The record of predictions**). The grants and the rows of a batch point
    are put as reviews (step 4). There are no checklists. An act of another kind than a question
    or a review is put with what it serves, sealed the same way as a question, and the
-   principal's choice is graded against the sealed one. What is chosen is then carried as its
+   principal's choice is graded against the sealed one; a failed prediction of it is recorded
+   as any other. What is chosen is then carried as its
    kind asks: an act to observe is an `observe` job, which the speaker claims under the
    sitting's id and carries out itself with its own tools, starting no helper for it, or the
    principal's own observation, recorded where ground rule 4 says; an act to do that a rows file
@@ -834,9 +939,20 @@ bind every action.
 9. **The speaker, at the full tier, writes no code, page or tooling itself.** Such work is
    briefed to a helper of the mid tier and reviewed adversarially by a helper of the full tier;
    the judge is never the tier judged. Run the open way, the speaker briefs both directly, with
-   what each must read and must not, and puts what they hand back to the principal as a review;
+   what each must read and must not;
    run the confined way, it can start neither, and the work is named to the principal as an
-   open note of kind `change`.
+   open note of kind `change`. The principal: "You have permission to merge pull requests
+   unless otherwise stated. If you need to reload local skills or plugin just merge the PR and
+   give me an action to reload." So, run the open way, in this order: the pull request's checks
+   pass; the full tier's adversarial review of it returns, with no blocker left open; what was
+   built is reported in the action context; a build that changes what the principal decides, a
+   rule of a skill or what the page shows among it, is put to the principal as a review and
+   waits for the answer; and then the speaker may merge, unless the principal said otherwise.
+   The first two conditions are mechanism, the speaker's and not the principal's words. Where
+   the merge changes the plugin or a skill, the speaker puts the reload of the plugin to the
+   principal as a `work` action on the page, naming what to run, since a session reads a skill
+   as it was loaded. A pull request of a round of `/principal:bootstrap` that a
+   sitting carries is merged the same way, as that skill says.
 10. **Every ask of the principal is an action on the page, in order.** The speaker never leaves
     an ask only in the session's text: what it writes in the session is short and points to the
     page. Every explanation, every answer to a question of the principal's, and every report of
@@ -852,11 +968,28 @@ bind every action.
     order they will be put, each a further action or a placeholder with a kind and a title,
     drawn from the open documents of `lines` (**The open lines**), which is where each waits.
 
+**Written as the round goes.** The principal: "You may write to the notebook as we go." Three
+kinds of write no longer wait for a batch point. A requirement the principal states in the
+session is written on the tab it bears on as a note opening with the word *pending*, at the
+round it is said, once its restatement has been shown in the action context, so that the
+principal may correct it before the job is added. A reading of tradition given after an answer
+(rule 4) is written on the tab of the party it is of as a note opening with the word *pending*,
+calling it a lead, never marked verified, stating the party's position and never the answer it
+was given after, the question or its case. A failed prediction is written as **The record of
+predictions** says. None is first put as a review of rows. Each is made as step 4 makes a rows
+file, by the `note insert` of `tools/inplace.py`, the note's words written to a file with the
+Write tool, or printed by `tools/predictions.py note`, restated and never word for word, and
+passed as step 4 passes them; it goes to the notebook through the recorder, by a chain of
+`record`, `fetch` and `check` added at that round; the `review` of what such a chain wrote is
+added at the next batch point, whose `owed` file names it. Everything else, a sentence, a case, and anything
+that changes a standing answer, still goes through the batch point's reviews.
+
 **4 — The batch point.** The rows are shown to the principal in words first, put as reviews
 (rule 6 of procedure 3), one at a time: the sentences for
 the tabs, the cases, what is expected to generalize, the questions for the AI's own record, the
-open notes to add, and the open notes to take off because what they held now stands on the tab.
-What the principal approves is then made into a **rows file**, `$SCRATCH/rows/<job id>.json` for
+open notes to add, the open notes to take off because what they held now stands on the tab, and
+the lessons of the record of predictions that recur (**The record of predictions**); what was
+written as the round goes is not put again. What the principal approves is then made into a **rows file**, `$SCRATCH/rows/<job id>.json` for
 the `record` job that carries it: a JSON list with one entry per run of a tool, in the order the
 tools were run, a tab standing in as many entries as tools were run over it. Each entry holds
 the node id of the tab the run was over under `node`; what the tool printed under `payload`,
@@ -1086,12 +1219,32 @@ or its question, and a question or an answer holding `<<<` or `>>>`, which no te
    binding it tests four signals and says which apply: marked stale by a later note; a mechanism
    standing as a principle, its source an application line, a skill or a helper's definition,
    this one among them; its price, the divergences recorded on it, beside the share it carries;
-   and unjustified, no edge to a principle nearer the root.
-9. **What is recorded.** The draws are placed in the AI's record by a `place` job, the
-   `ai-recorder` sending a rows file of inserts whose texts are the draws' answers word for word,
-   only once a tool prints such rows; the comparing run's lines go on the user's side. Until a
-   tool prints the insert of an answer, the draws stay in the line's directory and the place is
-   carried as an open note of kind `change`.
+   and unjustified, no edge to a principle nearer the root, which for a hinge of the AI's graph
+   `tools/hinges.py unjustified` lists (rule 10).
+9. **What is recorded.** The answer of record of each question on a line is placed in the AI's
+   record with its question, its answer word for word and its presuppositions: `tools/hinges.py
+   place $SCRATCH/lines/<line> --n <n> --under <id> > $SCRATCH/lines/<line>/<n>/place.json`
+   prints them in the notebook's own form, the question, its one answer, and the hinge's two
+   parts: what the asking presupposes, each presupposition on a line of its own ending
+   `(unjustified; came in by <line>/<n>)`, and what the answer was drawn from, from the draw.
+   `--line-name` names the line where its directory is not named for it. A draw made before
+   the answerer gave its presuppositions one a line gives them on the label's own line, and
+   the tool parts them there; nothing is redrawn for it. It reads the line's directory alone, and nothing of
+   the user's record. A placed question is a tab of its own under the tab the line stands
+   under; a new tab is outside a sitting (step 4) and outside what the guard lets the
+   `ai-recorder` write, inserts beside a block of a tab `ai_root` lists. So the place goes by
+   `/principal:dictate` from that file, carried until then as an open note of kind `change`,
+   and a `place` job is added only once the guard admits the `ai-recorder` a new tab under the
+   AI's root. The comparing run's lines go on the user's side.
+10. **Every presupposition is a hinge.** Every presupposition a question carries in, drafted on
+   the user's side or drawn, as the AI's answer names it under `Presupposes:`, one a line, is
+   recorded as a hinge at the place, unjustified. A hinge is justified only by a later answer of
+   the AI's own that it is linked to: its line then ends `(justified by <question id>)`, naming a
+   question of the AI's that answers past held, written by a words replace of the hinge's
+   question part at a batch point. `tools/hinges.py unjustified $SCRATCH/graph.json` lists every
+   unjustified hinge of the AI's graph with the builds that cite an answer resting on it: read
+   for the fourth signal (rule 8), it is where a record that constrains a build unawares is
+   looked for first.
 
 ## Attenuation
 
@@ -1176,7 +1329,8 @@ What no tool decides. Hold these by reading.
   its own starts a main thread no gate binds: its brief, and the review of its work by the full tier, are
   what hold it to the work.
 - **A recorder's write may be refused by a permission check.** The harness may ask a permission
-  for a helper's call that cannot see the principal's approval at the batch point, and refuse
+  for a helper's call that cannot see the principal's approval at the batch point, or the
+  principal's word for a write made at the round, and refuse
   it. This is untested. Then the speaker puts it to the principal as an action on the page
   (rule 10), and the principal either allows the tool by a permission rule or has the rows
   written by `/principal:dictate`. The speaker never writes the notebook. Never work around a
@@ -1231,6 +1385,22 @@ What no tool decides. Hold these by reading.
   waits nowhere else, that the export is whole, that `ordo/current.queue` is set to the order's
   queue, and that the speaker trusts the store over its memory are read too; the page does not
   read the collection.
+- **The record of predictions is held by reading.** `tools/predictions.py note` refuses a
+  grade that is not a failure, a direction outside its list and a grade of `verdict only` or
+  `diverges` without one; `stamp` refuses a note that opens as a prediction's and does not hold
+  the form; and `check-seal` refuses a seal of the speaker's own that does not end with the
+  stamp of the record as it stands, or whose stamp file is not what `stamp` prints. The stamp
+  binds a seal to the graph and the notes graded since, and not to a reading: one written by
+  hand with the right hash passes. That the speaker read the tally, that every failed grade's
+  note was written to `$SCRATCH/predictions/`, that a note holds nothing of the sealed text,
+  the answer or the case, and that the grade and the direction are the right ones, are read.
+  Two lessons count as one only where their words agree, case, spacing and a closing stop
+  aside.
+- **A hinge's standing is read off its words.** `tools/hinges.py` takes a presupposition as
+  justified only where its line ends `(justified by <question id>)` naming a question of the
+  AI's that answers past held; whether that answer is later than the hinge and truly bears it
+  out is read. A hinge's question part written before this form, with no ending, is one
+  presupposition, unjustified.
 - **The comparer's reply is read for its signals alone.** The speaker takes the `redraw:` lines
   of the reply and nothing else to the drawer; the drawer's refusal of words that do not open
   exactly one answer of the packet is what keeps anything of the user's from reaching a clean
@@ -1290,9 +1460,11 @@ What no tool decides. Hold these by reading.
 - The line of aporia is sealed before every question on it and carried from one to the next,
   where `/principal:dictate` **The answer is explored, not taken** seals one before a critical
   question.
-- Readings of tradition go to the notebook only with the principal's approval, where
-  `/principal:dictate` **The adversarial review** finds every reading cited that is not on its
-  tab or a *pending* note.
+- Readings of tradition are written on the party's tab at the round, as *pending* notes that
+  call them leads, where `/principal:dictate` **The adversarial review** finds, at the end of a
+  line, every reading cited that is not on its tab or a *pending* note.
+- A requirement the principal states is written as a *pending* note at the round, where
+  `/principal:dictate` **The line** writes nothing while the line runs.
 - The round is put on a page whose data the speaker writes, where `/principal:dictate` puts each
   step in the conversation.
 - Building is briefed to a helper of the mid tier and reviewed by one of the full tier, where
@@ -1333,3 +1505,23 @@ What this entry point says now that reverses what it said before:
 - Every open line waits as one document of the page's collection `lines`, and the queue is drawn
   from it, where before a line at rest waited in the line doc's *Opened* section and in an open
   note on its tab.
+- A failed prediction is recorded on the notebook at the round, as a divergence on the tab the
+  notebook keeps for how the record predicts the user, where before a prediction was not kept;
+  a sealed text still lives for the sitting, and what was sealed is never on the notebook.
+- A review of mechanism is followed by tradition for and against its answer, where before a
+  review carried none. This one is the speaker's reading of the principal's word that the
+  readings given after two reviews of mechanism were good, and not a rule the principal
+  dictated; a review that states or changes a principle still carries none.
+- Readings of tradition are recorded on the parties' tabs at the round, as leads never marked
+  verified, by a `record` job, without waiting for approval, where before they went to the
+  notebook only with the principal's approval.
+- A requirement the principal states is recorded on the notebook as a *pending* note at the
+  round it is said, through the recorder, without first being put as a review of rows, where
+  before every write to the notebook waited for the batch point's reviews.
+- In the open way the speaker may merge the pull request of a build it briefed once its checks
+  pass and the full tier's review is resolved, unless the principal said otherwise, and then
+  puts the reload of the plugin as a `work` action, where before nothing was said of merging
+  and `/principal:bootstrap` had the principal merge.
+- Every presupposition a question on a line carries in is recorded as a hinge of the AI's graph,
+  unjustified until a later answer of the AI's is linked to it, where before it stood only in
+  the speaker's notes and the answer's closing line.

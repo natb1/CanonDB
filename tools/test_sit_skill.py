@@ -582,7 +582,21 @@ class SentenceTest(unittest.TestCase):
                 "what was predicted, where the result diverged, and how or whether that gap is "
                 "addressed",
                 "unrevised when the next answer comes, it stands",
-                "Tradition readings go to the notebook only with the principal's approval.",
+                "Tradition readings are recorded as the round goes, without waiting for "
+                "approval",
+                "as a note opening with the word *pending* that calls it a lead, never marked "
+                "verified, stating the party's position and never the answer it was given "
+                "after, the question or its case, through the recorder",
+                "a review that states or changes a principle carries no tradition, and a review "
+                "of mechanism is followed, after its answer, by tradition for and against that "
+                "answer",
+                "which is the speaker's reading of the principal's word that the readings given "
+                "after two reviews of mechanism were good, and no rule the principal dictated",
+                "ends with the stamp of the record of predictions",
+                "sealed the same way as a question, and the principal's choice is graded against "
+                "the sealed one",
+                "once it is graded, a failed prediction is recorded and an agreeing one counted",
+                "what was built is reported in the action context",
                 "5. **The principal may always override the action ranked first**",
                 "An override is an observation of a gap, never a verdict",
                 "the page keeps showing the deferred action beside the revised one",
@@ -656,6 +670,12 @@ class SentenceTest(unittest.TestCase):
         self.assertNotIn("runs itself, or by a helper", self.skill)
         self.assertNotIn("a later bell ends it", self.skill)
         self.assertNotIn("Put the question, with the four parts of the step", self.skill)
+        self.assertNotIn("Tradition readings go to the notebook only with the principal's "
+                         "approval", self.skill)
+        self.assertNotIn("a review of mechanism included", self.skill)
+        self.assertNotIn("sealed the same way as a review", self.skill)
+        self.assertNotIn("collection `predictions`", self.skill)
+        self.assertNotIn("reports what they hand back in the action context", self.skill)
         self.assertNotIn("marks it as given", self.skill)
 
     def test_round_two_the_count_the_brief_s_ask_and_no_speaker_write(self):
@@ -729,6 +749,171 @@ class SentenceTest(unittest.TestCase):
                       "A reply on disk is the coordinator's copy",
                       "The shell and the files are bound for the helpers, not for the speaker"):
             self.assertIn(words, self.skill)
+
+
+class StopgapTest(unittest.TestCase):
+    """What the principal said of predictions, tradition, writing as the round
+    goes, merging, hinges, the head kept after a compaction and the board's
+    keys, each carried by the skill, and each rule it reverses listed."""
+
+    def setUp(self):
+        with open(SKILL, encoding="utf-8") as fh:
+            self.raw = fh.read()
+        self.skill = flat(SKILL)
+
+    def section(self, heading, until):
+        return self.skill[self.skill.index(heading):self.skill.index(until)]
+
+    def test_after_a_compaction_is_the_first_section_and_short(self):
+        headings = re.findall(r"^## .*$", self.raw, re.M)
+        self.assertEqual(headings[0], "## After a compaction")
+        start = self.raw.index("## After a compaction")
+        body = self.raw[start:self.raw.index("\n## ", start + 3)]
+        self.assertLessEqual(len(body.strip().splitlines()), 25)
+        # well inside the head a compaction keeps, some 5,000 tokens
+        self.assertLess(start + len(body), 5000 * 3)
+        flat_body = " ".join(body.split())
+        for words in ("`${CLAUDE_PLUGIN_ROOT}/skills/sit/SKILL.md`",
+                      "with the Read tool in parts, by `offset` and `limit`, to its last line",
+                      "`ordo/current`", "the open documents of `lines`",
+                      "`tools/predictions.py stamp $SCRATCH/graph.json --added "
+                      "$SCRATCH/predictions --at <time> > $SCRATCH/speaker/stamp.txt`",
+                      "the session's scratchpad named in its own instructions, or a job's",
+                      "whose answer is not yet in `$SCRATCH/answers/` stands: it is not sealed "
+                      "again",
+                      "nothing is done from what survives of it"):
+            self.assertIn(words, flat_body)
+        # the last line it names is the file's last section's opening
+        self.assertIn("What this entry point says now that reverses what it said before:",
+                      self.raw)
+
+    def test_the_record_of_predictions_is_the_notebook(self):
+        rec = self.section("## The record of predictions", "## Procedure")
+        for words in ("What is learned about predicting the principal must not be transient",
+                      "as a stopgap (**What the sitting serves**)",
+                      "There is no store of predictions and no store of lessons beside the "
+                      "notebook.",
+                      "**A failed prediction is a divergence.**",
+                      "names the seal graded by its id, who predicted, the kind of action, the "
+                      "grade and the direction, and never the sealed text, the answer or the "
+                      "case",
+                      "so that two failures in the same words are two notes",
+                      "the tab the notebook keeps for how the record predicts the user",
+                      "in the line doc's Fidelity rounds section",
+                      "which needs no new form",
+                      "the speaker puts the making of one to the principal as an action",
+                      "**The lessons are record.** A clean reader reads the notebook, and so "
+                      "reads these notes and the lessons in them",
+                      "It is never handed the stamp or the tally",
+                      "**Before every prediction of the speaker's own**",
+                      "Only then is its fingerprint taken."):
+            self.assertIn(words, rec)
+        from hypo import predictions
+        for name in predictions.DIRECTIONS + predictions.FAILED:
+            self.assertIn("`%s`" % name, rec)
+        self.assertIn("**The record of predictions is held by reading.**", self.skill)
+        self.assertNotIn("ArtifactData` `list` of `predictions`", self.skill)
+
+    def test_every_lesson_is_the_invented_one_or_a_placeholder(self):
+        """B1: the skill gives a lesson only as a placeholder, and the tests use
+        one invented lesson, about weather and days."""
+        self.assertEqual(re.findall(r'--lesson "([^"]*)"', self.skill), ["<the lesson>"])
+        import test_predictions
+        self.assertEqual(test_predictions.LESSON,
+                         "A rule about days is asked about weather too.")
+        with open(os.path.join(HERE, "test_predictions.py"), encoding="utf-8") as fh:
+            body = fh.read()
+        self.assertEqual(set(re.findall(r'lesson="([^"]*)"', body)),
+                         {"a rule about days is asked about  weather too",
+                          "Ask about the post as well as the plants."})
+
+    def test_tradition_and_writing_as_the_round_goes(self):
+        for words in ("The principal: \"These traditions are good, make sure they are being "
+                      "recorded as we go.\"",
+                      "A party's graph is expected to follow the structure of the user's and the "
+                      "AI's; that change of form is not made here, and is carried as an open "
+                      "line",
+                      "**Written as the round goes.** The principal: \"You may write to the "
+                      "notebook as we go.\"",
+                      "once its restatement has been shown in the action context, so that the "
+                      "principal may correct it before the job is added",
+                      "None is first put as a review of rows.",
+                      "Everything else, a sentence, a case, and anything that changes a standing "
+                      "answer, still goes through the batch point's reviews.",
+                      "Three notes are written at the round without a review of rows"):
+            self.assertIn(words, self.skill)
+
+    def test_merging_and_the_reload(self):
+        rule = self.section("9. **The speaker, at the full tier", "10. **Every ask")
+        for words in ("what was built is reported in the action context; a build that "
+                      "changes what the principal decides, a rule of a skill or what the page "
+                      "shows among it, is put to the principal as a review and waits for the "
+                      "answer; and then the speaker may merge, unless the principal said "
+                      "otherwise",
+                      "The principal: \"You have permission to merge pull requests unless "
+                      "otherwise stated.",
+                      "the pull request's checks pass; the full tier's adversarial review of it "
+                      "returns, with no blocker left open",
+                      "The first two conditions are mechanism, the speaker's and not the "
+                      "principal's words.",
+                      "puts the reload of the plugin to the principal as a `work` action on the "
+                      "page"):
+            self.assertIn(words, rule)
+        boot = flat(os.path.join(ROOT, "skills", "bootstrap", "SKILL.md"))
+        self.assertIn("**The author merges, or this run at the principal's leave.**", boot)
+        self.assertIn("those two conditions are mechanism", boot)
+        self.assertNotIn("It never merges", boot)
+
+    def test_hinges_in_the_ai_s_graph(self):
+        line = self.section("## The line in the AI's graph", "## Attenuation")
+        for words in ("10. **Every presupposition is a hinge.**",
+                      "A hinge is justified only by a later answer of the AI's own that it is "
+                      "linked to",
+                      "`tools/hinges.py unjustified $SCRATCH/graph.json`",
+                      "`tools/hinges.py place $SCRATCH/lines/<line> --n <n> --under <id> > "
+                      "$SCRATCH/lines/<line>/<n>/place.json`",
+                      "It reads the line's directory alone, and nothing of the user's record.",
+                      "a `place` job is added only once the guard admits the `ai-recorder` a "
+                      "new tab under the AI's root"):
+            self.assertIn(words, line)
+        answerer = flat(os.path.join(ROOT, "clean", "answerer.md"))
+        self.assertIn("\"Presupposes:\" stands on a line of its own, and under it, one to a "
+                      "line, each line opening with \"- \"", answerer)
+
+    def test_the_board_and_the_page_named_missing(self):
+        before = self.section("## Before anything", "## Ground rules")
+        for words in ("Publish the plugin's `web/board.html` once as a private artifact",
+                      "put its address in `.principal/notebook.json` as `board`",
+                      "Publish `web/ordo.html` once as a private artifact, with the db and user "
+                      "capabilities and rules that let only its owner read and write, and put "
+                      "its address there as `page`",
+                      "Then start the sitting again."):
+            self.assertIn(words, before)
+        self.assertIn("tells the principal to publish `web/ordo.html` once as above",
+                      self.skill)
+
+    def test_the_review_card_s_order_is_unchanged(self):
+        self.assertIn("The page keeps that order, heading, \"Written\", paragraphs, tradition, "
+                      "prediction, notes and the records, whatever the data's.", self.skill)
+
+    def test_each_reversal_is_listed(self):
+        reversals = self.skill[self.skill.rindex("What this entry point says now that "
+                                                 "reverses"):]
+        for words in ("A failed prediction is recorded on the notebook at the round, as a "
+                      "divergence",
+                      "A review of mechanism is followed by tradition for and against its "
+                      "answer, where before a review carried none. This one is the speaker's "
+                      "reading of the principal's word",
+                      "Readings of tradition are recorded on the parties' tabs at the round, as "
+                      "leads never marked verified, by a `record` job, without waiting for "
+                      "approval, where before",
+                      "A requirement the principal states is recorded on the notebook as a "
+                      "*pending* note at the round it is said",
+                      "In the open way the speaker may merge",
+                      "Every presupposition a question on a line carries in is recorded as a "
+                      "hinge"):
+            self.assertIn(words, reversals)
+        self.assertNotIn("An act is sealed by the speaker", reversals)
 
 
 class LineTest(unittest.TestCase):

@@ -488,6 +488,41 @@
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
       "rounds": 1
+    },
+    {
+      "question": "hypomnemata",
+      "application": "the record of predictions",
+      "files": [
+        "tools/predictions.py",
+        "tools/hypo/predictions.py",
+        "tools/test_predictions.py",
+        "tools/test_cli.py",
+        "skills/sit/SKILL.md",
+        "tools/test_sit_skill.py",
+        "README.md",
+        "tools/test_reader_gate.py",
+        "agents/grader.md",
+        ".claude/agents/grader.md",
+        "skills/bootstrap/SKILL.md"
+      ],
+      "pull_request": null,
+      "rounds": 2
+    },
+    {
+      "question": "context",
+      "application": "the hinges in the AI's graph",
+      "files": [
+        "tools/hinges.py",
+        "tools/hypo/hinges.py",
+        "tools/test_hinges.py",
+        "clean/answerer.md",
+        "skills/sit/SKILL.md",
+        "tools/test_sit_skill.py",
+        "tools/test_cli.py",
+        "README.md"
+      ],
+      "pull_request": null,
+      "rounds": 1
     }
   ]
 }
