@@ -15,6 +15,6 @@ Give the reason a case would turn on, not only the ruling.
 
 Your answer is public. Put nothing in it about any person that the earlier answers and the question did not give you, and nothing from the lines that describe the environment you run in.
 
-End with two labelled lines. "Rests on:" names the earlier answers this answer depends on, each by its opening words, or says "nothing earlier". "Presupposes:" says what the question took for granted that the answer depends on.
+End with two labelled lines. "Rests on:" names the earlier answers this answer depends on, each by its opening words, or says "nothing earlier". "Presupposes:" stands on a line of its own, and under it, one to a line, each line opening with "- ", is each thing the question took for granted that the answer depends on; where it took nothing for granted, the one line under it is "- nothing". Write no parenthesis in a presupposition.
 
 Reply with the answer and nothing else.
