@@ -65,7 +65,8 @@ whose run made other than one model turn is refused and not kept.
         question's, or over another graph than the packet's; and a question
         whose origin is not shown: `--approval`, a JSON object holding
         `sha256`, the SHA-256 of exactly this question, and `approved`, the
-        ISO time the principal approved it, or `--drawn-from`, a drawer
+        ISO time the principal approved it (other keys are let be), or
+        `--drawn-from`, a drawer
         run's record in which this exact question stands as a line. These
         records bind each check to an exact text and catch drift; they are
         plain files, and one written by hand with the right hash passes.
@@ -74,8 +75,13 @@ whose run made other than one model turn is refused and not kept.
         residue seen, and the SHA-256 of spec, packet and question) and
         `manifest.json`. A draw whose run was not clean, made other than one
         model turn, or whose answer holds the account's email address, its
-        local part or the run's directory, is refused and not written, and
-        the rest are still drawn. No draw is chosen over another by what it
+        local part, the run's directory, a packet's mark or a token opening
+        with `@`, is refused and not written, and the rest are still drawn.
+        A packet cut for question n of a line is taken only with that
+        question's `question.md` and `draws/` of the line, and only while
+        the line, read again, carries what the packet's fingerprint says it
+        carried; a question in a question's directory of a line is refused
+        over any other packet. No draw is chosen over another by what it
         says: every one kept is kept, and the first kept is the answer of
         record a later packet carries (`packet.py --line`).
 
@@ -102,7 +108,8 @@ run that failed or made other than one model turn; 9 the account's email
 address could not be read; 10 a spec; 11 the out directory already holds
 draws, is claimed, or is a file; 12 a redraw signal that opens no one answer
 of the packet; 13 text the harness would read itself (an `@` token, a
-question opening with `/` or `!`); 14 a question holding a packet's mark.
+question opening with `/` or `!`; an answer holding an `@` token); 14 a
+question or an answer holding a packet's mark.
 Where several draws are refused, the first refusal's code is the exit.
 
 Python's standard library only, and `packet.py` beside it for the marks.
@@ -173,8 +180,9 @@ FROM = " | from: "
 DRAWN = re.compile(r"^(?P<q>.+?) \| from: (?P<from>.+?) \| clause: (?P<clause>.+?) \| "
                    r"direction: (?P<dir>up|down)$")
 #: a token the harness expands: `@` not inside a word, an address's, and
-#: followed by anything but a space
-AT = re.compile(r"(?<![\w.+\-])@\S")
+#: followed by anything but an ASCII space, tab or line end (the harness's
+#: idea of a space is narrower than Python's, so no other is trusted)
+AT = re.compile(r"(?<![\w.+\-])@(?![ \t\r\n]|\Z)")
 #: the fewest words a redraw signal holds
 SIGNAL_WORDS = 4
 
@@ -351,7 +359,10 @@ def origin(approval, drawn_from, qtext: str, qsha: str) -> dict:
         if got.get("sha256") != qsha:
             raise Refusal(ORIGIN, "the approval is of another text")
         if not _time(got.get("approved")):
-            raise Refusal(ORIGIN, "the approval says not when the principal approved it")
+            raise Refusal(ORIGIN, "the approval says not when the principal approved it: it is a "
+                                  "JSON object with the keys \"sha256\" and \"approved\" (an "
+                                  "ISO time), and other keys beside them are let be; it holds %s"
+                          % (", ".join(sorted(map(repr, got))) or "no key"))
         with open(approval, "rb") as fh:
             return {"approval_sha256": sha256(fh.read()), "approved": got["approved"]}
     got = _json(drawn_from, ORIGIN, "the drawer's record")
@@ -363,6 +374,52 @@ def origin(approval, drawn_from, qtext: str, qsha: str) -> dict:
         raise Refusal(ORIGIN, "the question does not stand as a line of the drawer's run")
     with open(drawn_from, "rb") as fh:
         return {"drawn_from_sha256": sha256(fh.read())}
+
+
+def placed(side: dict, packet_path: str, question_path: str, out: str) -> None:
+    """The packet, the question and the out directory are of one place on
+    a line, and the line still stands as the packet was cut from it.
+
+    A packet cut for question n of a line (its fingerprint names the line
+    and n) is answered only for ``<line>/<n>/question.md`` into
+    ``<line>/<n>/draws``, and only while the line, read again now, carries
+    what the fingerprint says it carried. A question in a question's
+    directory of a line, ``<line>/<n>/``, and an out directory that is a
+    question's ``draws``, each read through any link, are answered only over
+    such a packet."""
+    real = os.path.realpath
+    upto, line_dir = side.get("for"), side.get("line_dir")
+    qdir = os.path.dirname(real(question_path))
+    if upto is None:
+        if packets.NUMBER.fullmatch(os.path.basename(qdir)):
+            raise Refusal(PACKET, "the question stands in question %s's directory of a line, "
+                                  "and the packet was not cut for it: cut it with "
+                                  "packet.py --line" % os.path.basename(qdir))
+        target = real(out)
+        if os.path.basename(target) == "draws" \
+                and packets.NUMBER.fullmatch(os.path.basename(os.path.dirname(target))):
+            raise Refusal(PACKET, "the out directory is the draws of question %s of a line, "
+                                  "and the packet was not cut for it: cut it with "
+                                  "packet.py --line"
+                          % os.path.basename(os.path.dirname(target)))
+        return
+    if not isinstance(upto, int) or isinstance(upto, bool) or not isinstance(line_dir, str):
+        raise Refusal(PACKET, "the packet's fingerprint names no line and question rightly")
+    where = os.path.join(line_dir, str(upto))
+    for given, want, what in ((packet_path, "packet.md", "the packet"),
+                              (question_path, "question.md", "the question"),
+                              (out, "draws", "the out directory")):
+        if real(given) != real(os.path.join(where, want)):
+            raise Refusal(PACKET, "the packet is for question %d of its line, and %s is not "
+                                  "%s" % (upto, what, os.path.join(where, want)))
+    try:
+        _pairs, carried = packets.line(line_dir, upto)
+    except packets.Refused as exc:
+        raise Refusal(PACKET, "the line no longer stands as the packet was cut from it: %s"
+                      % exc) from exc
+    if carried != side.get("line"):
+        raise Refusal(PACKET, "the line no longer stands as the packet was cut from it: cut "
+                              "the packet again")
 
 
 def fresh(out: str) -> None:
@@ -538,7 +595,7 @@ def account(runner=subprocess.run) -> str:
     every answer and never written anywhere."""
     try:
         done = runner([PROGRAM, "auth", "status", "--json"], capture_output=True, text=True,
-                      timeout=60, env=environment())
+                      timeout=60, env=environment(), cwd=RUNS)
         email = json.loads(done.stdout).get("email")
     except (OSError, ValueError, AttributeError, subprocess.SubprocessError) as exc:
         raise Refusal(ACCOUNT, "the account's email address could not be read") from exc
@@ -569,6 +626,14 @@ def judged(got: dict, email: str) -> tuple:
     why = exposed(got["answer"], email, got["cwd"])
     if why:
         return EXPOSED, "the answer holds %s" % why
+    # an answer no later packet could carry, or no later turn could be
+    # given, is not kept: the next kept draw is of record by the same rule
+    mark = packets.forged(got["answer"])
+    if mark:
+        return MARK, "the answer holds %r, which marks a packet's parts" % mark
+    if AT.search(got["answer"]):
+        return HARNESS, "the answer holds a token opening with @, which the harness would " \
+                        "expand in every later turn that carries it"
     return DONE, ""
 
 
@@ -646,6 +711,7 @@ def answer(args, runner) -> int:
     sp = spec("answerer")
     ptext, psha, side = packet(args.packet)
     qtext, qsha = question(args.question)
+    placed(side, args.packet, args.question, args.out)
     leak_sha = leak(args.leak, qsha, side.get("graph_sha256"))
     whence = origin(args.approval, args.drawn_from, qtext, qsha)
     fresh(args.out)

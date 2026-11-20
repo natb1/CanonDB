@@ -20,7 +20,7 @@ after, under a mark of its own.
     packet.py GRAPH --under ID -o FILE  the answers of ID and above it, for a
                                         question not yet on the graph
     packet.py GRAPH --whole -o FILE     every answer of the AI's
-    ... --line DIR                      then the line's own earlier questions
+    ... --line DIR [--for N]            then the line's own earlier questions
                                         and answers, in the order they were put
     packet.py GRAPH --line DIR -o FILE  the line's alone (a back-brief)
 
@@ -46,8 +46,17 @@ against its own `answer_sha256`, against the manifest that lists it, and
 against the question's file by `question_sha256`. A numbered directory with
 no manifest is a question not yet answered: allowed at the end of the line
 (the question about to be put), refused before an answered one, as is a
-manifest that kept no draw, since either would leave a gap. A drawer turn's
-directory, `drawn-<n>`, holds no answer and is not read.
+manifest that kept no draw or one a run claimed and never finished, since
+each would leave a gap. The numbers are ASCII digits from 1 with no leading
+zero and no hole, no question's directory a link; any other name of digits
+is refused. A drawer turn's directory, `drawn-<n>`, holds no answer and is
+not read.
+
+A packet written into a question's directory of the line, `DIR/<n>/`, or
+given `--for <n>`, is for question n: every question before it must be
+answered, and n and none after it not yet. Its fingerprint then names the
+line's directory and n, and `clean_turn.py answer` reads the line again
+before any run and refuses a packet the line has moved past.
 
 Beside FILE it writes FILE.fingerprint.json: the tool's name, the packet's
 SHA-256, the graph's, how many answers went in, and for the line each
@@ -82,6 +91,8 @@ SIDECAR = ".fingerprint.json"
 TOOL = "packet.py"
 #: the checks without which a state cannot be trusted to say whose an answer is
 TRUSTED = ("only-ai-put", "state-order")
+#: a question's directory: a number in ASCII digits, from 1, no leading zero
+NUMBER = re.compile(r"[1-9][0-9]*")
 
 
 class Refused(ValueError):
@@ -175,20 +186,64 @@ def _json(path: str, what: str) -> dict:
     return got
 
 
-def line(directory: str):
-    """The line's own earlier questions and answers, in the order they were
-    put, the first kept draw of each; and what was carried, for the
-    fingerprint."""
+def numbered(directory: str) -> list:
+    """The line's question directories, by number: each named in ASCII
+    digits from 1 with no leading zero, none a link, the numbers 1 to k
+    without a hole. Any other name of digits alone is refused, since two
+    names of one number, or a number the order cannot read, would carry a
+    question twice or in no fixed order."""
     try:
         names = os.listdir(directory)
     except OSError as exc:
         raise Refused("the line's directory cannot be read") from exc
-    numbered = sorted((n for n in names if n.isdigit()), key=int)
+    found = []
+    for n in names:
+        if NUMBER.fullmatch(n):
+            if os.path.islink(os.path.join(directory, n)):
+                raise Refused("question %s of the line is a link: a question's directory is "
+                              "its own" % n)
+            found.append(n)
+        elif n.isdigit() or n.isdecimal() or n.isnumeric():
+            raise Refused("%r is no question's number: a line's questions are numbered 1, 2, "
+                          "3 in ASCII digits, with no leading zero" % n)
+    found.sort(key=int)
+    for want, n in enumerate(found, 1):
+        if int(n) != want:
+            raise Refused("the line has no question %d, and has %s: a line is numbered "
+                          "without a hole" % (want, n))
+    return found
+
+
+def line(directory: str, upto=None):
+    """The line's own earlier questions and answers, in the order they were
+    put, the first kept draw of each; and what was carried, for the
+    fingerprint. With ``upto`` N, the packet is for question N: every
+    question before it must be answered and N not yet, nor any after it."""
+    numbers = numbered(directory)
+    if upto is not None:
+        if upto < 1:
+            raise Refused("a line's questions are counted from 1")
+        later = [n for n in numbers if int(n) > upto]
+        if later:
+            raise Refused("the packet is for question %d, and the line already holds "
+                          "question %s" % (upto, later[0]))
+        missing = [n for n in range(1, upto) if str(n) not in numbers]
+        if missing:
+            raise Refused("the packet is for question %d, and the line holds no question %d "
+                          "before it" % (upto, missing[0]))
     pairs, carried, pending = [], [], []
-    for n in numbered:
+    for n in numbers:
         where = "question %s of the line" % n
         manifest_path = os.path.join(directory, n, "draws", "manifest.json")
+        if upto is not None and int(n) == upto:
+            if os.path.exists(manifest_path):
+                raise Refused("question %d of the line is answered already: a packet is cut "
+                              "for the question about to be put" % upto)
+            continue
         if not os.path.exists(manifest_path):
+            if upto is not None:
+                raise Refused("%s is not answered, and the packet is for question %d after "
+                              "it: a packet with a gap is not written" % (where, upto))
             pending.append(n)
             continue
         if pending:
@@ -200,6 +255,9 @@ def line(directory: str):
         except UnicodeDecodeError as exc:
             raise Refused("the question of %s is not UTF-8" % where) from exc
         manifest = _json(manifest_path, "the manifest of " + where)
+        if manifest.get("state") == "running":
+            raise Refused("%s was claimed by a run that did not finish: put it again under a "
+                          "new number, or drop it, before the line goes on" % where)
         if manifest.get("kind") != "answerer" or manifest.get("question_sha256") != sha256(raw_q):
             raise Refused("the manifest of %s is not of its question as it stands" % where)
         kept = [d.get("file") for d in manifest.get("draws") or ()
@@ -251,7 +309,23 @@ def parse(packet: str) -> list:
     return pairs
 
 
-def write(out: str, body: str, graph_path: str, count: int, carried=None) -> None:
+def placed(directory: str, out: str, given=None):
+    """The question a line's packet is for: ``given`` (``--for``), or the
+    number of the directory the packet is written into where that is a
+    question's directory of the line; the two must agree."""
+    parent = os.path.dirname(os.path.abspath(out))
+    by_place = None
+    if os.path.realpath(os.path.dirname(parent)) == os.path.realpath(directory) \
+            and NUMBER.fullmatch(os.path.basename(parent)):
+        by_place = int(os.path.basename(parent))
+    if given is not None and by_place is not None and given != by_place:
+        raise Refused("the packet is for question %d and is written into question %d's "
+                      "directory" % (given, by_place))
+    return given if given is not None else by_place
+
+
+def write(out: str, body: str, graph_path: str, count: int, carried=None,
+          line_dir=None, upto=None) -> None:
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     data = body.encode("utf-8")
     with open(out, "wb") as fh:
@@ -259,8 +333,11 @@ def write(out: str, body: str, graph_path: str, count: int, carried=None) -> Non
     with open(graph_path, "rb") as fh:
         graph_sha = sha256(fh.read())
     with open(out + SIDECAR, "w", encoding="utf-8") as fh:
-        json.dump({"tool": TOOL, "sha256": sha256(data), "graph_sha256": graph_sha,
-                   "answers": count, "line": carried}, fh, indent=2)
+        side = {"tool": TOOL, "sha256": sha256(data), "graph_sha256": graph_sha,
+                "answers": count, "line": carried}
+        if upto is not None:
+            side.update(line_dir=os.path.realpath(line_dir), **{"for": upto})
+        json.dump(side, fh, indent=2)
         fh.write("\n")
 
 
@@ -272,11 +349,16 @@ def main(argv=None) -> int:
     ap.add_argument("--whole", action="store_true", help="every answer of the AI's")
     ap.add_argument("--line", metavar="DIR",
                     help="then the line's own earlier questions and answers, from its directory")
+    ap.add_argument("--for", dest="upto", type=int, metavar="N",
+                    help="the line's question the packet is for (by default, the number of "
+                         "the question's directory it is written into)")
     ap.add_argument("-o", "--out", required=True, help="write the packet here")
     args = ap.parse_args(argv)
     modes = sum(bool(x) for x in (args.question, args.under, args.whole))
     if modes > 1 or (modes == 0 and not args.line):
         ap.error("give one of a question, --under or --whole, or --line alone")
+    if args.upto is not None and not args.line:
+        ap.error("--for is a question of a line: give --line")
 
     graph = cli.load_graph(args.graph)
     if graph is None:
@@ -291,14 +373,15 @@ def main(argv=None) -> int:
         else:
             _trusted(graph)
             pairs = []
-        carried = None
+        carried = upto = None
         if args.line:
-            more, carried = line(args.line)
+            upto = placed(args.line, args.out, args.upto)
+            more, carried = line(args.line, upto)
             pairs += more
     except Refused as exc:
         print("not written: %s" % exc, file=sys.stderr)
         return 1
-    write(args.out, text(pairs), args.graph, len(pairs), carried)
+    write(args.out, text(pairs), args.graph, len(pairs), carried, args.line, upto)
     print("%d answer(s) of the AI's own, each with its question -> %s" % (len(pairs), args.out))
     return 0
 

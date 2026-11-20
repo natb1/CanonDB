@@ -533,16 +533,26 @@ read, and each stamping `touched_at` from the clock. Its fields, an invented exa
 - `why`: what raised it, and what would bring it back if it rests.
 - `source`: where it was opened: the sitting, the round, and the answer, job or note that
   opened it.
-- `anchors`: the sentences of the user's record it bears on, each `{tab, block, fingerprint,
-  words}`.
+- `anchors`: the sentences of the user's record it bears on, each `{tab, block, h, words}`,
+  `h` being the fingerprint the notebook prints for the block.
 - `seal`: what was sealed for it and when, a fingerprint and a time, never the sealed text.
 - `parent` and `children`: line ids.
-- `answered_by`: what closed it: the answer's file and round, the principal's later sentence
-  quoted, or the line a merged one is carried on by.
-- `rank`: its place in the order; the queue is the open documents by `rank`, lowest first.
+- `answered_by`: what closed it: the answer's file and round, or the line a merged one is
+  carried on by; a close by the principal's later sentence keeps the sentence in `closed_by`.
+- `rank`: its place in the order; the queue is the open documents by `rank`, lowest first. A
+  line no longer open or put carries none, and a reopened one none until the next order.
 - `opened_at` and `touched_at`: ISO times, read from the clock.
-- `review_count`: how many times it has been put to the principal.
+- `review_count`: how many times the weekly chunk has shown it to the principal.
 - `origin`: who opened it: `principal`, `speaker`, `ai` for a drawer turn, or a helper's kind.
+- `pressure` and `blocks`, where set: a number weighing the line in the order, as pressure
+  weighs a share, and the ids of the lines it holds up.
+- What the tool writes: `flags`, by kind, each `{at, …}`, the kinds `ground-moved`,
+  `parent-withdrawn` and `touched`, each cleared alone; `gone` on an anchor read as withdrawn;
+  `closed_by`, `{sentence, answer}`, and `reopenable`; `proposed`, `"drop"` where the weekly
+  chunk proposes it; `reviewed_at`, `review_weight` and `review_since`, when it was last shown
+  and where its count began; and `decision`, `{choice, word, at}`, the user's keep, merge or
+  drop. No mode writes `put` or `answered`: those two states are written by hand, as an
+  `update` like the others.
 
 ```json
 {"id": "l203001020304", "title": "Mornings before the post",
@@ -551,7 +561,7 @@ read, and each stamping `touched_at` from the clock. Its fields, an invented exa
          "prompt": "Is watering the plants still first?", "recommendation": null},
  "why": "The answer on mornings left the bill's day open; it returns at the next sitting.",
  "source": "s203001020300, round 2, answers/2.md",
- "anchors": [{"tab": "mornings", "block": "b12", "fingerprint": "<the block's h>",
+ "anchors": [{"tab": "mornings", "block": "b12", "h": "<the block's h>",
               "words": "The plants are watered before the post is opened."}],
  "seal": null, "parent": null, "children": [], "answered_by": null, "rank": 3,
  "opened_at": "2030-01-02T03:04:00Z", "touched_at": "2030-01-02T03:04:00Z",
@@ -559,12 +569,87 @@ read, and each stamping `touched_at` from the clock. Its fields, an invented exa
 ```
 
 A line is closed only by the principal's answer to it; by the principal's own later sentence
-settling it in terms, the line then closed with that sentence quoted in `answered_by` and listed
+settling it in terms, the line then closed with that sentence quoted in `closed_by` and listed
 in the action context, so that the principal can reopen it; or by the principal dropping it.
 Never because a reader predicts the answer, the speaker or a clean reader among them. The
 collection is the principal's private data, like `ordo/rule`: it is never written into this
-repository, a line doc's words, the board or anything published. No tool yet reads, orders or
-sweeps it (**Attenuation**).
+repository, a line doc's words, the board or anything published. No tool reads, orders or
+sweeps it but `tools/lines.py`, which reads an export of it and prints the writes it needs, and
+nothing else decides how a line closes (**Attenuation**).
+
+**The tool.** The speaker exports the collection with `ArtifactData`, a `list` of `lines` paged
+with `query.cursor` until it ends, `out_dir` set to `$SCRATCH/speaker/lines` itself, and writes
+the versions the reads returned to `$SCRATCH/speaker/lines-versions.json` as
+`{"lines/<id>": <version>}`; then `tools/lines.py check $SCRATCH/speaker/lines`, which holds
+every document to the fields above and the documents to each other: each parent, child and
+blocked line exists, a parent and its child agree on both sides, no line is its own ancestor,
+one line at most is put. It does not fail on what a mode mends: a rank two lines hold, which
+`order` mends, and a parent that is no line, which `orphans` flags; and it warns, refusing
+nothing, of anchors that name no block, which no move of the notebook can be judged against.
+The lines opened before this tool carry such anchors, `{tab, words}`, the tab named in words:
+until each is given its tab's id, block and `h`, `moved` judges none of them, and says how many
+it could not judge. Whether the `list` with `out_dir` returns each document's version is to be
+verified at the first sitting that runs it; where it does not, each document's version is read
+with a `get` before any writing mode. `tools/lines.py queue $SCRATCH/speaker/lines` prints the queue as the
+stored ranks give it, against which `ordo/current.queue` is read at a resume. A writing mode
+prints the writes, each an `update` of the fields that change, pinned with `if_version` and
+stamped with `touched_at`; the speaker sends them with `ArtifactData` in batches of fifty at
+most, in order, and exports again before the next mode. Where a batch is refused, the speaker
+exports again and runs the mode again, which writes what is still owed: `order` run again over
+a store that took only some of its batches mends what they left. A refusal is a `REFUSED:` line
+and no write.
+
+The order is the tool's: a line's weight is the share of the root its anchored sentences carry
+(each anchor read by its tab and block where the shares give one, else by its tab, each once,
+no tab for more than its own share), times one and its `pressure`, times one and the number of
+open lines it holds up (its `blocks` and its children); a line whose anchors no share keys
+takes the least share a live line carries, or one where none does, so that its pressure and
+what it holds up still tell. The line put comes first, then the heaviest; ties by the stored
+`rank`, then `opened_at`, oldest first, then id; so an order with no shares keeps the order
+the store holds. `rank` is the place in that order. It is a proposal like the brief's
+acts (rule 5 of the round): the user may always override it.
+
+- **When the notebook's revision moves**, at the opening's fetch and after every batch point's
+  check: `tools/lines.py moved $SCRATCH/speaker/lines --outlines $SCRATCH/outlines --versions
+  $SCRATCH/speaker/lines-versions.json --at <time>` flags every open line with an anchor whose
+  block's fingerprint changed or whose block is gone, `ground-moved`, and `tools/lines.py
+  orphans $SCRATCH/speaker/lines --versions $SCRATCH/speaker/lines-versions.json --at <time>`
+  flags every open line whose parent is merged, dropped or no line, `parent-withdrawn`. Where
+  the outlines hold every tab, `--whole` flags too an anchor whose tab is gone. A flagged line
+  is read against its sentences as they now stand; once read and still standing, `tools/lines.py
+  unflag $SCRATCH/speaker/lines <flagged line> --kind ground-moved --outlines $SCRATCH/outlines
+  --versions $SCRATCH/speaker/lines-versions.json --at <time>` clears that flag alone, takes
+  the fingerprints now, and keeps an anchor whose block is gone as read gone; another kind is
+  cleared by its own `--kind`, without the outlines.
+- **At each answer**, in this order. The sweep: `tools/lines.py sweep $SCRATCH/speaker/lines
+  --answered <answered line>` prints the open lines that are the answered line's children, that
+  share its parent, or that share an anchor with it, children first; that set, and no more, is
+  read against the answer. A line the answer settles is closed only by the user's sentence,
+  quoted: `tools/lines.py close $SCRATCH/speaker/lines <line> --sentence "<the user's
+  sentence>" --by-answer <answer> --versions $SCRATCH/speaker/lines-versions.json --at <time>`,
+  which refuses without the sentence and keeps it in `closed_by` with `reopenable`; where the
+  user has said no such sentence, the line stays open, however sure a reading is, and a
+  line the answer only touches is flagged, `tools/lines.py touch-flag $SCRATCH/speaker/lines
+  <line> --answer <answer> --versions $SCRATCH/speaker/lines-versions.json --at <time>`. A
+  line the answer opens under another is linked on both sides, `tools/lines.py link
+  $SCRATCH/speaker/lines --parent <parent> --child <child> --versions
+  $SCRATCH/speaker/lines-versions.json --at <time>`. Then the order, `tools/lines.py order
+  $SCRATCH/speaker/lines --graph $SCRATCH/graph.json --versions
+  $SCRATCH/speaker/lines-versions.json --at <time>`, over the opening's whole-notebook graph;
+  and the queue redrawn: `ordo/current.queue` set to the `queue` it printed. A line closed by a
+  sentence is reopened at the user's word, `tools/lines.py reopen $SCRATCH/speaker/lines
+  <closed line> --versions $SCRATCH/speaker/lines-versions.json --at <time>`.
+- **Once a week**, at the first sitting of the Rule's week: `tools/lines.py chunk
+  $SCRATCH/speaker/lines --graph $SCRATCH/graph.json --n 5 --versions
+  $SCRATCH/speaker/lines-versions.json --at <time>` picks, from the lower half of the queue and
+  never its head, the open lines at its far end, the oldest of them shown first, none shown in
+  the six days before, and prints the writes adding one to each one's `review_count`; each is
+  put to the user as a `review`. A line shown three times without its weight rising is
+  marked `proposed: "drop"`, never where no shares were given, which is a proposal for the user and nothing more:
+  `tools/lines.py decide $SCRATCH/speaker/lines <line> <keep|merge|drop> --by-user-word "<the
+  user's word>" --versions $SCRATCH/speaker/lines-versions.json --at <time>` writes the
+  user's choice, a merge with `--into <other line>`, and refuses a merge or a drop without
+  the user's word; a drop or a merge flags the children it leaves.
 
 ## Procedure
 
@@ -599,11 +684,13 @@ there is emptied in this sitting's first batch point.
 Read the notebook where it stands. Every sitting opens with a `fetch` of every tab of the
 project, its ancestors and the parties it cites, since the shares and the open lines are
 computed over a graph that holds the root: `tools/page.py $SCRATCH/coordinator/views/<job
-id>/*.json -o $SCRATCH/tabs` over the lifted views, and `tools/read.py
+id>/*.json -o $SCRATCH/tabs --outlines $SCRATCH/outlines` over the lifted views, and `tools/read.py
 $SCRATCH/coordinator/lists/<job id>/doc-<document id>.json $SCRATCH/tabs -o $SCRATCH/graph.json`,
 with no `--scope`, as `/principal:dictate` step
 1 gives them, then `tools/shares.py`, `tools/residue.py list $SCRATCH/graph.json --by-share` and
-`tools/divergence.py list $SCRATCH/graph.json`. `residue.py list --by-share` is run over this
+`tools/divergence.py list $SCRATCH/graph.json`; then the open lines are exported and checked,
+`moved` and `orphans` run over them, and `order` over this graph (**The open lines**, **The
+tool**). `residue.py list --by-share` is run over this
 graph, the opening's whole-notebook read, and no other: over a graph of some tabs and their
 ancestors a share is wrong even where the root is among them, and the tool cannot always tell. The listing
 orders open notes by the share of the tab each stands on; that is the tab's weight and not the
@@ -673,7 +760,8 @@ bind every action.
    `Redrawn: …`. State the aporia too, with what the answer did to it, and carry what is open in
    it to the next question on the line. What this opened: each further line the answer opened,
    as a document of `lines` and in *Opened*, with what raised it and what would bring it back
-   (ground rule 8, **The open lines**).
+   (ground rule 8, **The open lines**). Then the sweep, a close only by the user's
+   sentence, the order and the queue redrawn, as **The tool** gives them, at each answer.
 5. **The principal may always override the action ranked first**: by a lasting change of a
    share, by a further observation to be weighed, or by a transient feeling. An override is an
    observation of a gap, never a verdict: it is recorded as **Observations** says, a lasting change of a
@@ -740,7 +828,7 @@ bind every action.
 8. **Every time the speaker stamps is read from the clock, never typed**: `date -u
    +%Y-%m-%dT%H:%M:%SZ` for the board's `--now`, the page's `updated`, the time in a mark,
    `office_deferred`'s `since`, `ordo/agenda`'s `fetched`, `context.at` and each `at` of
-   `context.log`, and a line's `opened_at` and `touched_at`,
+   `context.log`, and a line's `opened_at` and `touched_at`, as the `--at` of `tools/lines.py`,
    `date -u +s%Y%m%d%H%M` for a sitting's id, and the local `date`, in the zone the page is
    viewed in, for the Rule's day.
 9. **The speaker, at the full tier, writes no code, page or tooling itself.** Such work is
@@ -970,6 +1058,12 @@ or its question, and a question or an answer holding `<<<` or `>>>`, which no te
    the first kept is the answer of record (above). Where they part in what they would do, that
    is the finding, and the question is drawn higher. A question whose draws were all refused is
    put again under a new number, or dropped, before the line goes on: the packet refuses a gap.
+   A draw whose answer holds a packet's mark or a token opening with `@` is refused and not
+   kept, like one that gives the account away, since no later packet or turn could carry it; the
+   next kept draw is then of record by the same rule. A packet cut into
+   `$SCRATCH/lines/<line>/<n>/` is for question `<n>`: the clean turn takes it only with that
+   question's `question.md` and `draws/`, and only while the line, read again, carries what the
+   packet's fingerprint says it carried; otherwise the packet is cut again.
 5. **On a divergence.** The comparing run hands back only the redraw signal, the opening words of
    the AI's answer under which the divergence sits, and the speaker passes those words and
    nothing else of its reply to the drawer, `--from "<opening words>"`, over a packet that
@@ -1129,10 +1223,14 @@ What no tool decides. Hold these by reading.
   from before the root, where the comparer's insert lands is read. That the `ai-recorder`'s
   texts are the draws word for word is its definition's check, and no gate's. No tool yet
   prints the insert of an answer, so no draw is placed (**The line in the AI's graph**, rule 9).
-- **The open lines are held by reading.** That every open line is a document of `lines` and
-  waits nowhere else, that `ordo/current.queue` is drawn from it in order, that the speaker
-  trusts it over its memory, and that a line is closed only by the principal's word: no tool
-  reads, orders, sweeps or checks the collection, and the page does not read it.
+- **The open lines are held by reading.** `tools/lines.py` checks an export of the collection,
+  flags the lines whose ground moved, sweeps, orders, and refuses a close without a sentence
+  quoted and a merge or a drop without a word given; it cannot tell that the words are the
+  user's, nor that the sentence settles the line, nor whether a swept line is settled,
+  touched or neither, and those are read. That every open line is a document of `lines` and
+  waits nowhere else, that the export is whole, that `ordo/current.queue` is set to the order's
+  queue, and that the speaker trusts the store over its memory are read too; the page does not
+  read the collection.
 - **The comparer's reply is read for its signals alone.** The speaker takes the `redraw:` lines
   of the reply and nothing else to the drawer; the drawer's refusal of words that do not open
   exactly one answer of the packet is what keeps anything of the user's from reaching a clean

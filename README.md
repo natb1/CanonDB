@@ -64,7 +64,11 @@ and the AI's recorder aside, each held to inserts on its own side of it,
 confines each kind's shell to the tools its work needs, and `kind-write-gate.py` confines each
 kind's file writes to its own scratch. `tools/board.py` is the gate on the board of jobs, a
 writing mode printing a batch for the session to send, and `tools/views.py` lifts the whole-tab
-reads out of a helper's transcript, one file each.
+reads out of a helper's transcript, one file each. `tools/lines.py` reads an export of the
+page's open lines: it checks them, flags those whose anchored sentences moved, sweeps the few an
+answer may bear on, orders them by the share they carry, their pressure and what they hold up,
+picks the week's lines of least weight, and prints the writes for the session to send; it closes
+a line only by the user's sentence quoted, and merges or drops one only at the user's word.
 
 The readings are projections over the record, computed and stored nowhere: `tools/frontier.py`
 (the frontier, and with `--principal` the questions only the user can answer whose lineage has

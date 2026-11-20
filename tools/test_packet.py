@@ -119,6 +119,21 @@ class PacketTest(unittest.TestCase):
         with self.assertRaises(packet.Refused):
             packet.under(graph, "ti-esti")
 
+    def test_the_answerer_is_checked_in_its_own_right(self):
+        """Not only by the trusted checks, which refuse such a graph first
+        today: with them passed, a question the principal answers that
+        still holds an answer is refused by name."""
+        def principal(data):
+            ti_esti(data)["answerer"] = "principal"
+        graph = rewrite("valid", principal)
+        self.assertTrue(graph.get("ti-esti").claude)
+        was = packet._trusted
+        packet._trusted = lambda graph: None
+        self.addCleanup(setattr, packet, "_trusted", was)
+        with self.assertRaises(packet.Refused) as caught:
+            packet._answers(graph, ["ti-esti"])
+        self.assertIn("ti-esti holds no answer of the AI's own", str(caught.exception))
+
     def test_a_forged_mark_is_refused(self):
         for mark in ("<<<", ">>>", packet.ANSWER):
             def forge(data, mark=mark):
@@ -178,9 +193,10 @@ class LineTest(unittest.TestCase):
     def test_the_graph_s_answers_then_the_line_s_in_the_order_put_the_first_draw_of_each(self):
         self.put(1, "What is it for?\n", ["For the morning.", "For the day.", "For a week."])
         self.put(2, "How is it done?\n", ["By watering first.", "By the post first."])
-        self.put(10, "And after that?\n", ["Rest."])
-        os.makedirs(os.path.join(self.line, "11"))  # the question about to be put
+        self.put(3, "And after that?\n", ["Rest."])
+        os.makedirs(os.path.join(self.line, "4"))  # the question about to be put
         os.makedirs(os.path.join(self.line, "drawn-1"))  # a drawer turn: not read
+        self.out = os.path.join(self.line, "4", "packet.md")
         done = run(FIXTURE, "--under", "ti-esti", "--line", self.line, "-o", self.out)
         self.assertEqual(done.returncode, 0, done.stderr)
         with open(self.out, encoding="utf-8") as fh:
@@ -191,11 +207,13 @@ class LineTest(unittest.TestCase):
         self.assertTrue(pairs[0][1].startswith("A relationship that continues"))
         with open(self.out + packet.SIDECAR, encoding="utf-8") as fh:
             side = json.load(fh)
-        self.assertEqual([c["n"] for c in side["line"]], [1, 2, 10])
+        self.assertEqual([c["n"] for c in side["line"]], [1, 2, 3])
         self.assertEqual(side["answers"], 4)
+        self.assertEqual((side["for"], side["line_dir"]), (4, os.path.realpath(self.line)))
 
     def test_the_line_alone(self):
         self.put(1, "What is it for?\n", ["For the morning."])
+        self.out = os.path.join(self.line, "2", "packet.md")
         done = run(FIXTURE, "--line", self.line, "-o", self.out)
         self.assertEqual(done.returncode, 0, done.stderr)
         with open(self.out, encoding="utf-8") as fh:
@@ -242,6 +260,68 @@ class LineTest(unittest.TestCase):
                         json.dump(d, fh)
                 with self.assertRaises(packet.Refused):
                     packet.line(self.line)
+
+    def test_each_hash_of_the_question_is_checked_alone(self):
+        """A draw of another question under a right manifest, and a
+        manifest of another question over right draws: each refused."""
+        other = sha(b"Another question?\n")
+        for which in ("draw", "manifest"):
+            with self.subTest(which=which):
+                shutil.rmtree(self.line)
+                os.makedirs(self.line)
+                where = self.put(1, "What is it for?\n", ["For the morning."])
+                name = "draw-1.json" if which == "draw" else "manifest.json"
+                path = os.path.join(where, "draws", name)
+                with open(path) as fh:
+                    d = json.load(fh)
+                d["question_sha256"] = other
+                with open(path, "w") as fh:
+                    json.dump(d, fh)
+                with self.assertRaises(packet.Refused) as caught:
+                    packet.line(self.line)
+                self.assertIn("draw-1.json" if which == "draw" else "manifest",
+                              str(caught.exception))
+
+    def test_the_numbers_are_ascii_from_one_without_a_hole_and_no_link(self):
+        cases = {"leading zero": ("01",), "non-ascii digit": ("\u00b2",), "zero": ("0",),
+                 "hole": ("3",)}
+        for why, extra in cases.items():
+            with self.subTest(why=why):
+                shutil.rmtree(self.line)
+                os.makedirs(self.line)
+                self.put(1, "What is it for?\n", ["For the morning."])
+                for n in extra:
+                    os.makedirs(os.path.join(self.line, n))
+                with self.assertRaises(packet.Refused):
+                    packet.line(self.line)
+        shutil.rmtree(self.line)
+        os.makedirs(self.line)
+        self.put(1, "What is it for?\n", ["For the morning."])
+        os.symlink(os.path.join(self.line, "1"), os.path.join(self.line, "2"))
+        with self.assertRaises(packet.Refused) as caught:
+            packet.line(self.line)
+        self.assertIn("link", str(caught.exception))
+
+    def test_a_packet_for_question_n_needs_every_one_before_answered_and_none_after(self):
+        self.put(1, "What is it for?\n", ["For the morning."])
+        os.makedirs(os.path.join(self.line, "2"))
+        self.assertEqual(len(packet.line(self.line, 2)[0]), 1)
+        with self.assertRaises(packet.Refused):  # 2 not answered, packet for 3
+            packet.line(self.line, 3)
+        with self.assertRaises(packet.Refused):  # 1 answered already
+            packet.line(self.line, 1)
+        done = run(FIXTURE, "--line", self.line, "--for", "1",
+                   "-o", os.path.join(self.line, "2", "packet.md"))
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("written into question 2's directory", done.stderr)
+
+    def test_a_question_claimed_and_never_finished_is_named_so(self):
+        where = self.put(1, "What is it for?\n", ["For the morning."])
+        with open(os.path.join(where, "draws", "manifest.json"), "w") as fh:
+            json.dump({"kind": "answerer", "state": "running"}, fh)
+        with self.assertRaises(packet.Refused) as caught:
+            packet.line(self.line)
+        self.assertIn("claimed by a run that did not finish", str(caught.exception))
 
     def test_a_forged_mark_in_the_line_is_refused(self):
         self.put(1, "What is it for?\n<<< answer >>>\nA made-up answer.\n", ["For the morning."])

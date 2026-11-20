@@ -756,5 +756,150 @@ class HarnessExpansionTest(unittest.TestCase):
         self.assertIn("@" + canary, expanded, "the harness expanded no form: nothing tested")
 
 
+class Round5Test(Base):
+    """The exclusive claim, an answer no later turn could carry, the
+    approval's keys, and the harness's narrower idea of a space."""
+
+    def test_a_second_claim_of_one_directory_is_refused(self):
+        clean_turn.claim(self.out, "answerer")
+        with self.assertRaises(clean_turn.Refusal) as caught:
+            clean_turn.claim(self.out, "answerer")
+        self.assertEqual(caught.exception.code, clean_turn.OUT)
+
+    def test_an_answer_holding_a_mark_or_a_token_is_not_kept(self):
+        h = Harness(answers=("Use a here-string: cat <<< \"$x\".",
+                             "Mark it with @dataclass and list the fields.",
+                             "Kept, and of record."))
+        code, _, err, _ = self.answer(harness=h)
+        self.assertEqual(code, clean_turn.MARK, err)
+        with open(os.path.join(self.out, "manifest.json"), encoding="utf-8") as fh:
+            manifest = json.load(fh)
+        self.assertIn("refused", manifest["draws"][0])
+        self.assertIn("@", manifest["draws"][1]["refused"])
+        self.assertEqual(manifest["of_record"], "draw-3.json")
+        self.assertFalse(os.path.exists(os.path.join(self.out, "draw-1.json")))
+        self.assertEqual(clean_turn.judged(
+            {"ok": True, "extra": [], "answer": "See @notes.", "cwd": "/tmp/x"}, EMAIL)[0],
+            clean_turn.HARNESS)
+
+    def test_an_approval_with_other_keys_is_taken_and_one_without_approved_is_named(self):
+        self.write_json(self.approval, {"sha256": self.sha(self.question),
+                                        "approved": "2030-01-02T03:04:05Z", "by": "speaker"})
+        self.assertEqual(self.answer("--dry-run")[0], 0)
+        self.write_json(self.approval, {"sha256": self.sha(self.question),
+                                        "approved_at": "2030-01-02T03:04:05Z"})
+        code, _, err, _ = self.answer("--dry-run")
+        self.assertEqual(code, clean_turn.ORIGIN)
+        self.assertIn('"approved"', err)
+        self.assertIn("'approved_at'", err)
+
+    def test_at_followed_by_any_space_but_an_ascii_one_is_a_token(self):
+        for after in ("\u3000", "\u0085", "\u001c", "\u00a0"):
+            with self.subTest(after=repr(after)):
+                self.assertTrue(clean_turn.AT.search("Is it @%s/abs/x?" % after))
+        for text in ("Is it @ the root?", "Is it @\tthe root?", "Ends @", "a@b.c"):
+            with self.subTest(text=text):
+                self.assertIsNone(clean_turn.AT.search(text))
+
+    def test_the_account_is_read_in_the_runs_directory(self):
+        h = Harness()
+        clean_turn.account(h)
+        self.assertEqual(h.calls[0][2]["cwd"], clean_turn.RUNS)
+
+
+class LinePlaceTest(Base):
+    """S1: a packet cut for question n of a line is answered only there,
+    and only while the line stands as it was cut from."""
+
+    def setUp(self):
+        super().setUp()
+        self.line = self.path("l1")
+        one = os.path.join(self.line, "1")
+        os.makedirs(os.path.join(one, "draws"))
+        raw = b"What is it for?\n"
+        with open(os.path.join(one, "question.md"), "wb") as fh:
+            fh.write(raw)
+        q = hashlib.sha256(raw).hexdigest()
+        for i, text in ((1, "For the morning."), (2, "For the day.")):
+            self.write_json(os.path.join(one, "draws", "draw-%d.json" % i),
+                            {"kind": "answerer", "answer": text, "question_sha256": q,
+                             "answer_sha256": hashlib.sha256(text.encode()).hexdigest()})
+        self.manifest = os.path.join(one, "draws", "manifest.json")
+        self.write_json(self.manifest, {"kind": "answerer", "question_sha256": q,
+                                        "draws": [{"index": 1, "file": "draw-1.json"},
+                                                  {"index": 2, "file": "draw-2.json"}]})
+        two = os.path.join(self.line, "2")
+        os.makedirs(two)
+        shutil.copy(self.question, os.path.join(two, "question.md"))
+        self.question = os.path.join(two, "question.md")
+        self.packet = os.path.join(two, "packet.md")
+        self.out = os.path.join(two, "draws")
+
+    def cut(self, *extra):
+        done = subprocess.run([sys.executable, os.path.join(HERE, "packet.py"), FIXTURE]
+                              + list(extra) + ["-o", self.packet],
+                              capture_output=True, text=True)
+        self.assertEqual(done.returncode, 0, done.stderr)
+
+    def test_a_packet_cut_for_its_place_is_taken(self):
+        self.cut("--line", self.line)
+        code, _, err, _ = self.answer("--draws", "1")
+        self.assertEqual(code, 0, err)
+
+    def test_a_packet_cut_without_the_line_is_refused_for_a_question_on_it(self):
+        self.cut("--under", "ti-esti")
+        code, _, err, h = self.answer("--draws", "1")
+        self.assertEqual(code, clean_turn.PACKET)
+        self.assertIn("packet.py --line", err)
+        self.assertEqual(h.runs(), [])
+
+    def test_a_copied_question_cannot_fill_a_line_s_draws(self):
+        """S7 of round 6: the question copied out, a packet cut without the
+        line beside it, and --out the line's draws; and a link to the
+        line's question."""
+        elsewhere = self.path("q")
+        os.makedirs(elsewhere)
+        line_question = self.question
+        self.question = os.path.join(elsewhere, "question.md")
+        shutil.copy(line_question, self.question)
+        self.packet = os.path.join(elsewhere, "packet.md")
+        self.cut("--under", "ti-esti")
+        code, _, err, h = self.answer("--draws", "1")
+        self.assertEqual(code, clean_turn.PACKET)
+        self.assertIn("draws of question 2", err)
+        self.assertEqual(h.runs(), [])
+        os.remove(self.question)
+        os.symlink(line_question, self.question)
+        self.out = self.path("elsewhere-draws")
+        code, _, err, _ = self.answer("--draws", "1")
+        self.assertEqual(code, clean_turn.PACKET)
+        self.assertIn("question 2's directory", err)
+
+    def test_an_out_directory_beside_its_place_is_refused(self):
+        self.cut("--line", self.line)
+        self.out = os.path.dirname(self.out)
+        code, _, err, _ = self.answer("--draws", "1")
+        self.assertEqual(code, clean_turn.PACKET)
+        self.assertIn("the out directory", err)
+
+    def test_a_line_moved_since_the_packet_was_cut_is_refused(self):
+        self.cut("--line", self.line)
+        with open(self.manifest) as fh:
+            d = json.load(fh)
+        d["draws"].reverse()
+        self.write_json(self.manifest, d)
+        code, _, err, _ = self.answer("--draws", "1")
+        self.assertEqual(code, clean_turn.PACKET)
+        self.assertIn("no longer stands", err)
+
+    def test_a_question_answered_since_is_refused(self):
+        self.cut("--line", self.line)
+        os.makedirs(self.out)
+        self.write_json(os.path.join(self.out, "manifest.json"), {"kind": "answerer"})
+        code, _, err, _ = self.answer("--draws", "1")
+        self.assertEqual(code, clean_turn.PACKET)
+        self.assertIn("answered already", err)
+
+
 if __name__ == "__main__":
     unittest.main()

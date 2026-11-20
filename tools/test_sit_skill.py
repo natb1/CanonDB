@@ -870,10 +870,15 @@ class LineTest(unittest.TestCase):
                       "with `ArtifactData`, and trusts them over anything it remembers",
                       "A line is closed only by the principal's answer to it; by the principal's "
                       "own later sentence settling it in terms, the line then closed with that "
-                      "sentence quoted in `answered_by` and listed in the action context, so "
+                      "sentence quoted in `closed_by` and listed in the action context, so "
                       "that the principal can reopen it; or by the principal dropping it. Never "
                       "because a reader predicts the answer",
-                      "No tool yet reads, orders or sweeps it"):
+                      "No tool reads, orders or sweeps it but `tools/lines.py`, which reads an "
+                      "export of it and prints the writes it needs, and nothing else decides how "
+                      "a line closes",
+                      "where the user has said no such sentence, the line stays open, "
+                      "however sure a reading is",
+                      "which is a proposal for the user and nothing more"):
             self.assertIn(words, lines)
         for field in ("`id`", "`title`", "`kind`", "`state`", "`ask`", "`why`", "`source`",
                       "`anchors`", "`seal`", "`parent` and `children`", "`answered_by`",
@@ -882,7 +887,7 @@ class LineTest(unittest.TestCase):
         for state in ("`open`", "`put`", "`answered`", "`closed`", "`merged`", "`dropped`"):
             self.assertIn(state, lines)
         self.assertIn("`{case, prompt, recommendation}`", lines)
-        self.assertIn("`{tab, block, fingerprint, words}`", lines)
+        self.assertIn("`{tab, block, h, words}`", lines)
         example = json.loads(_code(SKILL, "## The open lines"))
         self.assertEqual(set(example), {"id", "title", "kind", "state", "ask", "why", "source",
                                         "anchors", "seal", "parent", "children", "answered_by",
