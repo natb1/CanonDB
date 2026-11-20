@@ -123,7 +123,7 @@ class ReaderGateTest(unittest.TestCase):
 
     def test_every_other_turn_gets_no_opinion(self):
         for agent in (None, "", "principal:grader", "principal:interviewer", "fork",
-                      "canon-answer"):
+                      "principal:comparer"):
             with self.subTest(agent=agent):
                 self.assertEqual(self.run_hook(agent, self.scratch + "/answers/3.md"), {})
 
@@ -164,7 +164,7 @@ class ReaderGateTest(unittest.TestCase):
         self.assertEqual(self.decision("principal:clean-reader",
                                        self.scratch + "/questions/x.md"), "allow")
 
-    def test_the_gate_fires_on_read_beside_the_canon_gate(self):
+    def test_the_gate_fires_on_read(self):
         with open(HOOKS, encoding="utf-8") as fh:
             entries = json.load(fh)["hooks"]["PreToolUse"]
         self.assertIn({"matcher": "Read", "hooks": [{

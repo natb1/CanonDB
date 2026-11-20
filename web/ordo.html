@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
 <style>
-/* Display only: no buttons, no inputs, no writes. Layout: one column on a phone; from 60rem two, the main column left and the context panel right (sticky). Main column: bell notice (while a rung bell's office has an owner item unresolved), then the action context (paragraphs, tradition, prediction, notes), then the next action as the largest thing (the first unresolved owner office item while there is one, a taken one first, with the session's action and its deferred action, if any, as quiet "After the office" notes; a recommendation, on a review of mechanism, between the case and the prompt; otherwise, or while the owner has set the rung bell's office aside (current.office_deferred), the session's action, with the set-aside office and a deferred action, if any, as quiet notes inside it), then the helper list. On a phone the panel sits under the next-action card. Panel: the latest rung bell and its remaining items (session-run ones marked, and kept with their state), then one timeline of the bells and calendar events of the next 48 hours, then the quiet "Waiting, in order" list (current.queue), then when the calendar was read. */
+/* Display only: no buttons, no inputs, no writes. Layout: one column on a phone; from 60rem two, the main column left and the context panel right (sticky). Main column: bell notice (while a rung bell's office has an owner item unresolved), then the action context (paragraphs, tradition, prediction, notes), then the next action as the largest thing (the first unresolved owner office item while there is one, a taken one first, with the session's action and its deferred action, if any, as quiet "After the office" notes; a recommendation, on a review of mechanism, after the prompt; otherwise, or while the owner has set the rung bell's office aside (current.office_deferred), the session's action, with the set-aside office and a deferred action, if any, as quiet notes inside it), then the helper list. On a phone the panel sits under the next-action card. Panel: the latest rung bell and its remaining items (session-run ones marked, and kept with their state), then one timeline of the bells and calendar events of the next 48 hours, then when the calendar was read; under that card, a second card holding only the "Waiting, in order" list (current.queue) in a native details element, closed by default. The action context may end with appended log records (context.log), each under a divider carrying its time. */
 :root {
   --bg: #f3f5f6; --surface: #ffffff; --ink: #18242b; --muted: #5a6a73;
   --line: #d5dce0; --accent: #1f6f5c; --accent-soft: #e2f0ec; --against: #8a4b2a; --against-soft: #f6ebe3;
@@ -40,6 +40,11 @@ section p { margin: 0; }
 .side.con h3 { color: var(--against); }
 .side p { margin: 0; font-size: 0.93rem; }
 .side b { font-weight: 600; }
+.logsep { display: flex; align-items: center; gap: 10px; margin-top: 6px; color: var(--muted); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+.logsep::before, .logsep::after { content: ""; border-top: 1px solid var(--line); }
+.logsep::before { width: 16px; }
+.logsep::after { flex: 1; }
+.logrec { display: flex; flex-direction: column; gap: 10px; }
 .quiet { color: var(--muted); font-size: 0.9rem; }
 h3.sub { font-family: var(--display); font-weight: 600; font-size: 0.98rem; margin: 0; text-wrap: balance; }
 .pred { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
@@ -50,6 +55,8 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
 .bell { background: var(--against-soft); border-left: 3px solid var(--against); border-radius: 0 8px 8px 0; padding: 10px 16px; display: flex; flex-direction: column; gap: 2px; }
 .bell p { margin: 0; }
 .bell-msg { font-weight: 600; color: var(--against); }
+summary { cursor: pointer; font-family: var(--display); font-weight: 600; }
+.wait[open] summary { margin-bottom: 12px; }
 .wait li { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
 .wait .pill { font-size: 0.7rem; padding: 1px 8px; }
 .status { margin: 0; font-variant-numeric: tabular-nums; }
@@ -77,7 +84,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
   main { max-width: 66rem; display: grid; grid-template-columns: minmax(0, 1fr) 20rem; grid-template-rows: auto 1fr; column-gap: 32px; row-gap: 22px; align-items: start; }
   #col-a { grid-column: 1; grid-row: 1; }
   #col-b { grid-column: 1; grid-row: 2; }
-  .panel { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
+  #side { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
 }
 </style>
 
@@ -91,6 +98,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
   <section id="ctx" hidden>
     <span class="label">Action context</span>
     <h2 id="ctx-heading"></h2>
+    <p class="quiet" id="ctx-at" hidden></p>
     <div id="ctx-paras" style="display:flex;flex-direction:column;gap:10px"></div>
     <h3 class="sub" id="ctx-trad" hidden>Tradition on the result</h3>
     <div id="ctx-two" class="two" hidden>
@@ -102,6 +110,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
       <div id="ctx-pred-body" style="display:flex;flex-direction:column;gap:12px"></div>
     </div>
     <div id="ctx-notes" style="display:flex;flex-direction:column;gap:6px"></div>
+    <div id="ctx-log" style="display:flex;flex-direction:column;gap:10px"></div>
   </section>
 
   <div class="q" id="next">
@@ -111,10 +120,10 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
     </div>
     <span class="label" id="next-case-label" hidden>The case</span>
     <p class="case" id="next-case" hidden></p>
-    <span class="label" id="next-rec-label" hidden>Recommendation</span>
-    <div id="next-rec" style="display:flex;flex-direction:column;gap:6px" hidden></div>
     <span class="label">Next action</span>
     <p class="prompt" id="next-prompt" hidden></p>
+    <span class="label" id="next-rec-label" hidden>Recommendation</span>
+    <div id="next-rec" style="display:flex;flex-direction:column;gap:6px" hidden></div>
     <p class="empty" id="next-empty">No action set yet. The session writes the next action here.</p>
     <p class="quiet" id="under" hidden></p>
     <p class="quiet" id="office-then" hidden></p>
@@ -141,16 +150,18 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
   </div>
  </div>
 
-  <aside class="panel" id="panel" aria-label="This bell, the next 48 hours and what is waiting">
-    <span class="label">This bell</span>
-    <div class="pb" id="panel-bell"></div>
-    <span class="label">Next 48 hours</span>
-    <ol class="tl" id="panel-list"></ol>
-    <section class="wait" id="wait" hidden>
-      <span class="label">Waiting, in order</span>
+  <aside class="col" id="side" aria-label="This bell, the next 48 hours and what is waiting">
+    <div class="panel" id="panel">
+      <span class="label">This bell</span>
+      <div class="pb" id="panel-bell"></div>
+      <span class="label">Next 48 hours</span>
+      <ol class="tl" id="panel-list"></ol>
+      <p class="quiet" id="panel-cal"></p>
+    </div>
+    <details class="panel wait" id="wait" hidden>
+      <summary id="wait-sum">Waiting, in order</summary>
       <ol class="plain quiet" id="wait-list"></ol>
-    </section>
-    <p class="quiet" id="panel-cal"></p>
+    </details>
   </aside>
 
  <div class="col" id="col-b">
@@ -380,6 +391,20 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
     });
     var notes = $("ctx-notes"); clear(notes);
     arr(c.notes).forEach(function (n) { notes.appendChild(el("p", "quiet", str(n))); });
+    var w = hhmm(str(c.at));
+    $("ctx-at").textContent = w ? "Written " + w : "";
+    $("ctx-at").hidden = !w;
+    var log = $("ctx-log"); clear(log);
+    arr(c.log).forEach(function (r) {
+      var ps = texts(r && r.paragraphs);
+      if (!ps.length) return;
+      var d = new Date(str(r.at)), t = hhmm(str(r.at)), label = "Added";
+      if (t) label += " " + (dayDiff(d, new Date()) === 0 ? "" : d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " ") + t;
+      var rec = el("div", "logrec");
+      rec.appendChild(el("div", "logsep", label));
+      ps.forEach(function (x) { rec.appendChild(el("p", null, x)); });
+      log.appendChild(rec);
+    });
   }
 
   // A string or an array of strings, as a list of non-empty strings.
@@ -490,6 +515,7 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
       return x && typeof x === "object" && (str(x.title) || str(x.prompt));
     });
     $("wait").hidden = !list.length;
+    $("wait-sum").textContent = "Waiting, in order (" + list.length + ")";
     list.forEach(function (x) {
       var k = kindOf(x.kind), li = el("li"), p = el("span", "pill", k);
       p.setAttribute("data-kind", k);

@@ -1,4 +1,4 @@
-"""turn — which question a canon turn is put to, and what the turn carries.
+"""turn — which questions the AI answers wait to be put, and on what.
 
 The notebook's rule for a turn that answers on canon is short: it carries
 the question, the earlier turns of its own thread, and canon above the
@@ -17,14 +17,6 @@ put on. Which thread a
 question is on is not recorded, so the caller names the thread. ``select``
 weighs by backlog, ties by id, which is what a caller outside this plugin
 reads off the notebook as the next question.
-
-``lineage`` is the canon above a question, written out as text: for each
-question the AI answers above it, the question and the one answer a turn may
-carry, oldest first; then the question itself. Nothing of the notebook goes
-in — no headline, no hinge, no glossary, no note, and no question id, which
-is the notebook's name for a tab and a frame a filename could leak — so the
-file can be handed to a turn that must not see the notebook. It refuses,
-naming what is waited on, rather than write a lineage with a gap in it.
 """
 
 from __future__ import annotations
@@ -36,9 +28,6 @@ from .model import ANSWERERS, STATES, Graph, Question, Thesis
 
 AI = project.AI
 _, IN_THREAD, LANDED = STATES
-
-#: what separates one question's entry from the next in a lineage file
-RULE = "---"
 
 
 def carried(q: Question, thread: Iterable[str] = ()) -> Optional[Thesis]:
@@ -151,34 +140,6 @@ def select(graph: Graph, thread: Iterable[str] = (),
         if not owed:
             return qid
     return None
-
-
-def lineage(graph: Graph, qid: str, thread: Iterable[str] = ()) -> str:
-    """Canon above ``qid`` and then ``qid``, as text a turn may carry.
-
-    Raises ``ValueError`` naming what is owed when a question above has no
-    answer the turn could carry: a lineage with a gap is not a lineage.
-    """
-    by_id = graph.by_id()
-    q = by_id.get(qid)
-    if q is None:
-        raise ValueError("no such question: %s" % qid)
-    thread = list(thread)
-    gaps = [line for line in waits(graph, qid, thread) if ", above it, has " in line]
-    if gaps:
-        raise ValueError("; ".join(gaps))
-    parts: List[str] = []
-    for other in above(graph, qid):
-        thesis = carried(by_id[other], thread)
-        assert thesis is not None
-        if thesis.state == STATES[0]:
-            # held is a prior of the user's: carried() never returns one, and
-            # this keeps it so whatever carried() comes to return
-            raise ValueError("%s, above it, is a prior the user holds: a turn "
-                             "carries Claude's own words alone" % other)
-        parts.append("%s\n\n%s" % (by_id[other].question.strip(), thesis.text.strip()))
-    parts.append(q.question.strip())
-    return ("\n\n%s\n\n" % RULE).join(parts) + "\n"
 
 
 def listing(rows: Sequence[Tuple[str, int, List[str]]]) -> List[str]:

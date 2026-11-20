@@ -46,8 +46,8 @@ gate binds. So a kind that holds it is held here to its work:
   (`env`, `$ENV`, `$JQ_BUILD_CONFIGURATION`) nor where it stands
   (`input_filename`, `$__loc__`, `get_prog_origin`) nor a module
   (`modulemeta`); `mkdir -p` of its own directories;
-- the fetcher, the recorder, the clean reader, the reviewer, the grader and
-  the canon agent run nothing.
+- the fetcher, the recorder, the clean reader, the reviewer, the grader,
+  the comparer and the AI's recorder run nothing.
 
 The command is read as the shell would read it, quotes and all, and is
 refused where it holds what would make it more than the one program named:
@@ -108,7 +108,8 @@ except BaseException:  # no rule is no decision: the call is blocked
 CHECKER = "checker"
 COORDINATOR = "coordinator"
 #: the kinds that run nothing in the shell
-NO_SHELL = ("canon-answer", "clean-reader", "fetcher", "grader", "recorder", "reviewer")
+NO_SHELL = ("ai-recorder", "clean-reader", "comparer", "fetcher", "grader", "recorder",
+            "reviewer")
 CONFINED = (CHECKER, COORDINATOR) + NO_SHELL
 
 CHECKER_TOOLS = ("page.py", "read.py", "check.py")

@@ -9,8 +9,7 @@ keeps a reader whose answer is the whole of a fidelity test from the
 sitting's other files: the principal's answers, the sealed replies and
 their grades, the rows files, the results, and the transcripts. The
 reader's definition grants it Read to take the question's file, and Read is
-not confined to a path by that definition, so this gate is, as
-`canon-gate.py` is for the canon agent.
+not confined to a path by that definition, so this gate is.
 
 The one place a clean reader may read: a file whose parent directory is
 named `questions`, with no directory on its path named `answers`,

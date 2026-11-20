@@ -76,8 +76,8 @@ except BaseException:  # no rule is no decision: the call is blocked
 COORDINATOR = "coordinator"
 SPEAKER = "interviewer"
 #: every kind this plugin defines
-GUARDED_KINDS = ("canon-answer", "checker", "clean-reader", "coordinator", "fetcher",
-                 "grader", "interviewer", "recorder", "reviewer")
+GUARDED_KINDS = ("ai-recorder", "checker", "clean-reader", "comparer", "coordinator",
+                 "fetcher", "grader", "interviewer", "recorder", "reviewer")
 #: the tools that write a file
 WRITERS = ("Write", "Edit", "MultiEdit", "NotebookEdit")
 

@@ -32,7 +32,7 @@ project raises it, under that raiser with an order in the p series, which is wha
 subtree as a project in the one tree; where it does, `.principal/notebook.json`
 names the project this checkout keeps under `project`, and the run's **author tabs** are that
 project's: the tabs under its root. Its reads, its checks, its selection and its tab patch are
-that project's too — `read.py --project`, and `next.py`, `frontier.py`, `again.py` and
+that project's too — `read.py --project`, and `frontier.py`, `again.py` and
 `project.py --project`, which take the project from the file — and the parties it cites are
 read with it wherever a rule reaches them. A term edge crosses only from an earlier project to
 a later one, a mention only to an earlier one or to `tradition` (`project-order`); a scoped
@@ -432,8 +432,8 @@ for is given as a draft for correction with the readings you chose marked, each 
 principal's only once confirmed.
 
 **Where the line is shared.** One procedure with two parameters, who answers and whether the
-questioner holds the notebook, is run by four entry points: `/principal:ask`, where the AI
-answers and the agent holds the lineage alone; `/principal:interview`, where the principal
+questioner holds the notebook, is run by four entry points: `/principal:sit`'s line in the AI's graph, where the AI
+answers in a clean turn that holds the AI's own answers alone; `/principal:interview`, where the principal
 answers to a questioner that holds nothing, and a comparing run that holds the notebook reads
 the draw afterwards; this skill, where the principal answers to a questioner that holds the
 notebook; and `/principal:consult`, which draws nothing. `/principal:anticipate` is the line's
@@ -626,25 +626,26 @@ a procedure rather than a script.
   definition on the wrong question, never an import.
 - **Two open threads must not depend on each other.** `put-in-order` holds the half a script can:
   nothing is put below a question that has not been. Which thread a question is on is not
-  recorded, so `next.py` and `lineage.py` are told it (`--thread`), and a turn carrying an
-  answer from another open thread, or missing one it needs, is yours to see.
-- **The clean-context rule.** Nothing of the notebook may reach a turn that answers a canon
-  question. The guard the `context` tab describes is built: `/principal:ask`, which holds
-  notebook and canon together, selects the question and launches `canon-answer`, whose
-  definition under the plugin's `agents/` is the grant — Read and nothing else, no shell, no
-  search, no git, no `CLAUDE.md`, and a gate on Read (the plugin's `hooks/canon-gate.py`) that
-  lets through the packet and refuses the rest, canon on disk included. The packet is the question and a reference to its lineage, which `tools/lineage.py`
-  writes out of the graph file and the selecting turn never transcribes. What is left to hold by
-  reading is what no configuration decides. The question's wording is the one thing of the
-  selecting turn's that enters the packet, held by the rule that the question is only the
-  question, and the prompt around it is read once more before it is sent. Nothing lists
-  canon on disk: it is what is under `canon/`, the agent reads none of it, and what its answer
-  collides with outside its lineage is the selecting run's to find. A checkout is not a context: the same files are on
-  every branch, and what a turn may read is the gate's decision, not the branch's. And the guard holds only where the agent is used: a canon question answered in any
-  other way — in this run, in a session that has read the notebook, by a turn composed by hand —
-  is answered in a context nobody vouched for, whatever it was given.
+  recorded, and a turn carrying an answer from another open thread, or missing one it needs,
+  is yours to see.
+- **The clean-context rule.** Nothing of the notebook may reach a turn that answers for the
+  AI's own record. The guard is built: `/principal:sit` puts such a question in a clean turn, a
+  run of the harness of its own that `tools/clean_turn.py` starts in an empty directory with no
+  tools, settings, memory or rules file, its whole system prompt a spec under the plugin's
+  `clean/`, its context the AI's own answers, each under the question it was given to, as
+  `tools/packet.py` writes them, and the question.
+  The tool reads the run's own report of what it held and refuses a run that held more than the
+  stated residue, and refuses a packet with no matching fingerprint file, a question with no
+  matching leak record, and one whose origin, the principal's approval or a drawer turn, is not
+  shown; those records bind each check to an exact text and catch drift, and one written by
+  hand with the right hash passes, so what holds them is that only the tools write them. What is left to hold
+  by reading is what no configuration decides: what a question presupposes, held on the user's
+  side, and what an answer collides with outside its packet, which is the comparing run's to
+  find. And the guard holds only where the clean turn is used: a question answered in any other
+  way — in this run, in a session that has read the notebook, by a helper of a session — is
+  answered in a context nobody vouched for, whatever it was given.
 - **A lease and a claim are released by reading.** Nothing expires: a run that dies leaves its
-  lease line, or a question's claim note, on the page. Whether the session that wrote it is
+  lease line on the page, or its claim of a job on the board. Whether the session that wrote it is
   still at work is read — its transcript, the time on the line — and a line left by a dead one
   is taken off by hand or by the next run that reads it so, never on a guess.
 - **What a run cannot apply stands on the page.** A run ends with nothing owed in the session
@@ -832,9 +833,9 @@ questioner's own conclusion but a latent conflict between two things the answere
 where one of them runs out of coverage — that is where the answerer moves under its own power.
 If selection cannot reach a point, the point is a dictate, and knowing that is worth as much as
 reaching it. Two grains run at once: the target picks the admission, the admission picks the
-question. Which drawn question is put next is not drafting and is not steering: `next.py`
-reads it off the graph as the heaviest with nothing left to wait on, and `/principal:ask`
-puts it.
+question. Which drawn question is put next is not drafting and is not steering:
+`/principal:sit` holds it as an open line in the order it keeps there, and puts it in a clean
+turn.
 
 **What ranks.** Four factors, ordered and not weighted. Step size is a **gate**, not a rank.
 Blocked action ranks first while anything is blocked — what does the answer unblock. Target
@@ -866,8 +867,8 @@ compaction too, taken before the collision. It reaches past the thread: an answe
 is withdrawn the same way, and gives way at the merge that replaces it. What compaction is
 not for is a conflict with the notebook alone. That is no aporia of the AI's; it is the
 principal's, suspended, and every line and thread that could reach the point is drawn before
-it is conceded as a dissent. `/principal:ask` looks for the collision before the question
-goes and after the answer comes; which line it is, and what question would carry the
+it is conceded as a dissent. `/principal:sit`'s comparing run looks for the collision after
+the answer comes; which line it is, and what question would carry the
 admission, is drafted here.
 
 **Framing.** Open on what the answerer is already doing. Presuppose only what the act of asking

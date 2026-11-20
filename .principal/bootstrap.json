@@ -5,10 +5,7 @@
       "question": "context",
       "application": "the context guard",
       "files": [
-        "agents/canon-answer.md",
-        "hooks/canon-gate.py",
-        "hooks/hooks.json",
-        "tools/test_gate.py"
+        "hooks/hooks.json"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
       "rounds": 4
@@ -19,7 +16,6 @@
       "files": [
         ".claude-plugin/plugin.json",
         ".claude-plugin/marketplace.json",
-        "skills/ask/SKILL.md",
         "skills/dictate/SKILL.md",
         "skills/bootstrap/SKILL.md",
         ".principal/notebook.json",
@@ -69,7 +65,6 @@
       "files": [
         "tools/hypo/project.py",
         "tools/hypo/turn.py",
-        "tools/next.py",
         "tools/test_project.py",
         "tools/test_turn.py"
       ],
@@ -224,7 +219,6 @@
         "tools/hypo/spec.py",
         "tools/hypo/text.py",
         "tools/line.py",
-        "tools/lineage.py",
         "tools/project.py",
         "tools/render.py",
         "tools/shares.py",
@@ -260,8 +254,7 @@
       "files": [
         "tools/hypo/again.py",
         "tools/again.py",
-        "tools/test_again.py",
-        "skills/ask/SKILL.md"
+        "tools/test_again.py"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
       "rounds": 2
@@ -292,7 +285,7 @@
       "question": "hypomnemata",
       "application": "the claim",
       "files": [
-        "skills/ask/SKILL.md"
+        "skills/sit/SKILL.md"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3194",
       "rounds": 1
@@ -431,7 +424,11 @@
         "tools/test_kind_bash_gate.py",
         "tools/test_kind_write_gate.py",
         "tools/test_reader_gate.py",
-        "tools/test_gate_kinds.py"
+        "tools/test_gate_kinds.py",
+        "agents/comparer.md",
+        ".claude/agents/comparer.md",
+        "agents/ai-recorder.md",
+        ".claude/agents/ai-recorder.md"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
       "rounds": 1
@@ -455,6 +452,24 @@
         "tools/views.py",
         "tools/hypo/views.py",
         "tools/test_views.py"
+      ],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
+      "rounds": 1
+    },
+    {
+      "question": "context",
+      "application": "the clean turn",
+      "files": [
+        "tools/clean_turn.py",
+        "tools/test_clean_turn.py",
+        "tools/packet.py",
+        "tools/test_packet.py",
+        "clean/answerer.md",
+        "clean/drawer.md",
+        "clean/probe.md",
+        "tools/public.py",
+        "skills/sit/SKILL.md",
+        "tools/test_sit_skill.py"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
       "rounds": 1

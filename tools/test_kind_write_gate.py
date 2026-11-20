@@ -18,8 +18,8 @@ GATE = os.path.join(ROOT, "hooks", "kind-write-gate.py")
 HOOKS = os.path.join(ROOT, "hooks", "hooks.json")
 TOOLS = os.path.join(ROOT, "tools")
 
-NO_WRITE = ("canon-answer", "checker", "clean-reader", "fetcher", "grader", "recorder",
-            "reviewer")
+NO_WRITE = ("checker", "clean-reader", "fetcher", "grader", "recorder", "reviewer",
+            "comparer", "ai-recorder")
 WRITERS = ("Write", "Edit", "MultiEdit", "NotebookEdit")
 SESSION = "claude-1000/-home-u-proj/0b7c6f2e-1d2a-4c3b-9e8f-7a6b5c4d3e2f/scratchpad/sit"
 JOBS = ".claude/jobs/0f82a3c4/tmp/sit"

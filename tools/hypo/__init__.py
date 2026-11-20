@@ -15,7 +15,7 @@ from its reads of the document, and renders canonical markdown back from it.
     verify   the page against the renderer, links included
     portable the notebook parted from its document, for a party raising its own
     registry every party's works, as the registry a repository's check reads
-    turn     which question a canon turn is put to, and the lineage it carries
+    turn     which questions the AI answers wait to be put, and on what
     frontier what could be put, read off the page without a graph file
     gaps     a bootstrap round's review: links against the checkout, files against the manifest
     page     a tab as the document reads it, spelled as the reader takes it

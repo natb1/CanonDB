@@ -12,7 +12,7 @@ what makes it a principal entry point and not a canon one: never run it inside a
 answering a canon question.
 
 There are two ways application reaches `main`. The strict one runs `/principal:dictate` →
-notebook → `/principal:ask` → thread → merge → canon → the asynchronous workflows that
+notebook → `/principal:sit`, a line in the AI's graph → thread → merge → canon → the asynchronous workflows that
 reconcile application *from canon*. This is the other: `/principal:dictate` → notebook →
 `/principal:bootstrap` → pull request → `main`. It implements what the notebook describes
 before any answer has landed, because some application is wanted sooner than the elenchus

@@ -1,7 +1,7 @@
 ---
 name: coordinator
 description: Reads the board, starts the helper its mapping names for the next runnable job, marks the job done or failed through the board's gate tool, and hands back one line. Launched only by the sitting's entry point, with the board's address, the sitting's scratch directory and the plugin's tools directory. Never delegate to it for anything else.
-tools: Agent(principal:clean-reader, principal:grader, principal:recorder, principal:fetcher, principal:checker, principal:reviewer), Read, Bash, ArtifactData, Write
+tools: Agent(principal:clean-reader, principal:grader, principal:recorder, principal:fetcher, principal:checker, principal:reviewer, principal:comparer, principal:ai-recorder), Read, Bash, ArtifactData, Write
 disallowedTools: mcp__claude_ai_Claude_Docs__update, mcp__claude_ai_Claude_Docs__batch, mcp__claude_ai_Claude_Docs__create, mcp__claude_ai_Claude_Docs__delete, mcp__Claude_Docs__update, mcp__Claude_Docs__batch, mcp__Claude_Docs__create, mcp__Claude_Docs__delete
 omitClaudeMd: true
 model: sonnet
@@ -72,6 +72,8 @@ you run, `<job id>` and `<time>` filled in:
    | `fetch` | fetcher | `small` | the address in `notebook`, and the tab names the file in `tabs` lists, one name a line, which you read |
    | `check` | checker | `small` | `<tools>`, the directory in `views`, the file in `list`, and `$SCRATCH/check/<job id>` to work in |
    | `review` | reviewer | `full` | the address in `notebook`, and the paths in `rows` and `owed` |
+   | `compare` | comparer | `full` | the address in `notebook`, and the path of the file in `index`, the line's index |
+   | `place` | ai-recorder | `mid` | the path in `rows`, the path of the file in `index`, the line's index, and the address in `notebook` |
 
    A job whose inputs lack what its row names, or a `seal` whose `question` is not a file
    directly in `$SCRATCH/questions/`, is not run: `fail` it with the reason `refused`.

@@ -132,45 +132,6 @@ class LineageTest(unittest.TestCase):
         self.assertEqual([dist[c] for c in chain], sorted(dist[c] for c in chain))
         self.assertEqual(chain[0], "ti-esti")
 
-    def test_it_refuses_a_gap(self):
-        def held_above(data):
-            ask_the_ai(data, "attenuation")
-        with self.assertRaises(ValueError) as caught:
-            turn.lineage(rewrite("valid", held_above), "attenuation")
-        self.assertIn("above it", str(caught.exception))
-
-    def test_it_carries_the_questions_and_the_answers_and_nothing_else(self):
-        graph = rewrite("valid", ready)
-        text = turn.lineage(graph, "attenuation")
-        for qid in turn.above(graph, "attenuation") + ["attenuation"]:
-            q = graph.get(qid)
-            self.assertIn(q.question.strip(), text)
-            if qid != "attenuation":
-                self.assertIn(turn.carried(q).text.strip(), text)
-                self.assertNotIn(turn.carried(q).title, text)
-            for definition in q.definitions:
-                self.assertNotIn(definition.body, text)
-            if q.hinge:
-                # the clean-context rule keeps the hinge out, the end with it
-                for _, part in q.hinge.asking():
-                    if part.strip():
-                        self.assertNotIn(part.strip(), text)
-        self.assertTrue(text.rstrip().endswith(graph.get("attenuation").question.strip()))
-        self.assertEqual(text.count(turn.RULE), len(turn.above(graph, "attenuation")))
-
-    def test_no_question_id_stands_in_it(self):
-        graph = rewrite("valid", ready)
-        text = turn.lineage(graph, "attenuation")
-        # the ids are ordinary words that may occur in prose; what is checked is
-        # that none heads a section
-        for line in text.splitlines():
-            self.assertNotIn(line.strip(), [q.id for q in graph.questions])
-
-    def test_the_thread_s_own_answer_is_carried(self):
-        graph = rewrite("valid", open_thread)
-        text = turn.lineage(graph, "attenuation", thread=["canon"])
-        self.assertIn(graph.get("canon").theses[0].text.strip(), text)
-
 
 if __name__ == "__main__":
     unittest.main()

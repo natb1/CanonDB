@@ -40,8 +40,7 @@ PREFIXES = ("mcp__claude_ai_Claude_Docs__", "mcp__Claude_Docs__")
 WRITES = [p + v for p in PREFIXES for v in ("update", "batch", "create", "delete")]
 UPDATE, BATCH, CREATE = (PREFIXES[0] + v for v in ("update", "batch", "create"))
 #: the plugin's kinds that hold no writing tool
-SILENT = ("canon-answer", "checker", "clean-reader", "coordinator", "fetcher",
-          "grader", "reviewer")
+SILENT = ("checker", "clean-reader", "coordinator", "fetcher", "grader", "reviewer")
 #: helpers this plugin does not define, or does not define under that name
 FOREIGN = ("fork", "general-purpose", "Explore", "other:recorder", "x:y:recorder",
            ":recorder", "my-recorder", "recorder ", "Recorder", "other:interviewer", 7,
@@ -800,6 +799,195 @@ class Round3Test(Base):
                         self.unclear(call(self.root, agent, tool, tool_input={"ref": ref}))
 
 
+def inserting(node, ops=None, container=NOTEBOOK, obj="node"):
+    """An update of one node of a document by the given ops, inserts by
+    default."""
+    return {"container": {"kind": "project", "id": container},
+            "ref": {"object": obj, "id": node},
+            "payload": {"ifRev": 7, "ops": ops if ops is not None else [
+                {"op": "insert", "target": {"kind": "blocks", "ids": ["b9"]},
+                 "side": "after", "source": {"as": "markdown",
+                                             "from": {"kind": "inline",
+                                                      "content": "> a line"}}}]}}
+
+
+def an_insert(**changes):
+    """One insert as the tools print it, with ``changes`` made to it; a
+    value of None removes the key."""
+    op = {"op": "insert", "target": {"kind": "blocks", "ids": ["b9"]}, "side": "after",
+          "source": {"as": "markdown", "from": {"kind": "inline", "content": "> a line"}}}
+    for key, value in changes.items():
+        if value is None:
+            op.pop(key, None)
+        else:
+            op[key] = value
+    return op
+
+
+class SidedTest(Base):
+    """The comparer writes the user's side and the AI's recorder the AI's
+    own record, each only by inserting; the AI's recorder writes nothing
+    until the notebook file names the AI's root."""
+
+    AI = ["n-root", "n-tab"]
+    NAMED = {"artifact": SITE + NOTEBOOK, "project": "x", "ai_root": AI}
+
+    def update(self, agent, node, **kw):
+        return call(self.root, agent, UPDATE, inserting(node, **kw))
+
+    def deny(self, c, reason):
+        self.assertEqual(self.reason(c), reason, c)
+
+    def test_the_ai_recorder_inserts_on_the_ai_s_tabs_only(self):
+        for agent in ("principal:ai-recorder", "ai-recorder"):
+            if agent == "ai-recorder":
+                define(self.root, kind="ai-recorder")
+            for node in self.AI:
+                self.silent(self.update(agent, node))
+            self.deny(self.update(agent, "b1"), self.gate.AI_SIDE)
+
+    def test_the_ai_recorder_never_edits_an_answer_already_there(self):
+        agent = "principal:ai-recorder"
+        for op in ("replace", "delete", "format"):
+            self.deny(self.update(agent, "n-tab", ops=[{"op": op}]), self.gate.AI_SIDE)
+        self.deny(self.update(agent, "n-tab", ops=[
+            {"op": "insert"}, {"op": "replace"}]), self.gate.AI_SIDE)
+
+    def test_the_ai_recorder_writes_nothing_while_the_root_is_unnamed(self):
+        for named in ({"artifact": SITE + NOTEBOOK}, {"artifact": SITE + NOTEBOOK, "ai_root": ""},
+                      {"artifact": SITE + NOTEBOOK, "ai_root": []}):
+            with project(named) as root:
+                c = call(root, "principal:ai-recorder", UPDATE, inserting("n-tab"))
+                self.assertEqual(self.reason(c), self.gate.UNSET)
+
+    def test_the_comparer_writes_off_the_ai_s_tabs(self):
+        agent = "principal:comparer"
+        self.silent(self.update(agent, "b1"))
+        for node in self.AI:
+            self.deny(self.update(agent, node), self.gate.USER_SIDE)
+        self.deny(self.update(agent, "b1", ops=[{"op": "replace"}]), self.gate.USER_SIDE)
+        with project({"artifact": SITE + NOTEBOOK}) as root:
+            # no AI root yet: every tab is the user's
+            self.silent(call(root, agent, UPDATE, inserting("n-tab")))
+
+    def test_each_writes_the_notebook_alone_and_by_one_node(self):
+        for agent, reason in (("principal:ai-recorder", self.gate.AI_SIDE),
+                              ("principal:comparer", self.gate.USER_SIDE)):
+            with self.subTest(agent=agent):
+                self.deny(self.update(agent, "n-tab", container=OTHER), reason)
+                self.deny(self.update(agent, "n-tab", obj="file"), reason)
+                self.deny(self.update(agent, NOTEBOOK, obj="project"), reason)
+                for tool in WRITES:
+                    if not tool.endswith("update"):
+                        # a delete naming the notebook is refused before
+                        # the side is read, as it is to every helper
+                        self.assertEqual(self.decision(call(self.root, agent, tool,
+                                                            inserting("n-tab"))), "deny")
+
+    def test_what_cannot_be_read_is_refused(self):
+        for agent, node in (("principal:ai-recorder", "n-tab"), ("principal:comparer", "b1")):
+            self.unclear(call(self.root, agent, UPDATE, dict(inserting(node), payload="{")))
+            self.unclear(call(self.root, agent, UPDATE, dict(inserting(node), payload={})))
+            for value in (7, [1], ["n-tab", ""], {"root": "n"}):
+                with project({"artifact": SITE + NOTEBOOK, "ai_root": value}) as root:
+                    self.unclear(call(root, agent, UPDATE, inserting("n-tab")))
+            with project(None) as root:
+                self.unclear(call(root, agent, UPDATE, inserting("n-tab")))
+
+    def test_a_bare_name_not_defined_as_the_plugin_s_writes_nothing(self):
+        for kind in ("comparer", "ai-recorder"):
+            define(self.root, b"---\nname: %s\n---\nmine\n" % kind.encode(), kind=kind)
+            self.refused(self.update(kind, "n-tab"))
+            self.refused(self.update(kind, "b1"))
+
+    def test_neither_exports_or_names_the_notebook_by_the_other_tools(self):
+        for agent in ("principal:ai-recorder", "principal:comparer"):
+            self.refused(call(self.root, agent, PREFIXES[0] + "export",
+                              {"container": {"kind": "project", "id": NOTEBOOK}}))
+            self.refused(call(self.root, agent, "Artifact", {"url": SITE + NOTEBOOK}))
+
+    def test_only_an_insert_beside_a_block_or_at_the_end(self):
+        # S7: no find target, no words put inside a paragraph, no each, no
+        # other shape of source, no keys beside the ops
+        markdown = {"as": "markdown", "from": {"kind": "inline", "content": "> a"}}
+        bad = [an_insert(target={"kind": "find", "text": "is kept"}, side="before",
+                         source={"as": "text", "from": {"kind": "inline", "content": "never "}}),
+               an_insert(target={"kind": "find", "text": "is kept"}),
+               an_insert(source={"as": "text", "from": {"kind": "inline", "content": "x"}}),
+               an_insert(source="> a line"),
+               an_insert(each={"kind": "rows"}),
+               an_insert(target={"kind": "blocks", "ids": ["t1"]}, side="end"),
+               an_insert(target={"kind": "blocks", "ids": ["b1", "b2"]}),
+               an_insert(target={"kind": "blocks", "ids": []}),
+               an_insert(target={"kind": "blocks", "ids": ["b1"], "nth": 2}),
+               an_insert(target={"kind": "root"}, side="after"),
+               an_insert(side=None), an_insert(target=None)]
+        good = [an_insert(), an_insert(side="before"),
+                an_insert(target={"kind": "root"}, side="end", source=markdown)]
+        for agent, node, reason in (("principal:ai-recorder", "n-tab", self.gate.AI_SIDE),
+                                    ("principal:comparer", "b1", self.gate.USER_SIDE)):
+            for op in bad:
+                with self.subTest(agent=agent, op=op):
+                    self.deny(self.update(agent, node, ops=[op]), reason)
+                    self.deny(self.update(agent, node, ops=[an_insert(), op]), reason)
+            for op in good:
+                with self.subTest(agent=agent, op=op):
+                    self.silent(self.update(agent, node, ops=[op]))
+            # a patch beside the inserts, a comment thread answered, another engine
+            c = self.update(agent, node)
+            c["tool_input"]["payload"]["kind"] = "patch"
+            self.deny(c, reason)
+            c = self.update(agent, node)
+            c["tool_input"]["payload"]["patch"] = []
+            self.deny(c, reason)
+            c = self.update(agent, node)
+            c["tool_input"]["answering"] = "u1"
+            self.deny(c, reason)
+            c = self.update(agent, node)
+            c["tool_input"]["engine"] = "table"
+            self.deny(c, reason)
+            c = self.update(agent, node)
+            c["tool_input"].update(engine="prose", opId="r-1", verbose=True)
+            self.silent(c)
+
+    def test_the_comparer_s_side_test_reads_the_id_as_the_connector_might(self):
+        # S8: a spelling of an AI tab's id is the AI's tab, or no id at all
+        agent = "principal:comparer"
+        for node in ("N-TAB", "n-Tab", "n\u200b-tab", "n%2Dtab", "node/n-tab", "n\u2011tab",
+                     " n-tab", "n-tab "):
+            with self.subTest(node=node):
+                self.deny(self.update(agent, node), self.gate.USER_SIDE)
+        with project({"artifact": SITE + NOTEBOOK, "ai_root": ["N-Root", "N-TAB"]}) as root:
+            self.assertEqual(self.reason(call(root, agent, UPDATE, inserting("n-tab"))),
+                             self.gate.USER_SIDE)
+            self.silent(call(root, "principal:ai-recorder", UPDATE, inserting("n-tab")))
+
+    def test_the_ai_recorder_s_side_test_reads_the_id_the_same_way(self):
+        agent = "principal:ai-recorder"
+        self.silent(self.update(agent, "N-TAB"))
+        for node in ("n\u200b-tab", "n%2Dtab", "node/n-tab"):
+            with self.subTest(node=node):
+                self.deny(self.update(agent, node), self.gate.AI_SIDE)
+
+    def test_no_sided_grant_without_the_plugin_s_name(self):
+        # N9: where the manifest's name cannot be read, `<any>:comparer`
+        # is no comparer
+        for agent in ("other:comparer", "x:ai-recorder", ":comparer"):
+            with self.subTest(agent=agent):
+                c = call(self.root, agent, UPDATE, inserting("b1"))
+                self.assertEqual(self.decision(c), "deny")
+                self.assertEqual(self.decision(c, plugin=""), "deny")
+        # nor the plugin's own name where its manifest cannot be read
+        self.assertEqual(self.decision(call(self.root, "principal:comparer", UPDATE,
+                                            inserting("b1")), plugin=""), "deny")
+
+    def test_input_that_does_not_parse_is_refused_to_them(self):
+        for agent in ("principal:ai-recorder", "principal:comparer"):
+            raw = b'{"agent_type": "%s", oops' % agent.encode()
+            self.assertEqual(self.gate.unparsed(raw, "principal")["hookSpecificOutput"]
+                             ["permissionDecision"], "deny")
+
+
 class HooksFileTest(unittest.TestCase):
     """The plugin installs the gate beside the canon agent's, which stands as
     it was."""
@@ -808,15 +996,15 @@ class HooksFileTest(unittest.TestCase):
         with open(HOOKS, encoding="utf-8") as fh:
             self.entries = json.load(fh)["hooks"]["PreToolUse"]
 
-    def test_the_canon_gate_stands_as_it_was(self):
-        self.assertEqual(self.entries[0], {
-            "matcher": "Read",
-            "hooks": [{"type": "command",
-                       "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/canon-gate.py\""}]})
+    def test_the_canon_gate_is_gone(self):
+        # the ask entry point and its canon agent were removed; a clean turn
+        # is a process of its own (tools/clean_turn.py), and no gate is its
+        self.assertFalse(any("canon-gate" in json.dumps(e) for e in self.entries))
+        self.assertFalse(os.path.exists(os.path.join(ROOT, "hooks", "canon-gate.py")))
 
     def test_the_notebook_gate_fires_on_the_writing_tools_and_no_others(self):
-        self.assertEqual(len(self.entries), 5)
-        entry = self.entries[2]
+        self.assertEqual(len(self.entries), 4)
+        entry = self.entries[1]
         self.assertEqual(entry["hooks"], [{
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/notebook-gate.py\""}])

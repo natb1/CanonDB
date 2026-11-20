@@ -35,6 +35,13 @@ path is in or above one of these is read with case folded, so that on a
 volume that folds case `~/.CLAUDE` is `~/.claude`; where the volume does
 not, that refuses a little more and admits nothing more.
 
+The AI's own record. `ai_tabs` reads the key `ai_root` of the nearest
+`.principal/notebook.json`: the node id of the AI's root tab, or a list of
+node ids, the root's first and each tab under it after. The notebook gate
+holds the AI's recorder to those tabs and the comparer off them; while the
+key is unset the first is refused every write. A tab under the root that
+the key does not list is, to the gates, the user's.
+
 A kind's own directory, `coordinator` or `check`, counts only below a
 scratch root the gates recognise: `/tmp/claude-*/…/scratchpad/` (the
 session's scratchpad, `/tmp` resolved) and `~/.claude/jobs/<id>/tmp/`, with
@@ -256,6 +263,41 @@ def held(path, cwd, env) -> str:
     if within_folded(where, home) and not in_jobs_tmp(where.casefold(), home.casefold()):
         return ""
     return where
+
+
+#: the key of `.principal/notebook.json` that names the AI's own record: the
+#: node id of its root tab, or a list of node ids, the root's first and then
+#: each tab under it; unset, the AI's own record has no tab yet
+AI_ROOT = "ai_root"
+
+
+def ai_tabs(cwd, env) -> frozenset:
+    """The node ids of the AI's own record, as the nearest
+    `.principal/notebook.json` names them under ``AI_ROOT``; empty where no
+    such file is found or the key is unset. Raises ValueError where the file
+    cannot be read or the key is neither a string nor a list of strings, so
+    that a gate fails closed."""
+    for root in places(cwd, env):
+        path = os.path.join(root, NOTEBOOK)
+        try:
+            with open(path, encoding="utf-8-sig") as fh:
+                named = json.load(fh)
+        except FileNotFoundError:
+            continue
+        except (OSError, ValueError) as exc:
+            raise ValueError("the notebook file") from exc
+        if not isinstance(named, dict):
+            raise ValueError("the notebook file")
+        value = named.get(AI_ROOT)
+        if value is None or value == "" or value == []:
+            return frozenset()
+        if isinstance(value, str):
+            value = [value]
+        if not isinstance(value, list) or not all(isinstance(v, str) and v.strip()
+                                                  for v in value):
+            raise ValueError("the key %s" % AI_ROOT)
+        return frozenset(v.strip() for v in value)
+    return frozenset()
 
 
 def below_scratch(where: str, env) -> list | None:

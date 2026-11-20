@@ -6,8 +6,8 @@ answer is dated: its hinge names a model other than NAME, or canon above it
 has moved since the commit its hinge names, read off git under DIR (the
 working directory by default). Each line is the question's id and what
 moved; nothing of the notebook's text is printed, only what the hinge
-recorded. `/principal:ask --again` puts one of them in a fresh context and
-records what comes back as a further answer on its tab.
+recorded. A sitting (`/principal:sit`) puts one of them again in a clean
+turn, and what comes back is a further draw.
 """
 
 from __future__ import annotations

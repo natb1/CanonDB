@@ -8,7 +8,7 @@ question, how many answers were drawn and whether the later draws agree
 with the first; per deadlocked clause, whether each later draw still holds
 it.
 
-A draw is an answer the AI gave, which `/principal:ask` records with an
+A draw is an answer the AI gave, which was recorded with an
 assent line opening ``verbatim (AI)``; the principal's own prior is not one.
 Whether a later draw agrees is the asking run's reading of it against the
 earlier answer, recorded on the same line as ``agrees`` or ``diverges``;
@@ -23,7 +23,7 @@ from typing import List, NamedTuple, Optional, Sequence
 
 from .model import Graph, Thesis
 
-#: how `/principal:ask` opens the assent line of an answer the AI gave
+#: how the assent line of an answer the AI gave opens
 DRAW = "verbatim (AI)"
 AGREES, DIVERGES = "agrees", "diverges"
 

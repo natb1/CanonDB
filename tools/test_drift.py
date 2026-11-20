@@ -36,7 +36,7 @@ def by_id(data, qid):
 
 
 def draw(data, qid, assent, text="Another answer."):
-    """A further thesis on ``qid``, as `/principal:ask` records one."""
+    """A further thesis on ``qid``, as a draw is recorded."""
     q = by_id(data, qid)
     thesis = copy.deepcopy(q["theses"][0])
     thesis.update(title="A further draw", text=text, assent=assent, state="in thread",

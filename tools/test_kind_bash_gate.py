@@ -18,7 +18,8 @@ GATE = os.path.join(ROOT, "hooks", "kind-bash-gate.py")
 HOOKS = os.path.join(ROOT, "hooks", "hooks.json")
 TOOLS = os.path.join(ROOT, "tools")
 
-NO_SHELL = ("canon-answer", "clean-reader", "fetcher", "grader", "recorder", "reviewer")
+NO_SHELL = ("clean-reader", "fetcher", "grader", "recorder", "reviewer", "comparer",
+            "ai-recorder")
 
 #: the two shapes a session's scratch takes, below the root each stands in
 SESSION = "claude-1000/-home-u-proj/0b7c6f2e-1d2a-4c3b-9e8f-7a6b5c4d3e2f/scratchpad/sit"

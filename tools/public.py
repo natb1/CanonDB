@@ -8,7 +8,14 @@ masked node is listed and fails nothing, since it is agreement; a likeness
 between a section the user marked and a masked tab is listed for the user to
 consider, and ``copy`` waits for ``--considered``. ``question`` holds a
 question drafted for Claude to the same rule before it is put: it is public
-with everything in it. ``copy`` writes the copy, ``graph.json`` and one page
+with everything in it; and to the notebook's rule for naming the user
+(``user-named``, the one ``check.py`` holds the notebook's own words to),
+saying what it found. With ``--record FILE`` a question that passes leaves
+the record ``clean_turn.py answer --leak`` takes, the SHA-256 of exactly the
+bytes checked and of the graph, and one that fails leaves none: a record
+already at FILE is removed before the check. The record binds the check to
+an exact text and graph and catches drift; it is a plain file, and one
+written by hand with the right hashes passes. ``copy`` writes the copy, ``graph.json`` and one page
 a node, and writes nothing where ``check`` would fail. Claude's graph is
 shown whole; of the user's, a node is shown only where its tab carries a
 note opening with the word public. ``mark`` prints the words of a mark over the sections named, as they read
@@ -23,13 +30,14 @@ name cannot be matched to a tab.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from hypo import cli, public  # noqa: E402
+from hypo import cli, public, spec  # noqa: E402
 
 cli.quiet_pipe()
 
@@ -49,6 +57,9 @@ def main(argv=None) -> int:
     p = sub.add_parser("question")
     p.add_argument("graph")
     p.add_argument("file", help="the drafted question, or - for stdin")
+    p.add_argument("--record", metavar="FILE",
+                   help="where the question passes, write here the record clean_turn.py "
+                        "takes as --leak: the SHA-256 of exactly the text checked")
     p = sub.add_parser("mark")
     p.add_argument("graph")
     p.add_argument("question")
@@ -80,12 +91,33 @@ def main(argv=None) -> int:
             print("%s: the mark on %s no longer matches what the section says, or gives no "
                   "fingerprint; masked until marked again" % (q.id, name))
     if args.mode == "question":
-        drafted = sys.stdin.read() if args.file == "-" else open(args.file, encoding="utf-8").read()
+        if args.record:
+            # a record stands only for a pass over exactly these bytes: one
+            # left from an earlier pass is taken away before the check
+            try:
+                os.unlink(args.record)
+            except FileNotFoundError:
+                pass
+        raw = (sys.stdin.buffer.read() if args.file == "-"
+               else open(args.file, "rb").read())
+        drafted = raw.decode("utf-8")
         found = public.question(graph, drafted)
         _report(found, "")
-        if not found:
+        named = spec.not_the_user(drafted)
+        if named:
+            print("the question says %r where it means the user: the notebook's rule "
+                  "(user-named) names the one it is kept for the user" % named)
+        if not found and not named:
             print("the question quotes nothing masked; what it presupposes is still to be read")
-        return 2 if found else 0
+            if args.record:
+                with open(args.graph, "rb") as fh:
+                    graph_sha = hashlib.sha256(fh.read()).hexdigest()
+                with open(args.record, "w", encoding="utf-8") as fh:
+                    json.dump({"tool": "public.py question", "exit": 0,
+                               "sha256": hashlib.sha256(raw).hexdigest(),
+                               "graph_sha256": graph_sha}, fh, indent=2)
+                    fh.write("\n")
+        return 2 if found or named else 0
     found = public.leaks(graph)
     alike = public.similar(graph)
     for leak in alike:

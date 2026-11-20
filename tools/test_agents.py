@@ -28,7 +28,8 @@ def spawns(*kinds):
 READS = docs("read", "guide")
 WRITES = docs("update", "batch", "create", "delete")
 EVERY = docs("read", "update", "batch", "create", "delete", "export", "query", "guide")
-LEAVES = ("clean-reader", "grader", "recorder", "fetcher", "checker", "reviewer")
+LEAVES = ("clean-reader", "grader", "recorder", "fetcher", "checker", "reviewer", "comparer",
+          "ai-recorder")
 
 #: the frontmatter of each kind, field for field
 KINDS = {
@@ -51,7 +52,16 @@ KINDS = {
                     "disallowedTools": docs("delete"), "model": "fable"},
     "grader": {"tools": ["Read"], "disallowedTools": EVERY + ["Agent"],
                "model": "opus"},
+    "comparer": {"tools": docs("read", "guide", "update") + ["Read"],
+                 "disallowedTools": docs("batch", "create", "delete") + ["Agent"],
+                 "model": "fable"},
+    "ai-recorder": {"tools": docs("read", "guide", "update") + ["Read"],
+                    "disallowedTools": docs("batch", "create", "delete") + ["Agent"],
+                    "model": "sonnet"},
 }
+
+#: the writers the notebook's guard holds to one side of it (test_notebook_gate)
+SIDED = ("comparer", "ai-recorder")
 
 FIELDS = ["name", "description", "tools", "disallowedTools", "omitClaudeMd", "model"]
 
@@ -130,7 +140,7 @@ class CopiesTest(unittest.TestCase):
         project = {n[:-3] for n in os.listdir(PROJECT) if n.endswith(".md")}
         plugin = {n[:-3] for n in os.listdir(PLUGIN) if n.endswith(".md")}
         self.assertEqual(project, helpers)
-        self.assertEqual(plugin - {"canon-answer"}, helpers)
+        self.assertEqual(plugin, helpers)
 
 
 class FrontmatterTest(unittest.TestCase):
@@ -166,14 +176,15 @@ class FrontmatterTest(unittest.TestCase):
                             or "Started only as the session that runs the sitting's "
                                "entry point" in words, kind)
 
-    def test_only_the_recorder_and_the_interviewer_hold_a_writing_tool(self):
+    def test_only_the_recorders_the_comparer_and_the_interviewer_hold_a_writing_tool(self):
         # the interviewer writes its own record; the guard keeps it off the
-        # notebook (test_notebook_gate); every other kind is denied the verbs
+        # notebook, and holds the comparer and the AI's recorder each to its
+        # side of it (test_notebook_gate); every other kind is denied the verbs
         for kind, (fields, _) in self.defs.items():
             got = dict(fields)
             granted = set(listed(got["tools"])) & set(WRITES)
             denied = set(listed(got["disallowedTools"]))
-            if kind == "recorder":
+            if kind == "recorder" or kind in SIDED:
                 self.assertEqual(granted, set(docs("update")))
             elif kind == "interviewer":
                 self.assertEqual(granted, set(docs("update", "create", "batch")))
@@ -459,6 +470,60 @@ class BodyTest(unittest.TestCase):
         for kind in ("coordinator", "interviewer"):
             self.assertIn("with the Write tool and never through the shell",
                           flat(self.bodies[kind]), kind)
+
+
+class SidedTest(unittest.TestCase):
+    """The comparer and the AI's recorder: each writes one side of the
+    notebook, and the judge is not the tier judged."""
+
+    def setUp(self):
+        self.bodies = {k: flat(split(os.path.join(PLUGIN, k + ".md"))[1]) for k in SIDED}
+
+    def test_the_comparer_hands_back_only_where_to_draw_again(self):
+        body = self.bodies["comparer"]
+        self.assertIn("exactly `redraw: <the opening words of the AI's answer under which it "
+                      "sits>`", body)
+        self.assertIn("no sentence of the user's, no reason, no tab name", body)
+        self.assertIn("You write on the user's side only", body)
+        self.assertIn("You never write a tab of the AI's own record", body)
+        self.assertIn("which is that sentence's price", body)
+        self.assertIn("A verdict is the principal's, and you write none.", body)
+
+    def test_the_comparer_is_not_the_tier_of_the_answerer(self):
+        clean = os.path.join(ROOT, "clean", "answerer.md")
+        answerer = dict(split(clean)[0])["model"]
+        comparer = dict(split(os.path.join(PLUGIN, "comparer.md"))[0])["model"]
+        self.assertNotEqual(answerer, comparer)
+
+    def test_the_ai_recorder_writes_draws_word_for_word_and_only_inserts(self):
+        body = self.bodies["ai-recorder"]
+        self.assertIn("word for word, the `answer` of a draw in the line's directory", body)
+        self.assertIn("Every operation is an `insert`", body)
+        self.assertIn("until that key is set it refuses you every write", body)
+        self.assertIn("an answer already there is never edited", body)
+
+    def test_the_coordinator_maps_the_two_jobs(self):
+        body = flat(split(os.path.join(PLUGIN, "coordinator.md"))[1])
+        self.assertIn("| `compare` | comparer | `full` | the address in `notebook`, and the "
+                      "path of the file in `index`, the line's index |", body)
+        self.assertIn("| `place` | ai-recorder | `mid` | the path in `rows`, the path of the file "
+                      "in `index`, the line's index, and the address in `notebook` |", body)
+
+    def test_each_finds_its_files_by_the_line_s_index(self):
+        # S9: neither can list a directory; the index names every file, and
+        # the layout each describes is the one the sitting writes
+        for kind in SIDED:
+            body = self.bodies[kind]
+            self.assertIn("you cannot list a directory", body.replace("You cannot", "you cannot"))
+            self.assertIn("one absolute path a line", body)
+        self.assertIn("`draws/manifest.json` with the draws `draws/draw-<i>.json`",
+                      self.bodies["comparer"])
+        self.assertIn("a directory `drawn-<n>`", self.bodies["comparer"])
+        self.assertIn("The first draw a manifest lists as kept is the answer of record",
+                      self.bodies["comparer"])
+        self.assertIn("`<n>/draws/draw-<i>.json`", self.bodies["ai-recorder"])
+        self.assertIn("While that key is unset there is no tab of the AI's own record",
+                      self.bodies["comparer"])
 
 
 class ParseTest(unittest.TestCase):

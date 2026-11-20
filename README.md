@@ -30,9 +30,7 @@ is private, and this record is where it is tested.
 
 ## The entry points and the readings
 
-Seven entry points, each a grant of what a turn may carry. `/principal:ask` puts the next
-question to the AI in a clean context, and with `--again` puts a landed one again.
-`/principal:dictate` changes the notebook, and may draw the change with the principal first as
+Six entry points, each a grant of what a turn may carry. `/principal:dictate` changes the notebook, and may draw the change with the principal first as
 a line of questions whose admissions are compacted into the plan. `/principal:bootstrap` builds
 what the notebook describes ahead of canon. `/principal:consult` takes a situation in the user's
 words and returns the clauses and cases that bear on it, reading only and drawing nothing.
@@ -40,8 +38,14 @@ words and returns the clauses and cases that bear on it, reading only and drawin
 quoted, for the user to confirm or correct. `/principal:interview` puts a question the principal
 answers, or the project's end, to the user through a questioner that has read nothing of the
 notebook, keeps a line doc of admissions, and hands over to a comparing run the user runs.
-`/principal:sit` is the one session that speaks with the principal, toward one goal: the
-smallest distance between what the principal's principles ask and what the principal does. It
+`/principal:sit` is the one session that speaks with the principal. It states no goal of its
+own: it serves that portion of the principal's rule of life that can be delegated to the AI, and
+is meant to be a projection of the AI's graph, which a line of questions builds; most of it is a
+stopgap built from the principal's words until that graph covers it. It puts questions to the
+AI's own record in clean turns, each a run of the harness of its own that `tools/clean_turn.py`
+starts in an empty directory with no tools, settings, memory or rules file, holding the AI's own
+earlier answers, each under the question it was given to, written by `tools/packet.py`, and one
+question. It
 puts one action at a time on its page, each question alone and sealed by a clean reader before it
 is put and graded after, writes its own line doc and never the notebook, and hands every write to
 the notebook to a job on the board. It runs confined, in a session started as the interviewer
@@ -49,10 +53,13 @@ kind, or open, in an ordinary session that may also brief helpers for building.
 
 The sitting's work is done by helpers of fixed kinds, defined under `agents/`: `clean-reader`
 (seals the notebook's answer to a question before it is put), `grader`, `fetcher`, `recorder`
-(the one kind that writes the notebook), `reviewer`, `checker` and `coordinator` (runs the
-board), with `interviewer` the kind of the speaking session. Four gates under `hooks/`, sharing
+(writes the notebook from rows files), `reviewer`, `checker`, `comparer` (holds both records and
+writes the user's side only), `ai-recorder` (writes the AI's own record only) and `coordinator`
+(runs the board), with `interviewer` the kind of the speaking session. The clean turns' system
+prompts are under `clean/`, outside `agents/`, so that no session starts one as a helper. Four gates under `hooks/`, sharing
 `hooks/kinds.py`, hold each kind to its work and decide nothing for any other turn:
-`notebook-gate.py` refuses every helper but the recorder a write to the notebook,
+`notebook-gate.py` refuses every helper but the recorder a write to the notebook, the comparer
+and the AI's recorder aside, each held to inserts on its own side of it,
 `reader-gate.py` confines the clean reader's reads to the sitting's questions, `kind-bash-gate.py`
 confines each kind's shell to the tools its work needs, and `kind-write-gate.py` confines each
 kind's file writes to its own scratch. `tools/board.py` is the gate on the board of jobs, a
@@ -208,11 +215,13 @@ is read and written through these entry points.
      with the db capability and rules that let only its owner read and write, and put its
      address in this key; and `"page": "<artifact address>"`: publish `web/ordo.html` once the
      same way, with the db and user capabilities, and put its address in this key. Without a
-     `page` a sitting runs with no page and says so.
+     `page` a sitting runs with no page and says so. Once the AI's own record has a root tab,
+     add `"ai_root": ["<its node id>", "<the node id of each tab under it>", …]`; until then the
+     AI's recorder is refused every write.
    - `bootstrap.json` — `{"applications": []}`, the manifest `/principal:bootstrap` keeps.
 
 3. Write the root question under `canon/`. Canon is what is under that directory, and nothing
-   lists it; a canon turn reads none of it, only the lineage it is handed.
+   lists it; a clean turn reads none of it, only the packet it is handed.
 
 4. Open a session and run `/principal:dictate` with the first dictation. The skills call the
    plugin's tools by `${CLAUDE_PLUGIN_ROOT}/tools/…`; Python 3 is the requirement, and `/principal:sit` needs `jq`

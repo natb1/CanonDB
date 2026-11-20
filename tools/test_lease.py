@@ -28,7 +28,7 @@ def held(*lines, rev=6):
 
 
 A = lease.line("canondb", "s-a", "/principal:dictate", "2026-10-22T10:00Z")
-B = lease.line("ordo", "s-b", "/principal:ask", "2026-10-22T10:01Z")
+B = lease.line("ordo", "s-b", "/principal:sit", "2026-10-22T10:01Z")
 ALL = lease.line("all", "s-c", "/principal:bootstrap", "2026-10-22T10:02Z")
 
 
@@ -43,7 +43,7 @@ class TakeTest(unittest.TestCase):
         self.assertIn("canondb · s-a · /principal:dictate · since", op["with"]["from"]["content"])
 
     def test_a_later_line_goes_after_the_last(self):
-        ops = lease.take(held(A), "ordo", "s-b", "/principal:ask", "t")
+        ops = lease.take(held(A), "ordo", "s-b", "/principal:sit", "t")
         self.assertEqual(ops[0]["op"], "insert")
         self.assertEqual(ops[0]["target"]["ids"], ["s1.100"])
         self.assertEqual(ops[0]["side"], "after")

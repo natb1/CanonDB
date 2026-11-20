@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""The notebook's write gate: the recorder writes it, and no other helper.
+"""The notebook's write gate: the recorder writes it, the comparer and the
+AI's recorder each one side of it by inserting, and no other helper.
 
 A PreToolUse hook on the document connector's writing tools, `update`,
 `batch`, `create` and `delete`, and its `export`, in both spellings the
@@ -24,6 +25,30 @@ name makes the writer but the bare one so defined. Every other turn that
 carries an `agent_type` is a helper, whatever defined it, a fork and a
 general helper included, and another plugin's name in front of `recorder`
 makes no writer.
+
+Two writers are held to a side. The AI's recorder writes the AI's own
+record and the comparer the user's side, each only by one `update` of the
+notebook addressed by its container, by a `ref` to one node given as a
+plain id (letters, digits, `_` and `-`, nothing the gate would fold), whose
+call holds no key but the container, the ref, the payload, an operation id,
+`verbose` and the prose engine (no `answering`), whose payload holds only
+`ops` and `ifRev`, and whose operations are all inserts of markdown beside
+one block named by id, `before` or `after` it, or at the end of the tab's
+root, with no `each`: no replace, delete, change of format, `find` target
+or words put inside a paragraph that stands, so an answer already there is
+never edited. Which side a node is on is read from the key `ai_root` of
+`.principal/notebook.json` (`kinds.ai_tabs`): the node ids it lists are the
+AI's, compared with the ref's in lower case, every other node is the
+user's. While the key is unset the AI's recorder is refused every write,
+and the comparer may write any tab, there being no tab of the AI's yet.
+Each is held so by this plugin's name in front of it, or by its bare name
+where the project's copy is the plugin's byte for byte; a bare name
+otherwise, and any other plugin's name, is refused as any kind without a
+writing tool is. What the gate cannot see: a tab under the AI's root that
+the key does not list is the user's to it; a block id inside a list or a
+table is read, not checked; and on a tab of the user's that still holds an
+answer of the AI's from before the root, which block the comparer's insert
+lands beside is read, not checked.
 
 Which turn is a kind of this plugin is the rule every gate of the plugin
 shares, in `kinds.py`: by this plugin's name in front of it; by its bare
@@ -139,7 +164,8 @@ def _sibling(name: str, file: str):
 #: what the gates take from `kinds.py`; a file without them is no rule
 SHARED = ("kind_of", "named_any", "spelled", "plugin_name", "places", "defined_here",
           "consumer", "held", "resolved", "within", "within_folded", "claude_home",
-          "in_jobs_tmp", "project_roots", "plugin_roots", "under", "below_scratch")
+          "in_jobs_tmp", "project_roots", "plugin_roots", "under", "below_scratch",
+          "ai_tabs")
 
 try:
     KINDS_MODULE = _sibling("principal_kinds", "kinds.py")
@@ -156,8 +182,16 @@ WRITER = "recorder"
 #: the kind that may write a document of its own, and never the notebook
 SPEAKER = "interviewer"
 
+#: the kind that writes the AI's own record, on the tabs the notebook file's
+#: `ai_root` names and nowhere else
+AI_WRITER = "ai-recorder"
+#: the kind that holds both records and writes the user's side only
+COMPARER = "comparer"
+#: the writers the gate holds to a side of the notebook, and to inserts
+SIDED = (AI_WRITER, COMPARER)
+
 #: every kind this plugin defines
-KINDS = ("canon-answer", "checker", "clean-reader", "coordinator", "fetcher",
+KINDS = ("ai-recorder", "checker", "clean-reader", "comparer", "coordinator", "fetcher",
          "grader", "interviewer", "recorder", "reviewer")
 
 #: the connector's writing tools, under both spellings
@@ -189,6 +223,13 @@ UNCLEAR = ("this write does not say plainly which document it is for; name the "
 
 FILES = ("this kind's data calls keep their local files under its own directory; "
          "give an out_dir or a file_path there, or none")
+
+UNSET = ("the AI's own record has no root yet: until the key ai_root of "
+         ".principal/notebook.json names it, the AI's recorder writes nothing")
+AI_SIDE = ("the AI's recorder writes only the tabs the key ai_root names, one tab a call, "
+           "and only by inserting; an answer already there is never edited")
+USER_SIDE = ("the comparer writes only the user's side, outside the tabs the key ai_root "
+             "names, one tab a call, and only by inserting")
 
 
 class Unclear(Exception):
@@ -466,6 +507,105 @@ def _answer(decision: str, reason: str) -> dict:
                                    "permissionDecisionReason": reason}}
 
 
+def _ops(payload) -> list:
+    """The operations of an `update`'s payload, an object or its text."""
+    payload = _object(payload, "the payload")
+    if payload is None:
+        raise Unclear("no payload")
+    ops = payload.get("ops")
+    if isinstance(ops, str):
+        try:
+            ops = json.loads(ops)
+        except ValueError as exc:
+            raise Unclear("the ops") from exc
+    if not isinstance(ops, list) or not ops or not all(isinstance(o, dict) for o in ops):
+        raise Unclear("the ops")
+    return ops
+
+
+#: a node id as the gate takes it from a sided writer: plain letters, digits,
+#: `_` and `-`, nothing to fold
+PLAIN_ID = re.compile(r"^[A-Za-z0-9_-]+$")
+#: what a sided writer's call and payload may hold, and no other key
+SIDED_CALL = ("container", "ref", "payload", "opId", "verbose", "engine")
+SIDED_PAYLOAD = ("ops", "ifRev")
+#: the one engine a sided writer's call may name, where it names one
+ENGINE = "prose"
+
+
+def _insert_only(op) -> bool:
+    """Whether one operation is an insert that adds blocks beside a block
+    or at the tab's end, and changes nothing that stands: its target one
+    block by id, `before` or `after` it, or the root, at its `end`; its
+    source markdown; and no `each`, which writes into every row."""
+    if not isinstance(op, dict) or op.get("op") != "insert" or "each" in op:
+        return False
+    target, side, source = op.get("target"), op.get("side"), op.get("source")
+    if not isinstance(target, dict) or not isinstance(source, dict):
+        return False
+    if source.get("as") != "markdown":
+        return False
+    if target.get("kind") == "blocks":
+        ids = target.get("ids")
+        return (set(target) <= {"kind", "ids"} and isinstance(ids, list) and len(ids) == 1
+                and isinstance(ids[0], str) and side in ("before", "after"))
+    if target.get("kind") == "root":
+        return set(target) <= {"kind"} and side == "end"
+    return False
+
+
+def sided(kind: str, tool, tool_input, cwd, env) -> dict:
+    """The decision for a writer held to a side: the AI's recorder to the
+    tabs the notebook file's `ai_root` names, the comparer to every other
+    tab; each by one `update` of the notebook, by a ref to one node, whose
+    operations are all inserts. No opinion where it holds; refused
+    otherwise, and refused where anything of it cannot be read."""
+    try:
+        if not isinstance(cwd, str) or not cwd:
+            raise Unclear("the project")
+        notebook = find_notebook(cwd, env)
+        if notebook is None:
+            raise Unclear("no notebook")
+        try:
+            tabs = KINDS_MODULE.ai_tabs(cwd, env)
+        except ValueError as exc:
+            raise Unclear("the notebook file") from exc
+        if kind == AI_WRITER and not tabs:
+            return _answer("deny", UNSET)
+        refusal = AI_SIDE if kind == AI_WRITER else USER_SIDE
+        if not isinstance(tool, str) or tool.rsplit("__", 1)[-1] != "update":
+            return _answer("deny", refusal)
+        if not isinstance(tool_input, dict):
+            raise Unclear("the input")
+        container = _object(tool_input.get("container"), "container")
+        if (container is None or container.get("kind") != "project"
+                or "create" in container or not _aimed(container.get("id"), notebook)):
+            return _answer("deny", refusal)
+        if any(key not in SIDED_CALL for key in tool_input):
+            # an `answering` naming a comment thread among them
+            return _answer("deny", refusal)
+        if tool_input.get("engine") not in (None, ENGINE):
+            return _answer("deny", refusal)
+        ref = _object(tool_input.get("ref"), "ref")
+        if ref is None or ref.get("object") != "node" or not isinstance(ref.get("id"), str):
+            return _answer("deny", refusal)
+        node = ref["id"]
+        if not PLAIN_ID.match(node) or plain(node) != node:
+            # a spelling the connector might fold to another node's id
+            return _answer("deny", refusal)
+        mine = {plain(t).strip().lower() for t in tabs}
+        if (node.lower() in mine) != (kind == AI_WRITER):
+            return _answer("deny", refusal)
+        payload = _object(tool_input.get("payload"), "the payload")
+        if payload is None or any(key not in SIDED_PAYLOAD for key in payload):
+            return _answer("deny", refusal)
+        if not all(_insert_only(op) for op in _ops(payload)):
+            return _answer("deny", refusal)
+    except (Unclear, TypeError, ValueError, RecursionError):
+        return _answer("deny", UNCLEAR)
+    return {}
+
+
 def writes(agent, plugin: str, cwd=None, env=None, own: str = AGENTS) -> bool:
     """Whether a turn keeps what the harness gives it: the main thread, which
     carries no agent type, and the recorder: by this plugin's name, or by
@@ -526,6 +666,9 @@ def decide(call, env=None, plugin=None, own: str = AGENTS) -> dict:
     if isinstance(tool, str) and tool not in GUARDED:
         return {}
     kind = own_kind(agent, plugin, call.get("cwd"), env, own)
+    if kind in SIDED and ((plugin and agent == plugin + ":" + kind)
+                          or (agent == kind and defined_here(kind, call.get("cwd"), env, own))):
+        return sided(kind, tool, call.get("tool_input"), call.get("cwd"), env)
     if kind == WRITER:
         # a bare recorder this project does not define as ours: a helper
         kind = ""

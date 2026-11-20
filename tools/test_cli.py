@@ -332,13 +332,6 @@ class RefusalCliTest(unittest.TestCase):
         self.assertIn("one-root", done.stderr)
         self.assertEqual(done.stdout, "")
 
-    def test_the_packet_s_directory_is_made(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            out = os.path.join(tmp, "nope", "packet", "lineage.md")
-            done = run("lineage.py", fixture("valid"), "canon", "--thread", "ti-esti", "-o", out)
-            self.assertEqual(done.returncode, 0, done.stderr)
-            self.assertTrue(os.path.exists(out))
-
     def test_a_question_verify_is_asked_for_and_the_graph_has_not(self):
         with tempfile.TemporaryDirectory() as tmp:
             manifest, tabs = document(tmp)

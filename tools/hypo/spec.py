@@ -727,6 +727,15 @@ def end_stated(graph: Graph) -> Yield:
 _NOT_THE_USER = re.compile(r"\bthe human\b", re.I)
 
 
+def not_the_user(prose: str) -> str:
+    """The words of ``prose`` that name the user otherwise than the user, by
+    the rule `user-named` holds the notebook's own words to; '' where none.
+    A question drafted for the AI is held to it too (`public.py
+    question`)."""
+    found = _NOT_THE_USER.search(text.plain(prose or ""))
+    return found.group(0) if found else ""
+
+
 @check("user-named",
        "the notebook's own words name the one it is kept for the user, never the human")
 def user_named(graph: Graph) -> Yield:
@@ -752,11 +761,11 @@ def user_named(graph: Graph) -> Yield:
         if q.hinge is not None:
             parts.append(("the answer's hinge", q.hinge.thesis))
         for what, prose in parts:
-            found = _NOT_THE_USER.search(text.plain(prose or ""))
+            found = not_the_user(prose)
             if found:
                 yield q.id, ("%s says %r where it means the user, and the one the "
                              "notebook is kept for is named the user"
-                             % (what, found.group(0)))
+                             % (what, found))
 
 
 @check("provenance-complete",

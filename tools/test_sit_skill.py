@@ -69,6 +69,13 @@ def lines(path, program):
     return out
 
 
+def _code(path, heading):
+    """The first JSON code block of a file after ``heading``."""
+    with open(path, encoding="utf-8") as fh:
+        text = fh.read()
+    return re.search(r"```json\n(.*?)```", text[text.index(heading):], re.S).group(1)
+
+
 def line(path, program, *first):
     """The first line of ``program`` whose words after it open with ``first``."""
     found = [s for s in lines(path, program) if s.split()[1:1 + len(first)] == list(first)]
@@ -530,20 +537,29 @@ class SentenceTest(unittest.TestCase):
         self.assertIn("No directory on it is named `questions`, `answers`, `replies`, "
                       "`results`, `sealed`, `rows`, `check` or `coordinator`", self.skill)
 
-    def test_the_goal_stands_in_its_two_sentences(self):
-        self.assertIn("The sitting's goal is to make the distance between what the principal's "
-                      "principles ask and what the principal does as small as it can be, "
-                      "weighted by the share each principle carries. The goal is only the thing "
-                      "being optimized and constrains no mechanism.", self.skill)
-        goal = self.skill[self.skill.index("## The goal"):self.skill.index("## Before anything")]
-        for words in ("is mechanism, and may change",
-                      "a prediction of the principal that fails",
-                      "an override or a deferral of the action ranked first",
-                      "an action or a sitting not taken up",
+    def test_the_skill_states_no_goal_of_its_own(self):
+        serves = self.skill[self.skill.index("## What the sitting serves"):
+                            self.skill.index("## Before anything")]
+        for words in ("This skill states no goal of its own.",
+                      "The sitting serves that portion of the principal's rule of life that can "
+                      "be delegated to the AI, as the notebook states it.",
+                      "The AI's graph is built by a line that arrives at the principle by which "
+                      "the delegated actions are carried out",
+                      "This skill is meant to be a projection of the AI's graph: each of its rules "
+                      "following from an answer there, and citing it.",
+                      "Most of it was built straight from the principal's words, as a stopgap, "
+                      "before the AI's graph held answers that cover it.",
+                      "A part of it is rebuilt when the AI's graph comes to cover that part and "
+                      "would build it differently",
+                      "How the AI's graph realizes the user's is not fixed here.",
                       "Each is an observation and never a verdict",
                       "or to a stated reason why none is owed",
-                      "Counts are mechanism and are never part of the goal"):
-            self.assertIn(words, goal)
+                      "A count is read, and never driven."):
+            self.assertIn(words, serves)
+        self.assertNotIn("## The goal", self.skill)
+        self.assertNotIn("is a reconciliation of the AI's graph", self.skill)
+        self.assertNotIn("weighted by the share each principle carries", self.skill)
+        self.assertNotIn("the goal says", self.skill)
 
     def test_the_round_s_rules_each_have_their_key_sentence(self):
         round_ = self.skill[self.skill.index("**3 — One action at a time: the round.**"):
@@ -598,7 +614,7 @@ class SentenceTest(unittest.TestCase):
                 "principal never reports it",
                 "a transient action divergence",
                 "the speaker writes `office_deferred` only at the principal's word",
-                "an observation of a gap, as the goal says, and never a verdict",
+                "an observation of a gap, as **Observations** says, and never a verdict",
                 "clears it when the principal takes the office up again",
                 "A measured value the principal reports with an item is kept as a plain field in "
                 "the day's marks document beside the marks.",
@@ -633,7 +649,8 @@ class SentenceTest(unittest.TestCase):
                 "it, still due",
                 "carries it in every whole-document `set` of `ordo/current`, and clears it",
                 "it never holds back the speaker's own next action",
-                "`office_deferred`'s `since` and `ordo/agenda`'s `fetched`"):
+                "`office_deferred`'s `since`, `ordo/agenda`'s `fetched`, `context.at` and "
+                "each `at` of `context.log`, and a line's `opened_at` and `touched_at`"):
             self.assertIn(words, round_)
         self.assertNotIn("a helper it starts", self.skill)
         self.assertNotIn("runs itself, or by a helper", self.skill)
@@ -714,6 +731,261 @@ class SentenceTest(unittest.TestCase):
             self.assertIn(words, self.skill)
 
 
+class LineTest(unittest.TestCase):
+    """The line in the AI's graph, and what the sitting's other rules say of
+    it: the key sentences."""
+
+    def setUp(self):
+        self.skill = flat(SKILL)
+        self.line = self.skill[self.skill.index("## The line in the AI's graph"):
+                               self.skill.index("## Attenuation")]
+
+    def test_a_clean_turn_is_a_run_of_its_own(self):
+        for words in ("Each is put in a clean turn: a run of the harness of its own, started by "
+                      "`tools/clean_turn.py`",
+                      "A clean turn is never a helper of this session",
+                      "the speaker runs `tools/clean_turn.py probe`; where it exits other than 0 "
+                      "no line is drawn",
+                      "the tool refuses a question of the graph the AI does not answer, or that "
+                      "holds no answer past held, a graph on which `only-ai-put` or "
+                      "`state-order` fails, a gap in the line"):
+            self.assertIn(words, self.line)
+
+    def test_the_nine_rules(self):
+        for words in (
+                # 1, the order
+                "The principal's requirement is recorded on the user's side first",
+                "Then the build, whose brief cites the AI's answers by their opening words and "
+                "never the principal's requirement. Then the build is checked against the record",
+                "Nothing is built straight from the principal's words unless the principal asks "
+                "for that explicitly, once",
+                # 2, intention
+                "Every line opens at the purpose: what the thing is for, and what it must never "
+                "do. A question of how stands only beneath an answer of why.",
+                "Each answer names the answers it rests on",
+                "a back-brief is drawn",
+                "A difference of intention is repaired by drawing again higher up, never by "
+                "correcting the mechanism.",
+                "one of them is a case where the letter of the mechanism and its purpose part",
+                # 3, questions
+                "Each such question is then its own action on the page, a `review` whose "
+                "prompt is the question word for word, for the principal to approve or "
+                "revise; it is put to the AI only on that approval.",
+                "A revision is written over `question.md` and checked again before it is "
+                "shown again, and only the text the principal approved is put.",
+                "`{\"sha256\": <the fingerprint of the question file as approved>, "
+                "\"approved\": <the time, from the clock>}`, and the clean turn refuses any "
+                "other text",
+                "breaks the notebook's rule for naming the user, saying what it found",
+                "A question the AI's own record raises comes verbatim from a drawer turn",
+                "Case situations go to the AI's record as questions; verdicts and reasons stay "
+                "on the user's side, with the comparing run.",
+                # 4, draws
+                "All are kept, none is chosen by what it says, and the first kept is the answer "
+                "of record (above). Where they part in what they would do, that is the "
+                "finding, and the question is drawn higher.",
+                # 5, the signal
+                "the drawer refuses words that do not open exactly one answer of the packet, "
+                "or hold fewer than four words",
+                # 5, a divergence
+                "The comparing run hands back only the redraw signal",
+                "After two redraws of one divergence, the default,",
+                "which stands in the AI's record in the principal's words by way of a further "
+                "approved question",
+                "a further question, a stated position, a build straight from the notebook as a "
+                "stopgap, or the principal does it",
+                # 6, budget
+                "A line spends at most twenty-four clean turns, the default",
+                "the turns spent against the budget and the cost the draws recorded",
+                # 7, the AI's action
+                "as the AI's action, naming the answers it rests on by their opening words, so "
+                "that the principal is prompted to review it",
+                # 8, four signals
+                "Before the speaker treats any constraint as binding it tests four signals and "
+                "says which apply: marked stale by a later note; a mechanism standing as a "
+                "principle",
+                "its price, the divergences recorded on it, beside the share it carries; and "
+                "unjustified, no edge to a principle nearer the root"):
+            self.assertIn(words, self.line)
+
+    def test_the_action_context_is_appended_to_within_a_round(self):
+        for words in ("once it is written for a round, nothing in it is changed until the "
+                      "principal answers",
+                      "appended to the same context as a record carrying its time, in "
+                      "`context.log`, each record `{at, paragraphs}`",
+                      "never kept as a separate log beside the context",
+                      "After the principal answers, the context is written anew."):
+            self.assertIn(words, self.skill)
+
+    def test_every_helper_is_started_with_a_model_named_for_the_job(self):
+        self.assertIn("Every helper the speaker starts is started with a model named for the "
+                      "job, never left to inherit", self.skill)
+        self.assertIn("Lookups and mechanical checks go to the smallest tier that can do them.",
+                      self.skill)
+
+    def test_the_table_and_the_turns(self):
+        for row in ("| `turn` | `full` | none: the speaker, by `tools/clean_turn.py` |",
+                    "| `compare` | `full` | `comparer` |",
+                    "| `place` | `mid` | `ai-recorder` |"):
+            self.assertIn(row, self.skill)
+        self.assertIn("(`state`, `remedy`, `line`) has no helper defined for it", self.skill)
+        self.assertIn("No other session puts a question to the AI's record.", self.skill)
+        self.assertNotIn("/principal:ask` in a session of the principal's own", self.skill)
+        self.assertNotIn("refuses a packet `tools/packet.py` did not write", self.skill)
+        self.assertIn("| `compare` | `full` | `comparer` | `notebook`, `index`: the line's index, "
+                      "`$SCRATCH/lines/<line>/index` |", self.skill)
+
+    def test_a_line_is_many_questions_deep(self):
+        """B2: the packet carries the line's earlier answers, each under its
+        question, the first kept draw of each the answer of record."""
+        for words in ("`tools/packet.py $SCRATCH/graph.json --under <id> --line "
+                      "$SCRATCH/lines/<line> -o $SCRATCH/lines/<line>/<n>/packet.md`",
+                      "then the line's own earlier questions and answers, in the order they "
+                      "were put, each answer under the question it was given to, marked "
+                      "`<<< question >>>` and `<<< answer >>>`",
+                      "a question of how reaches the answer of why above it on the line, however "
+                      "many questions deep",
+                      "the first draw a question's manifest lists as kept is the answer of "
+                      "record, the one every later packet carries; the others are the evidence "
+                      "of whether that answer is stable",
+                      "A drawer turn's packet is cut by the same line as the question it draws "
+                      "under",
+                      "and `index`, every file of the line by its absolute path, one a line",
+                      "The clean turn refuses a question in which a token opens with `@`"):
+            self.assertIn(words, self.line)
+
+    def test_the_open_lines_have_one_home(self):
+        lines = self.skill[self.skill.index("## The open lines"):self.skill.index("## Procedure")]
+        for words in ("Every open line still to be put to the principal is one document of the "
+                      "page's database, in the collection `lines`, beside `ordo`, and nothing "
+                      "waits anywhere else: not in the speaker's context, not only in the line "
+                      "doc, not only as a note in the notebook.",
+                      "An item of the line doc's *Opened* section and an open note on a tab each "
+                      "name the line's id and point to it",
+                      "`ordo/current.queue` is a projection of the open documents of `lines`, in "
+                      "the order of their `rank`, for the page to draw",
+                      "the page reads `ordo` alone, and never `lines`",
+                      "The speaker starts every sitting, and resumes after its context is "
+                      "compacted, by reading `ordo/current` and the open documents of `lines` "
+                      "with `ArtifactData`, and trusts them over anything it remembers",
+                      "A line is closed only by the principal's answer to it; by the principal's "
+                      "own later sentence settling it in terms, the line then closed with that "
+                      "sentence quoted in `answered_by` and listed in the action context, so "
+                      "that the principal can reopen it; or by the principal dropping it. Never "
+                      "because a reader predicts the answer",
+                      "No tool yet reads, orders or sweeps it"):
+            self.assertIn(words, lines)
+        for field in ("`id`", "`title`", "`kind`", "`state`", "`ask`", "`why`", "`source`",
+                      "`anchors`", "`seal`", "`parent` and `children`", "`answered_by`",
+                      "`rank`", "`opened_at` and `touched_at`", "`review_count`", "`origin`"):
+            self.assertIn("- " + field, lines)
+        for state in ("`open`", "`put`", "`answered`", "`closed`", "`merged`", "`dropped`"):
+            self.assertIn(state, lines)
+        self.assertIn("`{case, prompt, recommendation}`", lines)
+        self.assertIn("`{tab, block, fingerprint, words}`", lines)
+        example = json.loads(_code(SKILL, "## The open lines"))
+        self.assertEqual(set(example), {"id", "title", "kind", "state", "ask", "why", "source",
+                                        "anchors", "seal", "parent", "children", "answered_by",
+                                        "rank", "opened_at", "touched_at", "review_count",
+                                        "origin"})
+        self.assertIn("**1 — Read.** Read `ordo/current` and the open documents of `lines` "
+                      "first", self.skill)
+        self.assertIn("drawn from the open documents of `lines` (**The open lines**), which is "
+                      "where each waits", self.skill)
+
+    def test_the_attenuation_says_what_a_tool_holds_and_what_reading_holds(self):
+        for words in ("**What holds a clean turn, and what only reading holds.**",
+                      "are plain files: each binds a check to an exact text and catches drift, "
+                      "and none is a signature, so one written by hand with the right hash "
+                      "passes",
+                      "**\"None chosen\" is per directory.**",
+                      "While the key is unset the guard lets the comparer insert on any tab, and "
+                      "its definition alone keeps it off a tab that holds an answer of the AI's.",
+                      "**The open lines are held by reading.**",
+                      "**The sides of the notebook are held by node, not by block.**",
+                      "**The line's rules are held by reading.**"):
+            self.assertIn(words, self.skill)
+
+
+class LineWalk(Walk):
+    """The line's commands as the skill writes them: the packet, the leak
+    check and a clean turn, the turn dry-run."""
+
+    def test_a_question_from_packet_to_dry_run(self):
+        shutil.copy(os.path.join(TOOLS, "fixtures", "valid.json"),
+                    os.path.join(self.scratch, "graph.json"))
+        n = os.path.join(self.scratch, "lines", "l1", "1")
+        os.makedirs(n)
+        values = {"<line>": "l1", "<n>": "1", "<id>": "ti-esti"}
+        self.sh(line(SKILL, "packet.py"), values)
+        self.assertTrue(os.path.exists(os.path.join(n, "packet.md.fingerprint.json")))
+        with open(os.path.join(n, "question.md"), "w", encoding="utf-8") as fh:
+            fh.write("What is the thing for, and what must it never do?\n")
+        self.sh(line(SKILL, "public.py", "question"), values)
+        with open(os.path.join(n, "question.md"), "rb") as fh:
+            digest = hashlib.sha256(fh.read()).hexdigest()
+        with open(os.path.join(n, "approval.json"), "w") as fh:
+            json.dump({"sha256": digest, "approved": T}, fh)
+        done = self.sh(line(SKILL, "clean_turn.py", "answer") + " --dry-run", values)
+        self.assertIn("--system-prompt-file", done.stdout)
+        self.assertIn("What is the thing for", done.stdout)
+        drawn = os.path.join(self.scratch, "lines", "l1", "drawn-1")
+        os.makedirs(drawn)
+        self.sh(line(SKILL, "packet.py").replace("/<n>/", "/drawn-<n>/"), values)
+        done = self.sh(line(SKILL, "clean_turn.py", "draw") + " --dry-run", values)
+        self.assertIn("A relationship that continues", done.stdout)
+        done = self.sh(line(SKILL, "clean_turn.py", "probe") + " --dry-run")
+        self.assertIn("--tools", done.stdout)
+
+    def test_the_second_question_carries_the_first_s_answer_of_record(self):
+        """B2 walked: question 1 drawn (the harness mocked), question 2's
+        packet cut by the skill's line holds question 1 and its first kept
+        draw, and a redraw signal from that answer reaches the drawer."""
+        import shlex
+        import clean_turn
+        from test_clean_turn import Harness
+        shutil.copy(os.path.join(TOOLS, "fixtures", "valid.json"),
+                    os.path.join(self.scratch, "graph.json"))
+        base = os.path.join(self.scratch, "lines", "l1")
+
+        def put(n, words):
+            values = {"<line>": "l1", "<n>": str(n), "<id>": "ti-esti"}
+            os.makedirs(os.path.join(base, str(n)))
+            self.sh(line(SKILL, "packet.py"), values)
+            with open(os.path.join(base, str(n), "question.md"), "w", encoding="utf-8") as fh:
+                fh.write(words)
+            self.sh(line(SKILL, "public.py", "question"), values)
+            with open(os.path.join(base, str(n), "question.md"), "rb") as fh:
+                digest = hashlib.sha256(fh.read()).hexdigest()
+            with open(os.path.join(base, str(n), "approval.json"), "w") as fh:
+                json.dump({"sha256": digest, "approved": T}, fh)
+            return values
+
+        values = put(1, "What is the morning for, and what must it never do?\n")
+        argv = shlex.split(self.fill(line(SKILL, "clean_turn.py", "answer"), values))[1:]
+        h = Harness(answers=("The morning is for the plants, before anything is sent.",
+                             "The morning is for the post.", "The morning is for rest."))
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(clean_turn.main(argv, runner=h), 0)
+        values = put(2, "How is the morning kept?\n")
+        with open(os.path.join(base, "2", "packet.md"), encoding="utf-8") as fh:
+            pairs = __import__("packet").parse(fh.read())
+        self.assertEqual(pairs[-1], ("What is the morning for, and what must it never do?",
+                                     "The morning is for the plants, before anything is sent."))
+        self.assertNotIn("The morning is for the post.", str(pairs))
+        done = self.sh(line(SKILL, "clean_turn.py", "answer") + " --dry-run", values)
+        self.assertIn("The morning is for the plants", done.stdout)
+        self.assertTrue(done.stdout.rstrip().endswith("How is the morning kept?"))
+        os.makedirs(os.path.join(base, "drawn-1"))
+        self.sh(line(SKILL, "packet.py").replace("/<n>/", "/drawn-<n>/"),
+                dict(values, **{"<n>": "1"}))
+        drawn = line(SKILL, "clean_turn.py", "draw") + ' --from "The morning is for the" --dry-run'
+        done = self.sh(drawn, {"<line>": "l1", "<n>": "1"})
+        self.assertIn("Draw from the answer that opens: The morning is for the", done.stdout)
+
+
 class PageTest(unittest.TestCase):
     """The page the round is put on, read as text, and the contract the skill
     gives for its four documents."""
@@ -754,8 +1026,15 @@ class PageTest(unittest.TestCase):
                      "sessionStorage", "indexedDB", "document.cookie", "eval", "Function("):
             self.assertNotIn(word, self.script)
         # no control, made in the source or at run time, in any quoting or case
-        controls = r"(?:button|input|textarea|select|form|option|details|dialog|a)"
+        controls = r"(?:button|input|textarea|select|form|option|dialog|a)"
         self.assertIsNone(re.search(r"<\s*%s\b" % controls, self.page, re.I))
+        # one native details element, the waiting list's card, closed in the source and
+        # never opened or closed by the script
+        self.assertEqual(re.findall(r"<\s*details\b[^>]*>", self.page, re.I),
+                         ['<details class="panel wait" id="wait" hidden>'])
+        self.assertIsNone(re.search(r"\.open\b|Attribute\(\s*[\"'`]open", self.script))
+        self.assertIsNone(re.search(r"[\"'`]\s*(?:details|summary)\s*[\"'`]", self.script,
+                                    re.I))
         self.assertIsNone(re.search(r"[\"'`]\s*%s\s*[\"'`]" % controls, self.script, re.I))
         for word in ("onclick", "addEventListener", "contenteditable", "contentEditable",
                      "innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "tabindex"):
@@ -829,8 +1108,17 @@ class PageTest(unittest.TestCase):
         sess = self.body("renderSession")
         self.assertIn('kindOf(n.kind) === "question" ? [] : texts(n.recommendation)', sess)
         self.assertIn('$("next-rec").hidden = $("next-rec-label").hidden = !rec.length;', sess)
-        self.assertLess(self.page.index('id="next-case"'), self.page.index('id="next-rec"'))
-        self.assertLess(self.page.index('id="next-rec"'), self.page.index('id="next-prompt"'))
+        self.assertLess(self.page.index('id="next-case"'), self.page.index('id="next-prompt"'))
+        self.assertLess(self.page.index('id="next-prompt"'), self.page.index('id="next-rec"'))
+        # the action context's appended records, after a divider each, and the first
+        # writing's time under the heading
+        ctx = self.body("renderContext") if "function renderContext" in self.script else self.script
+        self.assertIn('$("ctx-at").textContent = w ? "Written " + w : "";', ctx)
+        self.assertIn("arr(c.log).forEach(", ctx)
+        self.assertIn('rec.appendChild(el("div", "logsep", label));', ctx)
+        self.assertLess(self.page.index('id="ctx-at"'), self.page.index('id="ctx-log"'))
+        self.assertIn('$("wait-sum").textContent = "Waiting, in order (" + list.length + ")";',
+                      self.script)
         self.assertIn("The helpers' action context", self.page)
         # db is held in no alias: every mention is one of these
         rest = re.sub(r'var db = null;|db = await window\.claude\.use\("db"\);|'
@@ -877,7 +1165,7 @@ class PageTest(unittest.TestCase):
                  "recommendation", "day_start", "days", "bells", "time", "time_by_day", "name", "office", "label",
                  "except_days", "off_from", "off_to", "ask", "by",
                  "office_deferred", "since", "bell",
-                 "events", "start", "end", "all_day", "fetched"}
+                 "events", "start", "end", "all_day", "fetched", "log"}
         self.assertEqual(read - internal, given)
         for field in ("predicted", "diverged", "addressed"):
             self.assertIn('"%s"' % field, self.script)
@@ -894,7 +1182,9 @@ class PageTest(unittest.TestCase):
 
     def test_the_contract_names_every_field_the_page_reads(self):
         top = {"current": set(re.findall(r"\bcurrent\.(\w+)", self.script)),
-               "rule": set(re.findall(r"\br\.(\w+)", self.script)),
+               # `r` names a record of the context's log inside renderContext
+               "rule": set(re.findall(r"\br\.(\w+)", self.script.replace(
+                   self.body("renderContext"), ""))),
                "agenda": set(re.findall(r"\b(?:ag|agenda)\.(\w+)", self.script))}
         self.assertEqual(top["current"], {"context", "next", "queue", "background", "updated",
                                           "office_deferred"})
@@ -905,7 +1195,7 @@ class PageTest(unittest.TestCase):
                   "kind", "line", "case", "prompt", "how", "deferred", "reason", "title",
                   "recommendation", "time", "time_by_day", "name", "office", "label", "except_days",
                   "off_from", "off_to", "ask", "by", "reason", "since", "bell",
-                  "start", "end", "all_day")
+                  "start", "end", "all_day", "at", "log")
         for field in nested:
             self.assertTrue(re.search(r"\.%s\b|\"%s\"" % (field, field), self.script), field)
         for field in sorted(top["current"] | top["rule"] | top["agenda"]) + list(nested):
@@ -920,9 +1210,15 @@ class PageTest(unittest.TestCase):
                       "speaker writes all four",
                       "on a phone the panel sits under the next action",
                       "\"This bell\"", "\"Next 48 hours\"",
-                      "\"Waiting, in order\", the queue (rule 10)",
-                      "\"Waiting, in order\" in the context panel, below the timeline and above "
-                      "the line saying when the calendar was read",
+                      "a second card holds only \"Waiting, in order (N)\", the queue (rule 10), as "
+                      "a native details element closed by default, which the page never opens or "
+                      "closes on a redraw",
+                      "as \"Waiting, in order (N)\" in its own card below the context panel, a "
+                      "details element closed by default",
+                      "`at`, the ISO time the context was first written, shown as a quiet line "
+                      "\"Written HH:MM\" under the heading",
+                      "each after a divider labelled \"Added HH:MM\", with the date where it is "
+                      "not today",
                       "which the speaker writes at each sync, after reading the principal's calendar",
                       "and `by`, `\"session\"` where the item is the session's to run",
                       "the principal never reports it",
@@ -944,8 +1240,8 @@ class PageTest(unittest.TestCase):
                       "`prediction` never holds the prediction of the action now put",
                       "the question put on the page as an action (rule 10)",
                       "`recommendation`, a string or a list of strings, the speaker's "
-                      "recommendation, shown under \"Recommendation\" between the case and the "
-                      "prompt and only where set: every review of mechanism carries it here, its "
+                      "recommendation, shown under \"Recommendation\" after the prompt and only "
+                      "where set: every review of mechanism carries it here, its "
                       "own field and never in the case, and a question, or a review that states or "
                       "changes a principle, never carries one, the page showing none on a "
                       "`question`.",
@@ -1089,6 +1385,11 @@ class PageBehaviourTest(unittest.TestCase):
         {"start": "2030-01-04T10:00:00Z", "end": "2030-01-04T11:00:00Z", "title": "An example far"},
         {"start": "2030-01-03", "end": "2030-01-04", "title": "An example fair", "all_day": True}],
         "fetched": "2030-01-02T08:50:00Z"}
+    LOGGED = {"heading": "Your answer, as read", "paragraphs": ["FIRST-WRITING"],
+              "at": "2030-01-02T08:55:00Z",
+              "log": [{"at": "2030-01-02T08:58:00Z", "paragraphs": ["LOG-ONE"]},
+                      {"at": "2030-01-02T08:59:00Z", "paragraphs": []},
+                      {"at": "2030-01-01T20:00:00Z", "paragraphs": "LOG-STRING"}]}
     REVIEW = {"next": {"kind": "review", "prompt": "Is the new wording right?",
                        "recommendation": ["Keep the shorter wording.", "It reads plainer."]},
               "updated": "2030-01-02T09:00:00Z"}
@@ -1147,6 +1448,9 @@ class PageBehaviourTest(unittest.TestCase):
                                  "water_used": "MEASURED-2-L"}},
             "session_overruled": {"now": cls.NOW, "current": cls.CURRENT, "rule": cls.RULE,
                                   "ticks": {cls.SESSION_KEY: "overruled " + D}},
+            # the action context appended to before the next answer
+            "logged": {"now": cls.NOW, "rule": cls.RULE, "ticks": None,
+                       "current": dict(cls.CURRENT, context=cls.LOGGED)},
         }
         with tempfile.TemporaryDirectory() as tmp:
             paths = []
@@ -1220,10 +1524,22 @@ class PageBehaviourTest(unittest.TestCase):
         self.assertIn("Done: Feed the goldfish", self.text("junk", "office-resolved"))
 
 
-    def test_the_waiting_list_is_in_the_panel(self):
+    def test_the_waiting_list_is_its_own_card_with_a_count(self):
         for name in ("quiet", "rung"):
             self.assertTrue(self.shown(name, "wait"), name)
             self.assertIn("Review the rows", self.text(name, "wait-list"))
+            self.assertEqual(self.text(name, "wait-sum"), "Waiting, in order (1)")
+
+    def test_the_action_context_shows_its_time_and_its_appended_records(self):
+        self.assertTrue(self.shown("logged", "ctx-at"))
+        self.assertEqual(self.text("logged", "ctx-at"), "Written 08:55")
+        log = self.text("logged", "ctx-log")
+        self.assertIn("Added 08:58LOG-ONE", log)
+        self.assertIn("LOG-STRING", log)
+        self.assertIn("2030-01-01", log)
+        self.assertEqual(log.count("Added"), 2)
+        self.assertLess(log.index("LOG-ONE"), log.index("LOG-STRING"))
+        self.assertFalse(self.shown("rung", "ctx-at"))
 
     def test_an_item_run_by_the_session_is_only_in_the_panel(self):
         self.assertIn("Copy the list · run by the session, open", self.text("rung", "panel-bell"))
