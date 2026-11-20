@@ -44,7 +44,11 @@ ADOPTED = re.compile(r"\bAdopted by the user\b")
 #: the test of the dictation: each item a question put after the notebook was
 #: updated, the record's answer sealed before it and graded after
 FIDELITY = "fidelity rounds"
-GRADES = ("agrees", "verdict only", "short of the edge", "diverges", "silent")
+#: a sitting's three (agrees, diverges in part, diverges) and the grader's
+#: finer ones; "diverges in part" stands before "diverges" so that the
+#: longer is the one read
+GRADES = ("agrees", "diverges in part", "verdict only", "short of the edge", "diverges",
+          "silent")
 GRADE = re.compile(r"\bGrade: (?P<grade>%s)\b" % "|".join(GRADES))
 REMEDY = re.compile(r"\bRemedy: ")
 REDRAWN = re.compile(r"\bRedrawn: ")

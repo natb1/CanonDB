@@ -46,12 +46,14 @@ from .model import Graph
 
 BY = ("speaker", "clean-reader")
 KINDS = ("question", "review", "act")
-#: the grader's grades of a prediction that failed, in whole or in part;
-#: ``agrees`` and ``silent`` failed in nothing and are counted where the
-#: line doc's Fidelity rounds keep every grade
-FAILED = ("verdict only", "short of the edge", "diverges")
+#: the grades of a prediction that failed, in whole or in part: a sitting's
+#: ``diverges in part`` and ``diverges``, and the grader's finer
+#: ``verdict only`` and ``short of the edge``; ``agrees`` and ``silent``
+#: failed in nothing and are counted where the line doc's Fidelity rounds
+#: keep every grade
+FAILED = ("diverges in part", "diverges", "verdict only", "short of the edge")
 #: the grades that gave another verdict or reason, and so say which way
-DIRECTED = ("verdict only", "diverges")
+DIRECTED = ("diverges in part", "diverges", "verdict only")
 DIRECTIONS = ("expected-more-limits", "expected-fewer-limits", "expected-less-change",
               "expected-more-change", "missed-recorded-sentence", "other")
 RECURS = 2

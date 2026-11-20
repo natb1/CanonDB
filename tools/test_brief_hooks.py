@@ -352,6 +352,22 @@ class ConventionGateTest(Base):
             self.assertEqual(self.bash(read), {}, read)
         self.assertTrue(self.denied(self.bash("git tag -a v1 -m 'for the human'")))
         self.assertTrue(self.denied(self.bash("git notes add -m 'for the human'")))
+        # N3 of the loading review: a merge's own message leaves as a commit's does
+        self.assertTrue(self.denied(self.bash("git merge -m 'for the human' beds")))
+        self.assertTrue(self.denied(self.bash("git merge --no-ff --message='for the human' beds")))
+        self.assertTrue(self.denied(self.bash("git merge '-mfor the human' beds")))
+        self.assertEqual(self.bash("git merge the-human-branch"), {})
+        # N3 of the small-debts review: bundled flags, and a message file attached or bundled
+        self.assertTrue(self.denied(self.bash("git merge --no-ff -nm 'for the human' beds")))
+        msg = os.path.join(self.tmp, "msg.txt")
+        with open(msg, "w") as fh:
+            fh.write("Let the human choose the beds\n")
+        for cmd in ("git merge -F %s beds", "git merge -F%s beds", "git merge -nF %s beds",
+                    "git commit -F%s"):
+            self.assertTrue(self.denied(self.bash(cmd % msg)), cmd)
+        # a message file that cannot be read fails open
+        self.assertEqual(self.bash("git merge -F%s beds" % os.path.join(self.tmp, "none.txt")), {})
+        self.assertEqual(self.bash("git merge -s ours -Xpatience beds"), {})
         self.assertTrue(self.denied(self.bash("cd x && git -C y commit -m 'the human'")))
         self.assertTrue(self.denied(self.bash("gh issue comment 3 -b 'the human'")))
         self.assertTrue(self.denied(self.bash(

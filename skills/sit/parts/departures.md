@@ -59,6 +59,9 @@ Read this part when `/principal:dictate`, `/principal:bootstrap` or another entr
 - Building is briefed to a helper of the mid tier and reviewed by one of the full tier, where
   `/principal:bootstrap` builds in its own session.
 
+Before, here, is this skill as last merged: a rule added and taken out again before a merge
+reverses nothing, and is not listed.
+
 What this entry point says now that reverses what it said before:
 
 - An ordinary session may run a sitting, the open way, where before a session not started as

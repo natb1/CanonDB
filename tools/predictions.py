@@ -23,9 +23,10 @@ wait as note words, one ``*.txt`` file each, in a directory passed as
                                     it stands, or whose stamp file is not what
                                     ``stamp`` prints
 
-``note`` refuses a grade that is not a failure (``verdict only``, ``short
-of the edge``, ``diverges``), a direction outside its list, and a grade of
-``verdict only`` or ``diverges`` without one. A refusal is one ``REFUSED:``
+``note`` refuses a grade that is not a failure (``diverges in part``,
+``diverges``, ``verdict only``, ``short of the edge``), a direction outside
+its list, and a grade of ``diverges in part``, ``diverges`` or ``verdict
+only`` without one; ``agrees`` is refused, nothing having diverged. A refusal is one ``REFUSED:``
 line per reason on standard error and exits 1. ``T`` is an ISO 8601 UTC time
 such as ``2030-01-02T03:04:05Z``. Nothing here reaches the network or reads
 a clock.

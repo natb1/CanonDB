@@ -23,6 +23,9 @@ words, and `tools/board.py` refuses a value with a space.
 The coordinator runs every kind the table gives a helper, every `review` among them and every
 `compare`, and passes over the rest; `probe`, `observe` and `turn` the speaker claims and marks done
 itself.
+Two words of the table name other things too. The `probe` job puts the line doc's address on the
+board; it is not `tools/clean_turn.py probe`, the check of the harness run before a sitting's
+first clean turn. A `turn` job's input `line` is a question's directory on a line, not the line.
 The coordinator is handed the board's address, the path of `$SCRATCH` and the path of the
 plugin's `tools/`, and nothing else; every address it puts on the board is under `$SCRATCH`. It
 hands a clean reader the path of the question's file, which that reader may read, and the

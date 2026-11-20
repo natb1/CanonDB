@@ -619,6 +619,7 @@
       "application": "the pending action through a bell",
       "files": [
         "web/ordo.html",
+        "tools/test_page_done.py",
         "skills/sit/SKILL.md",
         "skills/sit/parts/arrangement.md",
         "skills/sit/parts/brief.md",

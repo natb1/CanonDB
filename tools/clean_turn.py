@@ -74,8 +74,10 @@ whose run made other than one model turn is refused and not kept.
         the harness's version, the run's session id and cost, the flags, the
         residue seen, and the SHA-256 of spec, packet and question) and
         `manifest.json`. A draw whose run was not clean, made other than one
-        model turn, or whose answer holds the account's email address, its
-        local part, the run's directory, a packet's mark or a token opening
+        model turn, or whose answer holds the account's email address (read
+        with format characters dropped, compatibility forms folded, spelled
+        out with a gap after each letter, or its parts joined by other stops), its local part, the
+        run's directory, a packet's mark or a token opening
         with `@`, is refused and not written, and the rest are still drawn.
         A packet cut for question n of a line is taken only with that
         question's `question.md` and `draws/` of the line, and only while
@@ -129,6 +131,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import unicodedata
 
 try:  # stop quietly, rather than with a traceback, when the pipe printed to closes
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
@@ -386,18 +389,24 @@ def placed(side: dict, packet_path: str, question_path: str, out: str) -> None:
     what the fingerprint says it carried. A question in a question's
     directory of a line, ``<line>/<n>/``, and an out directory that is a
     question's ``draws``, each read through any link, are answered only over
-    such a packet."""
+    such a packet. A directory named in digits is a question's of a line
+    where the directory above it holds a first question, ``1/question.md``,
+    as every line does; ``/tmp/2026/question.md`` is no line's."""
     real = os.path.realpath
     upto, line_dir = side.get("for"), side.get("line_dir")
     qdir = os.path.dirname(real(question_path))
+
+    def of_a_line(directory: str) -> bool:
+        return bool(packets.NUMBER.fullmatch(os.path.basename(directory))) \
+            and os.path.isfile(os.path.join(os.path.dirname(directory), "1", "question.md"))
+
     if upto is None:
-        if packets.NUMBER.fullmatch(os.path.basename(qdir)):
+        if of_a_line(qdir):
             raise Refusal(PACKET, "the question stands in question %s's directory of a line, "
                                   "and the packet was not cut for it: cut it with "
                                   "packet.py --line" % os.path.basename(qdir))
         target = real(out)
-        if os.path.basename(target) == "draws" \
-                and packets.NUMBER.fullmatch(os.path.basename(os.path.dirname(target))):
+        if os.path.basename(target) == "draws" and of_a_line(os.path.dirname(target)):
             raise Refusal(PACKET, "the out directory is the draws of question %s of a line, "
                                   "and the packet was not cut for it: cut it with "
                                   "packet.py --line"
@@ -604,10 +613,35 @@ def account(runner=subprocess.run) -> str:
     return email
 
 
+def _folded(text: str) -> str:
+    """Text read as a reader would: compatibility forms folded, format
+    characters (a zero-width space among them) dropped, case folded."""
+    text = unicodedata.normalize("NFKC", text)
+    return "".join(c for c in text if unicodedata.category(c) != "Cf").casefold()
+
+
+def _disguised(email: str):
+    """The address hidden by separators alone, as a pattern: spelled out,
+    one letter or digit at a time with a separator after each; or its own
+    parts, the letters and digits between its stops, kept whole and joined
+    by stops of any marks but no space. Ordinary prose, whose words are
+    parted by spaces, is neither, so "Markdown, developers" is not
+    mark@down.dev."""
+    chars = [c for c in email if c.isalnum()]
+    parts = re.findall(r"[^\W_]+", email)
+    if len(chars) < 8 or not parts:
+        return None
+    spelled = r"[\W_]+".join(re.escape(c) for c in chars)
+    joined = r"[^\w\s]+".join(re.escape(p) for p in parts)
+    return re.compile(r"(?<![^\W_])(?:%s|%s)(?![^\W_])" % (spelled, joined))
+
+
 def exposed(answer: str, email: str, cwd: str) -> str:
     """What of the account or the run an answer gives away, or ''."""
-    low = answer.casefold()
-    if email.casefold() in low:
+    low = _folded(answer)
+    email = _folded(email)
+    hidden = _disguised(email)
+    if email in low or (hidden is not None and hidden.search(low)):
         return "the account's email address"
     local = email.split("@", 1)[0].casefold()
     if local and re.search(r"(?<![\w.])%s(?!\w)" % re.escape(local), low):

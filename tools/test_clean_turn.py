@@ -315,6 +315,30 @@ class AnswerTest(Base):
                 with open(os.path.join(self.out, "manifest.json"), encoding="utf-8") as fh:
                     self.assertNotIn(EMAIL.split("@")[0], fh.read())
 
+    def test_an_address_hidden_or_spelled_out_is_still_the_address(self):
+        """N5 of round 4: a zero-width space, a wide form, or the address
+        spelled out letter by letter is the address."""
+        for text in ("Write to someone.else\u200b@example.invalid.",
+                     "Write to \uff53omeone.else@example.invalid.",
+                     "s o m e o n e . e l s e @ e x a m p l e . i n v a l i d",
+                     "Some\u2060one.Else signs it."):
+            with self.subTest(text=repr(text)):
+                self.assertTrue(clean_turn.exposed(text, EMAIL, "/tmp/run-q7"))
+        self.assertTrue(clean_turn.exposed("Write to someone#else(@)example[.]invalid.", EMAIL,
+                                           "/tmp/run-q7"))
+        self.assertEqual(clean_turn.exposed("Someone else may say so; the example is invalid.",
+                                            EMAIL, "/tmp/run-q7"), "")
+        # N1 of the small-debts review: an address made of words, its words next to each
+        # other in prose, is not the address
+        for email, text in (("mark@down.dev", "Write it in Markdown, developers say."),
+                            ("mark@down.dev", "Write it in Markdown, dev."),
+                            ("sun@flower.com", "Sunflower. Compare the two."),
+                            ("ab12@cd.io", "ab 12 cd io 99")):
+            with self.subTest(email=email, text=text):
+                self.assertEqual(clean_turn.exposed(text, email, "/tmp/run-q7"), "")
+        self.assertTrue(clean_turn.exposed("m a r k @ d o w n . d e v", "mark@down.dev",
+                                           "/tmp/run-q7"))
+
     def test_an_answer_that_names_its_directory_is_not_written(self):
         h = Harness(answers=(lambda cwd: "I stand in %s." % cwd,))
         self.assertEqual(self.answer("--draws", "1", harness=h)[0], clean_turn.EXPOSED)
@@ -874,6 +898,19 @@ class LinePlaceTest(Base):
         code, _, err, _ = self.answer("--draws", "1")
         self.assertEqual(code, clean_turn.PACKET)
         self.assertIn("question 2's directory", err)
+
+    def test_a_directory_named_in_digits_outside_a_line_is_no_line_s(self):
+        """N5 of round 6: a question in /tmp/2026/ over a packet with no line
+        is answered, there being no first question above it."""
+        year = self.path(os.path.join("plain", "2026"))
+        os.makedirs(year)
+        shutil.copy(self.question, os.path.join(year, "question.md"))
+        self.question = os.path.join(year, "question.md")
+        self.packet = os.path.join(year, "packet.md")
+        self.out = os.path.join(year, "draws")
+        self.cut("--under", "ti-esti")
+        code, _, err, _ = self.answer("--draws", "1")
+        self.assertEqual(code, 0, err)
 
     def test_an_out_directory_beside_its_place_is_refused(self):
         self.cut("--line", self.line)
