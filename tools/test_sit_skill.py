@@ -612,7 +612,8 @@ class SentenceTest(unittest.TestCase):
                 "the file says who predicted",
                 "There are no checklists.",
                 "7. **Bells.** An unresolved office of the principal's shows first unless the "
-                "principal has set it aside; items run by the session never hold the card.",
+                "principal has set it aside or an action put before the bell rang is still "
+                "pending; items run by the session never hold the card.",
                 "until each of the principal's is done, overruled or marked not due, or the "
                 "principal sets the office aside; only then does the speaker's own next action "
                 "show",
@@ -709,8 +710,10 @@ class SentenceTest(unittest.TestCase):
                           self.skill.index("## Procedure")]
         for words in ("While the latest bell has an item of the principal's unresolved, the page "
                       "is putting the office and not `next`",
-                      "or the principal sets the office aside; items run by the session never "
-                      "hold the card",
+                      "or the principal sets the office aside, except while an action put "
+                      "before the bell rang is still pending",
+                      "the pending action is resolved after the bell, then the very next item is "
+                      "the office item; items run by the session never hold the card",
                       "the speaker reads the clock and writes `taken`",
                       "the speaker lists each in the action context as still due from that bell "
                       "until the principal says done, overruled or not due for it, and lets none "
@@ -1188,6 +1191,23 @@ class PageTest(unittest.TestCase):
         text = flat(SKILL)
         cls.contract = text[text.index("## The page"):text.index("## Procedure")]
 
+    def test_the_contract_gives_the_pending_action_s_fields(self):
+        for words in ("`put_at`, an ISO time with its offset, when this action was put",
+                      "restating, rewording or adding to the same pending action",
+                      "counted only where it is not earlier than `put_at`",
+                      "`resolved_at`, an ISO time", "`asks`, `false` on an action that asks nothing",
+                      "a second bell during the hold neither ends it nor drops the first bell's items",
+                      "whether a hold lapses when no sitting is open is an open line for the user",
+                      "\"After this: the <bell name> office\"",
+                      "the very next thing the card shows is the carried office's first item"):
+            self.assertIn(words, self.contract)
+        skill = flat(SKILL)
+        self.assertIn("An action already put and still pending when a bell rings is not "
+                      "replaced by the office", skill)
+        self.assertIn("An action already put and still pending when a bell rings stays on the "
+                      "card", skill)
+        self.assertIn("`next.put_at` and `next.resolved_at`, the time in a mark", skill)
+
     def test_it_loads_no_script_from_another_host(self):
         for tag in re.findall(r"<script\b[^>]*>", self.page):
             self.assertNotIn("src=", tag)
@@ -1239,7 +1259,9 @@ class PageTest(unittest.TestCase):
         nxt = self.body("renderNext")
         self.assertRegex(nxt, r"if\s*\(\s*st\.unres\.length\s*&&\s*!st\.aside\s*\)\s*renderOffice\(st\);\s*"
                               r"else\s*\{\s*renderSession\(\);\s*if\s*\(st\.aside\)\s*renderAside\(st\);\s*\}")
-        self.assertEqual(self.script.count("renderSession("), 2)
+        # the session's action is drawn where no office leads, and where a pending action holds the card
+        self.assertRegex(nxt, r"if\s*\(st\.hold\)\s*\{\s*renderSession\(\);\s*renderHeld\(st\);\s*return;\s*\}")
+        self.assertEqual(self.script.count("renderSession("), 3)
         office = self.body("renderOffice")
         self.assertIn('$("next-prompt").textContent = it.label;', office)
         self.assertNotIn('$("next-prompt").textContent = str(n', office)
@@ -1279,15 +1301,16 @@ class PageTest(unittest.TestCase):
         self.assertIn("end = new Date(now.getTime() + 48 * 3600 * 1000)", panel)
         self.assertIn("var isNext = firstBell; firstBell = false;", panel)
         self.assertIn('isNext ? "Next bell" : "Bell"', panel)
-        self.assertIn('if (!st.left.length) box.appendChild(el("p", "quiet", "The office is '
+        self.assertIn('if (i === 0 && !st.left.length) box.appendChild(el("p", "quiet", "The office is '
                       'complete."));', panel)
         self.assertIn('!agenda ? "No calendar has been read."', panel)
         self.assertIn("st.left.concat(st.all.filter(function (x) { return x.session && "
                       "!(x.state === \"open\" || x.state === \"taken\"); }))", panel)
         self.assertIn("if (en <= now || s > end) return null;", self.body("upcomingEvents"))
         self.assertIn("if (at > now && at <= end)", self.body("upcomingBells"))
-        # the office's items come from the latest rung bell alone, and only bell- keys are read
-        self.assertIn("var all = lr.rung ? officeItems(lr.rung.b, rd) : [];", now)
+        # the office's items come from the latest rung bell, and the bells a pending action carries,
+        # and only bell- keys are read
+        self.assertIn("var all = lr.rung ? marked(lr.rung) : [];", now)
         self.assertIn("ticks[it.key]", now)
         self.assertEqual(len(re.findall(r"\bticks\[", self.script)), 1)
         self.assertIsNone(re.search(r"Object\.keys\(\s*ticks", self.script))
@@ -1348,13 +1371,13 @@ class PageTest(unittest.TestCase):
             # what the page computes
             "b", "m", "ds", "rd", "md", "mins", "wd", "date", "key", "v", "state", "rung",
             "unres", "applied", "all", "left", "aside", "session", "now", "at", "ev", "allDay",
-            "y", "mo", "d"}
+            "y", "mo", "d", "hold", "carry"}
         given = {"context", "next", "queue", "background", "updated",
                  "heading", "paragraphs", "for", "against", "prediction", "notes", "who", "text",
                  "kind", "line", "case", "prompt", "how", "deferred", "reason", "title",
                  "recommendation", "day_start", "days", "bells", "time", "time_by_day", "name", "office", "label",
                  "except_days", "off_from", "off_to", "ask", "by",
-                 "office_deferred", "since", "bell",
+                 "office_deferred", "since", "bell", "put_at", "resolved_at", "asks",
                  "events", "start", "end", "all_day", "fetched", "log"}
         self.assertEqual(read - internal, given)
         for field in ("predicted", "diverged", "addressed"):
@@ -1580,6 +1603,16 @@ class PageBehaviourTest(unittest.TestCase):
               "log": [{"at": "2030-01-02T08:58:00Z", "paragraphs": ["LOG-ONE"]},
                       {"at": "2030-01-02T08:59:00Z", "paragraphs": []},
                       {"at": "2030-01-01T20:00:00Z", "paragraphs": "LOG-STRING"}]}
+    PUT_BEFORE = "2030-01-02T07:50:00Z"
+    #: RULE with a noon bell between its two
+    RULE3 = {"bells": [RULE["bells"][0], {"time": "12:00", "name": "Noon", "office": ["Fold the post"]},
+                       RULE["bells"][1]]}
+
+    @classmethod
+    def put(cls, at, **more):
+        """CURRENT with its action stamped as put at `at`, and any more fields of `next`."""
+        return dict(cls.CURRENT, next=dict(cls.CURRENT["next"], put_at=at, **more))
+
     REVIEW = {"next": {"kind": "review", "prompt": "Is the new wording right?",
                        "recommendation": ["Keep the shorter wording.", "It reads plainer."]},
               "updated": "2030-01-02T09:00:00Z"}
@@ -1638,10 +1671,74 @@ class PageBehaviourTest(unittest.TestCase):
                                  "water_used": "MEASURED-2-L"}},
             "session_overruled": {"now": cls.NOW, "current": cls.CURRENT, "rule": cls.RULE,
                                   "ticks": {cls.SESSION_KEY: "overruled " + D}},
+            # the pending action through a bell: put before it rang, resolved, put after,
+            # with the office set aside, a placeholder that asks nothing, an item taken
+            "held": {"now": cls.NOW, "rule": cls.RULE, "ticks": None,
+                     "current": cls.put(cls.PUT_BEFORE)},
+            "held_resolved": {"now": cls.NOW, "rule": cls.RULE, "ticks": None,
+                              "current": cls.put(cls.PUT_BEFORE,
+                                                 resolved_at="2030-01-02T08:30:00Z")},
+            "held_after": {"now": cls.NOW, "rule": cls.RULE, "ticks": None,
+                           "current": cls.put("2030-01-02T08:30:00Z")},
+            "held_aside": {"now": cls.NOW, "rule": cls.RULE,
+                           "ticks": {k[2]: "taken " + T, k[0]: D},
+                           "current": dict(cls.put(cls.PUT_BEFORE), office_deferred=cls.ASIDE)},
+            "held_placeholder": {"now": cls.NOW, "rule": cls.RULE, "ticks": None,
+                                 "current": dict(cls.CURRENT, next={
+                                     "kind": "work", "prompt": "A helper is at work.",
+                                     "asks": False, "put_at": cls.PUT_BEFORE})},
+            "held_taken": {"now": cls.NOW, "rule": cls.RULE, "ticks": {k[1]: "taken " + T},
+                           "current": cls.put(cls.PUT_BEFORE)},
+            # B2: the same pending action restated keeps its put_at, and still holds
+            "held_rewritten": {"now": cls.NOW, "rule": cls.RULE, "ticks": None,
+                               "current": dict(cls.put(cls.PUT_BEFORE), next=dict(
+                                   cls.put(cls.PUT_BEFORE)["next"],
+                                   prompt="Is watering the plants still first, put plainly?",
+                                   how="A quiet line added."))},
+            # B4: a second bell during the hold; then resolved
+            "held_two": {"now": [2030, 0, 2, 12, 20], "rule": cls.RULE3, "ticks": None,
+                         "current": cls.put(cls.PUT_BEFORE)},
+            "held_two_resolved": {"now": [2030, 0, 2, 12, 20], "rule": cls.RULE3, "ticks": None,
+                                  "current": cls.put(cls.PUT_BEFORE,
+                                                     resolved_at="2030-01-02T12:10:00Z")},
+            "held_two_resolved_noon_done": {"now": [2030, 0, 2, 12, 20], "rule": cls.RULE3,
+                                            "ticks": {"bell-1200-fold-the-post": D},
+                                            "current": cls.put(cls.PUT_BEFORE,
+                                                               resolved_at="2030-01-02T12:10:00Z")},
+            # RN2: one carried item taken, then done; the hold resumes
+            "held_taken_done": {"now": cls.NOW, "rule": cls.RULE, "ticks": {k[1]: D},
+                                "current": cls.put(cls.PUT_BEFORE)},
+            "held_two_noon_done": {"now": [2030, 0, 2, 12, 20], "rule": cls.RULE3,
+                                   "ticks": {"bell-1200-fold-the-post": D},
+                                   "current": cls.put(cls.PUT_BEFORE)},
+            # put exactly at the bell, a put_at that does not parse, resolved before it was put
+            "held_at_bell": {"now": cls.NOW, "rule": cls.RULE, "ticks": None,
+                             "current": cls.put("2030-01-02T08:00:00Z")},
+            "held_bad_put": {"now": cls.NOW, "rule": cls.RULE, "ticks": None,
+                             "current": cls.put("this morning")},
+            "held_res_before": {"now": cls.NOW, "rule": cls.RULE, "ticks": None,
+                                "current": cls.put(cls.PUT_BEFORE,
+                                                   resolved_at="2030-01-02T07:40:00Z")},
+            # B1, as built and left open: an action pending from the day before still holds
+            "held_yesterday": {"now": cls.NOW, "rule": cls.RULE, "ticks": None,
+                               "current": cls.put("2030-01-01T22:40:00Z")},
+            # an action of any kind that asks nothing never holds
+            "held_question_asks_nothing": {"now": cls.NOW, "rule": cls.RULE, "ticks": None,
+                                           "current": cls.put(cls.PUT_BEFORE, asks=False)},
             # the action context appended to before the next answer
             "logged": {"now": cls.NOW, "rule": cls.RULE, "ticks": None,
                        "current": dict(cls.CURRENT, context=cls.LOGGED)},
         }
+        # N6: a zone not UTC, where the bell's local 08:00 is 13:00Z
+        zoned = {"held_zoned": {"now": cls.NOW, "rule": cls.RULE, "ticks": None,
+                                "current": cls.put("2030-01-02T12:50:00Z")},
+                 "after_zoned": {"now": cls.NOW, "rule": cls.RULE, "ticks": None,
+                                 "current": cls.put("2030-01-02T13:10:00Z")}}
+        cls.res = cls.run_node(scenarios, "UTC")
+        cls.res.update(cls.run_node(zoned, "America/New_York"))
+
+    @classmethod
+    def run_node(cls, scenarios, tz):
         with tempfile.TemporaryDirectory() as tmp:
             paths = []
             for name, data in (("page.js", cls.script), ("hidden.json", json.dumps(cls.hidden)),
@@ -1651,10 +1748,10 @@ class PageBehaviourTest(unittest.TestCase):
                     fh.write(data)
                 paths.append(os.path.join(tmp, name))
             done = subprocess.run([cls.node, paths[3]] + paths[:3], capture_output=True,
-                                  text=True, timeout=60, env=dict(os.environ, TZ="UTC"))
+                                  text=True, timeout=60, env=dict(os.environ, TZ=tz))
         if done.returncode:
             raise AssertionError(done.stderr)
-        cls.res = json.loads(done.stdout)
+        return json.loads(done.stdout)
 
     # the stub keeps no tree: a block's parts are read by their own ids
     def shown(self, name, id_):
@@ -1772,6 +1869,108 @@ class PageBehaviourTest(unittest.TestCase):
         self.assertEqual(self.text("aside_last_bell_next_day", "next-prompt"),
                          "Cover the seedlings")
         self.assertFalse(self.shown("aside_last_bell_next_day", "office-aside"))
+
+    def test_a_pending_action_put_before_the_bell_holds_the_card(self):
+        self.assertEqual(self.text("held", "next-prompt"), "Is watering still first?")
+        self.assertEqual(self.text("held", "next-kind"), "question")
+        self.assertTrue(self.shown("held", "office-next"))
+        self.assertEqual(self.text("held", "office-next-label"), "After this: the Morning office")
+        self.assertEqual(self.text("held", "office-next-items"),
+                         "Water the plants · Feed the goldfish · Wind the clock")
+        self.assertEqual(self.text("held", "office-next-meta"), "Morning rang 08:00.")
+        self.assertTrue(self.shown("held", "bell"))
+        self.assertIn("Morning rang at 08:00. Its office follows this action.",
+                      self.text("held", "bell-msg"))
+        self.assertFalse(self.shown("held", "office-after"))
+        self.assertFalse(self.shown("held", "office-aside"))
+        self.assertFalse(self.shown("held", "office-tell"))
+        self.assertTrue(self.shown("held", "next-deferred"))
+        self.assertIn("Wind the clock", self.text("held", "panel-bell"))
+
+    def test_a_pending_action_resolved_or_put_after_the_bell_gives_way_to_the_office(self):
+        for name in ("held_resolved", "held_after", "held_taken", "held_at_bell", "held_bad_put",
+                     "held_question_asks_nothing", "after_zoned"):
+            self.assertEqual(self.text(name, "next-kind"), "office", name)
+            self.assertFalse(self.shown(name, "office-next"), name)
+            self.assertTrue(self.shown(name, "office-after"), name)
+            self.assertNotIn("follows this action", self.text(name, "bell-msg"), name)
+        self.assertEqual(self.text("held_resolved", "next-prompt"), "Water the plants")
+        self.assertEqual(self.text("held_after", "next-prompt"), "Water the plants")
+        self.assertEqual(self.text("held_taken", "next-prompt"), "Feed the goldfish")
+        for name in ("held_at_bell", "held_bad_put", "held_question_asks_nothing", "after_zoned"):
+            self.assertEqual(self.text(name, "next-prompt"), "Water the plants", name)
+
+    def test_a_pending_action_restated_resolved_too_early_or_from_yesterday_still_holds(self):
+        for name in ("held_rewritten", "held_res_before", "held_yesterday", "held_zoned"):
+            self.assertNotEqual(self.text(name, "next-kind"), "office", name)
+            self.assertTrue(self.shown(name, "office-next"), name)
+            self.assertEqual(self.text(name, "office-next-label"),
+                             "After this: the Morning office", name)
+        self.assertEqual(self.text("held_rewritten", "next-prompt"),
+                         "Is watering the plants still first, put plainly?")
+
+    def test_the_panel_and_the_notice_read_the_carried_bells(self):
+        for name in ("held_two", "held_two_resolved_noon_done", "held_two_noon_done"):
+            panel = self.text(name, "panel-bell")
+            self.assertIn("Morning · rang 08:00", panel, name)
+            self.assertIn("Noon · rang 12:00", panel, name)
+            self.assertLess(panel.index("Morning"), panel.index("Noon"), name)
+            self.assertIn("Water the plants", panel, name)
+            self.assertNotIn("The office is complete.", panel, name)
+        self.assertIn("Fold the post", self.text("held_two", "panel-bell"))
+        self.assertNotIn("Fold the post", self.text("held_two_noon_done", "panel-bell"))
+        msg = self.text("held_two_resolved_noon_done", "bell-msg")
+        self.assertEqual(msg, "Noon rang at 12:00. 3 of 4 office items left. "
+                              "Counted over the Morning and Noon offices.")
+        self.assertEqual(self.text("held_two_resolved_noon_done", "next-prompt"), "Water the plants")
+        # resolved with nothing left of Noon's: the latest bell alone is not named
+        self.assertEqual(self.text("held_two_resolved", "bell-msg"),
+                         "Noon rang at 12:00. The office is not yet taken up. "
+                         "Counted over the Morning and Noon offices.")
+        # a carry of the latest bell alone reads as before
+        self.assertEqual(self.text("held_resolved", "bell-msg"),
+                         "Morning rang at 08:00. Its office is not yet taken up.")
+
+    def test_a_hold_resumes_once_a_taken_item_is_done(self):
+        self.assertEqual(self.text("held_taken_done", "next-prompt"), "Is watering still first?")
+        self.assertEqual(self.text("held_taken_done", "office-next-items"),
+                         "Water the plants · Wind the clock")
+
+    def test_a_second_bell_during_a_hold_keeps_the_first_bell_s_office(self):
+        self.assertEqual(self.text("held_two", "next-prompt"), "Is watering still first?")
+        self.assertEqual(self.text("held_two", "office-next-label"),
+                         "After this: the Morning and Noon offices")
+        self.assertEqual(self.text("held_two", "office-next-items"),
+                         "Water the plants · Feed the goldfish · Wind the clock · Fold the post")
+        self.assertEqual(self.text("held_two", "office-next-meta"),
+                         "Morning rang 08:00 · Noon rang 12:00.")
+        self.assertIn("Noon rang at 12:00. The Morning and Noon offices follow this action.",
+                      self.text("held_two", "bell-msg"))
+        # once resolved, the first bell's office first, the second's after it
+        self.assertEqual(self.text("held_two_resolved", "next-prompt"), "Water the plants")
+        self.assertEqual(self.text("held_two_resolved", "next-line"), "Morning office, rang 08:00")
+        self.assertEqual(self.text("held_two_resolved", "office-then"),
+                         "Then: Feed the goldfish · Wind the clock · Fold the post")
+        # the later bell's office done, the earlier still follows the pending action
+        self.assertEqual(self.text("held_two_noon_done", "office-next-label"),
+                         "After this: the Morning office")
+        self.assertIn("The Morning office follows this action.",
+                      self.text("held_two_noon_done", "bell-msg"))
+
+    def test_a_deferral_is_unchanged_by_a_pending_action(self):
+        self.assertEqual(self.text("held_aside", "next-prompt"), "Is watering still first?")
+        self.assertTrue(self.shown("held_aside", "office-aside"))
+        self.assertFalse(self.shown("held_aside", "office-next"))
+        self.assertEqual(self.text("held_aside", "office-aside-items"),
+                         "Wind the clock (under way) · Feed the goldfish")
+        self.assertIn("set aside for now", self.text("held_aside", "bell-msg"))
+
+    def test_a_placeholder_that_asks_nothing_never_holds_the_card(self):
+        self.assertEqual(self.text("held_placeholder", "next-prompt"), "Water the plants")
+        self.assertEqual(self.text("held_placeholder", "next-kind"), "office")
+        self.assertFalse(self.shown("held_placeholder", "office-next"))
+        self.assertEqual(self.text("held_placeholder", "office-after-prompt"),
+                         "A helper is at work.")
 
     def test_round_three_the_calendar_on_the_timeline(self):
         tl = self.text("agenda", "panel-list")

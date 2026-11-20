@@ -523,6 +523,17 @@
       ],
       "pull_request": null,
       "rounds": 1
+    },
+    {
+      "question": "dictate",
+      "application": "the pending action through a bell",
+      "files": [
+        "web/ordo.html",
+        "skills/sit/SKILL.md",
+        "tools/test_sit_skill.py"
+      ],
+      "pull_request": null,
+      "rounds": 1
     }
   ]
 }
