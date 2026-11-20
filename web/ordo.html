@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
 <style>
-/* Display only: no buttons, no inputs, no writes. Layout: one column on a phone; from 60rem two, the main column left and the context panel right (sticky). Main column: bell notice (while a rung bell's office has an owner item unresolved), then the action context (paragraphs, tradition, prediction, notes), then the next action as the largest thing (the first unresolved owner office item while there is one, a taken one first, with the session's action and its deferred action, if any, as quiet "After the office" notes; a recommendation, on a review of mechanism, after the prompt; otherwise, or while the owner has set the rung bell's office aside (current.office_deferred), the session's action, with the set-aside office and a deferred action, if any, as quiet notes inside it; or while the session's action was put before the bell rang (next.put_at) and is not yet resolved (next.resolved_at), and asks something of the owner (next.asks not false), that action, with "After this: the <bell> office" listing the items as a quiet note inside it; every bell rung after that action was put is carried, earliest first, so that when it is resolved the office shows with all their items), then the helper list. On a phone the panel sits under the next-action card. Panel: the latest rung bell and its remaining items (session-run ones marked, and kept with their state), then one timeline of the bells and calendar events of the next 48 hours, then when the calendar was read; under that card, a second card holding only the "Waiting, in order" list (current.queue) in a native details element, closed by default. The action context may end with appended log records (context.log), each under a divider carrying its time. */
+/* Display only: no buttons, no inputs, no writes. Layout: one column on a phone; from 60rem two, the main column left and the context panel right (sticky). Main column: bell notice (while a rung bell's office has an owner item unresolved), then the action context (paragraphs, tradition, prediction, notes), then the next action as the largest thing (the first unresolved owner office item while there is one, a taken one first, with the session's action and its deferred action, if any, as quiet "After the office" notes; a recommendation, on a review of mechanism, after the prompt; otherwise, or while the owner has set the rung bell's office aside (current.office_deferred), the session's action, with the set-aside office and a deferred action, if any, as quiet notes inside it; or while the session's action was put before the bell rang (next.put_at) and is not yet resolved (next.resolved_at), and asks something of the owner (next.asks not false), that action, with "After this: the <bell> office" listing the items as a quiet note inside it; every bell rung after that action was put is carried, earliest first, so that when it is resolved the office shows with all their items; a session's action resolved and not yet replaced is drawn as resolved, under "After the office" and as the card's action alike, never as the action to come), then the helper list. On a phone the panel sits under the next-action card. Panel: the latest rung bell and its remaining items (session-run ones marked, and kept with their state), then one timeline of the bells and calendar events of the next 48 hours, then when the calendar was read; under that card, a second card holding only the "Waiting, in order" list (current.queue) in a native details element, closed by default. The action context may end with appended log records (context.log), each under a divider carrying its time. */
 :root {
   --bg: #f3f5f6; --surface: #ffffff; --ink: #18242b; --muted: #5a6a73;
   --line: #d5dce0; --accent: #1f6f5c; --accent-soft: #e2f0ec; --against: #8a4b2a; --against-soft: #f6ebe3;
@@ -125,6 +125,7 @@ summary { cursor: pointer; font-family: var(--display); font-weight: 600; }
     <span class="label" id="next-rec-label" hidden>Recommendation</span>
     <div id="next-rec" style="display:flex;flex-direction:column;gap:6px" hidden></div>
     <p class="empty" id="next-empty">No action set yet. The session writes the next action here.</p>
+    <p class="quiet" id="next-done" hidden>Resolved. The session has not yet put the next action.</p>
     <p class="quiet" id="under" hidden></p>
     <p class="quiet" id="office-then" hidden></p>
     <p class="quiet" id="office-resolved" hidden></p>
@@ -458,10 +459,16 @@ summary { cursor: pointer; font-family: var(--display); font-weight: 600; }
 
   // Everything on the card that only some states show; each render hides these first.
   var CARD_IDS = ["next-case-label", "next-case", "next-rec-label", "next-rec", "under", "office-then", "office-resolved", "office-tell",
-    "office-after", "office-next", "office-aside", "next-deferred", "next-how"];
+    "office-after", "office-next", "office-aside", "next-deferred", "next-how", "next-done"];
 
   function setKind(kind) { $("next-kind").textContent = kind; $("next-kind").setAttribute("data-kind", kind); }
   function theNext() { var n = current && current.next; return n && typeof n === "object" && str(n.prompt) ? n : null; }
+  // The session's action resolved (next.resolved_at, at or after next.put_at) and not yet replaced:
+  // drawn as resolved, never as the action to come.
+  function isDone(n) {
+    var p = n ? parseWhen(n.put_at) : null, r = n ? parseWhen(n.resolved_at) : null;
+    return !!(p && r && r >= p);
+  }
 
   function renderNext(st) {
     st = st || officeNow();
@@ -536,6 +543,7 @@ summary { cursor: pointer; font-family: var(--display); font-weight: 600; }
     $("next-prompt").textContent = str(n.prompt);
     $("next-how").textContent = str(n.how);
     $("next-how").hidden = !str(n.how);
+    $("next-done").hidden = !isDone(n);
     renderDeferred(n.deferred);
   }
 
@@ -567,8 +575,8 @@ summary { cursor: pointer; font-family: var(--display); font-weight: 600; }
     $("office-tell").hidden = false;
     var n = theNext();
     $("office-after").hidden = false;
-    $("office-after-prompt").textContent = n ? str(n.prompt) : "No action set yet.";
-    var meta = n ? [kindOf(n.kind), str(n.line)].filter(Boolean).join(" · ") : "";
+    $("office-after-prompt").textContent = n ? (isDone(n) ? "Resolved: " : "") + str(n.prompt) : "No action set yet.";
+    var meta = n ? [isDone(n) ? "the session has not yet put the next action" : "", kindOf(n.kind), str(n.line)].filter(Boolean).join(" · ") : "";
     $("office-after-meta").textContent = meta;
     $("office-after-meta").hidden = !meta;
     renderDeferred(n && n.deferred);

@@ -109,6 +109,24 @@ class NoteTest(Base):
                                    "--grade",
                                    "short of the edge", "--lesson", " ", "--price", "p"))
 
+    def test_a_sitting_s_grades_are_taken_agrees_refused(self):
+        """A sitting grades agrees, diverges in part or diverges: the two that
+        failed are taken, each with a direction; agrees is no divergence."""
+        base = ["--seal", "s1-review-1", "--by", "speaker", "--kind", "review", "--lesson",
+                LESSON, "--price", "p"]
+        done = run("predictions.py", "note", *base, "--grade", "diverges in part",
+                   "--direction", "expected-fewer-limits")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("graded diverges in part, direction expected-fewer-limits ·",
+                      done.stdout)
+        p = predictions.parse(done.stdout, "x")
+        self.assertEqual((p.grade, p.direction), ("diverges in part", "expected-fewer-limits"))
+        self.assertIn("says which way", self.refused(*base, "--grade", "diverges in part"))
+        self.assertIn("says which way", self.refused(*base, "--grade", "diverges"))
+        self.assertIn("is not a failure the grader gives",
+                      self.refused(*base, "--grade", "agrees", "--direction", "other",
+                                   "--text", "t"))
+
     def test_a_clean_reader_s_act_is_recorded_as_any(self):
         self.assertIn("by clean-reader of an act",
                       note(by="clean-reader", kind="act"))
@@ -132,8 +150,8 @@ class TallyTest(Base):
         self.assertEqual(t["failed"], 3)
         self.assertEqual(t["by_kind"], {"question": 1, "review": 2, "act": 0})
         self.assertEqual(t["by_who"], {"speaker": 2, "clean-reader": 1})
-        self.assertEqual(t["by_grade"], {"verdict only": 1, "short of the edge": 0,
-                                         "diverges": 2})
+        self.assertEqual(t["by_grade"], {"diverges in part": 0, "diverges": 2,
+                                         "verdict only": 1, "short of the edge": 0})
         self.assertEqual(t["by_direction"]["expected-more-limits"], 2)
         self.assertEqual(len(t["lessons"]), 1)
         self.assertEqual(t["lessons"][0]["count"], 2)
@@ -186,6 +204,18 @@ class StampTest(Base):
         self.assertIn("failed predictions recorded: 1", out)
         self.assertIn("lessons carried by 2 or more: none", out)
         self.assertRegex(out[-1], r"^predictions-read: [0-9a-f]{64} %s$" % T)
+
+    def test_a_grade_of_diverges_in_part_is_counted_and_printed(self):
+        self.add("r1.txt", note(grade="diverges in part"))
+        graph = self.graph(note(), note(grade="diverges in part",
+                                        direction="expected-less-change"))
+        t = json.loads(run("predictions.py", "tally", graph, "--added", self.added).stdout)
+        self.assertEqual(t["by_grade"]["diverges in part"], 2)
+        self.assertEqual(t["by_grade"]["diverges"], 1)
+        done = run("predictions.py", "stamp", graph, "--added", self.added, "--at", T)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("by grade: diverges in part 2, diverges 1, verdict only 0, "
+                      "short of the edge 0", done.stdout.splitlines())
 
     def test_a_lesson_not_yet_on_the_notebook_is_marked(self):
         self.add("r1.txt", note())

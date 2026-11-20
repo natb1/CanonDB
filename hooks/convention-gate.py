@@ -5,7 +5,7 @@ A PreToolUse hook on the tools by which text leaves a session: the document
 connector's writing tools (`update`, `batch`, `create`, in both spellings),
 `ArtifactData`, and `Bash` where a command of the line, read by its program
 and subcommand, writes text out: `git commit`, `git tag` with a message or an
-annotation, `git notes add` or `append`, `gh pr create|edit|comment|review`,
+annotation, `git merge` with a message, `git notes add` or `append`, `gh pr create|edit|comment|review`,
 `gh issue create|edit|comment` and `gh release create|edit`. It checks writes
 only: every other command passes, `gh api`, `git log`, `git merge-base`, `git
 tag -l` and `git cat-file` among them.
@@ -74,6 +74,8 @@ GIT_VALUED = ("-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-pat
 OPERATORS = (";", "&&", "||", "|", "&", "(", ")", ";;", "|&")
 #: the options by which `git tag` writes a message
 TAG_TEXT = ("-a", "-m", "-F", "-s", "-u", "--annotate", "--message", "--file", "--sign")
+#: the options by which `git merge` writes a message of its own
+MERGE_TEXT = ("-m", "-F", "--message", "--file")
 
 
 def commands(command: str) -> list:
@@ -110,8 +112,8 @@ def _program(words: list) -> list:
 
 def writes_out(command) -> bool:
     """Whether a shell line holds a command that writes text out: `git
-    commit`, `git tag` with a message or an annotation, `git notes add` or
-    `append`, or a `gh` subcommand of GH_WRITES; read by program and
+    commit`, `git tag` with a message or an annotation, `git merge` with a
+    message, `git notes add` or `append`, or a `gh` subcommand of GH_WRITES; read by program and
     subcommand, never by a word anywhere in the line."""
     if not isinstance(command, str):
         return False
@@ -137,6 +139,10 @@ def writes_out(command) -> bool:
                                 for a in args):
                 return True
             if sub == "notes" and args[:1] in (["add"], ["append"]):
+                return True
+            if sub == "merge" and any(a in MERGE_TEXT or a.startswith(("--message=", "--file="))
+                                      or re.match(r"^-[a-zA-Z]*[mF]", a)
+                                      and not a.startswith(("--", "-s", "-X")) for a in args):
                 return True
         elif name == "gh" and len(rest) >= 2 and rest[1] in GH_WRITES.get(rest[0], ()):
             return True
@@ -218,6 +224,13 @@ def _shell_words(command: str, cwd) -> str:
                 parts.append(_file_words(words[i + 1], cwd))
             elif word.startswith(option + "="):
                 parts.append(_file_words(word[len(option) + 1:], cwd))
+        # a short -F bundled behind other flags (-nF FILE) or with its file attached (-FFILE)
+        m = re.match(r"^-([a-zA-Z]*)F(.*)$", word)
+        if m and not word.startswith("--") and word != "-F":
+            if m.group(2):
+                parts.append(_file_words(m.group(2), cwd))
+            elif i + 1 < len(words):
+                parts.append(_file_words(words[i + 1], cwd))
     return "\n\n".join(p for p in parts if p)
 
 

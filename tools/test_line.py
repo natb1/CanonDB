@@ -266,6 +266,14 @@ class FidelityTest(unittest.TestCase):
         self.assertEqual([f.severity for f in found], [line.WARN])
         self.assertIn("was not tested", found[0].message)
 
+    def test_a_sitting_s_three_grades_are_read(self):
+        self.assertEqual(self.findings("- F1, stated at S2. Grade: agrees."), [])
+        found = self.findings("- F1, stated at S2. Grade: diverges in part. Class: misread.")
+        self.assertEqual([f.severity for f in found], [line.ERROR])
+        self.assertIn("graded diverges in part and names no remedy", found[0].message)
+        self.assertEqual(self.findings("- F1, stated at S2. Grade: diverges in part. Remedy: a "
+                                       "case. Redrawn: agrees."), [])
+
     def test_a_remedy_drawn_again_passes(self):
         found = self.findings("- F1, stated at S2. Grade: diverges. Remedy: a case on the "
                               "tab. Redrawn: agrees.")

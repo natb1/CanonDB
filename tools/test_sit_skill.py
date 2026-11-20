@@ -1287,12 +1287,8 @@ class PageTest(unittest.TestCase):
         self.assertEqual(re.findall(r"createElement\(\s*(\w+)\s*\)", self.script), ["tag"])
 
     def test_the_session_s_action_waits_while_an_office_is_unresolved(self):
-        nxt = self.body("renderNext")
-        self.assertRegex(nxt, r"if\s*\(\s*st\.unres\.length\s*&&\s*!st\.aside\s*\)\s*renderOffice\(st\);\s*"
-                              r"else\s*\{\s*renderSession\(\);\s*if\s*\(st\.aside\)\s*renderAside\(st\);\s*\}")
-        # the session's action is drawn where no office leads, and where a pending action holds the card
-        self.assertRegex(nxt, r"if\s*\(st\.hold\)\s*\{\s*renderSession\(\);\s*renderHeld\(st\);\s*return;\s*\}")
-        self.assertEqual(self.script.count("renderSession("), 3)
+        # which of the office and the session's action leads is read by behaviour
+        # (PageBehaviourTest: rung, aside, held), not by the shape of renderNext (RN5)
         office = self.body("renderOffice")
         self.assertIn('$("next-prompt").textContent = it.label;', office)
         self.assertNotIn('$("next-prompt").textContent = str(n', office)
@@ -1339,9 +1335,7 @@ class PageTest(unittest.TestCase):
                       "!(x.state === \"open\" || x.state === \"taken\"); }))", panel)
         self.assertIn("if (en <= now || s > end) return null;", self.body("upcomingEvents"))
         self.assertIn("if (at > now && at <= end)", self.body("upcomingBells"))
-        # the office's items come from the latest rung bell, and the bells a pending action carries,
-        # and only bell- keys are read
-        self.assertIn("var all = lr.rung ? marked(lr.rung) : [];", now)
+        # only bell- keys are read; which bells' items are read is behaviour (RN5)
         self.assertIn("ticks[it.key]", now)
         self.assertEqual(len(re.findall(r"\bticks\[", self.script)), 1)
         self.assertIsNone(re.search(r"Object\.keys\(\s*ticks", self.script))

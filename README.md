@@ -88,8 +88,8 @@ every repository, and the plugin's hooks put it in context: `hooks/brief-session
 session's start, resume, clear and compaction; `hooks/brief-subagent.py` at a helper's start, as
 context of its own, by an allow-list by kind that defaults to nobody (`hooks/brief-sides.json`);
 and `hooks/convention-gate.py` holds every text a write sends by the connector, the page's store,
-a commit, an annotated tag, a note or a `gh` subcommand that writes to the notebook's conventions, refusing on a
-finding with the entry broken and its lineage, and never a read. `tools/inhand.py` keeps a
+a commit, an annotated tag, a merge with a message of its own, a note or a `gh` subcommand
+that writes to the notebook's conventions, refusing on a finding with the entry broken and its lineage, and never a read. `tools/inhand.py` keeps a
 session's own work in hand in its scratch, `hooks/inhand-log.py` records each helper's launch,
 start and end by the session's id, and `hooks/inhand-precompact.py` puts both into a compaction's
 input, which the session's start prints back.
