@@ -1003,7 +1003,7 @@ class HooksFileTest(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(ROOT, "hooks", "canon-gate.py")))
 
     def test_the_notebook_gate_fires_on_the_writing_tools_and_no_others(self):
-        self.assertEqual(len(self.entries), 4)
+        self.assertEqual(len(self.entries), 6)
         entry = self.entries[1]
         self.assertEqual(entry["hooks"], [{
             "type": "command",

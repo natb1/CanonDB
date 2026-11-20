@@ -1,0 +1,69 @@
+{
+ "artifact": "https://claude.ai/artifact/00000000-0000-4000-8000-00000000b71e",
+ "questions": [
+  {
+   "id": "garden", "tab": "g-01", "body": "body-g1", "state": "held", "kind": "root",
+   "pressure": 0, "answerer": "principal",
+   "question": "What is the garden for?",
+   "hinge": {"question": "that a garden is kept at all",
+             "end": "that the beds feed the house through the year",
+             "method": "read at each season: what each bed gave, counted and never judged"},
+   "definitions": [{"word": "bed", "body": "A plot kept for one crop at a time. It is turned between crops."}],
+   "theses": [{
+    "title": "The garden feeds the house.",
+    "state": "held", "assent": "none",
+    "text": "The garden is kept to feed the house. Each bed is planted for what the kitchen will use. What the house cannot use is given away.",
+    "terms": [
+     {"title": "How it is said", "to": "wording", "anchors": ["The garden is kept to feed the house."]},
+     {"title": "Each bed", "to": "planting", "anchors": ["Each bed is planted for what the kitchen will use."]}
+    ],
+    "traditions": [{"to": "almanac", "relation": "support", "note": "The almanac plants by the season."}]
+   }]
+  },
+  {
+   "id": "wording", "tab": "g-02", "body": "body-g2", "state": "held", "kind": "definitional",
+   "pressure": 0, "answerer": "principal",
+   "question": "How is the garden's record worded?",
+   "theses": [{
+    "title": "The record names the gardener plainly.",
+    "state": "held", "assent": "none",
+    "text": "The one the record is kept for is named the user. A word is fixed in its glossary entry and nowhere else.",
+    "terms": []
+   }]
+  },
+  {
+   "id": "planting", "tab": "g-03", "body": "body-g3", "state": "in thread", "kind": "definitional",
+   "pressure": 1, "answerer": "ai",
+   "question": "What is planted in a bed?",
+   "theses": [{
+    "title": "A bed takes what the kitchen asks for.",
+    "state": "in thread", "assent": "none",
+    "text": "A bed takes the crop the kitchen asks for this season. A bed left empty is turned and rested. The rotation is written down before the seed goes in.",
+    "terms": [{"title": "The rotation", "to": "rotation", "anchors": ["The rotation is written down before the seed goes in."]}]
+   }]
+  },
+  {
+   "id": "rotation", "tab": "g-04", "body": "body-g4", "state": "held", "kind": "definitional",
+   "pressure": 0, "answerer": "principal",
+   "question": "How is the rotation kept?",
+   "definitions": [{"word": "fallow", "body": "A bed rested for a season with nothing sown."}],
+   "theses": [{
+    "title": "The rotation is kept on one sheet.",
+    "state": "held", "assent": "none",
+    "text": "The rotation is kept on one sheet by the shed door. Every bed has a line on it. A fallow bed is marked with a cross.",
+    "terms": []
+   }]
+  },
+  {
+   "id": "almanac", "tab": "g-05", "body": "body-g5", "state": "held", "kind": "definitional",
+   "pressure": 0, "party": "almanac",
+   "question": "What does the almanac say of planting?",
+   "theses": [{
+    "title": "Plant by the moon and the frost.",
+    "state": "held", "assent": "none",
+    "text": "The almanac plants after the last frost. It reads the moon for root crops.",
+    "terms": []
+   }]
+  }
+ ]
+}

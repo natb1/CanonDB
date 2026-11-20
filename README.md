@@ -76,6 +76,23 @@ stamps the tally with a fingerprint that a seal of the speaker's own must end wi
 `tools/hinges.py` places a line's answer of record with its presuppositions as hinges, each
 unjustified until a later answer of the AI's is linked to it, and lists every unjustified hinge
 of the AI's graph with the builds that rest on it.
+`tools/brief.py` keeps the relevant part of the notebook in front of a session without a read
+step: from the opening's graph it makes the standing brief (the conventions, each project's end
+and method, the open lines by title, the glossary index) and the neighbourhood of the line in hand
+(each principle's lineage from the root, sentence by sentence as sealed, the glossary entries of
+the terms in play, the tradition on it, the answers sharing its terms), cut to a target of 24,000
+characters by a fixed extractive order that keeps or drops whole units, with a manifest of what
+was left out, and, with `--side ai`, the AI's own answers alone for a context that must stay blind
+to the user's graph. `brief.py install` writes it under the user's Claude configuration, outside
+every repository, and the plugin's hooks put it in context: `hooks/brief-session.py` at a
+session's start, resume, clear and compaction; `hooks/brief-subagent.py` at a helper's start, as
+context of its own, by an allow-list by kind that defaults to nobody (`hooks/brief-sides.json`);
+and `hooks/convention-gate.py` holds every text a write sends by the connector, the page's store,
+a commit, an annotated tag, a note or a `gh` subcommand that writes to the notebook's conventions, refusing on a
+finding with the entry broken and its lineage, and never a read. `tools/inhand.py` keeps a
+session's own work in hand in its scratch, `hooks/inhand-log.py` records each helper's launch,
+start and end by the session's id, and `hooks/inhand-precompact.py` puts both into a compaction's
+input, which the session's start prints back.
 
 The readings are projections over the record, computed and stored nowhere: `tools/frontier.py`
 (the frontier, and with `--principal` the questions only the user can answer whose lineage has

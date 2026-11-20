@@ -69,9 +69,9 @@ nothing.
    lists what bootstrap owns. A file that exists and is not listed there is canon's, or the
    principal's own hand's, and this run does not change it. Canon is what is under `canon/`,
    and nothing there is written here: a file enters it at promulgation and no other way.
-5. **The author merges, or this run at the principal's leave.** The principal: "You have
-   permission to merge pull requests unless otherwise stated. If you need to reload local
-   skills or plugin just merge the PR and give me an action to reload." So this run may merge
+5. **The author merges, or this run at the principal's leave.** The principal has given leave to merge
+   pull requests unless the principal says otherwise, and asked for a needed reload of the plugin or
+   a skill as an action after the merge. So this run may merge
    its pull request once its checks pass and the full tier's adversarial review of it has
    returned nothing not resolved, unless the principal said otherwise; those two conditions are
    mechanism, the run's and not the principal's words. Where the merge changes the plugin or a

@@ -831,13 +831,13 @@ class StopgapTest(unittest.TestCase):
                           "Ask about the post as well as the plants."})
 
     def test_tradition_and_writing_as_the_round_goes(self):
-        for words in ("The principal: \"These traditions are good, make sure they are being "
-                      "recorded as we go.\"",
+        for words in ("The principal approved the readings of tradition given and asked that "
+                      "they be recorded as the round goes.",
                       "A party's graph is expected to follow the structure of the user's and the "
                       "AI's; that change of form is not made here, and is carried as an open "
                       "line",
-                      "**Written as the round goes.** The principal: \"You may write to the "
-                      "notebook as we go.\"",
+                      "**Written as the round goes.** The principal has given leave to write to "
+                      "the notebook as the round goes.",
                       "once its restatement has been shown in the action context, so that the "
                       "principal may correct it before the job is added",
                       "None is first put as a review of rows.",
@@ -853,8 +853,8 @@ class StopgapTest(unittest.TestCase):
                       "shows among it, is put to the principal as a review and waits for the "
                       "answer; and then the speaker may merge, unless the principal said "
                       "otherwise",
-                      "The principal: \"You have permission to merge pull requests unless "
-                      "otherwise stated.",
+                      "The principal has given leave to merge pull requests unless the "
+                      "principal says otherwise",
                       "the pull request's checks pass; the full tier's adversarial review of it "
                       "returns, with no blocker left open",
                       "The first two conditions are mechanism, the speaker's and not the "
@@ -2009,6 +2009,91 @@ class PageBehaviourTest(unittest.TestCase):
         for name, out in self.res.items():
             self.assertNotIn("REC-ON-A-QUESTION", out["all"], name)
         self.assertFalse(self.shown("quiet", "next-rec"))
+
+
+
+class BriefLinesTest(unittest.TestCase):
+    """The brief's and the work in hand's lines, run as the skill gives them,
+    in a project naming a notebook, with the brief's directory under an
+    invented home."""
+
+    def setUp(self):
+        self.base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.base, ignore_errors=True)
+        self.project = os.path.join(self.base, "project")
+        os.makedirs(os.path.join(self.project, ".principal"))
+        with open(os.path.join(self.project, ".principal", "notebook.json"), "w") as fh:
+            json.dump({"artifact": "doc:abc", "conventions": "wording"}, fh)
+        self.scratch = os.path.join(self.base, "home", ".claude", "jobs", "0f82a3c4", "tmp", "s")
+        os.makedirs(os.path.join(self.scratch, "speaker", "lines", "lines"))
+        shutil.copyfile(os.path.join(HERE, "fixtures", "brief.json"),
+                        os.path.join(self.scratch, "graph.json"))
+        with open(os.path.join(self.scratch, "speaker", "lines", "lines", "l1.json"), "w") as fh:
+            json.dump({"id": "l1", "title": "Rest a bed", "state": "open", "rank": 1}, fh)
+        self.env = {k: v for k, v in os.environ.items()
+                    if k not in ("CLAUDE_PROJECT_DIR", "CLAUDE_PLUGIN_ROOT", "CLAUDE_CONFIG_DIR")}
+        self.env["HOME"] = os.path.join(self.base, "home")
+
+    def run_line(self, program, *first, values=None, having=None):
+        text = line(SKILL, program, *first) if having is None else \
+            [s for s in lines(SKILL, program) if having in s][0]
+        text = text.replace("$SCRATCH", self.scratch)
+        text = TOOLS + text[len("tools"):]
+        for key, value in (values or {}).items():
+            text = text.replace(key, value)
+        self.assertIsNone(UNFILLED.search(text), text)
+        done = subprocess.run(["bash", "-c", text], cwd=self.project, capture_output=True,
+                              text=True, env=self.env, timeout=60)
+        self.assertEqual(done.returncode, 0, (text, done.stderr))
+        return done.stdout
+
+    def test_install_where_and_check(self):
+        where = self.run_line("brief.py", "install",
+                              values={"<the line's questions>": "rotation", "<time>": T})
+        where = where.strip().splitlines()[-1]
+        self.assertEqual(self.run_line("brief.py", "where").strip(), where)
+        with open(os.path.join(where, "standing.md")) as fh:
+            standing = fh.read()
+        self.assertIn("[lines/l1] Rest a bed", standing)
+        self.assertIn("[wording/a1.s1]", standing)
+        self.assertEqual(self.run_line("brief.py", "check", values={
+            "<the brief's file>": os.path.join(where, "neighbourhood.md")}), "fresh\n")
+
+    def test_the_work_in_hand(self):
+        self.assertEqual(self.run_line("inhand.py", "add", values={
+            "<what is in hand>": "a coordinator for the seal", "<time>": T}).strip(), "w1")
+        self.assertEqual(self.run_line("inhand.py", values={
+            "<a time to come back>": "the evening bell", "<time>": T},
+            having="--schedule").strip(), "s2")
+        said = self.run_line("inhand.py", "list")
+        self.assertIn("a coordinator for the seal", said)
+        write = json.loads(self.run_line("inhand.py", "export", values={"<time>": T}))
+        self.assertEqual((write["collection"], write["doc_id"]), ("ordo", "session"))
+        os.makedirs(os.path.join(self.scratch, "speaker", "ordo"))
+        with open(os.path.join(self.scratch, "speaker", "ordo", "session.json"), "w") as fh:
+            json.dump({"at": T, "in_hand": [], "schedule": ["the morning bell"]}, fh)
+        self.assertIn("1 entry", self.run_line("inhand.py", "seed", values={"<time>": T}))
+        self.run_line("inhand.py", "done", values={"<entry id>": "w1"})
+        self.assertNotIn("a coordinator", self.run_line("inhand.py", "list"))
+
+    def test_the_skill_says_who_receives_a_brief_and_the_order(self):
+        skill = flat(SKILL)
+        section = skill[skill.index("## The brief and the neighbourhood"):
+                        skill.index("## What the sitting serves")]
+        for words in ("defaults to nobody", "the clean reader receives nothing",
+                      "the AI's own answers alone", "no worktree is made for a brief",
+                      "The order today: conventions;",
+                      "then the glossary entries in full; then the tradition on the line; then "
+                      "by share",
+                      "outside every repository", "is a job on the board or recorded by the hooks as it launches",
+                      "a helper of no kind, or of a kind the list does not name, nothing",
+                      "is an open line for the principal",
+                      "never a later sentence without the one before it",
+                      "reserved before lineage takes the rest",
+                      "kept by the session's id, and never shown to another",
+                      "no hook approves a launch", "A read is never checked.", "`ordo/session.schedule`",
+                      "goes to the notebook's statement of conventions first"):
+            self.assertIn(words, section)
 
 
 if __name__ == "__main__":
