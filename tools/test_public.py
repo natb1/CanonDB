@@ -265,5 +265,57 @@ class CommandTest(unittest.TestCase):
             self.assertFalse(os.path.exists(os.path.join(out, "copy")))
 
 
+class QuestionCommandTest(unittest.TestCase):
+    """`public.py question`: the leak check and the notebook's rule for
+    naming the user, and the record a pass leaves."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.question = os.path.join(self.tmp.name, "question.md")
+        self.record = os.path.join(self.tmp.name, "leak.json")
+
+    def check(self, words):
+        with open(self.question, "w", encoding="utf-8") as fh:
+            fh.write(words)
+        return run("public", "question", fixture("valid"), self.question, "--record",
+                   self.record)
+
+    def test_a_pass_leaves_a_record_of_the_bytes_and_the_graph(self):
+        import hashlib
+        import json as _json
+        done = self.check("What does working with a person need of you?\n")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        with open(self.record, encoding="utf-8") as fh:
+            record = _json.load(fh)
+        with open(self.question, "rb") as fh:
+            self.assertEqual(record["sha256"], hashlib.sha256(fh.read()).hexdigest())
+        with open(fixture("valid"), "rb") as fh:
+            self.assertEqual(record["graph_sha256"], hashlib.sha256(fh.read()).hexdigest())
+
+    def test_a_failing_check_leaves_no_record_an_earlier_one_included(self):
+        # M13, S2: a record already at the path is taken away first
+        self.assertEqual(self.check("What does working with a person need of you?\n")
+                         .returncode, 0)
+        self.assertTrue(os.path.exists(self.record))
+        tab = load("valid").get("attenuation").tab
+        done = self.check("See https://example.invalid/doc#%s.block for what is meant.\n" % tab)
+        self.assertEqual(done.returncode, 2)
+        self.assertFalse(os.path.exists(self.record))
+
+    def test_a_question_that_names_the_user_otherwise_is_refused(self):
+        # the rule check.py holds the notebook's own words to, `user-named`
+        for words in ("What does the human need before the post is opened?\n",
+                      "Is THE HUMAN's word final on a kept record?\n"):
+            with self.subTest(words=words):
+                done = self.check(words)
+                self.assertEqual(done.returncode, 2)
+                self.assertIn("the human", done.stdout.lower())
+                self.assertIn("user-named", done.stdout)
+                self.assertFalse(os.path.exists(self.record))
+        self.assertEqual(self.check("What does the user need before the post is opened?\n")
+                         .returncode, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

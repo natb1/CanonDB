@@ -17,6 +17,7 @@
     inplace.py hinge amend READ --block ID --date YYYY-MM-DD --by WHO --from WHAT
     inplace.py words replace READ --block ID --text T [--markdown]
     inplace.py note insert READ --after ID --text T
+    inplace.py note delete READ --block ID
 
 READ is a saved ``search`` or ``view`` result of the tab (the tool's JSON, or
 its xml alone; `-` for stdin). Prints the ``ops`` of one prose ``update`` as
@@ -48,7 +49,12 @@ is read before and after, and the write is refused unless one field alone
 differs; ``--markdown`` is as for ``thesis replace``. ``note insert`` puts a
 note after the last block of its section, which is where the renderer
 writes one; a clause a dictation cannot apply goes there, opening with the
-word *pending*, and ``check.py`` reports it until a run takes it in.
+word *pending*, and ``check.py`` reports it until a run takes it in; what a
+line leaves open goes there too, opening with the word *open*, its words
+from ``residue.py note``. ``note delete`` takes one note off, guarded as
+every delete here is, once what it held stands on the tab; it refuses a
+block that is not a note. It alone prints the read's rev on the call as
+well (``{"ifRev": …, "ops": …}``), the one ``ifRev`` the document holds.
 
 ``incoming insert`` lands one item per call: the document takes no insert
 anchored on a block it has not placed yet, so a second item for the same
@@ -186,6 +192,9 @@ def _parser() -> argparse.ArgumentParser:
     p.add_argument("--after", required=True,
                    help="the last block of the section the note goes on")
     p.add_argument("--text", required=True)
+    p = note.add_parser("delete")
+    p.add_argument("read")
+    p.add_argument("--block", required=True, help="the note's blockquote")
     return ap
 
 
@@ -312,6 +321,10 @@ def _ops(args) -> list:
                                                     args.text)
         say("new: %s\non: %s" % (content, section))
         return ops
+    if part == "note" and mode == "delete":
+        ops, words = inplace.note_delete(cli.source(args.read), args.block)
+        say("old: %s" % words)
+        return ops
     raise Refused("no %s %s" % (part, mode))  # pragma: no cover - argparse decides
 
 
@@ -325,7 +338,12 @@ def main(argv=None) -> int:
     except OSError as exc:
         print("ERROR read: %s" % exc, file=sys.stderr)
         return 1
-    print(json.dumps({"ops": ops}, ensure_ascii=False))
+    payload = {"ops": ops}
+    if (args.part, args.mode) == ("note", "delete"):
+        # the document holds a call to the ifRev it names and not an op to
+        # its own, as ``hypo/apply.py`` says: the read's rev goes on the call
+        payload = {"ifRev": ops[0]["ifRev"], "ops": ops}
+    print(json.dumps(payload, ensure_ascii=False))
     return 0
 
 

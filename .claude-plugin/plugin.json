@@ -1,6 +1,6 @@
 {
   "name": "principal",
-  "description": "The principal's entry points over a hypomnemata notebook and the canon it feeds: dictate a change to the notebook, put the next question to the AI in a clean context, or reconcile application directly from the notebook ahead of canon.",
+  "description": "The principal's entry points over a hypomnemata notebook and the canon it feeds: dictate a change to the notebook, reconcile application directly from the notebook ahead of canon, or sit with the principal in the one session that speaks, which puts questions to the AI's own record in clean turns while helpers of fixed kinds carry out the work.",
   "author": {
     "name": "natb1",
     "url": "https://github.com/natb1"

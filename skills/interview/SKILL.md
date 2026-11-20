@@ -21,7 +21,7 @@ dictation, after the reading and from level ground.
 
 The run is one procedure with two parameters, who answers and whether the questioner holds the
 notebook, shared with `/principal:dictate`'s line (its **The line** section) and with
-`/principal:ask`. Here the principal answers and the questioner holds nothing; so the
+`/principal:sit`'s line in the AI's graph. Here the principal answers and the questioner holds nothing; so the
 comparing run that holds the notebook comes after, in the checkout, and is the dictate entry
 point's.
 

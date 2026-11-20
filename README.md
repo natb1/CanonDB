@@ -30,9 +30,7 @@ is private, and this record is where it is tested.
 
 ## The entry points and the readings
 
-Six entry points, each a grant of what a turn may carry. `/principal:ask` puts the next
-question to the AI in a clean context, and with `--again` puts a landed one again.
-`/principal:dictate` changes the notebook, and may draw the change with the principal first as
+Six entry points, each a grant of what a turn may carry. `/principal:dictate` changes the notebook, and may draw the change with the principal first as
 a line of questions whose admissions are compacted into the plan. `/principal:bootstrap` builds
 what the notebook describes ahead of canon. `/principal:consult` takes a situation in the user's
 words and returns the clauses and cases that bear on it, reading only and drawing nothing.
@@ -40,6 +38,37 @@ words and returns the clauses and cases that bear on it, reading only and drawin
 quoted, for the user to confirm or correct. `/principal:interview` puts a question the principal
 answers, or the project's end, to the user through a questioner that has read nothing of the
 notebook, keeps a line doc of admissions, and hands over to a comparing run the user runs.
+`/principal:sit` is the one session that speaks with the principal. It states no goal of its
+own: it serves that portion of the principal's rule of life that can be delegated to the AI, and
+is meant to be a projection of the AI's graph, which a line of questions builds; most of it is a
+stopgap built from the principal's words until that graph covers it. It puts questions to the
+AI's own record in clean turns, each a run of the harness of its own that `tools/clean_turn.py`
+starts in an empty directory with no tools, settings, memory or rules file, holding the AI's own
+earlier answers, each under the question it was given to, written by `tools/packet.py`, and one
+question. It
+puts one action at a time on its page, each question alone and sealed by a clean reader before it
+is put and graded after, writes its own line doc and never the notebook, and hands every write to
+the notebook to a job on the board. It runs confined, in a session started as the interviewer
+kind, or open, in an ordinary session that may also brief helpers for building.
+
+The sitting's work is done by helpers of fixed kinds, defined under `agents/`: `clean-reader`
+(seals the notebook's answer to a question before it is put), `grader`, `fetcher`, `recorder`
+(writes the notebook from rows files), `reviewer`, `checker`, `comparer` (holds both records and
+writes the user's side only), `ai-recorder` (writes the AI's own record only) and `coordinator`
+(runs the board), with `interviewer` the kind of the speaking session. The clean turns' system
+prompts are under `clean/`, outside `agents/`, so that no session starts one as a helper. Four gates under `hooks/`, sharing
+`hooks/kinds.py`, hold each kind to its work and decide nothing for any other turn:
+`notebook-gate.py` refuses every helper but the recorder a write to the notebook, the comparer
+and the AI's recorder aside, each held to inserts on its own side of it,
+`reader-gate.py` confines the clean reader's reads to the sitting's questions, `kind-bash-gate.py`
+confines each kind's shell to the tools its work needs, and `kind-write-gate.py` confines each
+kind's file writes to its own scratch. `tools/board.py` is the gate on the board of jobs, a
+writing mode printing a batch for the session to send, and `tools/views.py` lifts the whole-tab
+reads out of a helper's transcript, one file each. `tools/lines.py` reads an export of the
+page's open lines: it checks them, flags those whose anchored sentences moved, sweeps the few an
+answer may bear on, orders them by the share they carry, their pressure and what they hold up,
+picks the week's lines of least weight, and prints the writes for the session to send; it closes
+a line only by the user's sentence quoted, and merges or drops one only at the user's word.
 
 The readings are projections over the record, computed and stored nowhere: `tools/frontier.py`
 (the frontier, and with `--principal` the questions only the user can answer whose lineage has
@@ -54,7 +83,9 @@ own. `tools/digest.py --project <p>` is another: a project's end and method, its
 clauses with their cues and its cases, as the instructions a Claude Project's sessions open
 with. `tools/line.py check` reads a line doc's export against the graph: every admission cited
 by a row of its plan, every row citing one, every tab a row names present. The notebook is its source: the file is exported again, never edited, and never committed by
-the notebook's tooling. `tools/shares.py` gives each principle the share of the root it carries, in equal parts unless pressure corrects them, and proposes arrangements that need less pressure; `tools/divergence.py` lists the data that contradicts a principle, each with the action that would resolve it; and `tools/crossing.py` reads the edges that run from one project to the entry of a later one, which is the derivation reading. `tools/public.py` writes the copy of the notebook that may be shown, Claude's graph whole and the user's as nodes and edges without words unless the user has marked a section as it now reads, and fails where a question put to Claude quotes what is masked; a likeness between an answer of Claude's and a masked one is agreement and fails nothing, and one between a tab the user marked and a masked tab is listed for the user to consider before the copy is made.
+the notebook's tooling. `tools/residue.py` lists what a line leaves open, the open notes the
+graph holds, each with its kind and whose move it is, and counts them without driving the count
+to nothing. `tools/shares.py` gives each principle the share of the root it carries, in equal parts unless pressure corrects them, and proposes arrangements that need less pressure; `tools/divergence.py` lists the data that contradicts a principle, each with the action that would resolve it; and `tools/crossing.py` reads the edges that run from one project to the entry of a later one, which is the derivation reading. `tools/public.py` writes the copy of the notebook that may be shown, Claude's graph whole and the user's as nodes and edges without words unless the user has marked a section as it now reads, and fails where a question put to Claude quotes what is masked; a likeness between an answer of Claude's and a masked one is agreement and fails nothing, and one between a tab the user marked and a masked tab is listed for the user to consider before the copy is made.
 
 ## Installing the plugin
 
@@ -144,8 +175,8 @@ CLAUDE_CODE_SYNC_PLUGIN_INSTALL=1
 ```
 
 so the first turn waits for the install rather than racing it. A new session then lists
-`principal@canondb`, at the commit `main` was at when it started, with the three `principal:`
-skills and the canon-answer agent available.
+`principal@canondb`, at the commit `main` was at when it started, with the `principal:`
+skills and the plugin's agents available.
 
 If the install fails, the reason is in the session's debug log at `/tmp/claude-code.log`, on the
 line beginning `[reconcile] failed to install marketplace`.
@@ -183,14 +214,22 @@ is read and written through these entry points.
      repository keeps, and, where that root was renamed after its canon landed,
      `"canon": {"<question id>": "<canon file name>"}`. Such a document keeps a `lease` tab at
      the top level, ordered last, with `## Leases` and `## Tooling` sections, which the skills
-     read and write and the reader never takes for a question.
+     read and write and the reader never takes for a question. For `/principal:sit`, add
+     `"board": "<artifact address>"`: publish `web/board.html` once as a private artifact
+     with the db capability and rules that let only its owner read and write, and put its
+     address in this key; and `"page": "<artifact address>"`: publish `web/ordo.html` once the
+     same way, with the db and user capabilities, and put its address in this key. Without a
+     `page` a sitting runs with no page and says so. Once the AI's own record has a root tab,
+     add `"ai_root": ["<its node id>", "<the node id of each tab under it>", …]`; until then the
+     AI's recorder is refused every write.
    - `bootstrap.json` — `{"applications": []}`, the manifest `/principal:bootstrap` keeps.
 
 3. Write the root question under `canon/`. Canon is what is under that directory, and nothing
-   lists it; a canon turn reads none of it, only the lineage it is handed.
+   lists it; a clean turn reads none of it, only the packet it is handed.
 
 4. Open a session and run `/principal:dictate` with the first dictation. The skills call the
-   plugin's tools by `${CLAUDE_PLUGIN_ROOT}/tools/…`; Python 3 is the only requirement.
+   plugin's tools by `${CLAUDE_PLUGIN_ROOT}/tools/…`; Python 3 is the requirement, and `/principal:sit` needs `jq`
+   as well.
 
 ## Tests
 

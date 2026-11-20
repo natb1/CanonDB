@@ -40,8 +40,9 @@ the writers above do not name — is written by one writer that is decided not
 by which part the block is but by its read-back: the whole tab is read
 through ``read.parse_tab`` before and after, and the write is refused unless
 one field alone differs. A note is inserted at the end of its section, which
-is where the renderer writes one. So no part of a tab is left whose only way
-to the page is a body write.
+is where the renderer writes one, and taken off whole, as one guarded
+delete of its blockquote, once what it held is taken up. So no part of a tab
+is left whose only way to the page is a body write.
 
 A paragraph whose change does reach a mark is written a third
 way, when the caller asks for it: given whole, as **markdown** in the
@@ -1134,6 +1135,21 @@ def note_insert(source, after: str, body: str) -> Tuple[List[dict], str, str]:
     op = {"op": "insert", "target": {"kind": "blocks", "ids": [after]},
           "side": "after", "source": appline.inline_markdown(content)}
     return [op], section, content
+
+
+def note_delete(source, bid: str) -> Tuple[List[dict], str]:
+    """A note taken off, guarded by its hash and the read's rev: an open note
+    once what it held stands on the tab, a pending one once a run has taken
+    it in. Refused unless the block is a note, which the page holds as a
+    blockquote. Returned with the op: the note's words as the page spells
+    them."""
+    node = block(source, bid)
+    if node.tag != "blockquote":
+        raise Refused("block %s is not a note (a blockquote) but a %s: %r"
+                      % (bid, node.tag, " ".join(page.inline(p) for p in
+                                                 node.iter("paragraph"))[:60]))
+    words = " ".join(page.inline(p) for p in node.iter("paragraph"))
+    return appline.guarded_delete(source, [bid]), words
 
 
 # -- an answer's headline ---------------------------------------------------

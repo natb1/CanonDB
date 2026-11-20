@@ -957,6 +957,74 @@ class NoteTest(unittest.TestCase):
             inplace.note_insert(self.view, after, "## not a note")
 
 
+def _quoted(view):
+    """The view with each ``> `` paragraph as the document prints a note: a
+    blockquote holding the paragraph, the blockquote taking its id."""
+    root = ET.fromstring(view)
+    n = 900
+    for i, node in enumerate(list(root)):
+        first = node.find("text")
+        if node.tag != "paragraph" or first is None or not (first.text or "").startswith("> "):
+            continue
+        quote = ET.Element("blockquote", id=node.get("id"), h="5a5e5a5e")
+        n += 1
+        node.set("id", ".%d" % n)
+        first.text = first.text[2:]
+        node.set("h", appline.digest(node))
+        quote.append(node)
+        root.remove(node)
+        root.insert(i, quote)
+    return ET.tostring(root, encoding="unicode")
+
+
+class NoteDeleteTest(unittest.TestCase):
+    BODY = "open: w · kind: work · whose: ai · from: f · returns: r"
+
+    def setUp(self):
+        self.graph = load()
+        self.graph.get("canon").notes.append(model.Note(section="thesis", body=self.BODY))
+        view, self.by_id = view_of(self.graph, "canon")
+        self.view = _quoted(view)
+        self.note = block_of(self.by_id, "> open:")
+
+    def test_the_note_goes_whole_guarded_and_the_tab_reads_back_without_it(self):
+        self.assertEqual(appline.blocks(self.view)[self.note].tag, "blockquote")
+        ops, words = inplace.note_delete(self.view, self.note)
+        self.assertEqual(words, self.BODY)
+        self.assertEqual(ops, [{"op": "delete", "target": {"kind": "blocks", "ids": [self.note]},
+                                "ifHash": "5a5e5a5e", "ifRev": REV}])
+        left = render.SEPARATOR.join(md for bid, md in self.by_id.items()
+                                     if bid != self.note) + "\n"
+        self.graph.get("canon").notes.pop()
+        self.assertEqual(parsed(left, self.graph),
+                         parsed(render.body(self.graph, "canon"), self.graph))
+
+    def test_a_block_that_is_not_a_note_is_refused(self):
+        thesis = block_of(self.by_id, "## Thesis")
+        with self.assertRaises(appline.Refused) as caught:
+            inplace.note_delete(self.view, thesis)
+        self.assertIn("is not a note", str(caught.exception))
+
+    def test_a_read_that_is_not_the_page_is_refused(self):
+        stale = self.view.replace("whose: ai", "whose: user", 1)
+        with self.assertRaises(appline.Refused):
+            inplace.note_delete(stale, self.note)
+        with self.assertRaises(appline.Refused):
+            inplace.note_delete(self.view.replace('rev="%d"' % REV, ""), self.note)
+
+    def test_the_command_prints_the_op_and_the_words(self):
+        done = run("inplace.py", "note", "delete", "-", "--block", self.note, stdin=self.view)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(json.loads(done.stdout)["ops"][0]["target"]["ids"], [self.note])
+        self.assertIn("old: %s" % self.BODY, done.stderr)
+        # the document holds only an ifRev on the call, so the call carries one
+        self.assertEqual(json.loads(done.stdout)["ifRev"], REV)
+        done = run("inplace.py", "note", "delete", "-", "--block",
+                   block_of(self.by_id, "## Thesis"), stdin=self.view)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("REFUSED", done.stderr)
+
+
 class WordsCliTest(unittest.TestCase):
     def test_words_replace_and_note_insert_run(self):
         graph = load()

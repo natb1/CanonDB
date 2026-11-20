@@ -15,10 +15,9 @@ Every tab of the author's must be read. Refuses (exit 1) a missing tab, a tab
 with no question line, and a block that does not hash to the ``h`` the
 document printed.
 
-`next.py` is the other reading of the same relation: the heaviest question
-with nothing left to wait on, threads included, from a graph
-file built out of every tab read whole. This is what the page says at a
-glance; that is what a turn may be put to.
+`hypo.turn.select` is the other reading of the same relation: the heaviest
+question with nothing left to wait on, threads included, over a graph file
+built out of every tab read whole. This is what the page says at a glance.
 """
 
 from __future__ import annotations

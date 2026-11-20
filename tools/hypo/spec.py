@@ -727,6 +727,15 @@ def end_stated(graph: Graph) -> Yield:
 _NOT_THE_USER = re.compile(r"\bthe human\b", re.I)
 
 
+def not_the_user(prose: str) -> str:
+    """The words of ``prose`` that name the user otherwise than the user, by
+    the rule `user-named` holds the notebook's own words to; '' where none.
+    A question drafted for the AI is held to it too (`public.py
+    question`)."""
+    found = _NOT_THE_USER.search(text.plain(prose or ""))
+    return found.group(0) if found else ""
+
+
 @check("user-named",
        "the notebook's own words name the one it is kept for the user, never the human")
 def user_named(graph: Graph) -> Yield:
@@ -752,11 +761,11 @@ def user_named(graph: Graph) -> Yield:
         if q.hinge is not None:
             parts.append(("the answer's hinge", q.hinge.thesis))
         for what, prose in parts:
-            found = _NOT_THE_USER.search(text.plain(prose or ""))
+            found = not_the_user(prose)
             if found:
                 yield q.id, ("%s says %r where it means the user, and the one the "
                              "notebook is kept for is named the user"
-                             % (what, found.group(0)))
+                             % (what, found))
 
 
 @check("provenance-complete",
@@ -1736,6 +1745,36 @@ def divergence_complete(graph: Graph) -> Yield:
             if gaps:
                 yield q.id, ("a divergence note on %s names no %s: %s"
                              % (note.section, ", ".join(gaps), _clip(note.body)))
+
+
+@check("open-complete",
+       "an open note names what is open, its kind, whose move it is, what raised it and "
+       "what brings it back")
+def open_complete(graph: Graph) -> Yield:
+    """What a line leaves open is written on the tab it bears on as a note
+    opening with the word *open*, and stands there until it is taken up.
+    What the record owes is what is open, its kind, whose move it is, what
+    raised it and what brings it back. A note that names less cannot be
+    weighed or returned to: no one knows whose move it is or when it comes
+    back. Open notes are listed and counted, never driven to none, so the
+    check holds each note's parts and not their number. A part it does not
+    know, or one given twice, is held as an error too: it would be dropped
+    from the record in silence. Every tab is held, tradition tabs too, which
+    the listing skips, as the divergence pair does."""
+    from . import residue
+    for q in graph.questions:
+        for note in q.notes:
+            parts = residue.parse(note.body)
+            if parts is None:
+                continue
+            gaps = residue.missing(parts)
+            if gaps:
+                yield q.id, ("an open note on %s names no %s: %s"
+                             % (note.section, ", ".join(gaps), _clip(note.body)))
+            strays = residue.strays(parts)
+            if strays:
+                yield q.id, ("an open note on %s holds %s: %s"
+                             % (note.section, "; ".join(strays), _clip(note.body)))
 
 
 @check("claim-open",

@@ -1,0 +1,293 @@
+<title>Sitting Board</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: one column of ledger-like panels; summary row first, then the
+     jobs in hand, what waits on the principal, and failures by kind. */
+  :root {
+    --bg: #f5f6f4;
+    --panel: #ffffff;
+    --fg: #1d2421;
+    --muted: #5d6963;
+    --rule: #d9dfdb;
+    --accent: #2f6b55;
+    --warn: #9a5b00;
+    --bad: #a3302a;
+    --ok: #2f6b55;
+    --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-data: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141917; --panel: #1b211e; --fg: #e3e8e5; --muted: #98a59e; --rule: #2d3632;
+      --accent: #7cc4a5; --warn: #e0a54a; --bad: #ef8b84; --ok: #7cc4a5;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141917; --panel: #1b211e; --fg: #e3e8e5; --muted: #98a59e; --rule: #2d3632;
+    --accent: #7cc4a5; --warn: #e0a54a; --bad: #ef8b84; --ok: #7cc4a5;
+    color-scheme: dark;
+  }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding-block: 24px 40px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid;
+    gap: 20px;
+  }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+  h1 { margin: 0; font-size: 1.5rem; font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+  h2 {
+    margin: 0 0 10px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--muted);
+  }
+  .note { margin: 0; color: var(--muted); font-size: 0.875rem; }
+  #connection { font-family: var(--font-data); font-size: 0.8125rem; color: var(--muted); }
+  #connection[data-tone="bad"] { color: var(--bad); }
+  #connection[data-tone="warn"] { color: var(--warn); }
+  section { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 16px; min-width: 0; }
+  .states { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 12px; }
+  .state { display: grid; gap: 2px; padding: 10px 12px; border-left: 3px solid var(--rule); }
+  .state[data-state="claimed"] { border-left-color: var(--accent); }
+  .state[data-state="waiting"] { border-left-color: var(--warn); }
+  .state[data-state="failed"] { border-left-color: var(--bad); }
+  .state[data-state="done"] { border-left-color: var(--ok); }
+  .state[data-state="unknown"] { border-left-color: var(--bad); }
+  .state .n { font-family: var(--font-data); font-size: 1.75rem; font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .state .label { font-size: 0.8125rem; color: var(--muted); }
+  .cap { margin-top: 12px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  th, td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  th { font-weight: 500; color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; }
+  td { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+  td.num, th.num { text-align: right; }
+  .tier { display: inline-block; padding: 0 6px; border: 1px solid var(--rule); border-radius: 3px; font-size: 0.75rem; }
+  .tier[data-tier="full"] { border-color: var(--accent); color: var(--accent); }
+  .waiting { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+  .waiting .n { font-family: var(--font-data); font-size: 1.5rem; font-variant-numeric: tabular-nums; color: var(--warn); }
+  ul.ids { margin: 10px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+  ul.ids li { font-family: var(--font-data); font-size: 0.8125rem; padding: 2px 8px; border: 1px solid var(--rule); border-radius: 3px; overflow-wrap: anywhere; }
+  .empty { color: var(--muted); font-size: 0.875rem; margin: 0; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+  @media (prefers-reduced-motion: no-preference) { section { transition: border-color 0.2s; } }
+</style>
+
+<main>
+  <header>
+    <h1>Sitting Board</h1>
+    <span id="connection" role="status">Connecting to the board…</span>
+  </header>
+
+  <section aria-labelledby="h-states">
+    <h2 id="h-states">Jobs by state</h2>
+    <div class="states" id="states"></div>
+    <p class="note cap" id="cap"></p>
+  </section>
+
+  <section aria-labelledby="h-claimed">
+    <h2 id="h-claimed">In hand</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Job</th><th>Kind</th><th>Tier</th><th class="num">Attempts</th><th>Updated</th></tr>
+        </thead>
+        <tbody id="claimed"></tbody>
+      </table>
+    </div>
+    <p class="empty" id="claimed-empty" hidden>No job is claimed.</p>
+  </section>
+
+  <div class="grid2">
+    <section aria-labelledby="h-waiting">
+      <h2 id="h-waiting">Waiting on the principal</h2>
+      <div class="waiting"><span class="n" id="waiting-n">–</span><span class="note">These are raised in the interview.</span></div>
+      <ul class="ids" id="waiting"></ul>
+    </section>
+
+    <section aria-labelledby="h-failed">
+      <h2 id="h-failed">Failures by kind</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Kind</th><th class="num">Failed</th><th class="num">Retried</th></tr></thead>
+          <tbody id="failed"></tbody>
+        </table>
+      </div>
+      <p class="empty" id="failed-empty" hidden>No job has failed.</p>
+    </section>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  // The board as the page shows it. It reads the store and writes nothing,
+  // and shows only ids and codes: anything else stored there shows as "?".
+  var STATES = ["queued", "claimed", "done", "failed", "waiting"];
+  var KINDS = ["seal", "state", "grade", "remedy", "record", "check", "review", "fetch",
+               "turn", "compare", "line", "observe", "place", "probe"];
+  var TIERS = ["full", "mid", "small"];
+  var ADDRESS = /^[A-Za-z0-9_.:\/#@+~-]{1,200}$/;
+  var jobs = [];
+  var meta = null;
+  var loaded = false;   // a snapshot of the jobs has arrived, from cache or the store
+  var dead = false;     // a listener has ended; the page no longer follows the board
+  var heard = { jobs: false, meta: false };
+
+  function el(id) { return document.getElementById(id); }
+
+  function make(tag, text, attrs) {
+    var node = document.createElement(tag);
+    if (text !== undefined && text !== null) node.textContent = String(text);
+    if (attrs) for (var k in attrs) node.setAttribute(k, attrs[k]);
+    return node;
+  }
+
+  function say(text, tone) {
+    var c = el("connection");
+    c.textContent = text;
+    if (tone) c.setAttribute("data-tone", tone); else c.removeAttribute("data-tone");
+  }
+
+  // An id or a time: an address, or "?".
+  function word(v) {
+    if (typeof v === "number" && isFinite(v) && Math.floor(v) === v) return String(v);
+    return typeof v === "string" && ADDRESS.test(v) ? v : "?";
+  }
+
+  // A kind, a tier or a state: one of the known codes, or "?".
+  function code(v, known) {
+    return typeof v === "string" && known.indexOf(v) >= 0 ? v : "?";
+  }
+
+  function render() {
+    var counts = { "?": 0 };
+    STATES.forEach(function (s) { counts[s] = 0; });
+    jobs.forEach(function (j) { counts[code(j.state, STATES)] += 1; });
+
+    var states = el("states");
+    states.replaceChildren();
+    STATES.concat(counts["?"] ? ["?"] : []).forEach(function (s) {
+      var box = make("div", null, { "class": "state", "data-state": s === "?" ? "unknown" : s });
+      box.appendChild(make("span", loaded ? counts[s] : "–", { "class": "n" }));
+      box.appendChild(make("span", s === "?" ? "unknown state" : s, { "class": "label" }));
+      states.appendChild(box);
+    });
+
+    var fullClaimed = jobs.filter(function (j) { return j.state === "claimed" && j.tier === "full"; }).length;
+    el("cap").textContent = loaded && meta && typeof meta.cap_full === "number"
+      ? "Full tier claimed: " + fullClaimed + " of " + word(meta.cap_full) + "."
+      : "";
+
+    var claimed = jobs.filter(function (j) { return j.state === "claimed"; })
+      .sort(function (a, b) { return word(a.updated).localeCompare(word(b.updated)) || word(a.id).localeCompare(word(b.id)); });
+    var body = el("claimed");
+    body.replaceChildren();
+    claimed.forEach(function (j) {
+      var tr = make("tr");
+      tr.appendChild(make("td", word(j.id)));
+      tr.appendChild(make("td", code(j.kind, KINDS)));
+      var tierCell = make("td");
+      var tier = code(j.tier, TIERS);
+      tierCell.appendChild(make("span", tier, { "class": "tier", "data-tier": tier }));
+      tr.appendChild(tierCell);
+      tr.appendChild(make("td", word(j.attempts), { "class": "num" }));
+      tr.appendChild(make("td", word(j.updated)));
+      body.appendChild(tr);
+    });
+    el("claimed-empty").hidden = !loaded || claimed.length > 0;
+
+    var waiting = jobs.filter(function (j) { return j.state === "waiting"; })
+      .map(function (j) { return word(j.id); }).sort();
+    el("waiting-n").textContent = loaded ? String(waiting.length) : "–";
+    var list = el("waiting");
+    list.replaceChildren();
+    waiting.forEach(function (id) { list.appendChild(make("li", id)); });
+
+    var byKind = {};
+    jobs.forEach(function (j) {
+      var k = code(j.kind, KINDS);
+      if (!byKind[k]) byKind[k] = { failed: 0, retried: 0 };
+      if (j.state === "failed") byKind[k].failed += 1;
+      if (typeof j.attempts === "number" && j.attempts > 0) byKind[k].retried += 1;
+    });
+    var failed = el("failed");
+    failed.replaceChildren();
+    var kinds = Object.keys(byKind).filter(function (k) { return byKind[k].failed > 0; }).sort();
+    kinds.forEach(function (k) {
+      var tr = make("tr");
+      tr.appendChild(make("td", k));
+      tr.appendChild(make("td", byKind[k].failed, { "class": "num" }));
+      tr.appendChild(make("td", byKind[k].retried, { "class": "num" }));
+      failed.appendChild(tr);
+    });
+    el("failed-empty").hidden = !loaded || kinds.length > 0;
+  }
+
+  render();
+
+  var timer = null;
+  function settle() {
+    if (dead || !(heard.jobs && heard.meta)) return;
+    if (timer !== null) { clearTimeout(timer); timer = null; }
+    say(meta ? "Live, " + jobs.length + " job" + (jobs.length === 1 ? "" : "s") + "."
+             : "Live. No board is visible to this view.");
+  }
+
+  function stopped(e) {
+    dead = true;
+    if (timer !== null) { clearTimeout(timer); timer = null; }
+    say("The board stopped answering" + (e && e.code ? " (" + word(e.code) + ")" : "") +
+        "; what is shown may be out of date. Reopen the page to try again.", "bad");
+  }
+
+  async function start() {
+    var db = null;
+    try {
+      if (window.claude && typeof window.claude.use === "function") db = await window.claude.use("db");
+    } catch (e) { db = null; }
+    if (!db) {
+      say("The board cannot be reached from this view.", "bad");
+      return;
+    }
+    timer = setTimeout(function () {
+      timer = null;
+      if (dead) return;
+      say(loaded ? "The board is slow to answer; what is shown may be out of date."
+                 : "The board cannot be reached yet.", "warn");
+    }, 10000);
+    db.collection("jobs").onSnapshot(function (snap) {
+      if (dead) return;
+      jobs = snap.docs.filter(function (d) { return d.exists; }).map(function (d) {
+        var data = d.data() || {};
+        return {
+          id: data.id !== undefined ? data.id : d.id, kind: data.kind, tier: data.tier,
+          state: data.state, attempts: data.attempts, updated: data.updated
+        };
+      });
+      loaded = true;
+      if (!snap.metadata.fromCache) heard.jobs = true;
+      render();
+      settle();
+    }, stopped);
+    db.doc("meta/board").onSnapshot(function (snap) {
+      if (dead) return;
+      meta = snap.exists ? snap.data() : null;
+      if (!snap.metadata.fromCache) heard.meta = true;
+      render();
+      settle();
+    }, stopped);
+  }
+
+  start();
+})();
+</script>

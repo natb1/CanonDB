@@ -1,0 +1,699 @@
+<title>Ordo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Display only: no buttons, no inputs, no writes. Layout: one column on a phone; from 60rem two, the main column left and the context panel right (sticky). Main column: bell notice (while a rung bell's office has an owner item unresolved), then the action context (paragraphs, tradition, prediction, notes), then the next action as the largest thing (the first unresolved owner office item while there is one, a taken one first, with the session's action and its deferred action, if any, as quiet "After the office" notes; a recommendation, on a review of mechanism, after the prompt; otherwise, or while the owner has set the rung bell's office aside (current.office_deferred), the session's action, with the set-aside office and a deferred action, if any, as quiet notes inside it), then the helper list. On a phone the panel sits under the next-action card. Panel: the latest rung bell and its remaining items (session-run ones marked, and kept with their state), then one timeline of the bells and calendar events of the next 48 hours, then when the calendar was read; under that card, a second card holding only the "Waiting, in order" list (current.queue) in a native details element, closed by default. The action context may end with appended log records (context.log), each under a divider carrying its time. */
+:root {
+  --bg: #f3f5f6; --surface: #ffffff; --ink: #18242b; --muted: #5a6a73;
+  --line: #d5dce0; --accent: #1f6f5c; --accent-soft: #e2f0ec; --against: #8a4b2a; --against-soft: #f6ebe3;
+  --display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --body: Inter, "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11181c; --surface: #1a2429; --ink: #e6ecef; --muted: #9aa9b1;
+  --line: #2c3a41; --accent: #6fc7b0; --accent-soft: #1d3530; --against: #e0a27e; --against-soft: #36271e; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11181c; --surface: #1a2429; --ink: #e6ecef; --muted: #9aa9b1;
+  --line: #2c3a41; --accent: #6fc7b0; --accent-soft: #1d3530; --against: #e0a27e; --against-soft: #36271e; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 48px; }
+main { max-width: 42rem; margin-inline: auto; display: flex; flex-direction: column; gap: 22px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; color: var(--muted); font-size: 0.85rem; }
+.pill { background: var(--accent-soft); color: var(--accent); padding: 3px 10px; border-radius: 999px; font-weight: 600; font-size: 0.78rem; letter-spacing: 0.03em; text-transform: uppercase; }
+.pill[data-kind="office"], .pill[data-kind="review"] { background: var(--against-soft); color: var(--against); }
+.pill[data-kind="work"] { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+.q { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+.label { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.case { margin: 0; color: var(--ink); }
+.prompt { margin: 0; font-family: var(--display); font-weight: 600; font-size: 1.45rem; line-height: 1.3; text-wrap: balance; }
+.how { margin: 0; color: var(--muted); font-size: 0.9rem; border-top: 1px solid var(--line); padding-top: 12px; }
+.empty { margin: 0; color: var(--muted); }
+.deferred { border-left: 3px solid var(--line); padding: 2px 0 2px 12px; display: flex; flex-direction: column; gap: 6px; }
+.deferred p { margin: 0; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 1.05rem; margin: 0; text-wrap: balance; }
+section { display: flex; flex-direction: column; gap: 10px; }
+section p { margin: 0; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 14px; }
+.side { min-width: 0; border-top: 3px solid var(--accent); background: var(--accent-soft); padding: 14px; border-radius: 0 0 8px 8px; display: flex; flex-direction: column; gap: 10px; }
+.side.con { border-top-color: var(--against); background: var(--against-soft); }
+.side h3 { margin: 0; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.side.con h3 { color: var(--against); }
+.side p { margin: 0; font-size: 0.93rem; }
+.side b { font-weight: 600; }
+.logsep { display: flex; align-items: center; gap: 10px; margin-top: 6px; color: var(--muted); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+.logsep::before, .logsep::after { content: ""; border-top: 1px solid var(--line); }
+.logsep::before { width: 16px; }
+.logsep::after { flex: 1; }
+.logrec { display: flex; flex-direction: column; gap: 10px; }
+.quiet { color: var(--muted); font-size: 0.9rem; }
+h3.sub { font-family: var(--display); font-weight: 600; font-size: 0.98rem; margin: 0; text-wrap: balance; }
+.pred { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.pred .part { display: flex; flex-direction: column; gap: 6px; }
+.plain { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 4px; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
+[hidden] { display: none !important; }
+.bell { background: var(--against-soft); border-left: 3px solid var(--against); border-radius: 0 8px 8px 0; padding: 10px 16px; display: flex; flex-direction: column; gap: 2px; }
+.bell p { margin: 0; }
+.bell-msg { font-weight: 600; color: var(--against); }
+summary { cursor: pointer; font-family: var(--display); font-weight: 600; }
+.wait[open] summary { margin-bottom: 12px; }
+.wait li { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.wait .pill { font-size: 0.7rem; padding: 1px 8px; }
+.status { margin: 0; font-variant-numeric: tabular-nums; }
+.col { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.panel p { margin: 0; }
+.pb { display: flex; flex-direction: column; gap: 6px; }
+.pb-head { font-family: var(--display); font-weight: 600; }
+.pb-head .quiet { font-family: var(--body); font-weight: 400; }
+.pb-items { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 2px; font-size: 0.93rem; }
+.tl { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.tl .day { font-family: var(--display); font-weight: 600; font-size: 0.9rem; padding: 6px 0 2px; border-bottom: 1px solid var(--line); }
+.tl .entry { display: grid; grid-template-columns: 6.2rem minmax(0, 1fr); gap: 2px 10px; align-items: baseline; font-size: 0.93rem; }
+.tl .when { color: var(--muted); font-variant-numeric: tabular-nums; }
+.tl .what { overflow-wrap: anywhere; }
+.tl .tag { display: inline-block; font-size: 0.66rem; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; padding: 0 6px; margin-right: 6px; border-radius: 4px; vertical-align: 0.1em; }
+.tl .is-bell .tag { background: var(--against-soft); color: var(--against); }
+.tl .is-bell .what b { font-weight: 600; }
+.tl .is-event .tag { border: 1px solid var(--line); color: var(--muted); }
+.tl .entry.next { background: var(--against-soft); border-left: 3px solid var(--against); border-radius: 0 8px 8px 0; padding: 8px 10px; }
+.tl .entry.next .when { color: var(--ink); font-weight: 600; }
+.tl .entry.next .what b { font-family: var(--display); font-size: 1.15rem; }
+.tl .entry.next .tag { background: var(--surface); }
+@media (min-width: 60rem) {
+  main { max-width: 66rem; display: grid; grid-template-columns: minmax(0, 1fr) 20rem; grid-template-rows: auto 1fr; column-gap: 32px; row-gap: 22px; align-items: start; }
+  #col-a { grid-column: 1; grid-row: 1; }
+  #col-b { grid-column: 1; grid-row: 2; }
+  #side { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
+}
+</style>
+
+<main>
+ <div class="col" id="col-a">
+  <div id="bell" class="bell" role="status" hidden>
+    <p id="bell-msg" class="bell-msg"></p>
+    <p id="bell-next" class="quiet"></p>
+  </div>
+
+  <section id="ctx" hidden>
+    <span class="label">Action context</span>
+    <h2 id="ctx-heading"></h2>
+    <p class="quiet" id="ctx-at" hidden></p>
+    <div id="ctx-paras" style="display:flex;flex-direction:column;gap:10px"></div>
+    <h3 class="sub" id="ctx-trad" hidden>Tradition on the result</h3>
+    <div id="ctx-two" class="two" hidden>
+      <div class="side"><h3>For</h3><div id="ctx-for" style="display:flex;flex-direction:column;gap:10px"></div></div>
+      <div class="side con"><h3>Against</h3><div id="ctx-against" style="display:flex;flex-direction:column;gap:10px"></div></div>
+    </div>
+    <div id="ctx-pred" class="pred">
+      <h3 class="sub">Predicted result</h3>
+      <div id="ctx-pred-body" style="display:flex;flex-direction:column;gap:12px"></div>
+    </div>
+    <div id="ctx-notes" style="display:flex;flex-direction:column;gap:6px"></div>
+    <div id="ctx-log" style="display:flex;flex-direction:column;gap:10px"></div>
+  </section>
+
+  <div class="q" id="next">
+    <div class="meta" id="next-meta" hidden>
+      <span class="pill" id="next-kind"></span>
+      <span id="next-line"></span>
+    </div>
+    <span class="label" id="next-case-label" hidden>The case</span>
+    <p class="case" id="next-case" hidden></p>
+    <span class="label">Next action</span>
+    <p class="prompt" id="next-prompt" hidden></p>
+    <span class="label" id="next-rec-label" hidden>Recommendation</span>
+    <div id="next-rec" style="display:flex;flex-direction:column;gap:6px" hidden></div>
+    <p class="empty" id="next-empty">No action set yet. The session writes the next action here.</p>
+    <p class="quiet" id="under" hidden></p>
+    <p class="quiet" id="office-then" hidden></p>
+    <p class="quiet" id="office-resolved" hidden></p>
+    <p class="quiet" id="office-tell" hidden>Tell the session when it is done.</p>
+    <div class="deferred" id="office-after" hidden>
+      <span class="label">After the office</span>
+      <p id="office-after-prompt"></p>
+      <p class="quiet" id="office-after-meta" hidden></p>
+    </div>
+    <div class="deferred" id="office-aside" hidden>
+      <span class="label">Office set aside, still due</span>
+      <p id="office-aside-items"></p>
+      <p class="quiet" id="office-aside-meta"></p>
+      <p class="quiet" id="office-aside-reason" hidden></p>
+    </div>
+    <div class="deferred" id="next-deferred" hidden>
+      <span class="label">Deferred, still first by the measure</span>
+      <p id="next-def-prompt"></p>
+      <p class="quiet" id="next-def-meta" hidden></p>
+      <p class="quiet" id="next-def-reason" hidden></p>
+    </div>
+    <p class="how" id="next-how" hidden></p>
+  </div>
+ </div>
+
+  <aside class="col" id="side" aria-label="This bell, the next 48 hours and what is waiting">
+    <div class="panel" id="panel">
+      <span class="label">This bell</span>
+      <div class="pb" id="panel-bell"></div>
+      <span class="label">Next 48 hours</span>
+      <ol class="tl" id="panel-list"></ol>
+      <p class="quiet" id="panel-cal"></p>
+    </div>
+    <details class="panel wait" id="wait" hidden>
+      <summary id="wait-sum">Waiting, in order</summary>
+      <ol class="plain quiet" id="wait-list"></ol>
+    </details>
+  </aside>
+
+ <div class="col" id="col-b">
+  <hr id="bg-rule" hidden>
+  <section id="bg" hidden>
+    <h2>The helpers' action context</h2>
+    <ul class="plain quiet" id="bg-list"></ul>
+  </section>
+
+  <p class="status quiet" id="status">Loading…</p>
+ </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  // Display only: the page reads ordo/current, ordo/rule, ordo/agenda and ordo/ticks-<Rule day>, and writes nothing.
+  var $ = function (id) { return document.getElementById(id); };
+  var db = null;
+  var current = null, rule = null, agenda = null, ticks = {}, ticksDay = null, unsubTicks = null;
+  var loaded = false, timedOut = false, failed = false, bellSig = "";
+
+  function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+  function hhmm(iso) { var d = new Date(iso); return isNaN(d) ? "" : pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+
+  // ---- pure: begin (no DOM, no state) ----
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function str(v) { return typeof v === "string" ? v : ""; }
+  function arr(v) { return Array.isArray(v) ? v : []; }
+  function slug(s) { return str(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "item"; }
+  function toMin(t) { var m = /^(\d{2}):(\d{2})$/.exec(str(t)); if (!m) return null; var h = +m[1], mi = +m[2]; return h < 24 && mi < 60 ? h * 60 + mi : null; }
+  // Minutes in the Rule day as HH:MM (a time past midnight wraps back to 00-23).
+  function clockText(m) { return pad(Math.floor(m / 60) % 24) + ":" + pad(m % 60); }
+
+  // Keys for a list of labels: slug, made unique within the list.
+  function keysFor(prefix, items) {
+    var seen = {};
+    return items.map(function (it) {
+      var k = prefix + "-" + slug(it), n = 2;
+      while (seen[k]) k = prefix + "-" + slug(it) + "-" + n++;
+      seen[k] = true; return k;
+    });
+  }
+
+  var DAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+  // A weekday given as 0-6 (Sunday = 0) or a name in any case ("Sun", "sunday"), as "sun".."sat"; "" if neither.
+  function dayKey(x) {
+    if (typeof x === "number") return x >= 0 && x < 7 && x % 1 === 0 ? DAYS[x] : "";
+    var s = str(x).slice(0, 3).toLowerCase();
+    return DAYS.indexOf(s) >= 0 ? s : "";
+  }
+  function dayIn(list, wd) { return arr(list).some(function (x) { return dayKey(x) === DAYS[wd]; }); }
+  // "MM-DD" as MM*100+DD, or null.
+  function mdNum(s) {
+    var m = /^(\d{1,2})-(\d{1,2})$/.exec(str(s)); if (!m) return null;
+    var mo = +m[1], d = +m[2];
+    return mo >= 1 && mo <= 12 && d >= 1 && d <= 31 ? mo * 100 + d : null;
+  }
+  // Inclusive off range of the year; wraps the new year when from > to.
+  function isOff(o, md) {
+    var f = mdNum(o.off_from), t = mdNum(o.off_to);
+    if (f == null || t == null) return false;
+    return f <= t ? (md >= f && md <= t) : (md >= f || md <= t);
+  }
+  function applies(o, rd) {
+    if (Array.isArray(o.days) && o.days.length && !dayIn(o.days, rd.wd)) return false;
+    if (dayIn(o.except_days, rd.wd)) return false;
+    return !isOff(o, rd.md);
+  }
+
+  // The Rule's day at a moment: before day_start it is still the previous calendar date.
+  // mins counts from midnight of the Rule day, so 04:30 with day_start 05:00 is 28:30 (1710).
+  function ruleDay(r, now) {
+    var ds = toMin(r && r.day_start); if (ds == null) ds = 0;
+    var mins = now.getHours() * 60 + now.getMinutes(), early = mins < ds;
+    var rd = dayInfo(now.getFullYear(), now.getMonth(), now.getDate() - (early ? 1 : 0), ds);
+    rd.mins = early ? mins + 1440 : mins;
+    return rd;
+  }
+  // A Rule day by its calendar date (day may overflow the month; Date normalises it).
+  function dayInfo(y, mo, day, ds) {
+    var d = new Date(y, mo, day, 12);
+    return {
+      date: d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()),
+      wd: d.getDay(), md: (d.getMonth() + 1) * 100 + d.getDate(), ds: ds,
+      y: d.getFullYear(), mo: d.getMonth(), d: d.getDate()
+    };
+  }
+  // The bell's time on a weekday: time_by_day for that day if valid, else time.
+  function bellTime(b, wd) {
+    var t = str(b && b.time), by = b && b.time_by_day;
+    if (by && typeof by === "object") Object.keys(by).forEach(function (k) {
+      if (dayKey(k) === DAYS[wd] && toMin(by[k]) != null) t = str(by[k]);
+    });
+    return t;
+  }
+  // The bells of the Rule day in order; a bell before day_start falls after midnight.
+  function bellsOn(r, rd) {
+    if (!r || !Array.isArray(r.bells)) return [];
+    if (Array.isArray(r.days) && r.days.length && !dayIn(r.days, rd.wd)) return [];
+    return r.bells.map(function (b) {
+      var m = toMin(bellTime(b, rd.wd));
+      if (toMin(b && b.time) == null || m == null) return null;
+      return { b: b, m: m < rd.ds ? m + 1440 : m };
+    }).filter(Boolean).sort(function (a, c) { return a.m - c.m; });
+  }
+  function latestRung(r, rd) {
+    var out = { rung: null, next: null };
+    bellsOn(r, rd).forEach(function (x) { if (x.m <= rd.mins) out.rung = x; else if (!out.next) out.next = x; });
+    return out;
+  }
+  // The bells strictly after now and at or before end, each {at: Date, b, m}, over the Rule days
+  // that can reach the window (the current one and the next three; the window is 48 hours).
+  function upcomingBells(r, now, end) {
+    var rd0 = ruleDay(r, now), out = [];
+    for (var i = 0; i < 4; i++) {
+      var rd = dayInfo(rd0.y, rd0.mo, rd0.d + i, rd0.ds);
+      bellsOn(r, rd).forEach(function (x) {
+        var at = new Date(rd.y, rd.mo, rd.d, 0, x.m);
+        if (at > now && at <= end) out.push({ at: at, b: x.b, m: x.m });
+      });
+    }
+    return out;
+  }
+  // A start or end: "YYYY-MM-DD" alone is that local date at 00:00; anything else as Date parses it.
+  function parseWhen(s) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str(s));
+    if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+    var d = str(s) ? new Date(str(s)) : null;
+    return d && !isNaN(d) ? d : null;
+  }
+  // The agenda's events not yet ended (end, or start when there is no end, after now) and starting
+  // at or before end, each {at, end, title, allDay}.
+  function upcomingEvents(ag, now, end) {
+    return arr(ag && ag.events).map(function (e) {
+      if (!e || typeof e !== "object" || !str(e.title)) return null;
+      var s = parseWhen(e.start); if (!s) return null;
+      var en = parseWhen(e.end) || s;
+      if (en <= now || s > end) return null;
+      return { at: s, end: en, title: str(e.title), allDay: e.all_day === true };
+    }).filter(Boolean);
+  }
+  var WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  // Calendar days from now's date to d's date.
+  function dayDiff(d, now) {
+    return Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12) -
+      new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12)) / 86400000);
+  }
+  function dayLabel(d, now) { var n = dayDiff(d, now); return n === 0 ? "Today" : n === 1 ? "Tomorrow" : WEEKDAYS[d.getDay()]; }
+  function hm(d) { return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+
+  // The bell's applicable office items today, each {key, label, ask, session}. Keys are made over the
+  // whole list (so filtering never shifts them) and use the base time.
+  function officeItems(b, rd) {
+    var raw = arr(b && b.office).map(function (o) {
+      if (typeof o === "string") return { label: o };
+      return o && typeof o === "object" ? o : null;
+    }).filter(function (o) { return o && str(o.label); });
+    var keys = keysFor("bell-" + str(b.time).replace(":", ""), raw.map(function (o) { return str(o.label); }));
+    var out = [];
+    raw.forEach(function (o, i) { if (applies(o, rd)) out.push({ key: keys[i], label: str(o.label), ask: o.ask === true, session: o.by === "session" }); });
+    return out;
+  }
+  // A mark value as a state: "open", "taken", "done", "overruled" or "notdue". Done is an ISO
+  // time alone; any other value is read as open, so that the item stays shown.
+  function markState(v) {
+    if (typeof v !== "string") return "open";
+    if (/^taken(\s|$)/.test(v)) return "taken";
+    if (/^overruled(\s|$)/.test(v)) return "overruled";
+    if (/^notdue(\s|$)/.test(v)) return "notdue";
+    return /^\d{4}-\d{2}-\d{2}T\S*$/.test(v) ? "done" : "open";
+  }
+  // The ISO time in a mark value ("taken <ISO>", "overruled <ISO>" or a bare ISO).
+  function markTime(v) { var s = str(v), i = s.indexOf(" "); return i >= 0 ? s.slice(i + 1) : s; }
+
+  var KINDS = ["question", "office", "work", "review"];
+  function kindOf(k) { return KINDS.indexOf(k) >= 0 ? k : "work"; }
+  // ---- pure: end ----
+
+  // Unresolved items in the card's order: the taken ones first, then the open ones, each in the office's order.
+  function unresolved(items) {
+    return items.filter(function (it) { return it.state === "taken"; })
+      .concat(items.filter(function (it) { return it.state === "open"; }));
+  }
+  // The latest rung bell of the Rule day and the next one; all its applicable items with their
+  // state (all); the owner's items (applied, those without by: "session") and the unresolved ones
+  // among them (unres), which drive the notice and the card; and every unresolved item (left),
+  // session-run ones included, for the panel.
+  function officeNow() {
+    var now = new Date(), rd = ruleDay(rule, now), lr = latestRung(rule, rd);
+    var fresh = ticksDay === rd.date;
+    var all = lr.rung ? officeItems(lr.rung.b, rd) : [];
+    all.forEach(function (it) { it.v = fresh ? ticks[it.key] : null; it.state = markState(it.v); });
+    var mine = all.filter(function (it) { return !it.session; }), unres = unresolved(mine);
+    // The owner's word to set this bell's office aside: current.office_deferred naming the latest
+    // rung bell by its base time, set aside (since) at or after that bell rang this Rule day, while
+    // that bell still has owner items unresolved. A later bell, or the next day's ringing, ends it.
+    var od = current && current.office_deferred, odAt = od && typeof od === "object" ? parseWhen(od.since) : null;
+    var aside = !!(lr.rung && unres.length && odAt &&
+      str(od.bell) === str(lr.rung.b.time).replace(":", "") &&
+      new Date(rd.y, rd.mo, rd.d, 0, lr.rung.m) <= odAt);
+    return { now: now, rd: rd, rung: lr.rung, next: lr.next, all: all, applied: mine,
+      unres: unres, left: unresolved(all), aside: aside ? od : null };
+  }
+
+  function renderContext() {
+    var c = current && current.context;
+    var sec = $("ctx");
+    if (!c || typeof c !== "object") { sec.hidden = true; return; }
+    sec.hidden = false;
+    $("ctx-heading").textContent = str(c.heading);
+    $("ctx-heading").hidden = !str(c.heading);
+    var paras = $("ctx-paras"); clear(paras);
+    arr(c.paragraphs).forEach(function (p) { paras.appendChild(el("p", null, str(p))); });
+    renderPrediction(c.prediction);
+    var pro = arr(c["for"]), con = arr(c.against);
+    $("ctx-two").hidden = $("ctx-trad").hidden = !(pro.length || con.length);
+    [["ctx-for", pro], ["ctx-against", con]].forEach(function (pair) {
+      var box = $(pair[0]); clear(box);
+      pair[1].forEach(function (it) {
+        var p = el("p");
+        if (str(it && it.who)) { p.appendChild(el("b", null, str(it.who) + ".")); p.appendChild(document.createTextNode(" ")); }
+        p.appendChild(document.createTextNode(str(it && it.text)));
+        box.appendChild(p);
+      });
+    });
+    var notes = $("ctx-notes"); clear(notes);
+    arr(c.notes).forEach(function (n) { notes.appendChild(el("p", "quiet", str(n))); });
+    var w = hhmm(str(c.at));
+    $("ctx-at").textContent = w ? "Written " + w : "";
+    $("ctx-at").hidden = !w;
+    var log = $("ctx-log"); clear(log);
+    arr(c.log).forEach(function (r) {
+      var ps = texts(r && r.paragraphs);
+      if (!ps.length) return;
+      var d = new Date(str(r.at)), t = hhmm(str(r.at)), label = "Added";
+      if (t) label += " " + (dayDiff(d, new Date()) === 0 ? "" : d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " ") + t;
+      var rec = el("div", "logrec");
+      rec.appendChild(el("div", "logsep", label));
+      ps.forEach(function (x) { rec.appendChild(el("p", null, x)); });
+      log.appendChild(rec);
+    });
+  }
+
+  // A string or an array of strings, as a list of non-empty strings.
+  function texts(v) { return (typeof v === "string" ? [v] : arr(v)).map(str).filter(Boolean); }
+
+  function renderPrediction(pr) {
+    var body = $("ctx-pred-body"); clear(body);
+    var o = pr && typeof pr === "object" ? pr : {};
+    var shown = 0;
+    [["predicted", "Predicted"], ["diverged", "Where the result diverged"], ["addressed", "How the gap is addressed"]].forEach(function (pair) {
+      var list = texts(o[pair[0]]);
+      if (!list.length) return;
+      var part = el("div", "part");
+      part.appendChild(el("span", "label", pair[1]));
+      list.forEach(function (t) { part.appendChild(el("p", null, t)); });
+      body.appendChild(part); shown++;
+    });
+    if (!shown) body.appendChild(el("p", null, "No prediction was sealed for this action."));
+  }
+
+  // Everything on the card that only some states show; each render hides these first.
+  var CARD_IDS = ["next-case-label", "next-case", "next-rec-label", "next-rec", "under", "office-then", "office-resolved", "office-tell",
+    "office-after", "office-aside", "next-deferred", "next-how"];
+
+  function setKind(kind) { $("next-kind").textContent = kind; $("next-kind").setAttribute("data-kind", kind); }
+  function theNext() { var n = current && current.next; return n && typeof n === "object" && str(n.prompt) ? n : null; }
+
+  function renderNext(st) {
+    st = st || officeNow();
+    CARD_IDS.forEach(function (id) { $(id).hidden = true; });
+    if (st.unres.length && !st.aside) renderOffice(st);
+    else { renderSession(); if (st.aside) renderAside(st); }
+  }
+
+  // The office the owner set aside: the session's action leads, and the office stays in view under it.
+  function renderAside(st) {
+    $("office-aside").hidden = false;
+    $("office-aside-items").textContent = st.unres.map(function (x) {
+      return x.label + (x.state === "taken" ? " (under way)" : "");
+    }).join(" · ");
+    var since = hhmm(str(st.aside.since));
+    $("office-aside-meta").textContent = (str(st.rung.b.name) || "The bell") + " office, rang " + clockText(st.rung.m) +
+      (since ? "; set aside at " + since : "") + ".";
+    $("office-aside-reason").textContent = str(st.aside.reason);
+    $("office-aside-reason").hidden = !str(st.aside.reason);
+  }
+
+  // The session's action, current.next. Question, review and work render alike apart from the pill.
+  function renderSession() {
+    var n = theNext();
+    $("next-empty").hidden = !!n;
+    $("next-prompt").hidden = $("next-meta").hidden = !n;
+    if (!n) return;
+    setKind(kindOf(n.kind));
+    $("next-line").textContent = str(n.line);
+    $("next-case").textContent = str(n.case);
+    $("next-case").hidden = $("next-case-label").hidden = !str(n.case);
+    // A recommendation is the speaker's on a review of mechanism; a question never shows one.
+    var rec = kindOf(n.kind) === "question" ? [] : texts(n.recommendation), box = $("next-rec"); clear(box);
+    rec.forEach(function (t) { box.appendChild(el("p", null, t)); });
+    $("next-rec").hidden = $("next-rec-label").hidden = !rec.length;
+    $("next-prompt").textContent = str(n.prompt);
+    $("next-how").textContent = str(n.how);
+    $("next-how").hidden = !str(n.how);
+    renderDeferred(n.deferred);
+  }
+
+  // The rung bell's first unresolved item (a taken one first) as the next action; the session's
+  // own action waits below, with its deferred action under it.
+  function renderOffice(st) {
+    var it = st.unres[0], name = str(st.rung.b.name) || "The bell";
+    $("next-empty").hidden = true;
+    $("next-meta").hidden = false;
+    setKind("office");
+    $("next-line").textContent = name + " office, rang " + clockText(st.rung.m);
+    $("next-prompt").hidden = false;
+    $("next-prompt").textContent = it.label;
+    if (it.state === "taken") {
+      var t = hhmm(markTime(it.v));
+      $("under").textContent = t ? "Under way since " + t + "." : "Under way.";
+      $("under").hidden = false;
+    }
+    var rest = st.unres.slice(1).map(function (x) { return x.label; });
+    $("office-then").textContent = rest.length ? "Then: " + rest.join(" · ") : "";
+    $("office-then").hidden = !rest.length;
+    var parts = [];
+    [["done", "Done"], ["overruled", "Overruled"], ["notdue", "Not due"]].forEach(function (g) {
+      var list = st.applied.filter(function (x) { return x.state === g[0]; }).map(function (x) { return x.label; });
+      if (list.length) parts.push(g[1] + ": " + list.join(", "));
+    });
+    $("office-resolved").textContent = parts.join(" · ");
+    $("office-resolved").hidden = !parts.length;
+    $("office-tell").hidden = false;
+    var n = theNext();
+    $("office-after").hidden = false;
+    $("office-after-prompt").textContent = n ? str(n.prompt) : "No action set yet.";
+    var meta = n ? [kindOf(n.kind), str(n.line)].filter(Boolean).join(" · ") : "";
+    $("office-after-meta").textContent = meta;
+    $("office-after-meta").hidden = !meta;
+    renderDeferred(n && n.deferred);
+  }
+
+  // current.queue, display only: each entry's kind and its title (or its prompt).
+  function renderWaiting() {
+    var ol = $("wait-list");
+    clear(ol);
+    var list = arr(current && current.queue).filter(function (x) {
+      return x && typeof x === "object" && (str(x.title) || str(x.prompt));
+    });
+    $("wait").hidden = !list.length;
+    $("wait-sum").textContent = "Waiting, in order (" + list.length + ")";
+    list.forEach(function (x) {
+      var k = kindOf(x.kind), li = el("li"), p = el("span", "pill", k);
+      p.setAttribute("data-kind", k);
+      li.appendChild(p); li.appendChild(el("span", null, str(x.title) || str(x.prompt)));
+      ol.appendChild(li);
+    });
+  }
+
+  var STATE_TEXT = { open: "open", taken: "under way", done: "done", overruled: "overruled", notdue: "not due" };
+
+  // The context panel: the latest rung bell and its remaining items (session-run ones marked, and
+  // kept listed with their state once resolved), then the bells and calendar events of the next 48 hours on one
+  // timeline under day headings, the next bell made the most prominent, then the waiting list
+  // (current.queue), then when the calendar was read.
+  function renderPanel(st) {
+    var now = st.now, end = new Date(now.getTime() + 48 * 3600 * 1000);
+    var box = $("panel-bell"); clear(box);
+    if (!rule) box.appendChild(el("p", "quiet", "No Rule has been set."));
+    else if (!st.rung) box.appendChild(el("p", "quiet", "No bell has rung yet this Rule day."));
+    else {
+      var head = el("p", "pb-head", str(st.rung.b.name) || "The bell");
+      head.appendChild(el("span", "quiet", " · rang " + clockText(st.rung.m)));
+      box.appendChild(head);
+      var shown = st.left.concat(st.all.filter(function (x) { return x.session && !(x.state === "open" || x.state === "taken"); }));
+      if (!st.left.length) box.appendChild(el("p", "quiet", "The office is complete."));
+      if (shown.length) {
+        var ul = el("ul", "pb-items");
+        shown.forEach(function (x) {
+          var li = el("li", null, x.label), note = x.session ? "run by the session, " + STATE_TEXT[x.state]
+            : x.state === "taken" ? "under way" : "";
+          if (note) li.appendChild(el("span", "quiet", " · " + note));
+          ul.appendChild(li);
+        });
+        box.appendChild(ul);
+      }
+    }
+
+    var entries = (rule ? upcomingBells(rule, now, end) : []).map(function (x) { return { at: x.at, bell: x }; })
+      .concat(upcomingEvents(agenda, now, end).map(function (e) { return { at: e.at, ev: e }; }));
+    entries.sort(function (a, c) { return a.at - c.at || (a.bell ? 0 : 1) - (c.bell ? 0 : 1); });
+    var list = $("panel-list"); clear(list);
+    if (!entries.length) list.appendChild(el("li", "quiet", "Nothing in the next 48 hours."));
+    var lastDay = null, firstBell = true;
+    entries.forEach(function (x) {
+      var shownAt = x.at < now ? now : x.at, day = dayLabel(shownAt, now);
+      if (day !== lastDay) { list.appendChild(el("li", "day", day)); lastDay = day; }
+      var li = el("li", "entry"), what = el("span", "what");
+      if (x.bell) {
+        var isNext = firstBell; firstBell = false;
+        li.className = "entry is-bell" + (isNext ? " next" : "");
+        li.appendChild(el("span", "when", hm(x.at)));
+        what.appendChild(el("span", "tag", isNext ? "Next bell" : "Bell"));
+        what.appendChild(el("b", null, str(x.bell.b.name) || "Bell"));
+      } else {
+        var e = x.ev;
+        li.className = "entry is-event";
+        li.appendChild(el("span", "when", e.allDay ? "All day" : e.at < now ? "until " + hm(e.end)
+          : hm(e.at) + (e.end > e.at ? "–" + hm(e.end) : "")));
+        what.appendChild(el("span", "tag", "Event"));
+        what.appendChild(document.createTextNode(e.title));
+      }
+      li.appendChild(what);
+      list.appendChild(li);
+    });
+
+    renderWaiting();
+
+    var f = agenda ? parseWhen(agenda.fetched) : null, n = f ? dayDiff(f, now) : 0;
+    $("panel-cal").textContent = !agenda ? "No calendar has been read." : !f ? "Calendar read at an unknown time."
+      : "Calendar read " + (n === 0 ? "today" : n === -1 ? "yesterday" : f.getFullYear() + "-" + pad(f.getMonth() + 1) + "-" + pad(f.getDate())) +
+        " at " + hm(f) + ".";
+  }
+
+  // The action ranked first and set aside: context, not the thing to do now.
+  function renderDeferred(d) {
+    var o = d && typeof d === "object" ? d : {};
+    var has = !!str(o.prompt);
+    $("next-deferred").hidden = !has;
+    if (!has) return;
+    var meta = [kindOf(o.kind), str(o.line)].filter(Boolean).join(" · ");
+    $("next-def-meta").textContent = meta;
+    $("next-def-meta").hidden = !meta;
+    $("next-def-prompt").textContent = str(o.prompt);
+    $("next-def-reason").textContent = str(o.reason);
+    $("next-def-reason").hidden = !str(o.reason);
+  }
+
+  function renderBackground() {
+    var items = arr(current && current.background).map(str).filter(Boolean);
+    $("bg").hidden = $("bg-rule").hidden = !items.length;
+    var ul = $("bg-list"); clear(ul);
+    items.forEach(function (t) { ul.appendChild(el("li", null, t)); });
+  }
+
+  function renderNotice(st) {
+    var band = $("bell");
+    if (!st.unres.length) { band.hidden = true; return; }
+    var left = st.unres.length, all = st.applied.length;
+    var untouched = st.applied.every(function (it) { return it.state === "open"; });
+    $("bell-msg").textContent = (str(st.rung.b.name) || "The bell") + " rang at " + clockText(st.rung.m) + ". " +
+      (st.aside ? "Its office is set aside for now; " + left + " of " + all + " office items still due."
+        : untouched ?"Its office is not yet taken up." : st.unres[0].state === "taken" ? "Its office is under way."
+        : left + " of " + all + " office items left.");
+    $("bell-next").textContent = st.next ? "Next bell: " + (str(st.next.b.name) || "bell") + " at " + clockText(st.next.m) + "." : "No more bells today.";
+    band.hidden = false;
+  }
+
+  // Notice and card, redrawn only when what they show has changed; the panel, every time (the
+  // 30 s clock calls this, and the panel's window moves with the clock).
+  function renderBell() {
+    var st = officeNow();
+    renderPanel(st);
+    var row = function (x) { return [x.key, x.label, x.state, x.v]; };
+    var sig = JSON.stringify([ticksDay, st.rd.date, st.rung && [st.rung.m, st.rung.b.name], st.next && [st.next.m, st.next.b.name],
+      st.applied.map(row), !!rule, st.aside && [st.aside.reason, st.aside.since]]);
+    if (sig === bellSig) return;
+    bellSig = sig;
+    renderNotice(st); renderNext(st);
+  }
+  function refresh() { bellSig = ""; renderBell(); }
+
+  function setStatus(t) { $("status").textContent = t; }
+  function renderStatus() {
+    if (failed) return;
+    if (!db) { setStatus("Read-only. Open this page signed in as its owner to see the next action."); return; }
+    if (!loaded) { setStatus(timedOut ? "The data can't be reached yet." : "Loading…"); return; }
+    var u = current && str(current.updated) ? hhmm(current.updated) : "";
+    setStatus((u ? "Updated " + u + "." : "") + (timedOut ? " May be out of date." : ""));
+  }
+
+  function renderAll() { renderContext(); renderBackground(); refresh(); renderStatus(); }
+
+  function onError(e) {
+    failed = true; loaded = true;
+    setStatus("Lost the connection to the data (" + ((e && e.code) || "error") + "). Reload the page to try again.");
+  }
+
+  function subTicks(day) {
+    if (unsubTicks) unsubTicks();
+    ticksDay = day; ticks = {};
+    unsubTicks = db.doc("ordo/ticks-" + day).onSnapshot(function (s) {
+      ticks = (s.exists && s.data()) || {};
+      refresh();
+    }, onError);
+  }
+
+  // The marks document follows the Rule's day, not the calendar date.
+  function syncDay() {
+    if (!db) return;
+    var d = ruleDay(rule, new Date()).date;
+    if (d !== ticksDay) subTicks(d);
+  }
+
+  function clock() { syncDay(); renderBell(); }
+
+  async function start() {
+    renderAll();
+    if (!window.claude || typeof window.claude.use !== "function") { renderStatus(); return; }
+    db = await window.claude.use("db");
+    if (!db) { renderAll(); return; }
+    var timer = setTimeout(function () { timedOut = true; renderStatus(); }, 10000);
+    var settle = function (s) { if (!s.metadata.fromCache) { clearTimeout(timer); loaded = true; timedOut = false; } };
+    db.doc("ordo/current").onSnapshot(function (s) {
+      settle(s); current = s.exists ? s.data() : null;
+      renderAll();
+    }, function (e) { clearTimeout(timer); onError(e); });
+    db.doc("ordo/rule").onSnapshot(function (s) {
+      rule = s.exists ? s.data() : null; syncDay(); refresh();
+    }, onError);
+    // Absence is normal: no calendar has been read yet.
+    db.doc("ordo/agenda").onSnapshot(function (s) {
+      agenda = s.exists ? s.data() : null; renderBell();
+    }, onError);
+    syncDay();
+    renderAll();
+    setInterval(clock, 30000);
+  }
+
+  start().catch(function () { renderStatus(); });
+})();
+</script>

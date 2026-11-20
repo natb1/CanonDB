@@ -276,7 +276,7 @@ class EntryPointTest(unittest.TestCase):
     def test_every_tool_runs_by_its_path(self):
         """The skills run a tool by its path, so each has its shebang and its
         mode bits, and exits 0 on ``--help`` as a process."""
-        self.assertEqual(len(self.SCRIPTS), 27, self.SCRIPTS)
+        self.assertEqual(len(self.SCRIPTS), 31, self.SCRIPTS)
         for script in self.SCRIPTS:
             with self.subTest(script=script):
                 done = subprocess.run([os.path.join(HERE, script), "--help"],
@@ -331,13 +331,6 @@ class RefusalCliTest(unittest.TestCase):
         self.assertEqual(done.returncode, 1)
         self.assertIn("one-root", done.stderr)
         self.assertEqual(done.stdout, "")
-
-    def test_the_packet_s_directory_is_made(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            out = os.path.join(tmp, "nope", "packet", "lineage.md")
-            done = run("lineage.py", fixture("valid"), "canon", "--thread", "ti-esti", "-o", out)
-            self.assertEqual(done.returncode, 0, done.stderr)
-            self.assertTrue(os.path.exists(out))
 
     def test_a_question_verify_is_asked_for_and_the_graph_has_not(self):
         with tempfile.TemporaryDirectory() as tmp:

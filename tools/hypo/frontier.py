@@ -1,6 +1,6 @@
 """The frontier, read off the page where it stands.
 
-``next.py`` answers which question to put: the heaviest with nothing left to
+``turn.select`` reads which question waits heaviest with nothing left to
 wait on, from a graph file, which is built from every tab read whole. Most
 callers ask something smaller — what could be put at all — and need none of
 the words for it. The frontier is every question of the author's that the AI
@@ -26,7 +26,7 @@ catches the question line and every answer's line at once, and ``▸ `` every
 term — and never a whole-body view. Every block used is checked against the
 hash the document printed, as ``appline`` checks what it writes from.
 
-Where a question stands on the frontier and ``next.py`` would not put it, the
+Where a question stands on the frontier and ``turn.select`` would not take it, the
 difference is what the page does not say at a glance: whether it is already
 in a thread. Pressure, not backlog, is the
 order here, because the backlog is a projection of the whole graph and the

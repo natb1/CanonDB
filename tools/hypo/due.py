@@ -96,7 +96,7 @@ def rows(graph: Graph, model: Optional[str] = None, moved: Optional[again.Moved]
             q = by_id.get(d.question)
             out.append(Row(q.project if q is not None else "", d.question, "again",
                            "; ".join(d.reasons),
-                           "put it again: /principal:ask --again %s" % d.question))
+                           "put it again: a clean turn in a sitting (/principal:sit) %s" % d.question))
     for held in drift.deadlocks(graph):
         q = by_id[held.question]
         if not _in(q, of) or all(held.holds):

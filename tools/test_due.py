@@ -74,7 +74,7 @@ class DueTest(unittest.TestCase):
         moved = lambda qid, canon, above: []  # noqa: E731
         rows = due.rows(self.graph, model="another model", moved=moved)
         self.assertEqual([(r.question, r.kind) for r in rows], [("ti-esti", "again")])
-        self.assertIn("--again ti-esti", rows[0].next)
+        self.assertIn("a clean turn in a sitting (/principal:sit) ti-esti", rows[0].next)
         self.assertEqual(self.kinds(), [])   # without a model, the kind is left out, not guessed
 
     def two_projects(self):

@@ -6,7 +6,7 @@
     {
       "name": "principal",
       "source": "./",
-      "description": "The principal's entry points over a hypomnemata notebook and canon: /principal:dictate, /principal:ask, /principal:bootstrap, and the canon-answer agent with its read gate."
+      "description": "The principal's entry points over a hypomnemata notebook and canon: /principal:dictate, /principal:bootstrap, /principal:sit with its helper kinds and gates, and the clean turn."
     }
   ]
 }
