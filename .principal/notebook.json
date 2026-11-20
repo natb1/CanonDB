@@ -4,5 +4,7 @@
   "project": "canondb",
   "canon": {
     "canondb": "ti-esti"
-  }
+  },
+  "board": "https://claude.ai/artifact/CeJaCrJvUS2NURWZgfyxsm",
+  "page": "https://claude.ai/artifact/DcpHEvGq5uRZ21aZBNNxCu"
 }
