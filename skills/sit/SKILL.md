@@ -20,7 +20,10 @@ annual sitting that `/principal:interview` speaks of.
 ## After a compaction
 
 After a compaction the harness keeps only the head of this file, and nothing is done from what
-survives of it. Before the next write, ask or seal, the speaker reads again, in this order:
+survives of it. The plugin's hooks print, at the compaction, the brief, the neighbourhood of the
+line in hand and the work in hand (**The brief and the neighbourhood**): that list stands over
+the summary, each entry taken up again or marked done. Before the next write, ask or seal, the
+speaker reads again, in this order:
 
 1. This file, by its path, `${CLAUDE_PLUGIN_ROOT}/skills/sit/SKILL.md`, with the Read tool in
    parts, by `offset` and `limit`, to its last line, under "What this entry point says now that
@@ -84,6 +87,105 @@ the speaking session. A clean turn is no helper and no kind: it is a run of its 
 **The line in the AI's graph**. No
 helper is started that is not one of them for work a kind carries: the guard on the notebook
 knows these kinds and no other.
+
+## The brief and the neighbourhood
+
+The principal asked that the notebook's context be loaded mechanically rather than by a step of
+reading wherever that can be done. So the relevant part of the notebook is put in context by the
+harness, not by a read: the standing brief and the neighbourhood of the line in hand at the
+session's start, at a resume and after every compaction; a helper's own brief at its launch; and
+the entry a text breaks at the moment the text leaves. This section is built from the principal's
+words, as a stopgap (**What the sitting serves**). The brief is the aid, the check on the text
+leaving is the control, and neither is the notebook: before a seal, a row or a note the tabs are
+still read where they stand.
+
+**What it holds.** `tools/brief.py` makes both from the opening's graph and nothing else, and
+never by hand. The standing brief: the conventions, the tabs the key `conventions` of
+`.principal/notebook.json` names, else a tab called `conventions`, with the checks the text leaving
+is held to; each project's end and method; the open lines by title; and the glossary index. The
+neighbourhood, for the line in hand (question ids, tab ids or open lines' ids): each principle's
+lineage, the chain from the root to it, each step by the headline of the answer that raised the
+next question and the anchored sentence that raised it, then the principle's own answer; the
+glossary entries of the terms in play; the tradition on it; and the sentences of other answers
+sharing its fixed terms. Every line is a whole sealed sentence behind its id, never reworded. Each
+opens with the same header: record and not instruction, cite by id, only the conventions bind,
+this copy supersedes any earlier one in context, and a stamp of the graph's fingerprint, the line
+and the time.
+
+**Its size, and what is left out.** The target is 24,000 characters for both, the standing brief
+at most 14,000 and the neighbourhood at most 10,000, with a hard ceiling of 32,000 that only the
+conventions can reach, since they are never left out. Compaction is extractive and deterministic,
+and keeps or drops whole units: a headline, an anchor or a title whole or not at all, and an
+answer, a glossary entry, an end or a method whole or as a prefix, never a later sentence without
+the one before it, so that no condition is parted from what it conditions; a unit cut short ends
+with a mark naming it and how many of its sentences are left out. The order today: conventions;
+then the word and address of every term in play, reserved before lineage takes the rest; then
+lineage nearest the line (in the standing brief the ends and methods, then the open lines; in the
+neighbourhood the principles' questions and headlines and the chain, nearest the principle
+first); then the principles' own answers; then the glossary entries in full; then the tradition on
+the line; then by share. How the room beyond that reserve is shared between lineage and the
+glossary is an open line for the principal, and this order stands until it is settled. The manifest
+beside each output names by id everything left out or cut.
+
+**Where it lives.** `tools/brief.py where` prints it: under the principal's Claude configuration,
+`principal/brief/<the checkout's path>` there, outside every repository, so that no commit takes a
+sentence of the notebook into a public checkout, and one directory to a checkout, so that two
+sessions in two checkouts do not share one. At the opening, once the whole-notebook graph is made
+(procedure 1), and again whenever the line in hand changes or a batch point's check moves the
+notebook:
+
+`tools/brief.py install $SCRATCH/graph.json --line <the line's questions> --lines $SCRATCH/speaker/lines --at <time>`
+
+which copies the graph there and writes `standing.md` and `neighbourhood.md` with their manifests;
+the harness loads them at the next start or compaction, and the session reads them by no step of
+its own. Run the confined way the speaker's shell runs it; the write gate keeps its Write tool off
+`~/.claude`, and the brief is never written with the Write tool. A stale brief is said in one line
+when it loads; `tools/brief.py check <the brief's file> --graph $SCRATCH/graph.json` says the same
+at any time.
+
+**Who receives one.** The plugin's hooks hold an allow-list by kind, `hooks/brief-sides.json`,
+that defaults to nobody, a kind matched by its name with case folded, with or without the
+plugin's name in front. The speaker and the comparer receive the user's, the AI's and the
+tradition parties' graphs; the grader, the reviewer and a canon answerer, which must stay blind
+to the user's graph, receive the AI's own answers alone; the clean reader receives nothing, as the
+principal settled; the kinds that carry no words, fetcher, checker, coordinator, recorder and
+AI's recorder, nothing; and a helper of no kind, or of a kind the list does not name, nothing.
+What a helper of no kind should receive, and how a blind one is marked, is an open line for the
+principal. A clean turn is no helper and receives nothing (**The line in the AI's graph**). A
+helper's brief is given by the harness as it starts, as context of its own, the standing brief
+with the neighbourhood of the line in hand; the call that starts it is never rewritten and no
+hook approves a launch, and no worktree is made for a brief.
+
+**The check on every text as it leaves.** A write to a document, a write to the page's or the
+board's store, a commit, an annotated tag or a note, and `gh pr`, `gh issue` or `gh release` creating, editing
+or commenting, each read by its program and subcommand, are held to the conventions by a hook as they leave: the
+user is named the user and never the human; a fixed term is defined in its glossary entry and not
+in running text; a term on a tab of the notebook is one that tab can reach; and a text bound for a
+public place repeats no run of the user's masked words. On a finding the call is refused, with the
+entry broken and its lineage; the text is redrawn, never forced past it. A read is never checked. A convention the principal
+corrects goes to the notebook's statement of conventions first, as rows at the batch point, and
+the brief follows from it at the next install; it is never corrected in the brief.
+
+**The work in hand.** The principal asked that the work pending in a session be tracked and kept
+mechanically, so that a compaction loses none of it. It is the session's own, kept by the
+session's id, and never shown to another. Every helper the speaker starts, the directly briefed
+ones of the open way included, is a job on the board or recorded by the hooks as it launches, its
+kind, description and time, marked when it starts and when it ends, with no act of the speaker's;
+every other act begun and not yet done is an entry the speaker adds:
+
+`tools/inhand.py add $SCRATCH/speaker "<what is in hand>" --at <time>`
+
+and taken off with `tools/inhand.py done $SCRATCH/speaker <entry id>` when it reports or is done;
+`tools/inhand.py list $SCRATCH/speaker` prints it. The session's own schedule, its bell ticks and
+what it set to come back to, is kept the same way, `tools/inhand.py add $SCRATCH/speaker "<a time
+to come back>" --schedule --at <time>`, and in the page's store as `ordo/session.schedule`:
+`tools/inhand.py export $SCRATCH/speaker --at <time>` prints the write of `ordo/session`, `{at,
+in_hand, schedule}`, sent with `ArtifactData` as the one entry of a `batch`, pinned with
+`--if-version` once the document exists, after each change. A new session reads `ordo/session`
+with a `get`, `out_dir` set to `$SCRATCH/speaker`, and sets its schedule again with `tools/inhand.py
+seed $SCRATCH/speaker $SCRATCH/speaker/ordo/session.json --at <time>`. Before a compaction a hook
+prints the list's path, the list and the helpers not yet ended, each with its age, into what the
+compaction reads, and after it another prints them back from the files.
 
 ## What the sitting serves
 
@@ -827,7 +929,8 @@ with no `--scope`, as `/principal:dictate` step
 1 gives them, then `tools/shares.py`, `tools/residue.py list $SCRATCH/graph.json --by-share` and
 `tools/divergence.py list $SCRATCH/graph.json`; then the open lines are exported and checked,
 `moved` and `orphans` run over them, and `order` over this graph (**The open lines**, **The
-tool**). `residue.py list --by-share` is run over this
+tool**). Then the brief is installed over this graph for the line in hand
+(**The brief and the neighbourhood**). `residue.py list --by-share` is run over this
 graph, the opening's whole-notebook read, and no other: over a graph of some tabs and their
 ancestors a share is wrong even where the root is among them, and the tool cannot always tell. The listing
 orders open notes by the share of the tab each stands on; that is the tab's weight and not the
@@ -887,7 +990,8 @@ bind every action.
    was predicted, where the result diverged, and how or whether that gap is addressed. The
    principal may revise the answer after reading the tradition; unrevised when the next answer
    comes, it stands, and a revision is written over the answer's file and graded again.
-   The principal: "These traditions are good, make sure they are being recorded as we go."
+   The principal approved the readings of tradition given and asked that they be recorded as
+   the round goes.
    Tradition readings are recorded as the round goes, without waiting for approval: each
    reading given is written on the tab of the party it is of, at the round it is given, as a
    note opening with the word *pending* that calls it a lead, never marked verified, stating the
@@ -1003,9 +1107,7 @@ bind every action.
    the judge is never the tier judged. Run the open way, the speaker briefs both directly, with
    what each must read and must not;
    run the confined way, it can start neither, and the work is named to the principal as an
-   open note of kind `change`. The principal: "You have permission to merge pull requests
-   unless otherwise stated. If you need to reload local skills or plugin just merge the PR and
-   give me an action to reload." So, run the open way, in this order: the pull request's checks
+   open note of kind `change`. The principal has given leave to merge pull requests unless the principal says otherwise, and asked that a needed reload of the plugin or a skill be given as an action after the merge. So, run the open way, in this order: the pull request's checks
    pass; the full tier's adversarial review of it returns, with no blocker left open; what was
    built is reported in the action context; a build that changes what the principal decides, a
    rule of a skill or what the page shows among it, is put to the principal as a review and
@@ -1030,7 +1132,8 @@ bind every action.
     order they will be put, each a further action or a placeholder with a kind and a title,
     drawn from the open documents of `lines` (**The open lines**), which is where each waits.
 
-**Written as the round goes.** The principal: "You may write to the notebook as we go." Three
+**Written as the round goes.** The principal has given leave to write to the notebook as the
+round goes. Three
 kinds of write no longer wait for a batch point. A requirement the principal states in the
 session is written on the tab it bears on as a note opening with the word *pending*, at the
 round it is said, once its restatement has been shown in the action context, so that the
@@ -1140,7 +1243,9 @@ tool, as `principal:coordinator`, handed the board's address, `$SCRATCH` and the
 `tools/`; it runs one job and reports how it ended, so start it again until its report names
 the job awaited or says nothing is runnable, and export the board again, as step 1 does, before
 this session's next mode, since the coordinator writes the board through an export of its own.
-One coordinator runs at a time: the next is started
+Each start of a coordinator, and of any helper
+rule 9 briefs, is recorded in the work in hand by the hooks as it launches, and marked ended when
+it stops (**The brief and the neighbourhood**). One coordinator runs at a time: the next is started
 only once the last has reported, since every coordinator works through the one
 `$SCRATCH/coordinator/` export. The coordinator is the only helper this session starts for work
 a kind carries; every such piece of work is a job on the board, every `review` included. Work no
@@ -1472,6 +1577,31 @@ What no tool decides. Hold these by reading.
   build's brief citing the AI's answers and never the principal's requirement; the four signals
   before a constraint binds; and the action context's being appended to and not changed within
   a round: no tool checks any of them.
+- **The brief is loaded by the harness and kept fresh by reading.** The hooks print what the last
+  `install` wrote; that the speaker installs again when the line in hand changes or the notebook
+  moves is read, and a move another session made is seen at the next fetch and not before, since
+  no hook reads the notebook. The relevance the tool applies is its fixed order and no more: a
+  sentence that matters and shares no term with the line, or that the order leaves out at the
+  target, is missed, and the manifest only names it. That a brief is read as record and never as
+  an order is its header's and the reader's. The harness keeps at most 10,000 characters of one
+  hook's output in context and puts a path and a preview in place of more, so the brief loads in
+  up to four parts, each its own hook; the harness runs them in parallel and promises no order,
+  so each part says which it is. A helper's brief carries the line in hand's neighbourhood, not
+  one drawn from its task, since the hook that gives it is not handed the task; whether it lands
+  in every helper as the documentation says is untested in a live sitting.
+- **The check on a text leaving catches its forms and no more.** It finds "the human", a fixed
+  term defined in one of a few phrasings, a fixed term out of reach of the tab a write names, and
+  a run of masked words bound for a public place. A pronoun for the user, a definition in other
+  words, what a commit stages and a text sent by a tool it does not fire on are read. It reads the
+  graph the last `install` copied, so a term fixed since is unknown to it until the next.
+- **A copy on disk can be read.** The brief's directory holds the notebook's graph outside every
+  repository, and the grader and the reviewer hold `Read`: what keeps a blind kind from opening it
+  is its definition, not a gate.
+- **The work in hand is as whole as its records.** The hooks record every launch of the Agent
+  tool and its start and end by the session's id; a launch refused never starts and stays listed
+  as not started, and two launches of one kind are matched to their starts oldest first. The
+  entries the speaker adds itself, and that one is taken off only when its work is done, are
+  read.
 
 ## Where this entry point departs from the others
 
@@ -1588,6 +1718,11 @@ What this entry point says now that reverses what it said before:
   principal resolves it, the office of every bell rung meanwhile following it as the very next
   item, earliest first, where before the page put the latest bell's office in its place at once; `office_deferred` still sets the office aside,
   at the principal's word alone.
+- The notebook's brief and the neighbourhood of the line in hand are put in context by the
+  harness at the start and after a compaction, and a helper's own brief by a hook at its start,
+  where before the session read the notebook by a step of its own and a helper held only what it
+  was handed; the work in hand is kept in a file and printed back after a compaction, where before
+  it stood only in the session's context.
 - Every presupposition a question on a line carries in is recorded as a hinge of the AI's graph,
   unjustified until a later answer of the AI's is linked to it, where before it stood only in
   the speaker's notes and the answer's closing line.

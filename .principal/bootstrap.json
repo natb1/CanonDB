@@ -534,6 +534,37 @@
       ],
       "pull_request": null,
       "rounds": 1
+    },
+    {
+      "question": "context",
+      "application": "the brief and the neighbourhood",
+      "files": [
+        "tools/brief.py",
+        "tools/hypo/brief.py",
+        "tools/hypo/outgoing.py",
+        "tools/inhand.py",
+        "tools/hypo/inhand.py",
+        "tools/test_brief.py",
+        "tools/test_brief_hooks.py",
+        "tools/fixtures/brief.json",
+        "hooks/hooks.json",
+        "hooks/briefing.py",
+        "hooks/brief-sides.json",
+        "hooks/brief-session.py",
+        "hooks/inhand-precompact.py",
+        "hooks/convention-gate.py",
+        "skills/sit/SKILL.md",
+        "tools/test_sit_skill.py",
+        "tools/test_cli.py",
+        "hooks/brief-subagent.py",
+        "hooks/inhand-log.py",
+        "skills/bootstrap/SKILL.md",
+        "tools/test_notebook_gate.py",
+        "README.md",
+        "CLAUDE.md"
+      ],
+      "pull_request": null,
+      "rounds": 1
     }
   ]
 }

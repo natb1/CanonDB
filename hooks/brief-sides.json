@@ -1,0 +1,17 @@
+{
+  "description": "Who receives a brief, by kind; a kind not named here, or given null, receives nothing, and so does a helper of no kind (no_kind null). all: the user's, the AI's and the tradition parties' graphs; ai: the AI's own answers alone, for a context blind to the user's graph. What a helper of no kind should receive, and how a blind one is marked, is the user's open question.",
+  "no_kind": null,
+  "kinds": {
+    "interviewer": "all",
+    "comparer": "all",
+    "grader": "ai",
+    "reviewer": "ai",
+    "canon-answer": "ai",
+    "clean-reader": null,
+    "fetcher": null,
+    "checker": null,
+    "coordinator": null,
+    "recorder": null,
+    "ai-recorder": null
+  }
+}
