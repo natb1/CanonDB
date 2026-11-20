@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
 <style>
-/* Display only: no buttons, no inputs, no writes. Layout: one column on a phone; from 60rem two, the main column left and the context panel right (sticky). Main column: bell notice (while a rung bell's office has an owner item unresolved), then the action context (paragraphs, tradition, prediction, notes), then the next action as the largest thing (the first unresolved owner office item while there is one, a taken one first, with the session's action and its deferred action, if any, as quiet "After the office" notes; a recommendation, on a review of mechanism, after the prompt; otherwise, or while the owner has set the rung bell's office aside (current.office_deferred), the session's action, with the set-aside office and a deferred action, if any, as quiet notes inside it), then the helper list. On a phone the panel sits under the next-action card. Panel: the latest rung bell and its remaining items (session-run ones marked, and kept with their state), then one timeline of the bells and calendar events of the next 48 hours, then when the calendar was read; under that card, a second card holding only the "Waiting, in order" list (current.queue) in a native details element, closed by default. The action context may end with appended log records (context.log), each under a divider carrying its time. */
+/* Display only: no buttons, no inputs, no writes. Layout: one column on a phone; from 60rem two, the main column left and the context panel right (sticky). Main column: bell notice (while a rung bell's office has an owner item unresolved), then the action context (paragraphs, tradition, prediction, notes), then the next action as the largest thing (the first unresolved owner office item while there is one, a taken one first, with the session's action and its deferred action, if any, as quiet "After the office" notes; a recommendation, on a review of mechanism, after the prompt; otherwise, or while the owner has set the rung bell's office aside (current.office_deferred), the session's action, with the set-aside office and a deferred action, if any, as quiet notes inside it; or while the session's action was put before the bell rang (next.put_at) and is not yet resolved (next.resolved_at), and asks something of the owner (next.asks not false), that action, with "After this: the <bell> office" listing the items as a quiet note inside it; every bell rung after that action was put is carried, earliest first, so that when it is resolved the office shows with all their items), then the helper list. On a phone the panel sits under the next-action card. Panel: the latest rung bell and its remaining items (session-run ones marked, and kept with their state), then one timeline of the bells and calendar events of the next 48 hours, then when the calendar was read; under that card, a second card holding only the "Waiting, in order" list (current.queue) in a native details element, closed by default. The action context may end with appended log records (context.log), each under a divider carrying its time. */
 :root {
   --bg: #f3f5f6; --surface: #ffffff; --ink: #18242b; --muted: #5a6a73;
   --line: #d5dce0; --accent: #1f6f5c; --accent-soft: #e2f0ec; --against: #8a4b2a; --against-soft: #f6ebe3;
@@ -133,6 +133,11 @@ summary { cursor: pointer; font-family: var(--display); font-weight: 600; }
       <span class="label">After the office</span>
       <p id="office-after-prompt"></p>
       <p class="quiet" id="office-after-meta" hidden></p>
+    </div>
+    <div class="deferred" id="office-next" hidden>
+      <span class="label" id="office-next-label"></span>
+      <p id="office-next-items"></p>
+      <p class="quiet" id="office-next-meta"></p>
     </div>
     <div class="deferred" id="office-aside" hidden>
       <span class="label">Office set aside, still due</span>
@@ -354,8 +359,12 @@ summary { cursor: pointer; font-family: var(--display); font-weight: 600; }
   function officeNow() {
     var now = new Date(), rd = ruleDay(rule, now), lr = latestRung(rule, rd);
     var fresh = ticksDay === rd.date;
-    var all = lr.rung ? officeItems(lr.rung.b, rd) : [];
-    all.forEach(function (it) { it.v = fresh ? ticks[it.key] : null; it.state = markState(it.v); });
+    var marked = function (x) {
+      var list = officeItems(x.b, rd);
+      list.forEach(function (it) { it.v = fresh ? ticks[it.key] : null; it.state = markState(it.v); it.bell = x; });
+      return list;
+    };
+    var all = lr.rung ? marked(lr.rung) : [];
     var mine = all.filter(function (it) { return !it.session; }), unres = unresolved(mine);
     // The owner's word to set this bell's office aside: current.office_deferred naming the latest
     // rung bell by its base time, set aside (since) at or after that bell rang this Rule day, while
@@ -364,8 +373,30 @@ summary { cursor: pointer; font-family: var(--display); font-weight: 600; }
     var aside = !!(lr.rung && unres.length && odAt &&
       str(od.bell) === str(lr.rung.b.time).replace(":", "") &&
       new Date(rd.y, rd.mo, rd.d, 0, lr.rung.m) <= odAt);
+    // The pending action: current.next put (next.put_at) before the latest rung bell rang, unless it
+    // is a placeholder that asks nothing (next.asks false) or the office is set aside. Every bell
+    // rung this Rule day after it was put is carried: their owner items, earliest bell first, are the
+    // office (applied, unres), so a second bell during the hold loses none of the first's. It holds
+    // the card while it is not resolved (next.resolved_at, counted only at or after put_at) and no
+    // carried item is taken; once it is resolved the carried office shows. A next without put_at, or
+    // put at or after the latest bell rang, carries nothing; the latest bell's office shows first.
+    var n = theNext(), putAt = n ? parseWhen(n.put_at) : null, resAt = n ? parseWhen(n.resolved_at) : null;
+    var ringAt = function (x) { return new Date(rd.y, rd.mo, rd.d, 0, x.m); };
+    // While a carry is in force the panel's items (all, left) are the carried bells' too, so that
+    // the card, the notice and the panel read one set.
+    var hold = false, carry = null;
+    if (lr.rung && !aside && n && n.asks !== false && putAt && putAt < ringAt(lr.rung)) {
+      var carried = [];
+      carry = [];
+      bellsOn(rule, rd).forEach(function (x) {
+        if (x.m <= rd.mins && ringAt(x) > putAt) { carry.push(x); carried = carried.concat(marked(x)); }
+      });
+      all = carried;
+      mine = carried.filter(function (it) { return !it.session; }); unres = unresolved(mine);
+      hold = !!(unres.length && !(resAt && resAt >= putAt) && !unres.some(function (it) { return it.state === "taken"; }));
+    }
     return { now: now, rd: rd, rung: lr.rung, next: lr.next, all: all, applied: mine,
-      unres: unres, left: unresolved(all), aside: aside ? od : null };
+      unres: unres, left: unresolved(all), aside: aside ? od : null, hold: hold, carry: carry };
   }
 
   function renderContext() {
@@ -427,7 +458,7 @@ summary { cursor: pointer; font-family: var(--display); font-weight: 600; }
 
   // Everything on the card that only some states show; each render hides these first.
   var CARD_IDS = ["next-case-label", "next-case", "next-rec-label", "next-rec", "under", "office-then", "office-resolved", "office-tell",
-    "office-after", "office-aside", "next-deferred", "next-how"];
+    "office-after", "office-next", "office-aside", "next-deferred", "next-how"];
 
   function setKind(kind) { $("next-kind").textContent = kind; $("next-kind").setAttribute("data-kind", kind); }
   function theNext() { var n = current && current.next; return n && typeof n === "object" && str(n.prompt) ? n : null; }
@@ -435,8 +466,44 @@ summary { cursor: pointer; font-family: var(--display); font-weight: 600; }
   function renderNext(st) {
     st = st || officeNow();
     CARD_IDS.forEach(function (id) { $(id).hidden = true; });
+    if (st.hold) { renderSession(); renderHeld(st); return; }
     if (st.unres.length && !st.aside) renderOffice(st);
     else { renderSession(); if (st.aside) renderAside(st); }
+  }
+
+  // The pending action holds the card through the bell; the office follows it, in a quiet block.
+  function renderHeld(st) {
+    var bells = heldBells(st);
+    $("office-next").hidden = false;
+    $("office-next-label").textContent = "After this: " + officesText(bells);
+    $("office-next-items").textContent = st.unres.map(function (x) { return x.label; }).join(" · ");
+    $("office-next-meta").textContent = bells.map(function (x) {
+      return (str(x.b.name) || "The bell") + " rang " + clockText(x.m);
+    }).join(" · ") + ".";
+  }
+  // The bells whose owner items are unresolved, in the office's order, each once.
+  function heldBells(st) {
+    var out = [];
+    st.unres.forEach(function (it) { if (out.indexOf(it.bell) < 0) out.push(it.bell); });
+    return out;
+  }
+  // Under a carry the notice's counts are of the carried offices: name them, unless the latest bell's alone.
+  function countedOver(st) {
+    if (!st.carry || st.hold || st.aside) return "";
+    var bells = [];
+    st.applied.forEach(function (it) { if (bells.indexOf(it.bell) < 0) bells.push(it.bell); });
+    return bells.length === 1 && bells[0].m === st.rung.m ? "" : " Counted over " + officesText(bells) + ".";
+  }
+  // The notice's words while held: "Its office" where the latest bell's alone follows, else the offices named.
+  function heldNotice(bells, rung) {
+    if (bells.length === 1 && bells[0].m === rung.m) return "Its office follows this action.";
+    return officesText(bells).replace(/^t/, "T") + (bells.length > 1 ? " follow" : " follows") + " this action.";
+  }
+  // "the Morning office", "the Morning and Noon offices" ("the bell's office" for a bell with no name).
+  function officesText(bells) {
+    var names = bells.map(function (x) { return str(x.b.name) || "bell's"; });
+    return "the " + (names.length > 1 ? names.slice(0, -1).join(", ") + " and " + names[names.length - 1] + " offices"
+      : names[0] + " office");
   }
 
   // The office the owner set aside: the session's action leads, and the office stays in view under it.
@@ -475,11 +542,11 @@ summary { cursor: pointer; font-family: var(--display); font-weight: 600; }
   // The rung bell's first unresolved item (a taken one first) as the next action; the session's
   // own action waits below, with its deferred action under it.
   function renderOffice(st) {
-    var it = st.unres[0], name = str(st.rung.b.name) || "The bell";
+    var it = st.unres[0], bell = it.bell || st.rung, name = str(bell.b.name) || "The bell";
     $("next-empty").hidden = true;
     $("next-meta").hidden = false;
     setKind("office");
-    $("next-line").textContent = name + " office, rang " + clockText(st.rung.m);
+    $("next-line").textContent = name + " office, rang " + clockText(bell.m);
     $("next-prompt").hidden = false;
     $("next-prompt").textContent = it.label;
     if (it.state === "taken") {
@@ -536,21 +603,24 @@ summary { cursor: pointer; font-family: var(--display); font-weight: 600; }
     if (!rule) box.appendChild(el("p", "quiet", "No Rule has been set."));
     else if (!st.rung) box.appendChild(el("p", "quiet", "No bell has rung yet this Rule day."));
     else {
-      var head = el("p", "pb-head", str(st.rung.b.name) || "The bell");
-      head.appendChild(el("span", "quiet", " · rang " + clockText(st.rung.m)));
-      box.appendChild(head);
       var shown = st.left.concat(st.all.filter(function (x) { return x.session && !(x.state === "open" || x.state === "taken"); }));
-      if (!st.left.length) box.appendChild(el("p", "quiet", "The office is complete."));
-      if (shown.length) {
+      // One heading a bell: the latest alone, or each bell a pending action carries, earliest first.
+      (st.carry || [st.rung]).forEach(function (bell, i) {
+        var head = el("p", "pb-head", str(bell.b.name) || "The bell");
+        head.appendChild(el("span", "quiet", " · rang " + clockText(bell.m)));
+        box.appendChild(head);
+        if (i === 0 && !st.left.length) box.appendChild(el("p", "quiet", "The office is complete."));
+        var mineHere = shown.filter(function (x) { return !x.bell || x.bell.m === bell.m; });
+        if (!mineHere.length) return;
         var ul = el("ul", "pb-items");
-        shown.forEach(function (x) {
+        mineHere.forEach(function (x) {
           var li = el("li", null, x.label), note = x.session ? "run by the session, " + STATE_TEXT[x.state]
             : x.state === "taken" ? "under way" : "";
           if (note) li.appendChild(el("span", "quiet", " · " + note));
           ul.appendChild(li);
         });
         box.appendChild(ul);
-      }
+      });
     }
 
     var entries = (rule ? upcomingBells(rule, now, end) : []).map(function (x) { return { at: x.at, bell: x }; })
@@ -615,10 +685,12 @@ summary { cursor: pointer; font-family: var(--display); font-weight: 600; }
     if (!st.unres.length) { band.hidden = true; return; }
     var left = st.unres.length, all = st.applied.length;
     var untouched = st.applied.every(function (it) { return it.state === "open"; });
-    $("bell-msg").textContent = (str(st.rung.b.name) || "The bell") + " rang at " + clockText(st.rung.m) + ". " +
-      (st.aside ? "Its office is set aside for now; " + left + " of " + all + " office items still due."
+    var over = countedOver(st), body = (st.aside ? "Its office is set aside for now; " + left + " of " + all + " office items still due."
+        : st.hold ? heldNotice(heldBells(st), st.rung)
         : untouched ?"Its office is not yet taken up." : st.unres[0].state === "taken" ? "Its office is under way."
         : left + " of " + all + " office items left.");
+    if (over) body = body.replace(/^Its office/, "The office");
+    $("bell-msg").textContent = (str(st.rung.b.name) || "The bell") + " rang at " + clockText(st.rung.m) + ". " + body + over;
     $("bell-next").textContent = st.next ? "Next bell: " + (str(st.next.b.name) || "bell") + " at " + clockText(st.next.m) + "." : "No more bells today.";
     band.hidden = false;
   }
@@ -629,8 +701,8 @@ summary { cursor: pointer; font-family: var(--display); font-weight: 600; }
     var st = officeNow();
     renderPanel(st);
     var row = function (x) { return [x.key, x.label, x.state, x.v]; };
-    var sig = JSON.stringify([ticksDay, st.rd.date, st.rung && [st.rung.m, st.rung.b.name], st.next && [st.next.m, st.next.b.name],
-      st.applied.map(row), !!rule, st.aside && [st.aside.reason, st.aside.since]]);
+    var sig = JSON.stringify([ticksDay, st.unres.map(function (x) { return x.bell && x.bell.m; }), st.rd.date, st.rung && [st.rung.m, st.rung.b.name], st.next && [st.next.m, st.next.b.name],
+      st.applied.map(row), !!rule, st.aside && [st.aside.reason, st.aside.since], st.hold]);
     if (sig === bellSig) return;
     bellSig = sig;
     renderNotice(st); renderNext(st);

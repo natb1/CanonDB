@@ -295,7 +295,10 @@ On a wide screen the main column is on the left and the context panel on the rig
 view; on a phone the panel sits under the next action. The panel holds, in this order: "This
 bell", the latest rung bell's name and time and its items still open or under way, the
 principal's and those run by the session (marked so, and kept listed with their state once
-resolved), "The office is complete." standing above them where no item is open or under way; "Next 48 hours", one timeline in time order under day
+resolved), "The office is complete." standing above them where no item is open or under way,
+and while a pending action carries bells (rule 7), each carried bell under its
+own name and time, earliest first, with its items, so that the panel reads the same set as the
+card and the notice; "Next 48 hours", one timeline in time order under day
 headings, of every bell still to ring in the next forty-eight hours and every event of
 `ordo/agenda` not yet ended and starting within them, each tagged "Bell" or "Event", the next
 bell the largest, tagged "Next bell", and an office item of a later bell never listed; and
@@ -357,6 +360,7 @@ context among them, and there are no bells.
     "line": "Line: mornings",
     "case": "A morning on which the post holds a bill due that day.",
     "prompt": "Is watering the plants still first?",
+    "put_at": "2030-01-02T03:04:05Z",
     "deferred": {"prompt": "Water the plants.", "reason": "Set aside for now: a passing feeling.",
                  "kind": "work", "line": "Line: mornings"}
   },
@@ -401,6 +405,15 @@ context among them, and there are no bells.
   shown under "Recommendation" after the prompt and only where set: every review
   of mechanism carries it here, its own field and never in the case, and a question, or a review
   that states or changes a principle, never carries one, the page showing none on a `question`.
+  `put_at`, an ISO time with its offset, when this action was put, read from the clock and
+  written in the same write only when a new action is put; restating, rewording or adding to
+  the same pending action, its case, recommendation, `how` or context, keeps its `put_at`;
+  `resolved_at`, an ISO time with its offset, written when the principal says in the session that
+  this action is resolved, and counted only where it is not earlier than `put_at`; and `asks`,
+  `false` on an action that asks nothing of the principal, a `work` placeholder for one, of any
+  kind, and left out otherwise. These three tell the page whether the action holds the card
+  through a bell (rule 7): a `next` put before the latest bell rang, not resolved, and not
+  `asks: false`, is the pending action, and holds it.
   There is no checklist: a review is a `prompt` like a question's, answered in the
   session.
 - `queue`, the actions after `next`, in order (rule 10), a projection of the open documents of
@@ -478,9 +491,32 @@ context among them, and there are no bells.
   quiet "After the office" block, with its deferred action under it where one is set. While
   `office_deferred` names that bell and was set after it rang today, `next` shows instead, with
   the office under it as set aside.
+  The pending action is not replaced by the office when the bell rings. While `next` has a
+  `put_at` before the moment the latest bell rang on the current Rule day and is not `asks:
+  false`, every bell rung that Rule day after `put_at` is carried: their items of the principal's,
+  the earliest bell's first, are the office, and a second bell during the hold neither ends it
+  nor drops the first bell's items. While, too, it has no `resolved_at` at or after its
+  `put_at`, the carried office has an item of the principal's open and none taken, the card
+  shows `next` exactly as when no office is unresolved, and under its prompt a quiet block,
+  "After this: the <bell name> office" ("the Morning and Evening offices" where two are carried),
+  lists the items left, with the time each bell rang; the notice stands, saying the latest bell
+  has rung and that its office, or the offices named, follow this action. Once `next` is resolved
+  by `resolved_at`, the very next thing the card shows is the carried office's first item, as
+  above, then the rest in order. A `next` put at or after the latest bell rang, or with no
+  `put_at` or one that does not parse, carries nothing and never holds the card while that
+  bell's office has an item of the principal's unresolved; nor does an action with `asks:
+  false`, of any kind; nor does any `next` while an item of the carried office is under way:
+  once that item is done, overruled or not due, the hold resumes while the action is still
+  pending, the action first again and the items left after it. While the carry is in force, the
+  notice counts the carried offices' items and names those offices where they are not the latest
+  bell's alone, and the panel lists every carried bell with its items.
+  `office_deferred`, where it holds, comes before all of this. The hold is bounded by nothing but
+  its resolving: a `next` left pending from an earlier Rule day holds every bell of the next day
+  until the principal resolves it; whether a hold lapses when no sitting is open is an open line
+  for the user.
   Once every item of the principal's is resolved the notice goes and `next` shows, even while
-  items run by the session remain. An earlier bell's unresolved items are not shown. It reads
-  the clock again every thirty seconds.
+  items run by the session remain. An earlier bell's unresolved items are not shown, save those a
+  pending action carries. It reads the clock again every thirty seconds.
 
 **`ordo/ticks-<day>`**, the marks: `<day>` the Rule's day as `YYYY-MM-DD`, the local date moved
 back a day before `day_start`. It is a flat map from an office item's key to a value. The key is
@@ -528,17 +564,27 @@ At each turn the speaker reads and writes (rule 7): the Rule's day from the loca
 that weekday; their items that apply that day, and each item's state from its key. While the
 latest bell has an item of the principal's unresolved, the page is putting the office and not
 `next`, an item taken before any open one, until each of the principal's is done, overruled or
-not due, or the principal sets the office aside; items run by the session never hold the card. When the
+not due, or the principal sets the office aside, except while an action put before the bell rang
+is still pending: then the page is putting that action, the office after it, and the pending
+action is resolved after the bell, then the very next item is the office item; items run by the session never hold the card. When the
 principal says in the session that an item is under way, done, not now, not due, or open again,
 the speaker reads the clock and writes `taken`, the bare time, `overruled`, `notdue` or `null`.
 An item overruled or marked not due is the principal's word for the day, and is not put again.
-An earlier bell's unresolved items, set aside or not, the page does not show on the card: the
+An earlier bell's unresolved items, set aside or not, the page does not show on the card, save
+those a pending action carries: the
 speaker lists each in the action context as still due from that bell until the principal says
 done, overruled or not due for it, and lets none lapse without that word. Items with `by:
 "session"` the speaker runs itself, with its own tools, when the timing is right, and marks. When
 the principal sets the office aside, the speaker writes `office_deferred`, only at the principal's
 word; when the principal takes it up again, the speaker removes it, and it removes it too in its
-first write after a later bell has rung or the Rule's day has turned. At each sync the speaker
+first write after a later bell has rung or the Rule's day has turned. Whenever the speaker
+puts a new action as `next` it reads the clock and stamps `next.put_at` in the same write, and
+never stamps it anew on a rewrite of the same action; when the principal says the pending
+action is resolved, the speaker writes `next.resolved_at`, and replaces `next` only once the
+office it carried is resolved, since a new `next` carries no bell rung before it; the office
+item is then the next thing put; the speaker never puts the office in place of a pending action
+on its own. So the office waits behind an action put before the bell rang and still pending,
+and is resolved after it. At each sync the speaker
 reads the principal's calendar and `set`s `ordo/agenda` whole, with `fetched`.
 
 ## The open lines
@@ -895,11 +941,26 @@ bind every action.
    `change`; a grant is written at the batch point as a case on the tab of the clause it bears
    on. Each ends with what it opened.
 7. **Bells.** An unresolved office of the principal's shows first unless the principal has set
-   it aside; items run by the session never hold the card. The page shows a rung bell as a notice
-   and makes that bell's office items of the principal's the next action, one at a time, until
-   each of the principal's is done, overruled or marked not due, or the principal sets the
-   office aside; only then does the speaker's own next action show, and the rest of the time is
-   a work block. Between open and
+   it aside or an action put before the bell rang is still pending; items run by the session
+   never hold the card. The page shows a rung bell as a notice and makes that bell's office items
+   of the principal's the next action, one at a time, until each of the principal's is done,
+   overruled or marked not due, or the principal sets the office aside; only then does the
+   speaker's own next action show, and the rest of the time is a work block. An action already
+   put and still pending when a bell rings is not replaced by the office: the pending action is
+   resolved after the bell, then the very next item is the office item. It stays on the card,
+   the notice saying the bell has rung and that its office follows this action, with "After
+   this: the <bell name> office" under it listing the items; a second bell during the hold does
+   not end it, and its items follow the first bell's; when the principal says in the session
+   that the action is resolved, the speaker writes `next.resolved_at`, and the very next item is
+   the office item. The page tells which action is pending by `next.put_at`, stamped from the
+   clock when a new action is put and kept on a rewrite of the same one: one put before the bell
+   rang and not resolved holds the card; one put after it never does while that bell's office
+   has an item of the principal's unresolved; an action of any kind marked `asks: false` never
+   does; and none does while an office item is under way, the hold resuming once that item is
+   done, overruled or not due and the action is still pending. Whether a hold lapses when no sitting is
+   open is an open line for the user.
+   This is not a setting aside: the office is still the next thing after the pending action,
+   and `office_deferred` is written only at the principal's word to set it aside. Between open and
    resolved an item may be taken up: the principal says so in the session, the speaker marks it
    taken, and it stays the next action as under way until it is done, overruled or marked not
    due; among a bell's unresolved items the page shows a taken one first, else the first open
@@ -914,7 +975,8 @@ bind every action.
    observation like any other override. An office set aside, or left unresolved, when a later bell
    rings does not vanish: the page shows only the latest bell's office on the card, and the
    speaker lists those items in the action context as still due from the earlier bell until the
-   principal says done, overruled or not due for each. An office item marked `by: "session"` is
+   principal says done, overruled or not due for each. The bells rung while an action
+   put before them is pending are the exception: they are carried, and their offices follow it, earliest first. An office item marked `by: "session"` is
    the speaker's, not the principal's: the speaker itself runs it, with its own tools, when the
    timing is right, puts any question it raises on the page as an action, and writes its mark;
    the principal never reports it, and it never holds back the speaker's own next action. It is
@@ -931,7 +993,7 @@ bind every action.
    the Rule's day has turned. A measured value the principal reports with an item is kept as
    a plain field in the day's marks document beside the marks.
 8. **Every time the speaker stamps is read from the clock, never typed**: `date -u
-   +%Y-%m-%dT%H:%M:%SZ` for the board's `--now`, the page's `updated`, the time in a mark,
+   +%Y-%m-%dT%H:%M:%SZ` for the board's `--now`, the page's `updated`, `next.put_at` and `next.resolved_at`, the time in a mark,
    `office_deferred`'s `since`, `ordo/agenda`'s `fetched`, `context.at` and each `at` of
    `context.log`, and a line's `opened_at` and `touched_at`, as the `--at` of `tools/lines.py`,
    `date -u +s%Y%m%d%H%M` for a sitting's id, and the local `date`, in the zone the page is
@@ -1522,6 +1584,10 @@ What this entry point says now that reverses what it said before:
   pass and the full tier's review is resolved, unless the principal said otherwise, and then
   puts the reload of the plugin as a `work` action, where before nothing was said of merging
   and `/principal:bootstrap` had the principal merge.
+- An action already put and still pending when a bell rings stays on the card until the
+  principal resolves it, the office of every bell rung meanwhile following it as the very next
+  item, earliest first, where before the page put the latest bell's office in its place at once; `office_deferred` still sets the office aside,
+  at the principal's word alone.
 - Every presupposition a question on a line carries in is recorded as a hinge of the AI's graph,
   unjustified until a later answer of the AI's is linked to it, where before it stood only in
   the speaker's notes and the answer's closing line.
