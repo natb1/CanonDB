@@ -466,7 +466,9 @@ def decide(call, env=None, plugin=None, own: str = AGENTS) -> dict:
     if not kind:
         return {}
     tool = call.get("tool_name")
-    if isinstance(tool, str) and tool != "Bash":
+    # only a name plainly of another tool passes by; "", "bash" or "Bash "
+    # is read as the shell
+    if isinstance(tool, str) and tool.strip() and tool.strip().lower() != "bash":
         return {}
     if kind in NO_SHELL:
         return _answer("deny", NOTHING)

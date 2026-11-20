@@ -385,6 +385,11 @@ class WhoTest(Gate):
                 got = self.run_hook(None, "", raw=json.dumps(raw).encode())
                 self.assertEqual(got["hookSpecificOutput"]["permissionDecision"], "deny")
 
+    def test_round_3_note_5_a_tool_name_spelled_as_the_shell_is_the_shell(self):
+        for tool in ("", "bash", "Bash ", " BASH"):
+            with self.subTest(tool=tool):
+                self.denied("principal:checker", "curl x", tool=tool)
+
     def test_input_that_does_not_parse(self):
         got = self.run_hook(None, "", raw=b'{"agent_type": "principal:checker", oops')
         self.assertEqual(got["hookSpecificOutput"]["permissionDecision"], "deny")

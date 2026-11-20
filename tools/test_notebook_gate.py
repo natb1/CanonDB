@@ -743,6 +743,63 @@ class Round2Test(Base):
                         self.unclear(call(self.root, agent, tool, tool_input=tool_input))
 
 
+class Round3Test(Base):
+    """The fifth review of the gates, on the notebook gate."""
+
+    BOARD = SITE + OTHER
+
+    def setUp(self):
+        super().setUp()
+        base = tempfile.mkdtemp(prefix="claude-", dir=os.path.realpath("/tmp"))
+        self.addCleanup(__import__("shutil").rmtree, base, ignore_errors=True)
+        self.scratch = os.path.join(base, "claude-1000", "p", "s", "scratchpad", "sit")
+        os.makedirs(self.scratch + "/coordinator/board")
+        os.makedirs(self.scratch + "/speaker/board")
+
+    def data(self, agent, **fields):
+        tool_input = {"url": self.BOARD}
+        tool_input.update(fields)
+        return call(self.root, agent, "ArtifactData", tool_input=tool_input)
+
+    def test_s1_only_writes_is_read_as_a_list(self):
+        for agent in ("principal:interviewer", "principal:coordinator"):
+            for old, new in (("[ ] todo", "y"), ("x", "[draft] words"),
+                             ("a", json.dumps([{"file_path": "/etc/passwd"}]))):
+                with self.subTest(agent=agent, old=old, new=new):
+                    self.silent(self.data(agent, action="str_replace", collection="ordo",
+                                          doc_id="current", field="a", old_str=old,
+                                          new_str=new))
+
+    def test_note_1_writes_that_is_no_list_of_objects_is_unclear(self):
+        mine = self.scratch + "/coordinator/board"
+        bad = {"collection": "jobs", "doc_id": "a", "file_path": "/etc/passwd"}
+        for writes in (bad, json.dumps(bad), [json.dumps(bad)], [[bad]], "\ufeff[]",
+                       "not json", 3):
+            with self.subTest(writes=writes):
+                self.unclear(self.data("principal:coordinator", action="batch",
+                                       writes=writes))
+        # writes as the JSON text of a list of objects is read as that list
+        self.silent(self.data("principal:coordinator", action="batch", writes=json.dumps(
+            [{"collection": "jobs", "doc_id": "a", "file_path": mine + "/w.json"}])))
+        self.assertEqual(self.decision(self.data(
+            "principal:coordinator", action="batch", writes=json.dumps([bad]))), "deny")
+
+    def test_note_3_the_coordinator_s_directory_under_the_speaker_s_is_not_its_own(self):
+        os.makedirs(self.scratch + "/speaker/coordinator/board")
+        self.assertEqual(self.decision(self.data(
+            "principal:coordinator", action="get", collection="meta", doc_id="board",
+            out_dir=self.scratch + "/speaker/coordinator/board")), "deny")
+        self.silent(self.data("principal:interviewer", action="list", collection="jobs",
+                              out_dir=self.scratch + "/speaker/board"))
+
+    def test_note_4_a_delete_whose_ref_is_no_object(self):
+        for agent in ("principal:recorder", "recorder", "principal:interviewer"):
+            for ref in ("node:n1", [{"object": "node", "id": "n1"}]):
+                for tool in (p + "delete" for p in PREFIXES):
+                    with self.subTest(agent=agent, ref=ref, tool=tool):
+                        self.unclear(call(self.root, agent, tool, tool_input={"ref": ref}))
+
+
 class HooksFileTest(unittest.TestCase):
     """The plugin installs the gate beside the canon agent's, which stands as
     it was."""

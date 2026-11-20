@@ -276,9 +276,15 @@ class BodyTest(unittest.TestCase):
         body = flat(self.bodies["interviewer"])
         self.assertIn("every ask as one action on the page, one at a time and in order", body)
         self.assertIn("You write no code, no page and no tooling yourself", body)
-        self.assertIn("of the page's store you write all three documents, its current action "
-                      "and the day's marks, each by one data write of your own as the entry "
-                      "point says, and the Rule only at the principal's word", body)
+        self.assertIn("of the page's store you write all four documents, its current action, "
+                      "the day's marks and the calendar's events, each by one data write of your "
+                      "own as the entry point says, and the Rule only at the principal's word",
+                      body)
+        self.assertNotIn("all three documents", body)
+        self.assertIn("every explanation, every answer to the principal's question and every "
+                      "report of what was done in the page's action context; in the session's "
+                      "text, one or two lines saying the page changed, never repeating what the "
+                      "page says, and nothing the principal must decide only there", body)
 
     def test_the_grader_carries_the_five_grades_of_the_principal_s_answer(self):
         body = flat(self.bodies["grader"])

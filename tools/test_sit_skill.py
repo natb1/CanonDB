@@ -574,28 +574,70 @@ class SentenceTest(unittest.TestCase):
                 "or the principal drops it",
                 "6. **The next action is one of four kinds: question, office, work, review.**",
                 "a review is put exactly as a question is",
-                "a review of mechanism may carry the speaker's recommendation, and a review that "
+                "a review of mechanism carries the speaker's recommendation, in "
+                "`next.recommendation`, its own field and never in the case, and a review that "
                 "states or changes a principle, a grant or a row stating a principle among them, "
-                "is put with no recommendation, as a question is",
+                "is put with no recommendation, as a question is, and the page shows none",
                 "a prediction is sealed before every review as well, by the speaker itself",
                 "the file says who predicted",
                 "There are no checklists.",
-                "7. **Bells.**",
-                "only then does the speaker's own next action show",
+                "7. **Bells.** An unresolved office of the principal's shows first unless the "
+                "principal has set it aside; items run by the session never hold the card.",
+                "until each of the principal's is done, overruled or marked not due, or the "
+                "principal sets the office aside; only then does the speaker's own next action "
+                "show",
                 "an item may be taken up",
                 "among a bell's unresolved items the page shows a taken one first, else the first "
                 "open one",
                 "A `work` action has no mark: it stays `next` in `ordo/current` until the speaker "
                 "changes it on the principal's word.",
                 "The page always shows the next bell",
+                "always in the context panel, on one timeline",
+                "An office item marked `by: \"session\"` is the speaker's, not the principal's",
+                "puts any question it raises on the page as an action, and writes its mark; the "
+                "principal never reports it",
+                "a transient action divergence",
+                "the speaker writes `office_deferred` only at the principal's word",
+                "an observation of a gap, as the goal says, and never a verdict",
+                "clears it when the principal takes the office up again",
+                "A measured value the principal reports with an item is kept as a plain field in "
+                "the day's marks document beside the marks.",
                 "The page writes nothing",
                 "an overruled office item is an observation like any other override",
                 "8. **Every time the speaker stamps is read from the clock, never typed**",
                 "9. **The speaker, at the full tier, writes no code, page or tooling itself.**",
                 "the judge is never the tier judged",
                 "10. **Every ask of the principal is an action on the page, in order.**",
-                "The speaker never leaves an ask only in the session's text"):
+                "The speaker never leaves an ask only in the session's text",
+                # round three, S7
+                "Every explanation, every answer to a question of the principal's, and every "
+                "report of what was done goes in the page's action context, `context`, as its "
+                "`heading` and `paragraphs`; the session's own text is one or two lines saying "
+                "the page changed, and never repeats what the page says; nothing the principal "
+                "must decide appears only in the session's text.",
+                "Context above a question of principle still carries no recommendation (rule 1).",
+                # round three, B1, S5, S6
+                "The page counts it only where `since` is at or after the moment the named bell "
+                "rang in the current Rule day, and the speaker removes it in its first write "
+                "after a later bell has rung or the Rule's day has turned.",
+                "the speaker itself runs it, with its own tools, when the timing is right",
+                "It is the one act not put to the principal: the Rule, written at the "
+                "principal's word, is the grant.",
+                "An office set aside, or left unresolved, when a later bell rings does not "
+                "vanish: the page shows only the latest bell's office on the card, and the "
+                "speaker lists those items in the action context as still due from the earlier "
+                "bell until the principal says done, overruled or not due for each.",
+                # round three, S8: sentences no test held
+                "This session does not read the sealed file until the answer is in.",
+                "while it stands the page shows the speaker's next action with the office under "
+                "it, still due",
+                "carries it in every whole-document `set` of `ordo/current`, and clears it",
+                "it never holds back the speaker's own next action",
+                "`office_deferred`'s `since` and `ordo/agenda`'s `fetched`"):
             self.assertIn(words, round_)
+        self.assertNotIn("a helper it starts", self.skill)
+        self.assertNotIn("runs itself, or by a helper", self.skill)
+        self.assertNotIn("a later bell ends it", self.skill)
         self.assertNotIn("Put the question, with the four parts of the step", self.skill)
         self.assertNotIn("marks it as given", self.skill)
 
@@ -609,6 +651,38 @@ class SentenceTest(unittest.TestCase):
         self.assertIn("The speaker never writes the notebook. Never work around a refusal.",
                       self.skill)
         self.assertNotIn("gives the word for the speaker to send that write itself", self.skill)
+
+    def test_round_three_reports_go_on_the_page(self):
+        """S7: the brief, the close and a failed link are on the page."""
+        for words in ("**2 — The brief.** The brief is a report, written on the page, in the "
+                      "action context (rule 10), and not in the session's text.",
+                      "Run `status` again and say on the page, in the action context, what "
+                      "stands open",
+                      "tells the principal on the page, in the action context, which link failed "
+                      "and why in a sentence"):
+            self.assertIn(words, self.skill)
+        self.assertIn("An office item the Rule gives the session to run is run by the speaker "
+                      "itself and is not put to the principal", self.skill)
+        self.assertIn("save an office item the Rule gives the session to run", self.skill)
+        self.assertIn("The session's shell stays in the project", self.skill)
+
+    def test_round_three_the_turn_s_paragraph(self):
+        """B1, S6, S8, S9: the turn's paragraph says what rule 7 says."""
+        turn = self.skill[self.skill.index("At each turn the speaker reads and writes (rule 7)"):
+                          self.skill.index("## Procedure")]
+        for words in ("While the latest bell has an item of the principal's unresolved, the page "
+                      "is putting the office and not `next`",
+                      "or the principal sets the office aside; items run by the session never "
+                      "hold the card",
+                      "the speaker reads the clock and writes `taken`",
+                      "the speaker lists each in the action context as still due from that bell "
+                      "until the principal says done, overruled or not due for it, and lets none "
+                      "lapse without that word",
+                      "the speaker writes `office_deferred`, only at the principal's word",
+                      "it removes it too in its first write after a later bell has rung or the "
+                      "Rule's day has turned"):
+            self.assertIn(words, turn)
+        self.assertNotIn("lets them lapse", self.skill)
 
     def test_two_ways_to_start_and_what_holds_in_the_open_one(self):
         before = self.skill[self.skill.index("## Before anything"):
@@ -642,7 +716,7 @@ class SentenceTest(unittest.TestCase):
 
 class PageTest(unittest.TestCase):
     """The page the round is put on, read as text, and the contract the skill
-    gives for its three documents."""
+    gives for its four documents."""
 
     @classmethod
     def setUpClass(cls):
@@ -667,13 +741,15 @@ class PageTest(unittest.TestCase):
         self.assertIsNone(re.search(r"\bdb\s*(?:\[|\.\s*(?!doc\())", self.script))
         self.assertIsNone(re.search(r"[=(,:]\s*db\s*[;,)}]", self.script))
         docs = [m.end() for m in re.finditer(r"\bdb\.doc\(", self.script)]
-        self.assertEqual(len(docs), 3)
+        self.assertEqual(len(docs), 4)
         for at in docs:
             close = self.script.index(")", at)
             self.assertTrue(self.script[close + 1:].startswith(".onSnapshot("),
                             self.script[at - 7:close + 14])
         # nothing goes out
-        for word in ("fetch", "XMLHttpRequest", "sendBeacon", "WebSocket", "EventSource",
+        # "fetch" as a word: the agenda's field `fetched` is data, not a call
+        self.assertIsNone(re.search(r"\bfetch\b", self.script))
+        for word in ("XMLHttpRequest", "sendBeacon", "WebSocket", "EventSource",
                      "postMessage", "import(", "window.open", "location", "localStorage",
                      "sessionStorage", "indexedDB", "document.cookie", "eval", "Function("):
             self.assertNotIn(word, self.script)
@@ -687,22 +763,79 @@ class PageTest(unittest.TestCase):
         self.assertNotIn("href", self.script)
         made = re.findall(r"\bel\(\s*([\"'`])(\w+)\1", self.script)
         self.assertTrue(made)
-        self.assertLessEqual({t for _, t in made}, {"p", "span", "b", "li", "div"})
+        self.assertLessEqual({t for _, t in made}, {"p", "span", "b", "li", "div", "ul"})
         self.assertEqual(re.findall(r"createElement\(\s*(\w+)\s*\)", self.script), ["tag"])
 
     def test_the_session_s_action_waits_while_an_office_is_unresolved(self):
         nxt = self.body("renderNext")
-        self.assertRegex(nxt, r"if\s*\(\s*st\.unres\.length\s*\)\s*renderOffice\(st\);\s*"
-                              r"else\s+renderSession\(\);")
+        self.assertRegex(nxt, r"if\s*\(\s*st\.unres\.length\s*&&\s*!st\.aside\s*\)\s*renderOffice\(st\);\s*"
+                              r"else\s*\{\s*renderSession\(\);\s*if\s*\(st\.aside\)\s*renderAside\(st\);\s*\}")
         self.assertEqual(self.script.count("renderSession("), 2)
         office = self.body("renderOffice")
         self.assertIn('$("next-prompt").textContent = it.label;', office)
         self.assertNotIn('$("next-prompt").textContent = str(n', office)
         self.assertIn("var it = st.unres[0]", office)
         # a taken item first (S11)
-        self.assertRegex(self.body("officeNow"),
-                         r'unres: items\.filter\(function \(it\) \{ return it\.state === "taken"; \}\)'
+        self.assertRegex(self.body("unresolved"),
+                         r'return items\.filter\(function \(it\) \{ return it\.state === "taken"; \}\)'
                          r'\s*\.concat\(items\.filter\(function \(it\) \{ return it\.state === "open"; \}\)\)')
+        # an item run by the session never drives the card or the notice
+        now = self.body("officeNow")
+        self.assertIn("var mine = all.filter(function (it) { return !it.session; }), unres = unresolved(mine);", now)
+        self.assertIn('session: o.by === "session"', self.body("officeItems"))
+
+    def test_an_office_set_aside_names_the_rung_bell(self):
+        now = self.body("officeNow")
+        self.assertIn("var od = current && current.office_deferred,", now)
+        self.assertIn('str(od.bell) === str(lr.rung.b.time).replace(":", "")', now)
+        self.assertIn("lr.rung && unres.length && od", now)
+        aside = self.body("renderAside")
+        self.assertIn("st.unres.map(", aside)
+        self.assertIn("str(st.aside.reason)", aside)
+        self.assertIn('"Its office is set aside for now; "', self.body("renderNotice"))
+        self.assertIn("Office set aside, still due", self.page)
+
+    def test_round_three_text_level_checks(self):
+        """S8: where node is not installed, the mutations a structural read can catch."""
+        now = self.body("officeNow")
+        # B1: the aside counts only from the moment the named bell rang this Rule day
+        self.assertIn("odAt = od && typeof od === \"object\" ? parseWhen(od.since) : null;", now)
+        self.assertIn("lr.rung && unres.length && odAt &&", now)
+        self.assertIn("new Date(rd.y, rd.mo, rd.d, 0, lr.rung.m) <= odAt", now)
+        # the notice is hidden only when no item of the principal's is unresolved
+        self.assertRegex(self.body("renderNotice"),
+                         r'if \(!st\.unres\.length\) \{ band\.hidden = true; return; \}')
+        self.assertEqual(self.script.count("band.hidden = true"), 1)
+        panel = self.body("renderPanel")
+        self.assertIn("end = new Date(now.getTime() + 48 * 3600 * 1000)", panel)
+        self.assertIn("var isNext = firstBell; firstBell = false;", panel)
+        self.assertIn('isNext ? "Next bell" : "Bell"', panel)
+        self.assertIn('if (!st.left.length) box.appendChild(el("p", "quiet", "The office is '
+                      'complete."));', panel)
+        self.assertIn('!agenda ? "No calendar has been read."', panel)
+        self.assertIn("st.left.concat(st.all.filter(function (x) { return x.session && "
+                      "!(x.state === \"open\" || x.state === \"taken\"); }))", panel)
+        self.assertIn("if (en <= now || s > end) return null;", self.body("upcomingEvents"))
+        self.assertIn("if (at > now && at <= end)", self.body("upcomingBells"))
+        # the office's items come from the latest rung bell alone, and only bell- keys are read
+        self.assertIn("var all = lr.rung ? officeItems(lr.rung.b, rd) : [];", now)
+        self.assertIn("ticks[it.key]", now)
+        self.assertEqual(len(re.findall(r"\bticks\[", self.script)), 1)
+        self.assertIsNone(re.search(r"Object\.keys\(\s*ticks", self.script))
+        # a session item never makes the card
+        self.assertIn("if (st.unres.length && !st.aside) renderOffice(st);", self.body("renderNext"))
+        self.assertIn("var it = st.unres[0]", self.body("renderOffice"))
+        # the recommendation: its own block, never on a question
+        sess = self.body("renderSession")
+        self.assertIn('kindOf(n.kind) === "question" ? [] : texts(n.recommendation)', sess)
+        self.assertIn('$("next-rec").hidden = $("next-rec-label").hidden = !rec.length;', sess)
+        self.assertLess(self.page.index('id="next-case"'), self.page.index('id="next-rec"'))
+        self.assertLess(self.page.index('id="next-rec"'), self.page.index('id="next-prompt"'))
+        self.assertIn("The helpers' action context", self.page)
+        # db is held in no alias: every mention is one of these
+        rest = re.sub(r'var db = null;|db = await window\.claude\.use\("db"\);|'
+                      r'"db"|!db\b|\bdb\.doc\(', "", self.script)
+        self.assertIsNone(re.search(r"\bdb\b", re.sub(r"//[^\n]*", "", rest)))
 
     def test_a_deferred_action_stays_shown(self):
         for name in ("renderSession", "renderOffice"):
@@ -727,21 +860,24 @@ class PageTest(unittest.TestCase):
             # the language and the document
             "appendChild", "catch", "className", "concat", "createElement", "createTextNode",
             "every", "exec", "filter", "firstChild", "floor", "forEach", "getDate", "getDay",
-            "getElementById", "getFullYear", "getHours", "getMinutes", "getMonth", "hidden",
-            "indexOf", "isArray", "join", "keys", "length", "map", "push", "removeChild",
-            "replace", "setAttribute", "slice", "some", "sort", "stringify", "test",
-            "textContent", "toLowerCase",
+            "getElementById", "getFullYear", "getHours", "getMinutes", "getMonth", "getTime",
+            "hidden", "indexOf", "isArray", "join", "keys", "length", "map", "push",
+            "removeChild", "replace", "round", "setAttribute", "slice", "some", "sort",
+            "stringify", "test", "textContent", "toLowerCase",
             # the store's read
             "claude", "use", "doc", "onSnapshot", "data", "exists", "metadata", "fromCache",
             "code",
             # what the page computes
             "b", "m", "ds", "rd", "md", "mins", "wd", "date", "key", "v", "state", "rung",
-            "unres", "applied", "nextItems"}
+            "unres", "applied", "all", "left", "aside", "session", "now", "at", "ev", "allDay",
+            "y", "mo", "d"}
         given = {"context", "next", "queue", "background", "updated",
                  "heading", "paragraphs", "for", "against", "prediction", "notes", "who", "text",
                  "kind", "line", "case", "prompt", "how", "deferred", "reason", "title",
-                 "day_start", "days", "bells", "time", "time_by_day", "name", "office", "label",
-                 "except_days", "off_from", "off_to", "ask"}
+                 "recommendation", "day_start", "days", "bells", "time", "time_by_day", "name", "office", "label",
+                 "except_days", "off_from", "off_to", "ask", "by",
+                 "office_deferred", "since", "bell",
+                 "events", "start", "end", "all_day", "fetched"}
         self.assertEqual(read - internal, given)
         for field in ("predicted", "diverged", "addressed"):
             self.assertIn('"%s"' % field, self.script)
@@ -758,21 +894,74 @@ class PageTest(unittest.TestCase):
 
     def test_the_contract_names_every_field_the_page_reads(self):
         top = {"current": set(re.findall(r"\bcurrent\.(\w+)", self.script)),
-               "rule": set(re.findall(r"\br\.(\w+)", self.script))}
-        self.assertEqual(top["current"], {"context", "next", "queue", "background", "updated"})
+               "rule": set(re.findall(r"\br\.(\w+)", self.script)),
+               "agenda": set(re.findall(r"\b(?:ag|agenda)\.(\w+)", self.script))}
+        self.assertEqual(top["current"], {"context", "next", "queue", "background", "updated",
+                                          "office_deferred"})
         self.assertEqual(top["rule"], {"day_start", "days", "bells"})
+        self.assertEqual(top["agenda"], {"events", "fetched"})
         nested = ("heading", "paragraphs", "for", "against", "prediction", "notes",
                   "predicted", "diverged", "addressed", "who", "text",
                   "kind", "line", "case", "prompt", "how", "deferred", "reason", "title",
-                  "time", "time_by_day", "name", "office", "label", "except_days",
-                  "off_from", "off_to", "ask")
+                  "recommendation", "time", "time_by_day", "name", "office", "label", "except_days",
+                  "off_from", "off_to", "ask", "by", "reason", "since", "bell",
+                  "start", "end", "all_day")
         for field in nested:
             self.assertTrue(re.search(r"\.%s\b|\"%s\"" % (field, field), self.script), field)
-        for field in sorted(top["current"] | top["rule"]) + list(nested):
+        for field in sorted(top["current"] | top["rule"] | top["agenda"]) + list(nested):
             self.assertIn("`%s`" % field, self.contract, field)
-        for doc in ("`ordo/current`", "`ordo/rule`", "`ordo/ticks-<day>`"):
+        for doc in ("`ordo/current`", "`ordo/rule`", "`ordo/ticks-<day>`", "`ordo/agenda`"):
             self.assertIn(doc, self.contract)
         self.assertIn('db.doc("ordo/ticks-" + day)', self.script)
+        self.assertIn('db.doc("ordo/agenda")', self.script)
+
+    def test_the_contract_gives_the_panel_the_session_s_items_and_the_set_aside_office(self):
+        for words in ("It reads four documents of the collection `ordo` in its store, and the "
+                      "speaker writes all four",
+                      "on a phone the panel sits under the next action",
+                      "\"This bell\"", "\"Next 48 hours\"",
+                      "\"Waiting, in order\", the queue (rule 10)",
+                      "\"Waiting, in order\" in the context panel, below the timeline and above "
+                      "the line saying when the calendar was read",
+                      "which the speaker writes at each sync, after reading the principal's calendar",
+                      "and `by`, `\"session\"` where the item is the session's to run",
+                      "the principal never reports it",
+                      "\"Office set aside, still due\"",
+                      "Once a later bell rings, or every item of the principal's in that bell is "
+                      "resolved, the field is ignored, and so it is where `since` does not parse or "
+                      "is before that bell rang today, as on a later day; the speaker removes it in "
+                      "its first write after a later bell has rung or the Rule's day has turned.",
+                      "It is the principal's private data like `ordo/rule`.",
+                      "where `ordo/current` does not yet exist, as at the first sitting on a page, "
+                      "the speaker first `set`s it with `updated` alone",
+                      "A sync is an office item of the Rule's with `by: \"session\"` at which the "
+                      "speaker reads the principal's calendar for the next forty-eight hours and "
+                      "writes `ordo/agenda`.",
+                      "writes no agenda and says so in the action context, and the panel then says "
+                      "\"No calendar has been read.\"",
+                      "the speaker's explanation, its answer to a question of the principal's, or "
+                      "its report of what was done, the brief and the close among them (rule 10)",
+                      "`prediction` never holds the prediction of the action now put",
+                      "the question put on the page as an action (rule 10)",
+                      "`recommendation`, a string or a list of strings, the speaker's "
+                      "recommendation, shown under \"Recommendation\" between the case and the "
+                      "prompt and only where set: every review of mechanism carries it here, its "
+                      "own field and never in the case, and a question, or a review that states or "
+                      "changes a principle, never carries one, the page showing none on a "
+                      "`question`.",
+                      "a weight for example, is kept as a plain field of the same document beside "
+                      "the marks, under a key that does not begin with `bell-`"):
+            self.assertIn(words, self.contract)
+        current = json.loads(re.search(r"\*\*`ordo/current`\*\*.*?```json(.*?)```", self.contract)
+                             .group(1))
+        self.assertEqual(set(current["office_deferred"]), {"reason", "since", "bell"})
+        self.assertRegex(current["office_deferred"]["bell"], r"^\d{4}$")
+        agenda = json.loads(re.search(r"\*\*`ordo/agenda`\*\*.*?```json(.*?)```", self.contract)
+                            .group(1))
+        self.assertEqual(set(agenda), {"events", "fetched"})
+        rule = json.loads(re.search(r"\*\*`ordo/rule`\*\*.*?```json(.*?)```", self.contract)
+                          .group(1))
+        self.assertIn({"label": "Copy out the seed list", "by": "session"}, rule["bells"][0]["office"])
 
     def test_the_contract_gives_every_mark_the_page_reads(self):
         for state in ("taken", "overruled", "notdue"):
@@ -799,7 +988,7 @@ class PageTest(unittest.TestCase):
     def test_round_two_sentences_of_the_contract(self):
         for words in ("The page is display only: it has no button and no input, its source holds "
                       "no data, and it writes nothing.",
-                      "and the speaker writes all three, the day's marks included",
+                      "and the speaker writes all four, the day's marks included",
                       "Each write sets `updated`, and the clock is read before it is stamped",
                       "the speaker reads `ordo/current` with `ArtifactData` at `as_level` "
                       "`interact` and again at `admin`; where either read returns a document",
@@ -855,7 +1044,9 @@ function run(sc) {
     const snap = d => ({ exists: d != null, data: () => d, metadata: { fromCache: false } });
     subs["ordo/current"](snap(sc.current));
     if (subs["ordo/rule"]) subs["ordo/rule"](snap(sc.rule));
-    const ticks = Object.keys(subs).find(k => k.startsWith("ordo/ticks-"));
+    if (subs["ordo/agenda"]) subs["ordo/agenda"](snap(sc.agenda));
+    // the latest subscription to a day's marks: with a day_start the page subscribes again once the Rule arrives
+    const ticks = Object.keys(subs).filter(k => k.startsWith("ordo/ticks-")).pop();
     if (ticks) subs[ticks](snap(sc.ticks));
     out.ticksDoc = ticks || null;
     out.els = {};
@@ -875,22 +1066,40 @@ class PageBehaviourTest(unittest.TestCase):
 
     #: an invented Rule; the times and labels are no one's
     RULE = {"bells": [{"time": "08:00", "name": "Morning",
-                       "office": ["Water the plants", "Feed the goldfish", "Wind the clock"]},
+                       "office": ["Water the plants", "Feed the goldfish", "Wind the clock",
+                                  {"label": "Copy the list", "by": "session"}]},
                       {"time": "21:00", "name": "Evening", "office": ["Cover the seedlings"]}]}
     CURRENT = {"next": {"kind": "question", "prompt": "Is watering still first?",
-                        "items": ["CHECKLIST-ITEM"],
+                        "items": ["CHECKLIST-ITEM"], "recommendation": "REC-ON-A-QUESTION",
                         "deferred": {"prompt": "Write the letter.", "reason": "A passing feeling.",
                                      "kind": "nonsense"}},
                "queue": [{"kind": "review", "title": "Review the rows"}],
                "updated": "2030-01-02T09:00:00Z"}
     NOW = [2030, 0, 2, 9, 0]
+    ASIDE = {"reason": "The letter first.", "since": "2030-01-02T08:40:00Z", "bell": "0800"}
+    LAST = {"reason": "Later.", "since": "2030-01-02T21:30:00Z", "bell": "2100"}
     KEYS = ("bell-0800-water-the-plants", "bell-0800-feed-the-goldfish",
             "bell-0800-wind-the-clock")
+    SESSION_KEY = "bell-0800-copy-the-list"
+    #: an invented calendar, read at 08:50 on the day of NOW (the harness runs in UTC)
+    AGENDA = {"events": [
+        {"start": "2030-01-02T08:30:00Z", "end": "2030-01-02T10:00:00Z", "title": "An example visit"},
+        {"start": "2030-01-02T06:00:00Z", "end": "2030-01-02T07:00:00Z", "title": "An example ended"},
+        {"start": "2030-01-04T08:30:00Z", "end": "2030-01-04T08:45:00Z", "title": "An example near"},
+        {"start": "2030-01-04T10:00:00Z", "end": "2030-01-04T11:00:00Z", "title": "An example far"},
+        {"start": "2030-01-03", "end": "2030-01-04", "title": "An example fair", "all_day": True}],
+        "fetched": "2030-01-02T08:50:00Z"}
+    REVIEW = {"next": {"kind": "review", "prompt": "Is the new wording right?",
+                       "recommendation": ["Keep the shorter wording.", "It reads plainer."]},
+              "updated": "2030-01-02T09:00:00Z"}
 
     @classmethod
     def setUpClass(cls):
         cls.node = shutil.which("node")
         if not cls.node:
+            sys.stderr.write("\n*** PageBehaviourTest SKIPPED: node is not installed; run again "
+                             "under `nix shell nixpkgs#nodejs` to run the page's behaviour "
+                             "tests ***\n")
             raise unittest.SkipTest("node is not installed")
         with open(PAGE, encoding="utf-8") as fh:
             page = fh.read()
@@ -910,6 +1119,34 @@ class PageBehaviourTest(unittest.TestCase):
             "resolved": {"now": cls.NOW, "current": cls.CURRENT, "rule": cls.RULE,
                          "ticks": {k[0]: D, k[1]: "notdue " + D, k[2]: "overruled " + D}},
             "norule": {"now": cls.NOW, "current": cls.CURRENT, "rule": None, "ticks": None},
+            # the office set aside: naming the rung bell, an earlier bell, and none left
+            "aside": {"now": cls.NOW, "current": dict(cls.CURRENT, office_deferred=cls.ASIDE),
+                      "rule": cls.RULE, "ticks": {k[2]: "taken " + T, k[0]: D}},
+            "aside_earlier": {"now": [2030, 0, 2, 22, 0],
+                              "current": dict(cls.CURRENT, office_deferred=cls.ASIDE),
+                              "rule": cls.RULE, "ticks": None},
+            "aside_none": {"now": cls.NOW, "current": dict(cls.CURRENT, office_deferred=cls.ASIDE),
+                           "rule": cls.RULE,
+                           "ticks": {k[0]: D, k[1]: "notdue " + D, k[2]: "overruled " + D}},
+            # B1: set aside yesterday, the same bell rings again today
+            "aside_next_day": {"now": [2030, 0, 3, 9, 0],
+                               "current": dict(cls.CURRENT, office_deferred=cls.ASIDE),
+                               "rule": cls.RULE, "ticks": None},
+            "aside_last_bell": {"now": [2030, 0, 2, 22, 0], "rule": cls.RULE, "ticks": None,
+                                "current": dict(cls.CURRENT, office_deferred=cls.LAST)},
+            "aside_last_bell_next_day": {"now": [2030, 0, 3, 22, 0], "rule": cls.RULE,
+                                         "ticks": None,
+                                         "current": dict(cls.CURRENT, office_deferred=cls.LAST)},
+            "aside_bad_since": {"now": cls.NOW, "rule": cls.RULE, "ticks": None,
+                                "current": dict(cls.CURRENT, office_deferred=dict(
+                                    cls.ASIDE, since="this morning"))},
+            # S8: the calendar, the office complete, a session item done, a measured value
+            "agenda": {"now": cls.NOW, "current": cls.REVIEW, "rule": cls.RULE,
+                       "agenda": cls.AGENDA,
+                       "ticks": {k[0]: D, k[1]: D, k[2]: D, cls.SESSION_KEY: D,
+                                 "water_used": "MEASURED-2-L"}},
+            "session_overruled": {"now": cls.NOW, "current": cls.CURRENT, "rule": cls.RULE,
+                                  "ticks": {cls.SESSION_KEY: "overruled " + D}},
         }
         with tempfile.TemporaryDirectory() as tmp:
             paths = []
@@ -937,7 +1174,8 @@ class PageBehaviourTest(unittest.TestCase):
         for name, out in self.res.items():
             self.assertEqual(out["writes"], [], name)
             self.assertEqual(out["net"], [], name)
-            self.assertLessEqual(set(out["made"]), {"p", "span", "b", "li", "div", "#text"}, name)
+            self.assertLessEqual(set(out["made"]), {"p", "span", "b", "li", "div", "ul", "#text"},
+                                 name)
 
     def test_no_checklist_is_rendered(self):
         for name, out in self.res.items():
@@ -952,7 +1190,9 @@ class PageBehaviourTest(unittest.TestCase):
         self.assertEqual(self.text("quiet", "next-def-prompt"), "Write the letter.")
         # a deferred kind the page does not know is shown as work
         self.assertIn("work", self.text("quiet", "next-def-meta"))
-        self.assertIn("Next bell: Morning at 08:00.", self.text("quiet", "next-bell"))
+        self.assertIn("Next bell", self.text("quiet", "panel-list"))
+        self.assertIn("Morning", self.text("quiet", "panel-list"))
+        self.assertEqual(self.text("quiet", "panel-cal"), "No calendar has been read.")
         self.assertEqual(self.res["rung"]["ticksDoc"], "ordo/ticks-2030-01-02")
 
     def test_the_office_comes_before_the_session_s_action(self):
@@ -978,6 +1218,92 @@ class PageBehaviourTest(unittest.TestCase):
         self.assertEqual(self.text("junk", "next-prompt"), "Water the plants")
         self.assertIn("1 of 3 office items left", self.text("junk", "bell-msg"))
         self.assertIn("Done: Feed the goldfish", self.text("junk", "office-resolved"))
+
+
+    def test_the_waiting_list_is_in_the_panel(self):
+        for name in ("quiet", "rung"):
+            self.assertTrue(self.shown(name, "wait"), name)
+            self.assertIn("Review the rows", self.text(name, "wait-list"))
+
+    def test_an_item_run_by_the_session_is_only_in_the_panel(self):
+        self.assertIn("Copy the list · run by the session, open", self.text("rung", "panel-bell"))
+        self.assertNotIn("Copy the list", self.text("rung", "office-then"))
+        self.assertNotIn("Copy the list", self.text("rung", "bell-msg"))
+        # the principal's items resolved: the session's action shows though one of its items is open
+        self.assertEqual(self.text("resolved", "next-prompt"), "Is watering still first?")
+        self.assertFalse(self.shown("resolved", "bell"))
+
+    def test_an_office_set_aside_shows_the_session_s_action_with_the_office_under_it(self):
+        self.assertEqual(self.text("aside", "next-prompt"), "Is watering still first?")
+        self.assertEqual(self.text("aside", "next-kind"), "question")
+        self.assertFalse(self.shown("aside", "office-after"))
+        self.assertTrue(self.shown("aside", "office-aside"))
+        self.assertEqual(self.text("aside", "office-aside-items"),
+                         "Wind the clock (under way) · Feed the goldfish")
+        self.assertEqual(self.text("aside", "office-aside-reason"), "The letter first.")
+        self.assertTrue(self.shown("aside", "next-deferred"))
+        self.assertTrue(self.shown("aside", "bell"))
+        self.assertIn("set aside for now; 2 of 3 office items still due",
+                      self.text("aside", "bell-msg"))
+        # the panel's "This bell" is unchanged by it
+        self.assertIn("Wind the clock · under way", self.text("aside", "panel-bell"))
+
+    def test_an_office_set_aside_lapses_with_a_later_bell_or_an_office_done(self):
+        self.assertEqual(self.text("aside_earlier", "next-prompt"), "Cover the seedlings")
+        self.assertFalse(self.shown("aside_earlier", "office-aside"))
+        self.assertIn("not yet taken up", self.text("aside_earlier", "bell-msg"))
+        self.assertEqual(self.text("aside_none", "next-prompt"), "Is watering still first?")
+        self.assertFalse(self.shown("aside_none", "office-aside"))
+        self.assertFalse(self.shown("aside_none", "bell"))
+
+    def test_round_three_b1_an_aside_holds_only_the_day_it_was_set(self):
+        for name in ("aside_next_day", "aside_bad_since"):
+            self.assertEqual(self.text(name, "next-prompt"), "Water the plants", name)
+            self.assertFalse(self.shown(name, "office-aside"), name)
+            self.assertNotIn("set aside", self.text(name, "bell-msg"), name)
+        self.assertEqual(self.text("aside_last_bell", "next-prompt"), "Is watering still first?")
+        self.assertTrue(self.shown("aside_last_bell", "office-aside"))
+        self.assertEqual(self.text("aside_last_bell_next_day", "next-prompt"),
+                         "Cover the seedlings")
+        self.assertFalse(self.shown("aside_last_bell_next_day", "office-aside"))
+
+    def test_round_three_the_calendar_on_the_timeline(self):
+        tl = self.text("agenda", "panel-list")
+        self.assertIn("until 10:00", tl)
+        self.assertIn("An example visit", tl)
+        self.assertIn("An example near", tl)
+        self.assertIn("All day", tl)
+        self.assertIn("An example fair", tl)
+        # ended, and beyond the forty-eight hours
+        self.assertNotIn("An example ended", tl)
+        self.assertNotIn("An example far", tl)
+        # four bells in the window, the first alone tagged as the next
+        self.assertEqual(tl.count("Next bell"), 1)
+        self.assertEqual(tl.count("Bell"), 3)
+        self.assertLess(tl.index("Next bell"), tl.index("Tomorrow"))
+        # a later bell's office items are never listed
+        self.assertNotIn("Cover the seedlings", tl)
+        self.assertEqual(self.text("agenda", "panel-cal"), "Calendar read today at 08:50.")
+
+    def test_round_three_the_office_complete_and_the_session_s_items(self):
+        bell = self.text("agenda", "panel-bell")
+        self.assertIn("The office is complete.", bell)
+        self.assertIn("Copy the list · run by the session, done", bell)
+        self.assertNotIn("MEASURED-2-L", self.res["agenda"]["all"])
+        self.assertNotIn("water", self.res["agenda"]["all"].lower())
+        self.assertFalse(self.shown("agenda", "bell"))
+        self.assertIn("Copy the list · run by the session, overruled",
+                      self.text("session_overruled", "panel-bell"))
+        self.assertEqual(self.text("session_overruled", "next-prompt"), "Water the plants")
+
+    def test_round_three_a_recommendation_on_a_review_and_never_on_a_question(self):
+        self.assertTrue(self.shown("agenda", "next-rec"))
+        self.assertTrue(self.shown("agenda", "next-rec-label"))
+        self.assertEqual(self.text("agenda", "next-rec"),
+                         "Keep the shorter wording.It reads plainer.")
+        for name, out in self.res.items():
+            self.assertNotIn("REC-ON-A-QUESTION", out["all"], name)
+        self.assertFalse(self.shown("quiet", "next-rec"))
 
 
 if __name__ == "__main__":

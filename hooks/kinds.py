@@ -60,7 +60,7 @@ MARKS = (".principal", ".git")
 NOTEBOOK = os.path.join(".principal", "notebook.json")
 #: the directories a sitting names in its scratch
 SITTING = ("questions", "answers", "replies", "results", "sealed", "rows", "check",
-           "coordinator")
+           "coordinator", "speaker")
 
 
 def plugin_name(path: str = PLUGIN) -> str:

@@ -47,7 +47,9 @@ is one, a job's `~/.claude/jobs/<id>/tmp/…` another, and the gates recognise n
 names as the sitting's own, nor `speaker`. A local file an `ArtifactData` call of the speaker's
 writes or sends, an `out_dir` or a `file_path`, is under `$SCRATCH/speaker/`, and the
 coordinator's under `$SCRATCH/coordinator/`: the guard on the notebook refuses either kind any
-other. A file of this session's own
+other. The session's shell stays in the project: it never
+changes its working directory into `$SCRATCH`, where the gates would read it as the project's
+root. A file of this session's own
 words is written with the Write tool, never through the shell; what a tool prints is kept by
 sending its output to the file, never retyped. A file's fingerprint is its SHA-256 in
 hexadecimal (`sha256sum`). A sitting's id is
@@ -135,7 +137,8 @@ publishes one. Where it names no `page`, the sitting runs without one and says s
    empties what stands there. The line doc is emptied at each batch point onto the notebook, and
    nothing stands only in it at the close.
 4. **An act is one of four kinds: to do, to observe, to ask, to grant.** Every act is put to the
-   principal as the next action, in one of the four kinds the round names (procedure 3, rule 6):
+   principal as the next action, save an office item the Rule gives the session to run
+   (procedure 3, rule 7), whose grant is the Rule written at the principal's word, in one of the four kinds the round names (procedure 3, rule 6):
    an act to ask is a `question`, an act to do or to observe a `work`, and a grant a `review`;
    an `office` is the Rule's and no act of the speaker's. Only a question of principle is
    counted: the principal sets how many the sitting may spend when it opens, and the number set
@@ -231,15 +234,26 @@ and `user` capabilities and rules under which only its owner reads and writes,
 
 so that anyone else, or anyone signed out, sees it empty. It has three sections in a fixed
 order, the action context, the next action and the helpers' action context, and above them a
-bell notice while a rung bell's office is unresolved; under the next action stand the queue,
-as "Waiting, in order", and the line of the next bell. The page is display only: it has no
-button and no input, its source holds no data, and it writes nothing. It reads three documents
-of the collection `ordo` in its store, and the speaker writes all three, the day's marks
-included.
+bell notice while a rung bell's office has an item of the principal's unresolved; beside them
+stands the context panel. The page is display only: it has no button and no input, its source
+holds no data, and it writes nothing. It reads four documents of the collection `ordo` in its
+store, and the speaker writes all four, the day's marks included.
 
-Before any private data is written to the page's store in a sitting, the speaker reads
-`ordo/current` with `ArtifactData` at `as_level` `interact` and again at `admin`; where either
-read returns a document, the owner-only rule does not hold, and the sitting runs without a page
+On a wide screen the main column is on the left and the context panel on the right, kept in
+view; on a phone the panel sits under the next action. The panel holds, in this order: "This
+bell", the latest rung bell's name and time and its items still open or under way, the
+principal's and those run by the session (marked so, and kept listed with their state once
+resolved), "The office is complete." standing above them where no item is open or under way; "Next 48 hours", one timeline in time order under day
+headings, of every bell still to ring in the next forty-eight hours and every event of
+`ordo/agenda` not yet ended and starting within them, each tagged "Bell" or "Event", the next
+bell the largest, tagged "Next bell", and an office item of a later bell never listed;
+"Waiting, in order", the queue (rule 10); and last, when the calendar was read, or "No calendar
+has been read." where `ordo/agenda` is absent.
+
+Before any private data is written to the page's store in a sitting, where `ordo/current` does
+not yet exist, as at the first sitting on a page, the speaker first `set`s it with `updated`
+alone, which holds nothing private; then the speaker reads `ordo/current` with `ArtifactData` at
+`as_level` `interact` and again at `admin`; where either read returns a document, the owner-only rule does not hold, and the sitting runs without a page
 and says so. What is published is the page's source, which holds no data; the store is read
 under the owner's rule alone, and this read is what tests it.
 
@@ -253,11 +267,16 @@ whole. Each write sets `updated`, and the clock is read before it is stamped (pr
 items live in `ordo/rule`, which is the principal's private data: it is written only at the
 principal's word, and never into this repository, a line doc, the board or anything published.
 The day's marks live in `ordo/ticks-<day>`, which the speaker writes when the principal says in
-the session what became of an item.
+the session what became of an item. The principal's calendar lives in `ordo/agenda`, which the
+speaker writes at each sync, after reading the principal's calendar. A sync is an office item of
+the Rule's with `by: "session"` at which the speaker reads the principal's calendar for the next
+forty-eight hours and writes `ordo/agenda`. A speaker that holds no tool that reads the
+principal's calendar, as the confined way's does not, writes no agenda and says so in the action
+context, and the panel then says "No calendar has been read.".
 
 Where `.principal/notebook.json` names no `page`, the sitting runs without one and says so: the
-round is put in the session's own words, in the order the page would show it, and there are no
-bells.
+round is put in the session's own words, in the order the page would show it, the action
+context among them, and there are no bells.
 
 **`ordo/current`**, an invented example:
 
@@ -288,11 +307,16 @@ bells.
     {"kind": "review", "title": "Review the next rows"}
   ],
   "background": ["A helper is building a fix to the page."],
+  "office_deferred": {"reason": "The letter first, for an hour.",
+                      "since": "2030-01-02T08:20:00Z", "bell": "0800"},
   "updated": "2030-01-02T03:04:05Z"
 }
 ```
 
-- `context`, the action context: `heading`; `paragraphs`, the answer as the speaker read it;
+- `context`, the action context: the last answer as the speaker read it, or the speaker's
+  explanation, its answer to a question of the principal's, or its report of what was done, the
+  brief and the close among them (rule 10); `heading`; `paragraphs`, that answer, explanation or
+  report;
   `for` and `against`, lists of objects with `who`, the party and its registry status, and
   `text`, shown under "Tradition on the result" after
   the paragraphs and hidden where both are empty; `prediction`, with `predicted`, `diverged` and
@@ -300,6 +324,8 @@ bells.
   "Where the result diverged" and "How the gap is addressed", an empty part left out and "No
   prediction was sealed for this action." where all three are; and `notes`, quiet lines last.
   The page keeps that order whatever the data's. Without `context` the section is hidden.
+  `prediction` never holds the prediction of the action now put, which stays sealed until its
+  answer is in.
 - `next`, the next action: `kind`, one of `question`, `office`, `work` and `review`, any other
   shown as `work`, every kind shown alike but for its pill; `line`; `case`; `prompt`, the one
   field the card needs, without which it says "No action set yet."; `how`, a quiet last line,
@@ -307,13 +333,31 @@ bells.
   `kind` and `line`, the action ranked first and set aside (rule 5), shown in the card under "Deferred,
   still first by the measure" beside the revised choice, also while an office is put, under
   "After the office", and not at all where its `prompt` is empty; its `kind` falls to `work` as
-  `next`'s does. There is no checklist: a review is a `prompt` like a question's, answered in the
+  `next`'s does; and `recommendation`, a string or a list of strings, the speaker's recommendation,
+  shown under "Recommendation" between the case and the prompt and only where set: every review
+  of mechanism carries it here, its own field and never in the case, and a question, or a review
+  that states or changes a principle, never carries one, the page showing none on a `question`.
+  There is no checklist: a review is a `prompt` like a question's, answered in the
   session.
 - `queue`, the actions after `next`, in order (rule 10): each a whole action with the fields of
   `next`, or a placeholder with `kind` and `title`, listed by its kind and its `title`, or its
-  `prompt` where it has no title; an entry with neither is dropped, and an empty `queue` hides
-  the list. The page never moves the queue: when `next` is answered or done, the speaker writes
-  the first entry as `next`, a placeholder made a whole action, and the rest as `queue`.
+  `prompt` where it has no title, as "Waiting, in order" in the context panel, below the
+  timeline and above the line saying when the calendar was read; an entry with neither is
+  dropped, and an empty `queue` hides the list. The page never moves the queue: when `next` is
+  answered or done, the speaker writes the first entry as `next`, a placeholder made a whole
+  action, and the rest as `queue`.
+- `office_deferred`, the office set aside (rule 7): an object with `reason`; `since`, an ISO
+  time; and `bell`, the base `time` of the bell set aside without its colon, `HHMM`, a
+  `time_by_day` move not changing it. While `bell` names the latest rung bell, `since` is at or
+  after the moment that bell rang on the current Rule day, and that bell still has an item of the
+  principal's unresolved, the card shows `next` exactly as when no
+  office is unresolved, and under its prompt a quiet block, "Office set aside, still due",
+  lists the items left, a taken one marked under way, with the bell, the time it was set aside
+  and the `reason`; a deferred action, where one is set, shows under it too. The notice stays,
+  saying the office is set aside, and the panel's "This bell" is unchanged. Once a later bell
+  rings, or every item of the principal's in that bell is resolved, the field is ignored, and so
+  it is where `since` does not parse or is before that bell rang today, as on a later day; the
+  speaker removes it in its first write after a later bell has rung or the Rule's day has turned.
 - `background`, the helpers' action context: strings, what the helpers are doing, hidden where
   empty.
 - `updated`: the time of the write, ISO 8601 in UTC, shown as the hour and minute it was made.
@@ -326,7 +370,8 @@ bells.
   "days": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
   "bells": [
     {"time": "08:00", "name": "Morning",
-     "office": ["Water the plants", {"label": "Feed the goldfish", "ask": true}]},
+     "office": ["Water the plants", {"label": "Feed the goldfish", "ask": true},
+                {"label": "Copy out the seed list", "by": "session"}]},
     {"time": "21:00", "time_by_day": {"sat": "22:30"}, "name": "Evening",
      "office": [{"label": "Put out the recycling", "days": ["thu"]},
                 {"label": "Cover the seedlings", "off_from": "11-01", "off_to": "02-28"},
@@ -349,18 +394,28 @@ bells.
   weekdays it rings on or not, `off_from` and `off_to`, `MM-DD`, both needed, an inclusive
   range of the year
   it is off, wrapping the new year where `off_from` is the later, and `ask`, `true` where the
-  page cannot tell whether the item is due, so that the speaker asks and may mark it not due.
+  page cannot tell whether the item is due, so that the speaker asks, the question put on the page
+  as an action (rule 10), and may mark it not due;
+  and `by`, `"session"` where the item is the session's to run and not the principal's to
+  report, any other value ignored. Such an item is never the principal's next action: it is
+  left out of the notice, its counts, the card and "Then:", and shown only in the context
+  panel, marked as run by the session with its state. The speaker itself runs
+  it, with its own tools, when the timing is right, puts any question it raises on the page as an
+  action (rule 10), and writes its mark, `taken` when it starts and the bare time when it is done;
+  the principal never reports it.
   An item filtered out for the day is neither shown nor counted.
-- The page finds the latest bell rung on the Rule's day. While that bell has an item open or
-  taken, the notice stands, saying the office is not yet taken up, is under way, or how many
-  items are left, with the next bell under it; the next action is the first such item taken,
-  else the first open one, "Under way since" the time it was taken where it was, the others
-  after "Then:", those resolved listed as done, overruled or not due, a line asking the principal
-  to tell the session when it is done, and the speaker's own `next` in a quiet "After the office"
-  block, with its deferred action under it where one is set. Once every item is
-  resolved the notice goes and `next` shows. With no office unresolved, a quiet line under the
-  card names the next bell of the day and its items, or says no more bells ring today. An
-  earlier bell's unresolved items are not shown. It reads the clock again every thirty seconds.
+- The page finds the latest bell rung on the Rule's day. While that bell has an item of the
+  principal's open or taken, the notice stands, saying the office is not yet taken up, is under
+  way, or how many items are left, with the next bell under it; the next action is the first
+  such item taken, else the first open one, "Under way since" the time it was taken where it
+  was, the others after "Then:", those resolved listed as done, overruled or not due, a line
+  asking the principal to tell the session when it is done, and the speaker's own `next` in a
+  quiet "After the office" block, with its deferred action under it where one is set. While
+  `office_deferred` names that bell and was set after it rang today, `next` shows instead, with
+  the office under it as set aside.
+  Once every item of the principal's is resolved the notice goes and `next` shows, even while
+  items run by the session remain. An earlier bell's unresolved items are not shown. It reads
+  the clock again every thirty seconds.
 
 **`ordo/ticks-<day>`**, the marks: `<day>` the Rule's day as `YYYY-MM-DD`, the local date moved
 back a day before `day_start`. It is a flat map from an office item's key to a value. The key is
@@ -373,24 +428,53 @@ key, open; `taken <ISO time>`, under way since then and still unresolved; an ISO
 done, any other value being read as open; `overruled <ISO time>`, overruled; and `notdue <ISO
 time>`, not due today. An item is
 unresolved while open or taken. The day's first mark is a `set` of the whole document, which
-does not yet exist; each later one an `update` of its key. An invented example:
+does not yet exist; each later one an `update` of its key. A measured value the principal
+reports with an item, a weight for example, is kept as a plain field of the same document
+beside the marks, under a key that does not begin with `bell-`; the page reads only the items'
+keys and passes it by. An invented example:
 
 ```json
 {"bell-0800-water-the-plants": "2030-01-02T08:10:00.000Z",
+ "water_used": "2 l",
  "bell-2100-wind-the-clock": "overruled 2030-01-02T21:05:00.000Z",
  "bell-2100-cover-the-seedlings": "taken 2030-01-02T21:12:00.000Z"}
 ```
 
+**`ordo/agenda`**, the principal's calendar for the panel, written whole by the speaker at each
+sync after reading the principal's calendar, with the events of at least the next forty-eight
+hours. It is the principal's private data like `ordo/rule`. An invented example:
+
+```json
+{"events": [{"start": "2030-01-02T14:00:00Z", "end": "2030-01-02T15:00:00Z",
+             "title": "An example visit"},
+            {"start": "2030-01-03", "end": "2030-01-04", "title": "An example fair",
+             "all_day": true}],
+ "fetched": "2030-01-02T09:12:00Z"}
+```
+
+- `events`, each with `start` and `end`, ISO times with an offset, or for an `all_day` event a
+  bare date read as local midnight, `end` exclusive; `title`, shown as written; and `all_day`,
+  `true` for an event shown as "All day". An event without a valid `start` or a `title` is
+  dropped, and a missing `end` counts as the start.
+- `fetched`, when the calendar was read, shown as the panel's last line.
+
 At each turn the speaker reads and writes (rule 7): the Rule's day from the local clock, then
 `ordo/rule` and `ordo/ticks-<that day>` by `get`; the bells rung so far, each at its time for
 that weekday; their items that apply that day, and each item's state from its key. While the
-latest bell has an item unresolved, the page is putting the office and not `next`, an item taken
-before any open one. When the
+latest bell has an item of the principal's unresolved, the page is putting the office and not
+`next`, an item taken before any open one, until each of the principal's is done, overruled or
+not due, or the principal sets the office aside; items run by the session never hold the card. When the
 principal says in the session that an item is under way, done, not now, not due, or open again,
 the speaker reads the clock and writes `taken`, the bare time, `overruled`, `notdue` or `null`.
 An item overruled or marked not due is the principal's word for the day, and is not put again.
-An earlier bell's unresolved items the page does not show: the speaker weighs whether they still
-matter, and puts them as actions on the page or lets them lapse with the day.
+An earlier bell's unresolved items, set aside or not, the page does not show on the card: the
+speaker lists each in the action context as still due from that bell until the principal says
+done, overruled or not due for it, and lets none lapse without that word. Items with `by:
+"session"` the speaker runs itself, with its own tools, when the timing is right, and marks. When
+the principal sets the office aside, the speaker writes `office_deferred`, only at the principal's
+word; when the principal takes it up again, the speaker removes it, and it removes it too in its
+first write after a later bell has rung or the Rule's day has turned. At each sync the speaker
+reads the principal's calendar and `set`s `ordo/agenda` whole, with `fetched`.
 
 ## Procedure
 
@@ -437,7 +521,8 @@ a few blocks are read in place, by `search` or a `view` of each, as `/principal:
 reads a dictation that touches only line-shaped parts; nothing of a tab is transcribed by this
 session.
 
-**2 — The brief.** In this order: what was done and what failed since the last sitting, by job
+**2 — The brief.** The brief is a report, written on the page, in the action context (rule 10),
+and not in the session's text. In this order: what was done and what failed since the last sitting, by job
 and kind, from `status`; what was observed, from the divergence listing; what waits on the
 principal, each `waiting` job with what it releases; three numbers, how many open notes the last
 sitting took off because their line stands on the tab, how many it added, and how many stand
@@ -508,9 +593,10 @@ bind every action.
    put by rules 1 to 4; an `office` is an item of a bell (rule 7); a `work` is an act to do or to
    observe; and a review is put exactly as a question is, one at a time, a case and a question
    on the page, answered in the session. A review differs from a question in three things only:
-   a review of mechanism may carry the speaker's recommendation, and a review that states or
-   changes a principle, a grant or a row stating a principle among them, is put with no
-   recommendation, as a question is; it carries no tradition; and a prediction is sealed
+   a review of mechanism carries the speaker's recommendation, in `next.recommendation`, its own
+   field and never in the case, and a review that states or changes a principle, a grant or a
+   row stating a principle among them, is put with no recommendation, as a question is, and the
+   page shows none; it carries no tradition; and a prediction is sealed
    before every review as well, by the speaker itself, in
    `$SCRATCH/sealed/`, and the file says who predicted. The grants and the rows of a batch point
    are put as reviews (step 4). There are no checklists. An act of another kind than a question
@@ -523,9 +609,12 @@ bind every action.
    `/principal:dictate` or `/principal:bootstrap`, named to the principal as an open note of kind
    `change`; a grant is written at the batch point as a case on the tab of the clause it bears
    on. Each ends with what it opened.
-7. **Bells.** The page shows a rung bell as a notice and makes that bell's office items the next
-   action, one at a time, until each is done, overruled or marked not due; only then does the
-   speaker's own next action show, and the rest of the time is a work block. Between open and
+7. **Bells.** An unresolved office of the principal's shows first unless the principal has set
+   it aside; items run by the session never hold the card. The page shows a rung bell as a notice
+   and makes that bell's office items of the principal's the next action, one at a time, until
+   each of the principal's is done, overruled or marked not due, or the principal sets the
+   office aside; only then does the speaker's own next action show, and the rest of the time is
+   a work block. Between open and
    resolved an item may be taken up: the principal says so in the session, the speaker marks it
    taken, and it stays the next action as under way until it is done, overruled or marked not
    due; among a bell's unresolved items the page shows a taken one first, else the first open
@@ -533,12 +622,32 @@ bind every action.
    it on the principal's word. The page writes nothing: the principal acknowledges each item and
    each action in the session, and the speaker writes an item's mark, or `ordo/current` for an
    action. The page always shows the next
-   bell, in the notice while an office is open and otherwise with its items under the card. The
+   bell, in the notice while an office is open and always in the context panel, on one timeline
+   with the bells and the principal's calendar events of the next forty-eight hours, beside the
+   bell's remaining items and the waiting list. The
    speaker reads the day's marks at each turn (**The page**); an overruled office item is an
-   observation like any other override. An earlier bell's items left open are the speaker's to
-   read and weigh.
+   observation like any other override. An office set aside, or left unresolved, when a later bell
+   rings does not vanish: the page shows only the latest bell's office on the card, and the
+   speaker lists those items in the action context as still due from the earlier bell until the
+   principal says done, overruled or not due for each. An office item marked `by: "session"` is
+   the speaker's, not the principal's: the speaker itself runs it, with its own tools, when the
+   timing is right, puts any question it raises on the page as an action, and writes its mark;
+   the principal never reports it, and it never holds back the speaker's own next action. It is
+   the one act not put to the principal: the Rule, written at the principal's word, is the
+   grant. Its mark is its record; one the speaker cannot run, or that fails, stays open, and the
+   speaker says so in the action context and puts it to the principal as an action. The principal may set the rung bell's
+   remaining office aside for a while and take the session's work first, a transient action
+   divergence: the speaker writes `office_deferred` only at the principal's word, records it as
+   an observation of a gap, as the goal says, and never a verdict, carries it in every
+   whole-document `set` of `ordo/current`, and clears it when the principal takes the office up
+   again; while it stands the page shows the speaker's next action with the office under it, still
+   due. The page counts it only where `since` is at or after the moment the named bell rang in the
+   current Rule day, and the speaker removes it in its first write after a later bell has rung or
+   the Rule's day has turned. A measured value the principal reports with an item is kept as
+   a plain field in the day's marks document beside the marks.
 8. **Every time the speaker stamps is read from the clock, never typed**: `date -u
-   +%Y-%m-%dT%H:%M:%SZ` for the board's `--now`, the page's `updated` and the time in a mark,
+   +%Y-%m-%dT%H:%M:%SZ` for the board's `--now`, the page's `updated`, the time in a mark,
+   `office_deferred`'s `since` and `ordo/agenda`'s `fetched`,
    `date -u +s%Y%m%d%H%M` for a sitting's id, and the local `date`, in the zone the page is
    viewed in, for the Rule's day.
 9. **The speaker, at the full tier, writes no code, page or tooling itself.** Such work is
@@ -549,7 +658,11 @@ bind every action.
    open note of kind `change`.
 10. **Every ask of the principal is an action on the page, in order.** The speaker never leaves
     an ask only in the session's text: what it writes in the session is short and points to the
-    page. The asks still pending are kept on the page as a queue the principal can see, in the
+    page. Every explanation, every answer to a question of the principal's, and every report of
+    what was done goes in the page's action context, `context`, as its `heading` and
+    `paragraphs`; the session's own text is one or two lines saying the page changed, and never
+    repeats what the page says; nothing the principal must decide appears only in the session's
+    text. Context above a question of principle still carries no recommendation (rule 1). The asks still pending are kept on the page as a queue the principal can see, in the
     order they will be put, each a further action or a placeholder with a kind and a title.
 
 **4 — The batch point.** The rows are shown to the principal in words first, put as reviews
@@ -595,7 +708,7 @@ runs each of them.
 
 A link of the chain that fails stops the chain there: the jobs after it stay `queued`, blocked,
 and `status` names them. The speaker reads the failed job's reply, the file
-`$SCRATCH/coordinator/replies/<job id>`, since a failed job carries no result, tells the principal which link failed and why in a sentence, and
+`$SCRATCH/coordinator/replies/<job id>`, since a failed job carries no result, tells the principal on the page, in the action context, which link failed and why in a sentence, and
 removes the cause where it is the sitting's to remove: a `fetch` or a `check` that failed on
 something passing is run again as it stands; a `record` whose rows no longer hold is not: the
 jobs after it are failed `superseded`, and new rows are drawn for a new chain. Once the cause is removed,
@@ -648,8 +761,8 @@ only once the last has reported, since every coordinator works through the one
 a kind carries; every such piece of work is a job on the board, every `review` included. Work no
 kind carries is rule 9's (procedure 3), and only the open way starts a helper for it.
 
-**7 — Closing.** The close is a batch point like the others. Run `status` again and say what
-stands open: jobs not done, failures by kind, what waits on the principal, the questions spent
+**7 — Closing.** The close is a batch point like the others. Run `status` again and say on the page, in the action
+context, what stands open: jobs not done, failures by kind, what waits on the principal, the questions spent
 against the number set, and the three numbers of step 2 for this sitting. The count of open
 notes now is not listed again over a fetch of what the sitting wrote, whose shares and count
 would be of those tabs alone: it is the opening's listing, plus the notes this sitting added,
@@ -845,3 +958,8 @@ What this entry point says now that reverses what it said before:
   where before they were shown in words whole.
 - Every ask of the principal is an action on the page, the pending ones a queue the principal
   sees, where before the speaker put its acts in the session's text.
+- An office item the Rule gives the session to run is run by the speaker itself and is not put
+  to the principal, the Rule being its grant, where before every act was put as the next
+  action; it is run by the speaker and by no helper.
+- Every explanation and report, the brief and the close among them, is written in the page's
+  action context, where before the brief and the close were said in the session's text.

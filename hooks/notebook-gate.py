@@ -351,19 +351,24 @@ def _ref(part, fields: list, parts: list = None) -> None:
 def local_paths(tool_input) -> list:
     """The local paths an `ArtifactData` call writes or reads: its export's
     directory, the collection's directory and the document's file under
-    it, and every `file_path`, at the top or in a member of a list."""
+    it, and every `file_path`, at the top or in a member of a batch's
+    `writes`. Only `writes` is read as a list: any other value, a
+    `str_replace`'s text beginning with `[` among them, is data; and
+    `writes` that is no list of objects is unclear."""
     if not isinstance(tool_input, dict):
         raise Unclear("the input")
     out = []
     members = [tool_input]
-    for value in tool_input.values():
-        if isinstance(value, str) and value.lstrip().startswith("["):
+    value = tool_input.get("writes")
+    if value is not None:
+        if isinstance(value, str):
             try:
                 value = json.loads(value)
             except ValueError as exc:
-                raise Unclear("a list") from exc
-        if isinstance(value, list):
-            members.extend(m for m in value if isinstance(m, dict))
+                raise Unclear("writes") from exc
+        if not isinstance(value, list) or not all(isinstance(m, dict) for m in value):
+            raise Unclear("writes")
+        members.extend(value)
     for member in members:
         found = member.get("file_path")
         if found is not None:
@@ -507,6 +512,12 @@ def decide(call, env=None, plugin=None, own: str = AGENTS) -> dict:
                 return _answer("deny", UNCLEAR)
         except (Unclear, TypeError, ValueError, RecursionError):
             if tool in NAMING:
+                return _answer("deny", UNCLEAR)
+            if tool in DELETES and (writes(agent, plugin, call.get("cwd"), env, own)
+                                    or own_kind(agent, plugin, call.get("cwd"), env,
+                                                own) == SPEAKER):
+                # a delete whose ref cannot be read, by the recorder or the
+                # interviewer, whom the rest of the gate lets through
                 return _answer("deny", UNCLEAR)
         if tool in NAMING:
             return {}
