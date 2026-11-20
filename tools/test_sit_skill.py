@@ -31,6 +31,11 @@ from test_board import read_batch
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, ".."))
 SKILL = os.path.join(ROOT, "skills", "sit", "SKILL.md")
+#: the parts of the skill, read on demand, in the order the skill's text runs
+PARTS = os.path.join(ROOT, "skills", "sit", "parts")
+PART_ORDER = ["arrangement", "brief", "serves", "ground-rules", "page", "bells", "open-lines",
+              "predictions", "board", "opening", "round", "batch-point", "ai-line",
+              "attenuation", "departures"]
 PAGE = os.path.join(ROOT, "web", "ordo.html")
 COORDINATOR = os.path.join(ROOT, "agents", "coordinator.md")
 CHECKER = os.path.join(ROOT, "agents", "checker.md")
@@ -44,15 +49,26 @@ DOC = "p1"
 UNFILLED = re.compile(r"<[^<>]*>|\[ID\]|\$SCRATCH|(?<![\w./-])(?:READ|ID|N|T)(?![\w./-])")
 
 
+def read(path):
+    """A file's text; the sitting's skill read as its core and then its parts,
+    in the order the skill's text runs."""
+    if os.path.realpath(path) != os.path.realpath(SKILL):
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+    texts = []
+    for each in [SKILL] + [os.path.join(PARTS, name + ".md") for name in PART_ORDER]:
+        with open(each, encoding="utf-8") as fh:
+            texts.append(fh.read())
+    return "\n".join(texts)
+
+
 def flat(path):
-    with open(path, encoding="utf-8") as fh:
-        return " ".join(fh.read().split())
+    return " ".join(read(path).split())
 
 
 def spans(path):
     """Every code span of a file, in its order, its code blocks left out."""
-    with open(path, encoding="utf-8") as fh:
-        text = re.sub(r"```.*?```", "", fh.read(), flags=re.S)
+    text = re.sub(r"```.*?```", "", read(path), flags=re.S)
     return re.findall(r"`([^`]+)`", " ".join(text.split()))
 
 
@@ -71,8 +87,7 @@ def lines(path, program):
 
 def _code(path, heading):
     """The first JSON code block of a file after ``heading``."""
-    with open(path, encoding="utf-8") as fh:
-        text = fh.read()
+    text = read(path)
     return re.search(r"```json\n(.*?)```", text[text.index(heading):], re.S).group(1)
 
 
@@ -539,7 +554,7 @@ class SentenceTest(unittest.TestCase):
 
     def test_the_skill_states_no_goal_of_its_own(self):
         serves = self.skill[self.skill.index("## What the sitting serves"):
-                            self.skill.index("## Before anything")]
+                            self.skill.index("## Ground rules")]
         for words in ("This skill states no goal of its own.",
                       "The sitting serves that portion of the principal's rule of life that can "
                       "be delegated to the AI, as the notebook states it.",
@@ -760,8 +775,7 @@ class StopgapTest(unittest.TestCase):
     keys, each carried by the skill, and each rule it reverses listed."""
 
     def setUp(self):
-        with open(SKILL, encoding="utf-8") as fh:
-            self.raw = fh.read()
+        self.raw = read(SKILL)
         self.skill = flat(SKILL)
 
     def section(self, heading, until):
@@ -917,6 +931,23 @@ class StopgapTest(unittest.TestCase):
                       "hinge"):
             self.assertIn(words, reversals)
         self.assertNotIn("An act is sealed by the speaker", reversals)
+
+
+class PartsTest(unittest.TestCase):
+    """The core a session keeps whole, and every part it names, each opening
+    with when it is read."""
+
+    def test_the_core_is_short_and_indexes_every_part(self):
+        with open(SKILL, encoding="utf-8") as fh:
+            core = fh.read()
+        self.assertLessEqual(len(core.splitlines()), 250)
+        self.assertEqual(sorted(f[:-3] for f in os.listdir(PARTS) if f.endswith(".md")),
+                         sorted(PART_ORDER))
+        index = core[core.index("## The parts"):]
+        self.assertEqual(re.findall(r"^\| `([\w-]+)\.md` \|", index, re.M), PART_ORDER)
+        for name in PART_ORDER:
+            with open(os.path.join(PARTS, name + ".md"), encoding="utf-8") as fh:
+                self.assertTrue(fh.readline().startswith("Read this part "), name)
 
 
 class LineTest(unittest.TestCase):
