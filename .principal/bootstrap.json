@@ -682,7 +682,11 @@
         "skills/bootstrap/SKILL.md",
         "tools/test_notebook_gate.py",
         "README.md",
-        "CLAUDE.md"
+        "CLAUDE.md",
+        "tools/hypo/sensitive.py",
+        "tools/sensitive.py",
+        "tools/test_sensitive.py",
+        "tools/fixtures/sensitive.txt"
       ],
       "pull_request": null,
       "rounds": 1

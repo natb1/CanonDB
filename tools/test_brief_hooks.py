@@ -43,6 +43,8 @@ class Base(unittest.TestCase):
                     if k not in ("CLAUDE_PROJECT_DIR", "CLAUDE_PLUGIN_ROOT",
                                  "CLAUDE_CONFIG_DIR")}
         self.env["HOME"] = os.path.join(self.tmp, "home")
+        # the sensitive-terms check reads the neutral list (test_sensitive.py holds it)
+        self.env["PRINCIPAL_SENSITIVE"] = fixture("sensitive.txt")
         self.graph = os.path.join(self.tmp, "scratch", "graph.json")
         os.makedirs(os.path.dirname(self.graph))
         shutil.copyfile(GRAPH, self.graph)

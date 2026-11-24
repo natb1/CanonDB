@@ -36,6 +36,22 @@ named by `file_path`, read whole; for `Bash`, the whole command (a message
 given by `-m` or in a here-document is in it) and each file `-F`, `--file`
 or `--body-file` names. What is staged in a commit is not read.
 
+Sensitive information the user reports, held on every repository-bound
+write. A commit, a tag, a note, a merge's message or a writing `gh` call is
+also read against the private list `tools/hypo/sensitive.py` says where to
+find (`<config home>/principal/sensitive.txt`, outside every repository, or
+`$PRINCIPAL_SENSITIVE`), in every project, a notebook named or not: the
+command's words and the files it sends, and for a `git commit` the lines the
+commit adds, read by `git diff --cached` (and `git diff`, where `-a`, `-i`,
+`-o` or paths take what is not yet staged) in the directory the commit runs
+in. On a match the call is refused, naming the place and the pattern's line
+in the list, never the words. Where the list is missing the call is not
+refused, and the caller is told, as context, that the text went unchecked.
+Not held here: a connector or store write (the private notebook and page),
+`git push` of commits made outside the harness, `gh pr merge` and `gh api`
+writes, a commit made by another program (an editor, a script, a rebase),
+and a tag's or merge's tree.
+
 Fail closed only on a confirmed finding. Where the project names no
 notebook, or the call is not one of these, there is no opinion. Where the
 brief's directory holds no graph, or the call cannot be read, the call goes
@@ -234,6 +250,103 @@ def _shell_words(command: str, cwd) -> str:
     return "\n\n".join(p for p in parts if p)
 
 
+#: `git commit`'s options that take a value as the next word
+COMMIT_VALUED = ("-m", "-F", "-C", "-c", "-t", "--message", "--file", "--reuse-message",
+                 "--reedit-message", "--template", "--author", "--date", "--fixup", "--squash",
+                 "--cleanup", "--trailer", "--pathspec-from-file")
+#: the most of a staged diff read for the sensitive check, and how long it may take
+DIFF_LARGEST = 8 << 20
+DIFF_SECONDS = 10
+
+
+def _commits(command: str, cwd) -> list:
+    """Each `git commit` of a shell line: the directory it runs in (a `cd`
+    earlier in the line and `-C` followed) and whether it also takes what is
+    changed but not staged (`-a`, `-i`, `-o`, or paths named)."""
+    out, here = [], cwd if isinstance(cwd, str) else None
+    for words in commands(command):
+        words = _program(words)
+        if not words:
+            continue
+        name = os.path.basename(words[0])
+        if name == "cd" and len(words) == 2 and here is not None:
+            here = os.path.join(here, os.path.expanduser(words[1]))
+            continue
+        if name != "git":
+            continue
+        rest, i, place = words[1:], 0, here
+        while i < len(rest) and rest[i].startswith("-"):
+            if rest[i] == "-C" and i + 1 < len(rest) and place is not None:
+                place = os.path.join(place, os.path.expanduser(rest[i + 1]))
+            i += 2 if rest[i] in GIT_VALUED else 1
+        if i >= len(rest) or rest[i] != "commit":
+            continue
+        args, j, unstaged = rest[i + 1:], 0, False
+        while j < len(args):
+            a = args[j]
+            if a == "--":
+                unstaged = unstaged or j + 1 < len(args)
+                break
+            if a in COMMIT_VALUED:
+                j += 2
+                continue
+            if a in ("--all", "--include", "--only") or (
+                    re.match(r"^-[a-zA-Z]+$", a) and re.match(r"^-[^mFCct]*[aio]", a)):
+                unstaged = True
+            elif not a.startswith("-"):
+                unstaged = True
+            j += 1
+        out.append((place, unstaged))
+    return out
+
+
+def _git_diff(place, *args) -> "str | None":
+    import subprocess
+    env = dict(os.environ, LC_ALL="C")
+    try:
+        inside = subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], cwd=place,
+                                capture_output=True, timeout=DIFF_SECONDS, env=env)
+        if inside.returncode != 0 and b"not a git repository" in inside.stderr:
+            return ""  # no commit is made here, so nothing is staged to read
+        done = subprocess.run(["git", "diff", "--no-color", "--no-ext-diff", "-U0"] + list(args),
+                              cwd=place, capture_output=True, timeout=DIFF_SECONDS, env=env)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if done.returncode != 0 or len(done.stdout) > DIFF_LARGEST:
+        return None
+    return done.stdout.decode("utf-8", errors="replace")
+
+
+def sensitive(command: str, cwd, env):
+    """The sensitive-terms check over a shell line bound for a repository:
+    its words, the files it sends, and each commit's added lines. A refusal,
+    a line of context, or None."""
+    from hypo import sensitive as listed
+    patterns = listed.load(env)
+    if patterns is None:
+        return _said(listed.missing(listed.path(env)))
+    found = [("the command or a file it sends", n)
+             for n in listed.matches(patterns, _shell_words(command, cwd))]
+    unread = []
+    for place, unstaged in _commits(command, cwd):
+        for which in (["--cached"], []) if unstaged else (["--cached"],):
+            diff = _git_diff(place, *which)
+            if diff is None:
+                unread.append(place or "the current directory")
+                continue
+            found += [("%s line %d (%s)" % (f, line, "staged" if which else "not yet staged"), n)
+                      for f, line, n in listed.scan_diff(patterns, diff)]
+    if found:
+        return _deny(listed.refusal(patterns, found))
+    notes = []
+    if patterns.broken:
+        notes.append(listed.broken(patterns))
+    if unread:
+        notes.append("The sensitive-terms check could not read what the commit in %s takes, "
+                     "so its files went unchecked." % ", ".join(sorted(set(unread))))
+    return _said(" ".join(notes)) if notes else None
+
+
 def _target(graph, given):
     """The question of the notebook's tab a connector write is addressed to,
     and whether it is a party's: by its ref to the tab's node."""
@@ -271,12 +384,30 @@ def decide(call, env=None, b=None) -> dict:
     if tool not in CONNECTOR + (STORE, SHELL) or not isinstance(given, dict):
         return {}
     cwd = call.get("cwd")
+    held = None
     if tool == SHELL:
         command = given.get("command")
         if not writes_out(command):
             return {}
+        b = _briefing() if b is None else b
+        held = sensitive(command, cwd, env)
+        if held is not None and "permissionDecision" in held["hookSpecificOutput"]:
+            return held
     elif tool == STORE and given.get("action") not in WRITING:
         return {}
+    decided = _conventions(call, tool, given, cwd, env, b)
+    if held is None:
+        return decided
+    if not decided:
+        return held
+    out = decided["hookSpecificOutput"]
+    if "permissionDecision" in out:
+        return decided
+    return _said(held["hookSpecificOutput"]["additionalContext"] + " "
+                 + out["additionalContext"])
+
+
+def _conventions(call, tool, given, cwd, env, b) -> dict:
     b = _briefing() if b is None else b
     root, directory = b.where(cwd, env)
     if not root:
@@ -333,7 +464,8 @@ def main() -> int:
         b = _briefing()
         decision = decide(b.call(raw), b=b)
     except Exception as exc:  # pragma: no cover - fail open, in one line
-        decision = _said("The convention check could not run (%s), so this text went "
+        decision = _said("The convention and sensitive-terms checks could not run (%s), so "
+                         "this text went "
                          "unchecked." % type(exc).__name__)
     print(json.dumps(decision))
     return 0

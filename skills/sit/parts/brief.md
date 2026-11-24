@@ -78,6 +78,17 @@ entry broken and its lineage; the text is redrawn, never forced past it. A read 
 corrects goes to the notebook's statement of conventions first, as rows at the batch point, and
 the brief follows from it at the next install; it is never corrected in the brief.
 
+**Sensitive information never leaves for a repository.** Sensitive information the user reports
+reaches no public repository: no commit, tag, note or merge message, no pull request, issue,
+comment, review or release, and no file's content. The same hook holds every such write, in every
+project, to a private list of what counts as sensitive, one pattern a line (plain words, or a
+regular expression after `re:`), kept at `<config home>/principal/sensitive.txt` beside the brief's
+directory and never in a repository (`tools/sensitive.py where` prints it); it reads the command,
+the files it sends and the lines a commit adds, refuses on a match naming the pattern's line and
+never the words, and where the list is missing says so and refuses nothing. The text is restated
+without it. What left by another way, a push of commits made elsewhere among it, is audited with
+`tools/sensitive.py pr` or `range`, which exits non-zero on a match.
+
 **The work in hand.** The principal asked that the work pending in a session be tracked and kept
 mechanically, so that a compaction loses none of it. It is the session's own, kept by the
 session's id, and never shown to another. Every helper the speaker starts, the directly briefed
