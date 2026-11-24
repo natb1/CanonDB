@@ -33,7 +33,7 @@ function run(sc) {
       focus(o) { out.focus.push({ id: this.id, preventScroll: !!(o && o.preventScroll) }); } };
   }
   const document = {
-    getElementById(id) { return els[id] || (els[id] = node(id)); },
+    getElementById(id) { if (sc.missing === id) return null; return els[id] || (els[id] = node(id)); },
     createElement() { return node(null); },
     createTextNode(t) { const n = node(null); n._text = String(t); return n; },
   };
@@ -43,8 +43,9 @@ function run(sc) {
   };
   const subs = {};
   const db = { doc(path) { return { onSnapshot(cb) { subs[path] = cb; return () => {}; } }; } };
+  out.opened = 0;
   if (sc.store === "slow") window.claude = { use: () => new Promise(() => {}) };
-  if (sc.store === "empty") window.claude = { use: async () => db };
+  if (sc.store === "empty") window.claude = { use: async () => { out.opened++; return db; } };
   const sandbox = { document, window, Date, JSON, Math, Object, Array, String, Number, isNaN,
     console, setTimeout: () => 0, clearTimeout: () => {}, setInterval: () => 0, Promise };
   vm.createContext(sandbox);
@@ -54,7 +55,13 @@ function run(sc) {
     if (sc.store === "empty") Object.values(subs).forEach(cb => cb(none));
     const top = els.top;
     out.wired = !!(top && typeof top.onclick === "function");
+    // every element the page had drawn, the button aside (the click looks main up, and may make it)
+    const ids = Object.keys(els).filter(k => k !== "top");
+    const shot = () => JSON.stringify(ids.map(k => { const n = els[k];
+      return [k, n.hidden, n.textContent, n.className, n.attrs, n.children.length]; }));
+    const before = shot();
     if (out.wired) top.onclick();
+    out.unchanged = before === shot();
     return out;
   });
 }
@@ -96,6 +103,21 @@ class TopButtonMarkupTest(unittest.TestCase):
     def test_its_focus_target_is_the_main_landmark(self):
         self.assertIn('<main id="main" tabindex="-1">', self.page)
 
+    def test_nothing_on_the_page_is_fixed_and_only_the_panel_is_sticky(self):
+        # the button and its footer stay in the flow, whatever selector would place them
+        found = [(sel.strip(), val) for sel, body in re.findall(r"([^{}]+)\{([^{}]*)\}", self.style)
+                 for val in re.findall(r"position\s*:\s*([\w-]+)", body)]
+        self.assertEqual(found, [("#side", "sticky")])
+
+    def test_the_handler_does_nothing_but_scroll_and_focus(self):
+        body = re.search(r"function toTop\(\) \{(.*?)\n  \}", self.page, re.S).group(1)
+        self.assertEqual([line.strip() for line in body.strip().splitlines()], [
+            'var still = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);',
+            'window.scrollTo({ top: 0, behavior: still ? "auto" : "smooth" });',
+            '$("main").focus({ preventScroll: true });'])
+        self.assertEqual(self.page.count("toTop"), 2)
+        self.assertIn("if (top) top.onclick = toTop;", self.page)
+
 
 class TopButtonBehaviourTest(unittest.TestCase):
     """The button's click, run in node, with the store absent, slow or empty."""
@@ -111,7 +133,7 @@ class TopButtonBehaviourTest(unittest.TestCase):
             page = fh.read()
         script = page[page.index("<script>") + len("<script>"):page.index("</script>")]
         scenarios = {"none": {}, "slow": {"store": "slow"}, "empty": {"store": "empty"},
-                     "still": {"reduce": True}}
+                     "still": {"reduce": True}, "missing": {"store": "empty", "missing": "top"}}
         with tempfile.TemporaryDirectory() as tmp:
             paths = []
             for name, data in (("page.js", script), ("scenarios.json", json.dumps(scenarios)),
@@ -136,6 +158,15 @@ class TopButtonBehaviourTest(unittest.TestCase):
     def test_under_reduced_motion_it_goes_at_once(self):
         self.assertIn("(prefers-reduced-motion: reduce)", self.res["still"]["media"])
         self.assertEqual(self.res["still"]["scrolls"], [{"top": 0, "behavior": "auto"}])
+
+    def test_a_missing_button_never_stops_the_page_opening_its_store(self):
+        self.assertFalse(self.res["missing"]["wired"])
+        self.assertEqual(self.res["missing"]["opened"], 1)
+        self.assertEqual(self.res["empty"]["opened"], 1)
+
+    def test_a_click_changes_nothing_on_the_page(self):
+        for name in ("none", "slow", "empty", "still"):
+            self.assertTrue(self.res[name]["unchanged"], name)
 
     def test_it_moves_focus_to_the_main_landmark(self):
         for name in ("none", "slow", "empty", "still"):

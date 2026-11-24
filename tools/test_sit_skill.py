@@ -1271,7 +1271,7 @@ class PageTest(unittest.TestCase):
         # its property and focusing the main landmark, which alone takes a tabindex
         page = self.page
         for allowed in ('<button type="button" class="top" id="top">', '<main id="main" tabindex="-1">',
-                        '$("top").onclick = toTop;'):
+                        'if (top) top.onclick = toTop;'):
             self.assertEqual(page.count(allowed), 1, allowed)
             page = page.replace(allowed, "")
         controls = r"(?:button|input|textarea|select|form|option|dialog|a)"

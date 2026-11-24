@@ -791,7 +791,8 @@ summary { cursor: pointer; font-family: var(--display); font-weight: 600; }
     window.scrollTo({ top: 0, behavior: still ? "auto" : "smooth" });
     $("main").focus({ preventScroll: true });
   }
-  $("top").onclick = toTop;
+  var top = $("top");
+  if (top) top.onclick = toTop;
 
   start().catch(function () { renderStatus(); });
 })();

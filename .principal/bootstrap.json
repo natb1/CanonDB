@@ -620,6 +620,7 @@
       "files": [
         "web/ordo.html",
         "tools/test_page_done.py",
+        "tools/test_page_top.py",
         "skills/sit/SKILL.md",
         "skills/sit/parts/arrangement.md",
         "skills/sit/parts/brief.md",
