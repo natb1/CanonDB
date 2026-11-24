@@ -7,7 +7,9 @@ collection `lines`, beside `ordo`, and nothing waits anywhere else: not in the s
 not only in the line doc, not only as a note in the notebook. An item of the line doc's *Opened*
 section and an open note on a tab each name the line's id and point to it; neither is where the
 line waits. `ordo/current.queue` is a projection of the open documents of `lines`, in the order of
-their `rank`, for the page to draw, and `ordo/current.next` is the one now put; the page reads
+their `rank`, for the page to draw: the queue the tool's `order` writes, the open asks and never
+the session's own work, which is ranked after them and never put; and `ordo/current.next` is
+the one now put; the page reads
 `ordo` alone, and never `lines`. The speaker starts every sitting, and resumes after its context
 is compacted, by reading `ordo/current` and the open documents of `lines` with `ArtifactData`,
 and trusts them over anything it remembers: where they differ, the store stands, and the
@@ -36,8 +38,8 @@ read, and each stamping `touched_at` from the clock. Its fields, an invented exa
 - `parent` and `children`: line ids.
 - `answered_by`: what closed it: the answer's file and round, or the line a merged one is
   carried on by; a close by the principal's later sentence keeps the sentence in `closed_by`.
-- `rank`: its place in the order; the queue is the open documents by `rank`, lowest first. A
-  line no longer open or put carries none, and a reopened one none until the next order.
+- `rank`: its place in the order; the queue is the open asks by `rank`, lowest first, the
+  session's work ranked after them and never in it. A line no longer open or put carries none, and a reopened one none until the next order.
 - `opened_at` and `touched_at`: ISO times, read from the clock.
 - `review_count`: how many times the weekly chunk has shown it to the principal.
 - `origin`: who opened it: `principal`, `speaker`, `ai` for a drawer turn, or a helper's kind.
@@ -53,9 +55,10 @@ read, and each stamping `touched_at` from the clock. Its fields, an invented exa
 - What the tool writes: `flags`, by kind, each `{at, …}`, the kinds `ground-moved`,
   `parent-withdrawn` and `touched`, each cleared alone; `gone` on an anchor read as withdrawn;
   `closed_by`, `{sentence, answer}`, and `reopenable`; `proposed`, `"drop"` where the weekly
-  chunk proposes it; `reviewed_at`, `review_weight` and `review_since`, when it was last shown
-  and where its count began; and `decision`, `{choice, word, at}`, the user's keep, merge or
-  drop. No mode writes `put` or `answered`: those two states are written by hand, as an
+  chunk proposes it; `reviewed_at`, `review_weight`, `review_since` and `review_method`, when
+  it was last shown, where its count began and by which weight, a count begun by an earlier
+  weight begun again at the next showing, never proposed for a drop by that change alone;
+  and `decision`, `{choice, word, at}`, the user's keep, merge or drop. No mode writes `put` or `answered`: those two states are written by hand, as an
   `update` like the others.
 
 ```json
@@ -85,8 +88,9 @@ nothing else decides how a line closes (**Attenuation**).
 with `query.cursor` until it ends, `out_dir` set to `$SCRATCH/speaker/lines` itself, and writes
 the versions the reads returned to `$SCRATCH/speaker/lines-versions.json` as
 `{"lines/<id>": <version>}`; then `tools/lines.py check $SCRATCH/speaker/lines`, which holds
-every document to the fields above and the documents to each other: each parent, child and
-blocked line exists, a parent and its child agree on both sides, no line is its own ancestor,
+every document to the fields above and the documents to each other: each parent, child,
+blocked line and line waited on (`waits_on`) exists, no chain of `blocks` and `waits_on` returns
+to where it began, a parent and its child agree on both sides, no line is its own ancestor,
 one line at most is put. It does not fail on what a mode mends: a rank two lines hold, which
 `order` mends, and a parent that is no line, which `orphans` flags; and it warns, refusing
 nothing, of anchors that name no block, which no move of the notebook can be judged against.
@@ -124,10 +128,13 @@ stands. Where the principal takes another line ahead of the order, `tools/lines.
 $SCRATCH/speaker/lines --taken <taken line> --ground "<the ground, in a few words>" --graph
 $SCRATCH/graph.json --at <time>` appends to `$SCRATCH/speaker/lines-overrides.jsonl`, beside the
 export, the line taken and the line the order put first, each with its terms, the time, and the
-principal's ground restated in a few words; `--over <line>` names another line passed over. It
-writes nothing to the store and changes no weight. `tools/lines.py report
+principal's ground restated in a few words; `--over <line>` names another line passed over. The
+same override run again is not appended twice, and the tool says so. It writes nothing to the
+store and changes no weight. `tools/lines.py report
 $SCRATCH/speaker/lines` reads that log against the order as it was computed: how many
-overrides, which lines, and which term of the weight each most contradicts. A change to the
+overrides, which lines, and which term of the weight each most contradicts, none where the
+line taken already weighed no less, as where the line passed over stood first by being put, and
+the provisional rule counted apart from the share term. A change to the
 method is proposed from the report, as a review of mechanism; the log never makes one.
 
 - **When the notebook's revision moves**, at the opening's fetch and after every batch point's

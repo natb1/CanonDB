@@ -42,7 +42,8 @@ its ``weight``, its three terms ``share``, ``unblocks`` and ``cost``, and
 ``provisional``; and ``queue``, the projection ``ordo/current.queue`` is set
 to, which ``--queue-out`` also writes to a file. ``override`` writes nothing
 to the store: it appends one entry to the override log, by default
-``lines-overrides.jsonl`` beside the records' directory, and prints it;
+``lines-overrides.jsonl`` beside the records' directory, and prints it, or
+says it is the log's last entry already and appends nothing;
 ``report`` prints what the log says against the order. The
 session sends the writes with its own tool in batches of at most fifty, in
 order; where a batch is refused, it exports again and runs the mode again,
@@ -230,8 +231,10 @@ def _run(found: lines.Lines, args):
         entry = lines.override(found, shares, args.taken, args.ground, args.at, args.over,
                                roots)
         log = args.log or lines.log_path(args.records)
-        lines.append_override(log, entry)
-        return {"log": log, "appended": entry}
+        if lines.append_override(log, entry):
+            return {"log": log, "appended": entry}
+        return {"log": log, "appended": None,
+                "already": "the log's last entry is this override: not appended again"}
     if m == "report":
         return lines.report(lines.read_overrides(args.log or lines.log_path(args.records)))
     if m == "link":
@@ -262,6 +265,9 @@ def main(argv=None) -> int:
             return 1 if found.problems else 0
         out = _run(found, args)
     except lines.Refused as exc:
+        stale = getattr(args, "queue_out", None)
+        if stale and os.path.exists(stale):
+            os.remove(stale)  # no queue is left standing from an earlier order
         for reason in exc.reasons:
             print("REFUSED: %s" % reason, file=sys.stderr)
         return 1

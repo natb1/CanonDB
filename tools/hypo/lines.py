@@ -55,7 +55,8 @@ land the next order starts from what did and writes the rest.
 the order. ``override`` appends one entry to a local log, never the store:
 the line taken, the line the order put first ahead of it, each with its
 terms as computed, the time handed in, and the user's ground restated in a
-few words by the caller. ``report`` reads the log against the order as it
+few words by the caller; an entry the same as the log's last is not
+appended again. ``report`` reads the log against the order as it
 was computed: how many overrides, which lines, and which term of the weight
 each most contradicts. An override changes no weight; a change to the
 method is proposed from the report.
@@ -103,6 +104,12 @@ UNANCHORED = 0.5
 GROUND_WORDS = 25
 #: the terms of the weight, as the report names them
 TERMS = ("share", "unblocks", "cost")
+#: what the report counts a contradiction of: the terms, the provisional
+#: rule apart from the share term, and none
+COUNTED = ("share", "provisional", "unblocks", "cost", "none")
+#: the weight a weekly chunk's baseline is taken by; a baseline stored by
+#: another, or by none named, is stale and begun again
+METHOD = "share*unblocks/cost"
 #: the override log's name, beside the records' directory
 OVERRIDES = "lines-overrides.jsonl"
 DROP_AFTER = 3
@@ -255,7 +262,8 @@ def shape(rec: dict) -> List[str]:
         if rec.get(field) is not None and not _ids(rec.get(field)):
             bad(field, "is not a list of line ids")
     cost = rec.get("cost")
-    if cost is not None and (isinstance(cost, bool) or cost not in COSTS):
+    if cost is not None and (not isinstance(cost, int) or isinstance(cost, bool)
+                             or cost not in COSTS):
         bad("cost", "is not one of %s" % ", ".join(str(c) for c in COSTS))
     if rec.get("owed_by") not in (None,) + OWNERS:
         bad("owed_by", "is not one of %s" % ", ".join(OWNERS))
@@ -266,6 +274,8 @@ def shape(rec: dict) -> List[str]:
             bad("cost", "is set on the session's work, which costs the user nothing")
         if rec.get("state") == PUT:
             bad("state", "is put on the session's work, which never holds the user's card")
+    if rec.get("review_method") is not None and not _str(rec.get("review_method")):
+        bad("review_method", "is not the name of a weight")
     if rec.get("project") is not None and not _str(rec.get("project")):
         bad("project", "is not a project's name")
     for field in ("rank", "review_count", "review_since"):
@@ -774,7 +784,7 @@ def cost_of(rec: dict) -> int:
     if session_s(rec):
         return 1
     stated = rec.get("cost")
-    if stated in COSTS and not isinstance(stated, bool):
+    if isinstance(stated, int) and not isinstance(stated, bool) and stated in COSTS:
         return stated
     return WORK_COST if rec.get("kind") == "work" else 1
 
@@ -806,6 +816,29 @@ def root_share(rec: dict, shares: Dict[str, float],
     return 1.0, False
 
 
+def project_root(lines: Lines, rec: dict, shares: Dict[str, float],
+                 roots: Optional[Dict[str, float]]) -> Tuple[float, Optional[str]]:
+    """The base of the provisional rule as adopted: the share of the line's
+    project's root, or the whole root's one where the shares know no
+    project of the line's, with that said."""
+    root, known = root_share(rec, shares, roots)
+    return root, None if known else "no project the shares know, the whole root"
+
+
+def provisional_share(lines: Lines, rec: dict, shares: Dict[str, float],
+                      roots: Optional[Dict[str, float]] = None,
+                      fraction: float = UNANCHORED, base=project_root) -> Tuple[float, str]:
+    """The provisional rule: the share a line takes where no anchor of it
+    is keyed by the shares, ``fraction`` of what ``base`` gives (a function
+    of the line, the shares and the roots returning a share and what to say
+    of it, or None), with why the share is provisional. Another reading of
+    the rule is another ``fraction`` or ``base`` here, and nothing else."""
+    anchored = any(isinstance(a, dict) for a in rec.get("anchors") or [])
+    why = "no anchor the shares key" if anchored else "no anchor"
+    got, said = base(lines, rec, shares, roots)
+    return got * fraction, why if said is None else "%s; %s" % (why, said)
+
+
 def terms(lines: Lines, rec: dict, shares: Dict[str, float],
           roots: Optional[Dict[str, float]] = None) -> Terms:
     """The weight's terms for one line (the module's docstring)."""
@@ -816,12 +849,8 @@ def terms(lines: Lines, rec: dict, shares: Dict[str, float],
     s = share_of(rec, shares)
     if s > 0:
         return Terms(s, unblocks, cost, None)
-    anchored = any(isinstance(a, dict) for a in rec.get("anchors") or [])
-    root, known = root_share(rec, shares, roots)
-    why = "no anchor the shares key" if anchored else "no anchor"
-    if not known:
-        why += "; no project the shares know, the whole root"
-    return Terms(root * UNANCHORED, unblocks, cost, why)
+    got, why = provisional_share(lines, rec, shares, roots)
+    return Terms(got, unblocks, cost, why)
 
 
 def weight(lines: Lines, rec: dict, shares: Dict[str, float],
@@ -938,7 +967,7 @@ def log_path(directory: str) -> str:
 def _side(rec: dict, place: int, t: Terms) -> dict:
     return {"id": rec["id"], "place": place, "weight": round(t.weight, 6),
             "share": round(t.share, 6), "unblocks": t.unblocks, "cost": t.cost,
-            "provisional": t.provisional is not None}
+            "provisional": t.provisional is not None, "put": rec.get("state") == PUT}
 
 
 def override(lines: Lines, shares: Dict[str, float], taken: str, ground: Optional[str],
@@ -985,13 +1014,45 @@ def override(lines: Lines, shares: Dict[str, float], taken: str, ground: Optiona
             "head": rows[0][0], "ground": " ".join(ground.split())}
 
 
-def append_override(path: str, entry: dict) -> None:
-    """Append one entry to the log, one JSON object a line; never rewrite."""
+def _same(a: dict, b: dict) -> bool:
+    """One override twice: the same time, line taken and line passed over."""
+    return (a.get("at") == b.get("at") and a["taken"].get("id") == b["taken"].get("id")
+            and a["over"].get("id") == b["over"].get("id"))
+
+
+def append_override(path: str, entry: dict) -> bool:
+    """Append one entry to the log, one JSON object a line; never rewrite.
+    An entry the same as the log's last (a command run again) is not
+    appended, and False says so. A last line that lost its newline is ended
+    before the entry, so that the two stay apart."""
+    found = read_overrides(path)
+    if found and _same(found[-1], entry):
+        return False
     try:
+        lead = ""
+        if os.path.exists(path) and os.path.getsize(path):
+            with open(path, "rb") as fh:
+                fh.seek(-1, os.SEEK_END)
+                lead = "" if fh.read(1) == b"\n" else "\n"
         with open(path, "a", encoding="utf-8") as fh:
-            fh.write(json.dumps(entry, ensure_ascii=False, sort_keys=True) + "\n")
+            fh.write(lead + json.dumps(entry, ensure_ascii=False, sort_keys=True) + "\n")
     except OSError as exc:
         raise Refused(["the override log cannot be written: %s" % exc])
+    return True
+
+
+def _entry(entry) -> bool:
+    """Whether a log line is an override: a time, and two sides each with an
+    id, a weight and the three terms as numbers."""
+    if not isinstance(entry, dict) or not _str(entry.get("at")):
+        return False
+    for key in ("taken", "over"):
+        got = entry.get(key)
+        if not (isinstance(got, dict) and _str(got.get("id"))
+                and all(_num(got.get(t)) for t in ("weight",) + TERMS)
+                and got.get("cost") > 0 and got.get("unblocks") > 0):
+            return False
+    return True
 
 
 def read_overrides(path: str) -> List[dict]:
@@ -1008,8 +1069,7 @@ def read_overrides(path: str) -> List[dict]:
                     entry = json.loads(text)
                 except ValueError:
                     raise Refused(["the override log's line %d is not JSON" % n])
-                if not (isinstance(entry, dict) and isinstance(entry.get("taken"), dict)
-                        and isinstance(entry.get("over"), dict)):
+                if not _entry(entry):
                     raise Refused(["the override log's line %d is not an override" % n])
                 out.append(entry)
     except OSError as exc:
@@ -1018,54 +1078,69 @@ def read_overrides(path: str) -> List[dict]:
 
 
 def contradicted(entry: dict) -> List[str]:
-    """The terms of the weight an override most contradicts: the term on
-    which the line taken stood worst against the line passed over, by the
-    ratio of the two (share and unblocks taken over passed; cost passed
-    over taken), each term tied for the least counted; none where the line
-    taken stood no worse on any term."""
+    """What an override most contradicts. None where the line taken weighed
+    no less than the line passed over: no weight is contradicted, as where
+    the line passed over stood first by being put and not by its weight.
+    Else the term on which the line taken stood worst, by the ratio of the
+    two (share and unblocks taken over passed; cost passed over taken),
+    each term tied for the least named; the share term named
+    ``provisional`` where either side's share was provisional, since what
+    is contradicted is then the provisional rule."""
     a, b = entry["taken"], entry["over"]
+    if a["weight"] >= b["weight"]:
+        return []
 
     def ratio(x, y):
         return x / y if y else (1.0 if not x else float("inf"))
 
-    got = {"share": ratio(a.get("share", 0), b.get("share", 0)),
-           "unblocks": ratio(a.get("unblocks", 1), b.get("unblocks", 1)),
-           "cost": ratio(b.get("cost", 1), a.get("cost", 1))}
+    got = {"share": ratio(a["share"], b["share"]),
+           "unblocks": ratio(a["unblocks"], b["unblocks"]),
+           "cost": ratio(b["cost"], a["cost"])}
     least = min(got.values())
     if least >= 1:
         return []
-    return [k for k in TERMS if abs(got[k] - least) < 1e-12]
+    hit = [k for k in TERMS if abs(got[k] - least) < 1e-12]
+    if a.get("provisional") or b.get("provisional"):
+        hit = ["provisional" if k == "share" else k for k in hit]
+    return hit
 
 
 def report(entries: List[dict]) -> dict:
     """The overrides read against the order as it was computed: how many,
     over what span, which lines were taken and passed over and how often,
-    which term each most contradicts and which most often, and how many
-    stood on a provisional share."""
+    how many passed over a line first by being put, which term each most
+    contradicts and which most often, the provisional rule counted apart
+    from the share term, and each entry with its provisional flags."""
     taken: Dict[str, int] = {}
     over: Dict[str, int] = {}
-    count = {k: 0 for k in TERMS}
-    count["none"] = 0
-    provisional = 0
+    count = {k: 0 for k in COUNTED}
+    provisional = put = 0
     rows = []
     for e in entries:
         taken[e["taken"]["id"]] = taken.get(e["taken"]["id"], 0) + 1
         over[e["over"]["id"]] = over.get(e["over"]["id"], 0) + 1
-        terms_hit = contradicted(e)
-        for k in terms_hit or ["none"]:
+        hit = contradicted(e)
+        for k in hit or ["none"]:
             count[k] += 1
         if e["taken"].get("provisional") or e["over"].get("provisional"):
             provisional += 1
+        if e["over"].get("put"):
+            put += 1
         rows.append({"at": e.get("at"), "taken": e["taken"]["id"], "over": e["over"]["id"],
-                     "contradicts": terms_hit, "ground": e.get("ground")})
-    top = max((count[k] for k in TERMS), default=0)
+                     "taken_provisional": bool(e["taken"].get("provisional")),
+                     "over_provisional": bool(e["over"].get("provisional")),
+                     "over_put": bool(e["over"].get("put")),
+                     "contradicts": hit, "ground": e.get("ground")})
+    named = [k for k in COUNTED if k != "none"]
+    top = max(count[k] for k in named)
     times = sorted(e["at"] for e in entries if _str(e.get("at")))
     return {"overrides": len(entries),
             "first": times[0] if times else None, "last": times[-1] if times else None,
             "taken": dict(sorted(taken.items(), key=lambda kv: (-kv[1], kv[0]))),
             "passed_over": dict(sorted(over.items(), key=lambda kv: (-kv[1], kv[0]))),
+            "passed_over_the_put_line": put,
             "contradicts": count,
-            "most_contradicted": [k for k in TERMS if top and count[k] == top],
+            "most_contradicted": [k for k in named if top and count[k] == top],
             "on_a_provisional_share": provisional,
             "entries": rows}
 
@@ -1117,7 +1192,9 @@ def chunk(lines: Lines, shares: Dict[str, float], n: int, at: str,
     one's ``review_count`` and stamping ``reviewed_at``. A line's weight
     when its count began is kept as ``review_weight``, the count then as
     ``review_since``; where its weight has risen since, both are taken
-    afresh. A line shown ``drop_after`` times since, its weight not risen,
+    afresh, and so where the baseline was taken by a weight other than
+    ``METHOD`` (stale, rebased, and proposed for nothing at that showing).
+    A line shown ``drop_after`` times since, its weight not risen,
     is marked ``proposed: "drop"``, but only where shares were given. A line
     already proposed waits for the user and is not shown again."""
     sound(lines)
@@ -1151,13 +1228,14 @@ def chunk(lines: Lines, shares: Dict[str, float], n: int, at: str,
         base, since = rec.get("review_weight"), rec.get("review_since")
         w = round(weights[lid], 12)
         changes = {"review_count": count, "reviewed_at": at}
-        if base is None or since is None or w > base:
+        stale = base is not None and rec.get("review_method") != METHOD
+        if base is None or since is None or stale or w > base:
             base, since = w, count - 1
-            changes.update(review_weight=base, review_since=since)
-        if shares and count - since >= drop_after and w <= base:
+            changes.update(review_weight=base, review_since=since, review_method=METHOD)
+        if shares and not stale and count - since >= drop_after and w <= base:
             changes["proposed"] = "drop"
         shown.append(_summary(rec, rank=rank[lid], review_count=count,
-                              proposed=changes.get("proposed")))
+                              proposed=changes.get("proposed"), rebased=stale))
         writes.append(write(lines, lid, at, **changes))
     return shown, writes
 

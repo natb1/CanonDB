@@ -506,6 +506,43 @@ class OrderTest(Base):
         self.assertEqual([l for l, _ in lines.ordered(given, {"t": 1.0})],
                          ["cheap", "plain", "dear"])
 
+    def test_the_cost_is_a_whole_number_of_the_scale(self):
+        found = every(lines.check({"a": rec("a", kind="work", cost=3.0),
+                                   "b": rec("b", kind="work", cost="3")}))
+        self.assertIn("a: cost is not one of 1, 3, 9", found)
+        self.assertIn("b: cost is not one of 1, 3, 9", found)
+        self.assertEqual(lines.cost_of(rec("w", kind="work", cost=9.0)), 3)
+
+    def test_the_provisional_rule_is_one_function_of_a_fraction_and_a_base(self):
+        given = self.given([rec("x", project="north")])
+        r = given.records["x"]
+        roots = {"north": 0.8}
+        self.assertEqual(lines.provisional_share(given, r, {"t": 1.0}, roots),
+                         (0.4, "no anchor"))
+        self.assertAlmostEqual(lines.provisional_share(given, r, {"t": 1.0}, roots,
+                                                       fraction=0.25)[0], 0.2)
+
+        def least(lines_, rec_, shares_, roots_):
+            return min(shares_.values()), "the least share"
+
+        self.assertEqual(lines.provisional_share(given, r, {"t": 1.0, "u": 0.1}, roots,
+                                                 fraction=1.0, base=least),
+                         (0.1, "no anchor; the least share"))
+        # the default the order uses is the adopted reading
+        self.assertEqual(lines.terms(given, r, {"t": 1.0}, roots).share, 0.4)
+
+    def test_a_refused_order_leaves_no_queue_file(self):
+        records = standard()
+        records[0]["cost"] = 2  # a fault: the order is refused
+        self.given(records)
+        out_file = os.path.join(self.d.root, "queue.json")
+        with open(out_file, "w") as fh:
+            fh.write("[]")
+        done = run("lines.py", "order", self.d.root, "--at", T, "--versions", self.d.versions,
+                   "--queue-out", out_file)
+        self.assertEqual(done.returncode, 1)
+        self.assertFalse(os.path.exists(out_file))
+
     def test_the_cost_and_the_owner_are_checked(self):
         found = every(lines.check({
             "a": rec("a", cost=2), "b": rec("b", cost=True), "c": rec("c", owed_by="team"),
@@ -708,9 +745,9 @@ class OverrideTest(Base):
         self.assertEqual(entry, {
             "at": T, "head": "d", "ground": "The evening is near.",
             "taken": {"id": "c", "place": 4, "weight": 0.1, "share": 0.1, "unblocks": 1,
-                      "cost": 1, "provisional": False},
+                      "cost": 1, "provisional": False, "put": False},
             "over": {"id": "d", "place": 1, "weight": 0.1, "share": 0.1, "unblocks": 1,
-                     "cost": 1, "provisional": False}})
+                     "cost": 1, "provisional": False, "put": True}})
         entry = lines.override(given, self.SHARES, "c", "Sooner.", T, over="b")
         self.assertEqual((entry["over"]["id"], entry["head"]), ("b", "d"))
 
@@ -811,13 +848,84 @@ class ReportTest(Base):
         self.assertEqual((got["first"], got["last"]), (T, T1))
         self.assertEqual(got["taken"], {"x": 2, "w": 1})
         self.assertEqual(got["passed_over"], {"y": 2, "z": 1})
-        self.assertEqual(got["contradicts"], {"share": 2, "unblocks": 0, "cost": 1, "none": 0})
-        self.assertEqual(got["most_contradicted"], ["share"])
+        # the second's share was provisional: the provisional rule is what it
+        # contradicts, counted apart from the share term
+        self.assertEqual(got["contradicts"], {"share": 1, "provisional": 1, "unblocks": 0,
+                                              "cost": 1, "none": 0})
+        self.assertEqual(got["most_contradicted"], ["share", "provisional", "cost"])
         self.assertEqual(got["on_a_provisional_share"], 1)
         self.assertEqual([e["contradicts"] for e in got["entries"]],
-                         [["share"], ["share"], ["cost"]])
+                         [["share"], ["provisional"], ["cost"]])
+        self.assertEqual([(e["taken_provisional"], e["over_provisional"])
+                          for e in got["entries"]], [(False, False), (True, False),
+                                                     (False, False)])
+        entries.append({"at": T1, "taken": side("v", 0.1), "over": side("y", 0.3),
+                        "ground": "Four."})
+        self.assertEqual(lines.report(entries)["most_contradicted"], ["share"])
         empty = lines.report([])
         self.assertEqual((empty["overrides"], empty["most_contradicted"]), (0, []))
+
+    def test_no_term_is_named_where_no_weight_is_contradicted(self):
+        # the put line stood first by being put: the line taken already
+        # weighed more, and the report says so and names no term
+        over = side("p", 0.2)
+        over["put"] = True
+        entry = {"at": T, "taken": side("x", 0.05, unblocks=6), "over": over, "ground": "G."}
+        self.assertEqual(lines.contradicted(entry), [])
+        got = lines.report([entry])
+        self.assertEqual(got["contradicts"]["none"], 1)
+        self.assertEqual(got["most_contradicted"], [])
+        self.assertEqual(got["passed_over_the_put_line"], 1)
+        self.assertTrue(got["entries"][0]["over_put"])
+        # computed end to end: d is put and lighter than a
+        given = self.given()
+        entry = lines.override(given, OverrideTest.SHARES, "a", "G.", T)
+        self.assertTrue(entry["over"]["put"])
+        self.assertEqual(lines.contradicted(entry), [])
+
+    def test_a_repeated_override_is_not_appended_twice(self):
+        given = self.given()
+        log = os.path.join(self.d.root, "o.jsonl")
+        entry = lines.override(given, OverrideTest.SHARES, "c", "G.", T)
+        self.assertTrue(lines.append_override(log, entry))
+        self.assertFalse(lines.append_override(log, entry))
+        self.assertEqual(len(lines.read_overrides(log)), 1)
+        later = lines.override(given, OverrideTest.SHARES, "c", "G.", T1)
+        self.assertTrue(lines.append_override(log, later))
+        self.assertEqual(len(lines.read_overrides(log)), 2)
+        done = run("lines.py", "override", self.d.root, "--taken", "c", "--ground", "G.",
+                   "--shares", self.d.file("s.json", OverrideTest.SHARES), "--log", log,
+                   "--at", T1)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        out = json.loads(done.stdout)
+        self.assertIsNone(out["appended"])
+        self.assertIn("not appended again", out["already"])
+        self.assertEqual(len(lines.read_overrides(log)), 2)
+
+    def test_a_last_line_without_its_newline_is_ended_before_the_next(self):
+        given = self.given()
+        log = os.path.join(self.d.root, "o.jsonl")
+        first = lines.override(given, OverrideTest.SHARES, "c", "G.", T)
+        with open(log, "w") as fh:
+            fh.write(json.dumps(first))  # no newline
+        self.assertTrue(lines.append_override(
+            log, lines.override(given, OverrideTest.SHARES, "f", "G.", T)))
+        self.assertEqual([e["taken"]["id"] for e in lines.read_overrides(log)], ["c", "f"])
+
+    def test_a_malformed_entry_is_refused_cleanly(self):
+        self.given()
+        for text in ('{"at": "x", "taken": {}, "over": {}}\n',
+                     '{"at": "x", "taken": {"id": "a", "weight": 1, "share": "0.1", '
+                     '"unblocks": 1, "cost": 1}, "over": {"id": "b", "weight": 1, '
+                     '"share": 1, "unblocks": 1, "cost": 1}}\n',
+                     '{"at": "x", "taken": {"id": "a", "weight": 1, "share": 1, '
+                     '"unblocks": 1, "cost": 0}, "over": {"id": "b", "weight": 1, '
+                     '"share": 1, "unblocks": 1, "cost": 1}}\n'):
+            log = self.d.file("bad.jsonl", text)
+            done = run("lines.py", "report", self.d.root, "--log", log)
+            self.assertEqual(done.returncode, 1, text)
+            self.assertIn("REFUSED: the override log's line 1 is not an override", done.stderr)
+            self.assertNotIn("Traceback", done.stderr)
 
     def test_the_log_is_read_whole_or_refused(self):
         d = Dir(self, standard())
@@ -883,20 +991,41 @@ class ChunkTest(Base):
 
     def test_a_line_shown_enough_without_rising_is_proposed_for_dropping(self):
         records = standard()
-        records[5].update(review_count=2, review_weight=0.1, review_since=0)
+        records[5].update(review_count=2, review_weight=0.1, review_since=0,
+                          review_method=lines.METHOD)
         shown, writes = lines.chunk(self.given(records), self.SHARES, 1, T)
         self.assertEqual(writes[0]["data"]["proposed"], "drop")
         self.assertEqual(writes[0]["data"]["review_count"], 3)
 
     def test_with_no_shares_nothing_is_proposed(self):
         records = standard()
-        records[5].update(review_count=2, review_weight=1.0, review_since=0)
+        records[5].update(review_count=2, review_weight=1.0, review_since=0,
+                          review_method=lines.METHOD)
         _, writes = lines.chunk(self.given(records), {}, 1, T)
         self.assertNotIn("proposed", writes[0]["data"])
 
+    def test_a_baseline_taken_by_the_earlier_weight_is_begun_again(self):
+        records = standard()
+        # a baseline stored under the earlier formula, heavier than f weighs now
+        records[5].update(review_count=2, review_weight=0.15, review_since=0, pressure=2)
+        shown, writes = lines.chunk(self.given(records), self.SHARES, 1, T)
+        self.assertNotIn("proposed", writes[0]["data"])
+        self.assertEqual((writes[0]["data"]["review_weight"], writes[0]["data"]["review_since"],
+                          writes[0]["data"]["review_method"]), (0.1, 2, lines.METHOD))
+        self.assertTrue(shown[0]["rebased"])
+        # a stale baseline is never proposed at that showing, whatever the threshold
+        _, writes = lines.chunk(self.given(records), self.SHARES, 1, T, drop_after=1)
+        self.assertNotIn("proposed", writes[0]["data"])
+        # once rebased, the count runs from there
+        records[5].update(review_count=4, review_weight=0.1, review_since=2,
+                          review_method=lines.METHOD)
+        _, writes = lines.chunk(self.given(records), self.SHARES, 1, T)
+        self.assertEqual(writes[0]["data"]["proposed"], "drop")
+
     def test_a_line_whose_weight_rose_counts_afresh(self):
         records = standard()
-        records[5].update(review_count=2, review_weight=0.05, review_since=0)
+        records[5].update(review_count=2, review_weight=0.05, review_since=0,
+                          review_method=lines.METHOD)
         _, writes = lines.chunk(self.given(records), self.SHARES, 1, T)
         self.assertNotIn("proposed", writes[0]["data"])
         self.assertEqual(writes[0]["data"]["review_since"], 2)
