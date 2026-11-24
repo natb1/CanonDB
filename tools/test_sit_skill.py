@@ -2131,5 +2131,105 @@ class BriefLinesTest(unittest.TestCase):
             self.assertIn(words, section)
 
 
+class SensitiveRuleTest(unittest.TestCase):
+    """Ground rule 9 is held by reading: each place where it binds carries its
+    own sentences, and the skill says no tool decides it."""
+
+    def part(self, name):
+        return flat(os.path.join(PARTS, name + ".md"))
+
+    def skill(self, name):
+        return flat(os.path.join(ROOT, "skills", name, "SKILL.md"))
+
+    def has(self, text, *sentences):
+        for words in sentences:
+            self.assertIn(words, text)
+
+    def test_the_ground_rule_in_full(self):
+        rules = self.part("ground-rules")
+        self.has(rules,
+                 "9. **What the principal reports of the principal's own life is sensitive, and "
+                 "goes nowhere a stranger can read.**",
+                 "it notes there, in words, that the fact is sensitive; a form for a mark that "
+                 "records carry is not yet defined.",
+                 "the notebook, the page and its store, the line doc, the sitting's `$SCRATCH`, "
+                 "the brief's directory under the config home (`tools/brief.py where`), "
+                 "and a project's own private repository only where a standing rule already "
+                 "places such a record there",
+                 "Whether a private repository may hold more is the principal's to decide.",
+                 "nor a message to another session, a document other than the notebook and the "
+                 "line doc, or an artifact other than the page, unless that place is private.",
+                 "carries this rule in substance",
+                 "an example in it is invented and neutral",
+                 "it stops and hands that back to the speaker, without judging whose the fact is.",
+                 "is doing its work when it handles such a fact, and does not stop on it.",
+                 "A helper that builds cannot know that a fact is the principal's",
+                 "the speaker and the full tier's adversarial reviewer each read the pull "
+                 "request's whole text",
+                 "commit messages, branch, tag and file names, and diff",
+                 "no search for strings stands in for it",
+                 "no history is rewritten without the principal's word.",
+                 "This rule binds a sitting and the publish steps of `/principal:bootstrap` and "
+                 "`/principal:dictate`; a session outside those is not reached by it")
+        # the hand-back is scoped to a helper whose work leaves (B1 of the second review)
+        hand_back = rules.index("carries it no further: it stops and hands that back")
+        self.assertIn("A helper whose work leaves for a repository or any published place, and "
+                      "that finds in what it handles", rules[hand_back - 200:hand_back])
+        # the line doc is among the private places (B2 of the second review)
+        self.assertNotIn("recorded only in the notebook, the page and its store, and `$SCRATCH`",
+                         rules)
+
+    def test_the_core(self):
+        with open(SKILL, encoding="utf-8") as fh:
+            core = " ".join(fh.read().split())
+        self.has(core, "**Ground rules** 1 to 9 in full",
+                 "9. What the principal reports of the principal's own state",
+                 "the notebook, the page and its store, the line doc, `$SCRATCH`, the brief's "
+                 "directory, and a private "
+                 "repository only where a standing rule puts such a record",
+                 "a helper of the notebook handles it as its work",
+                 "Before a merge the speaker and the full tier's reviewer read the pull "
+                 "request's whole text",
+                 "The rule binds a sitting and the publish steps of bootstrap and dictate, and no "
+                 "session outside those.")
+
+    def test_the_round(self):
+        self.has(self.part("round"),
+                 "Each brief, the implementing helper's and the adversarial reviewer's, states "
+                 "the mechanism wanted and never the occasion",
+                 "carries ground rule 9 in substance",
+                 "The reviewer reads the pull request for such a fact as well as for its faults.",
+                 "comments, commit messages, branch, tag and file names, and diff, as a reader "
+                 "looking for the principal, the reviewer having read it so too, and says in "
+                 "the action context that it did and what it read (ground rule 9)")
+
+    def test_the_brief_and_attenuation(self):
+        self.has(self.part("brief"),
+                 "(ground rule 9). The speaker composes such a brief from the rule",
+                 "carries the rule itself in substance")
+        self.has(self.part("attenuation"),
+                 "**Sensitive information is held by reading.** No tool decides ground rule 9.",
+                 "A helper that builds cannot know a fact is the principal's",
+                 "It binds a sitting and the publish steps of bootstrap and dictate; a session "
+                 "outside those is not reached by it.")
+
+    def test_bootstrap_and_dictate(self):
+        for name in ("bootstrap", "dictate"):
+            self.has(self.skill(name),
+                     "an example is invented and neutral",
+                     "commit messages, branch, tag and file names, and diff, as a reader looking "
+                     "for the principal, and says that it did and what it read",
+                     "in for that reading.",
+                     "reported to the principal at once, with what its removal would take, and "
+                     "no history is rewritten without the principal's word.")
+        self.has(self.skill("dictate"), "kept only in the private places ground rule 9 of "
+                 "`/principal:sit` names (the notebook, the page and its store, the line doc, "
+                 "the sitting's scratch, the brief's directory")
+        self.assertNotIn("recorded only in the notebook", self.skill("dictate"))
+        self.has(self.skill("bootstrap"), "Before a merge, its own or the author's",
+                 "the full tier's adversarial reviewer is briefed with this rule, never the "
+                 "occasion, and reads for it too")
+
+
 if __name__ == "__main__":
     unittest.main()

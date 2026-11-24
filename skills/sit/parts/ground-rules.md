@@ -85,3 +85,38 @@ Read this part at the opening, and whenever a ground rule's short form in the co
    prediction, which names who predicted, the kind of action, the grade and the direction, and
    never the sealed text, the answer or the case (**Written as the round goes**, **The record of
    predictions**).
+9. **What the principal reports of the principal's own life is sensitive, and goes nowhere a
+   stranger can read.** What the principal reports of the principal's own state, health, habits,
+   relations or circumstances is sensitive by its nature. Where the speaker records such a fact,
+   it notes there, in words, that the fact is sensitive; a form for a mark that records carry is
+   not yet defined. Such a fact is kept only in the private places the sitting already uses: the
+   notebook, the page and its store, the line doc, the sitting's `$SCRATCH`, the brief's directory under the config home
+   (`tools/brief.py where`), and a project's own
+   private repository only where a standing rule already places such a record there (an
+   observation, by ground rule 4; a figure of the ledger, in that project's own repository and
+   thread). Whether a private repository may hold more is the principal's to decide. It never
+   goes where a stranger can read: a repository a stranger can read, its files, commit messages,
+   tags, and branch and file names, a pull request's title, body, review or comment, an issue, a
+   release, a published page; nor a message to another session, a document other than the
+   notebook and the line doc, or an artifact other than the page, unless that place is private.
+   It never enters the brief of a helper whose work leaves for a repository or any published
+   place: such a brief states the mechanism wanted and never the occasion that prompted it,
+   carries this rule in substance, is composed from the rule or from the AI's own line, and is
+   read once more for the occasion before it is sent. A build's rationale, in a comment, a test,
+   a fixture or a pull request's text, cites the rule or the mechanism and never an event of the
+   principal's life, and an example in it is invented and neutral. A helper whose work leaves for
+   a repository or any published place, and that finds in what it handles anything that reads as
+   a fact of a real person's life, carries it no further: it stops and hands that back to the
+   speaker, without judging whose the fact is. A helper that reads or writes the notebook, the
+   page, the board or the line doc is doing its work when it handles such a fact, and does not
+   stop on it. A helper that builds cannot know that a fact is the principal's, so the weight of
+   this rule rests on the speaker's brief and on the readings before a merge. Before a merge the
+   speaker and the full tier's adversarial reviewer each read the pull request's whole text: its
+   title, body, comments, reviews and review comments, commit messages, branch, tag and file
+   names, and diff, as a reader looking for the principal; the speaker says in the action context
+   that it did and what it read. This is a reading by meaning, and no search for strings stands
+   in for it (**Attenuation**). A sensitive fact found already published is an error, put to the
+   principal at once as an action, with what its removal would take; no history is rewritten
+   without the principal's word. This rule binds a sitting and the publish steps of
+   `/principal:bootstrap` and `/principal:dictate`; a session outside those is not reached by
+   it, and whether it is extended to such sessions is the principal's to decide.

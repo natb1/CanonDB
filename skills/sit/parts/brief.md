@@ -78,6 +78,15 @@ entry broken and its lineage; the text is redrawn, never forced past it. A read 
 corrects goes to the notebook's statement of conventions first, as rows at the batch point, and
 the brief follows from it at the next install; it is never corrected in the brief.
 
+**What the principal reports of the principal's own life stays out of a brief.** A helper whose
+work leaves for a repository is briefed with the mechanism wanted and never the occasion that
+prompted it, and nothing the principal reported of the principal's own state, health, habits,
+relations or circumstances (ground rule 9). The speaker composes such a brief from the rule or
+from the AI's own line, carries the rule itself in substance (a fact of a real person's life
+met in the work is carried no further and handed back; an example is invented), and reads it
+once more for the occasion before it is sent. The check
+above does not hold this: it is held by reading (**Attenuation**).
+
 **The work in hand.** The principal asked that the work pending in a session be tracked and kept
 mechanically, so that a compaction loses none of it. It is the session's own, kept by the
 session's id, and never shown to another. Every helper the speaker starts, the directly briefed
