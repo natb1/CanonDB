@@ -189,7 +189,8 @@ What no tool decides. Hold these by reading.
   person's life. So the rule is held by the speaker's note in words where it records such a
   fact, by briefs composed from the rule and read again for the occasion, by every helper's
   definition, and by the readings of a pull request's whole text before a merge, the speaker's
-  and the reviewer's. It binds a sitting only: a session outside one is not reached by it.
+  and the reviewer's. It binds a sitting and the publish steps of bootstrap and dictate; a session outside those
+  is not reached by it.
 - **A copy on disk can be read.** The brief's directory holds the notebook's graph outside every
   repository, and the grader and the reviewer hold `Read`: what keeps a blind kind from opening it
   is its definition, not a gate.

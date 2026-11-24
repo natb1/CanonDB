@@ -90,7 +90,8 @@ Read this part at the opening, and whenever a ground rule's short form in the co
    relations or circumstances is sensitive by its nature. Where the speaker records such a fact,
    it notes there, in words, that the fact is sensitive; a form for a mark that records carry is
    not yet defined. Such a fact is kept only in the private places the sitting already uses: the
-   notebook, the page and its store, the line doc, the sitting's `$SCRATCH`, and a project's own
+   notebook, the page and its store, the line doc, the sitting's `$SCRATCH`, the brief's directory under the config home
+   (`tools/brief.py where`), and a project's own
    private repository only where a standing rule already places such a record there (an
    observation, by ground rule 4; a figure of the ledger, in that project's own repository and
    thread). Whether a private repository may hold more is the principal's to decide. It never
@@ -116,5 +117,6 @@ Read this part at the opening, and whenever a ground rule's short form in the co
    that it did and what it read. This is a reading by meaning, and no search for strings stands
    in for it (**Attenuation**). A sensitive fact found already published is an error, put to the
    principal at once as an action, with what its removal would take; no history is rewritten
-   without the principal's word. This rule binds a sitting: a session outside one is not reached
-   by it, and whether it is extended to those is the principal's to decide.
+   without the principal's word. This rule binds a sitting and the publish steps of
+   `/principal:bootstrap` and `/principal:dictate`; a session outside those is not reached by
+   it, and whether it is extended to such sessions is the principal's to decide.

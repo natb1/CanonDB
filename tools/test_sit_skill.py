@@ -2143,6 +2143,7 @@ class SensitiveRuleTest(unittest.TestCase):
                  "it notes there, in words, that the fact is sensitive; a form for a mark that "
                  "records carry is not yet defined.",
                  "the notebook, the page and its store, the line doc, the sitting's `$SCRATCH`, "
+                 "the brief's directory under the config home (`tools/brief.py where`), "
                  "and a project's own private repository only where a standing rule already "
                  "places such a record there",
                  "Whether a private repository may hold more is the principal's to decide.",
@@ -2158,7 +2159,8 @@ class SensitiveRuleTest(unittest.TestCase):
                  "commit messages, branch, tag and file names, and diff",
                  "no search for strings stands in for it",
                  "no history is rewritten without the principal's word.",
-                 "This rule binds a sitting: a session outside one is not reached by it")
+                 "This rule binds a sitting and the publish steps of `/principal:bootstrap` and "
+                 "`/principal:dictate`; a session outside those is not reached by it")
         # the hand-back is scoped to a helper whose work leaves (B1 of the second review)
         hand_back = rules.index("carries it no further: it stops and hands that back")
         self.assertIn("A helper whose work leaves for a repository or any published place, and "
@@ -2172,12 +2174,14 @@ class SensitiveRuleTest(unittest.TestCase):
             core = " ".join(fh.read().split())
         self.has(core, "**Ground rules** 1 to 9 in full",
                  "9. What the principal reports of the principal's own state",
-                 "the notebook, the page and its store, the line doc, `$SCRATCH`, and a private "
+                 "the notebook, the page and its store, the line doc, `$SCRATCH`, the brief's "
+                 "directory, and a private "
                  "repository only where a standing rule puts such a record",
                  "a helper of the notebook handles it as its work",
                  "Before a merge the speaker and the full tier's reviewer read the pull "
                  "request's whole text",
-                 "The rule binds a sitting, and no session outside one.")
+                 "The rule binds a sitting and the publish steps of bootstrap and dictate, and no "
+                 "session outside those.")
 
     def test_the_round(self):
         self.has(self.part("round"),
@@ -2191,11 +2195,13 @@ class SensitiveRuleTest(unittest.TestCase):
 
     def test_the_brief_and_attenuation(self):
         self.has(self.part("brief"),
-                 "(ground rule 9). The speaker composes such a brief from the rule")
+                 "(ground rule 9). The speaker composes such a brief from the rule",
+                 "carries the rule itself in substance")
         self.has(self.part("attenuation"),
                  "**Sensitive information is held by reading.** No tool decides ground rule 9.",
                  "A helper that builds cannot know a fact is the principal's",
-                 "It binds a sitting only: a session outside one is not reached by it.")
+                 "It binds a sitting and the publish steps of bootstrap and dictate; a session "
+                 "outside those is not reached by it.")
 
     def test_bootstrap_and_dictate(self):
         for name in ("bootstrap", "dictate"):
@@ -2206,6 +2212,10 @@ class SensitiveRuleTest(unittest.TestCase):
                      "in for that reading.",
                      "reported to the principal at once, with what its removal would take, and "
                      "no history is rewritten without the principal's word.")
+        self.has(self.skill("dictate"), "kept only in the private places ground rule 9 of "
+                 "`/principal:sit` names (the notebook, the page and its store, the line doc, "
+                 "the sitting's scratch, the brief's directory")
+        self.assertNotIn("recorded only in the notebook", self.skill("dictate"))
         self.has(self.skill("bootstrap"), "Before a merge, its own or the author's",
                  "the full tier's adversarial reviewer is briefed with this rule, never the "
                  "occasion, and reads for it too")

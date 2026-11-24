@@ -131,14 +131,15 @@ the plugin's kinds for work a kind carries.
 9. What the principal reports of the principal's own state, health, habits, relations or
    circumstances is sensitive, noted so in words where the speaker records it, and kept only in
    the sitting's private places (the notebook, the page and its store, the line doc,
-   `$SCRATCH`, and a private repository only where a standing rule puts such a record): never
+   `$SCRATCH`, the brief's directory, and a private repository only where a standing rule puts such a record): never
    where a stranger can read, nor in the brief of a helper whose work leaves for a repository or
    any published place, which states the mechanism, never the occasion, and carries this rule. A
    build's rationale cites the rule, its examples invented; a building helper that meets a fact
    of a real person's life hands it back, and a helper of the notebook handles it as its work.
    Before a merge the speaker and the full tier's reviewer read the pull request's whole text for
    the principal, by meaning, and the speaker says what it read; a fact found published is put
-   to the principal at once. The rule binds a sitting, and no session outside one.
+   to the principal at once. The rule binds a sitting and the publish steps of bootstrap and dictate, and no session
+   outside those.
 
 **The round** (`round.md`, procedure 3). One next action a turn, on the page.
 

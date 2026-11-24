@@ -202,8 +202,10 @@ an ERROR (`scope-closed`), not a gap read over.
 **6 — Commit** the tooling and skill changes on a branch of their own and open a pull request
 against `main`. There is one standing branch, `main`, and every other is a pull request's, so
 nothing waits on a branch that is not going to be merged. What the principal reports of the
-principal's own state, health, habits, relations or circumstances is sensitive: it is recorded
-only in the notebook, and never enters a commit, the pull request's text, a comment, a test, a
+principal's own state, health, habits, relations or circumstances is sensitive: it is kept only
+in the private places ground rule 9 of `/principal:sit` names (the notebook, the page and its
+store, the line doc, the sitting's scratch, the brief's directory, and a private repository only
+where a standing rule puts such a record), and never enters a commit, the pull request's text, a comment, a test, a
 fixture or a file; the rationale cites the rule or the mechanism, and an example is invented
 and neutral. Before a merge the run reads the pull request's whole text, title, body, comments,
 reviews and review comments, commit messages, branch, tag and file names, and diff, as a reader
