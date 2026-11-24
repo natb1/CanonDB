@@ -43,31 +43,31 @@ user's. While the key is unset the AI's recorder is refused every write,
 and the comparer may write any tab, there being no tab of the AI's yet.
 
 The AI's tabs are made. The AI's recorder may also make a tab, by one
-`batch` of the notebook addressed by its container that is exactly the four
-calls `tools/ai_tab.py tab` prints (`tab_batch`): the tab's file created, its
-body created from one inline markdown text, that body set as the file's
-content, and one `set` of the new tab's placement, nested by `subtabOf`
-under a tab whose own id an entry `{"node": …, "tab": …}` of `ai_root`
-gives (`kinds.ai_parents`), the tab id compared in lower case; a batch of
-any other shape, a tab at the top level or under a tab the key does not
-give, is refused, as is every batch while the key is unset. A new tab is
-the AI's to the gate only once `tools/ai_tab.py add` has put it in the key.
+`batch` of the notebook that is exactly the four calls `tools/ai_tab.py tab`
+prints (`tab_batch`): the tab's file created and named `<name>.ldoc`, its
+body created as one inline markdown text that is the tab's heading,
+`# <name>`, and nothing else, that body set as the file's content, and one
+`set` of the new tab's placement. The container is the notebook's bare id
+and the placement's ref the same string; every part is an object, never the
+text of one, so that no key stands twice. The name is a question's id
+(lower-case words joined by `-`, never `lease`), the order a letter and then
+letters or digits. The placement nests the tab by `subtabOf` under a tab
+whose own id an entry `{"node": …, "tab": …}` of `ai_root` gives
+(`kinds.ai_parents`), compared in lower case, and the call's `opId` is the
+one the tool derives from that tab id and the name. A batch of any other
+shape, a tab at the top level or under a tab the key does not give, is
+refused, as is every batch while the key is unset. A new tab is the AI's to
+the gate only once `tools/ai_tab.py add` has put it in the key.
 The speaker, held by this plugin's name or its bare name where the
-project's copy is the plugin's, may make the AI's root, once: a batch of
-the same shape, at the top level or under any tab, gets no opinion while
-`ai_root` is unset and is refused once it is set; every other write of the
-speaker's aimed at the notebook is refused as before. What the gate cannot
-see: a root made and never written into the key leaves the key unset, so a
-second root may be made; the speaker's root, and the text in either kind's
-new tab, is read, not checked, for what it says.
-Each is held so by this plugin's name in front of it, or by its bare name
-where the project's copy is the plugin's byte for byte; a bare name
-otherwise, and any other plugin's name, is refused as any kind without a
-writing tool is. What the gate cannot see: a tab under the AI's root that
-the key does not list is the user's to it; a block id inside a list or a
-table is read, not checked; and on a tab of the user's that still holds an
-answer of the AI's from before the root, which block the comparer's insert
-lands beside is read, not checked.
+project's copy is the plugin's, may make the AI's root: a batch of the same
+shape, at the top level, with the one `opId` the tool derives from the
+notebook's id alone, gets no opinion while `ai_root` is unset; nested, or
+under another operation id, it is refused, and once the key is set it is
+refused. Every other write of the speaker's aimed at the notebook is
+refused as before. What the gate cannot see: that a root sent twice lands
+once rests on the connector's landing one operation id once; a root made
+and never written into the key leaves the key unset; and which ids go into
+the key is `tools/ai_tab.py add`'s check, made without the live notebook.
 
 Which turn is a kind of this plugin is the rule every gate of the plugin
 shares, in `kinds.py`: by this plugin's name in front of it; by its bare
@@ -159,6 +159,7 @@ names a document.
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import os
@@ -251,6 +252,8 @@ USER_SIDE = ("the comparer writes only the user's side, outside the tabs the key
              "names, one tab a call, and only by inserting")
 NEW_TAB = ("the AI's recorder makes a tab only under a tab the key ai_root names with its "
            "tab id, by one batch of the four calls tools/ai_tab.py prints, and nothing else")
+ROOT_SHAPE = ("the AI's root stands at the top level, its body its heading alone, and is sent "
+              "with the operation id tools/ai_tab.py root prints, so that it is made once")
 ROOT_MADE = ("the AI's root is made once, while the key ai_root is unset, by the batch "
              "tools/ai_tab.py root prints; it is made already, and the speaker writes nothing "
              "more of the notebook")
@@ -586,10 +589,26 @@ class NotTab(Exception):
 TAB_CALL = ("container", "batch", "opId", "verbose")
 #: an alias a batch member takes, `$lid`, and the reference to it
 LID = re.compile(r"^[A-Za-z0-9_]{1,32}$")
+#: a tab's name, which the reader takes as a question's id, and the names
+#: the reader keeps for tabs that are no question (`tools/hypo/ai_tab.py`)
+TAB_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+TAB_RESERVED = ("lease",)
+#: a tab's place among its siblings
+TAB_ORDER = re.compile(r"^[a-z][0-9a-z]*$")
+
+
+def tab_op_id(*parts: str) -> str:
+    """The operation id `tools/ai_tab.py` gives a batch that makes a tab,
+    fixed by what it makes: the root by the notebook alone, so that a second
+    root sent lands as the first; a tab by its parent's tab id and its
+    name."""
+    digest = hashlib.sha256("\x00".join(parts).encode("utf-8")).hexdigest()[:16]
+    return "ai-tab-" + digest
 
 
 def _exact(part, keys) -> dict:
-    """A part of a tab's batch, an object holding exactly ``keys``."""
+    """A part of a tab's batch, an object holding exactly ``keys``; never
+    the text of one, which could hide a key twice."""
     if not isinstance(part, dict) or set(part) != set(keys):
         raise NotTab(keys)
     return part
@@ -603,23 +622,22 @@ def _plain_id(value) -> str:
 
 
 def tab_batch(tool_input, notebook: str):
-    """The tab a batch makes, where it is exactly the four calls that make
-    one tab of the notebook and place it (`tools/ai_tab.py`): the tab's file
-    created, its body created as one markdown insert, the body set as the
-    file's content, and one `set` of the new tab's placement in the
-    document's `tabs`. Returns the id the placement nests it under, or None
-    where it stands at the top level. Raises NotTab for any other batch."""
+    """The tab a batch makes, where it is exactly the four calls
+    `tools/ai_tab.py` prints to make one tab of the notebook and place it:
+    the tab's file created, named for the tab; its body created as one
+    markdown text that is the tab's heading and nothing else; the body set
+    as the file's content; and one `set` of the new tab's placement in the
+    document's `tabs`. The container is the notebook's bare id, as the tool
+    prints it, and every part is an object, never text. Returns (the tab id
+    the placement nests it under, or None at the top level; the tab's name;
+    the call's `opId`, or None). Raises NotTab for any other batch."""
     if not isinstance(tool_input, dict) or any(k not in TAB_CALL for k in tool_input):
         raise NotTab("the call")
-    container = _exact(_object(tool_input.get("container"), "container"), ("kind", "id"))
-    if container["kind"] != "project" or not _aimed(container["id"], notebook):
+    container = _exact(tool_input.get("container"), ("kind", "id"))
+    if (container["kind"] != "project" or not isinstance(container["id"], str)
+            or container["id"].lower() != notebook):
         raise NotTab("the container")
     members = tool_input.get("batch")
-    if isinstance(members, str):
-        try:
-            members = json.loads(members)
-        except ValueError as exc:
-            raise NotTab("the batch") from exc
     if not isinstance(members, list) or len(members) != 4:
         raise NotTab("the batch")
     made, body, content, placed = members
@@ -629,10 +647,7 @@ def tab_batch(tool_input, notebook: str):
     f = made["$lid"]
     if not isinstance(f, str) or not LID.match(f):
         raise NotTab("an alias")
-    value = _exact(_exact(made["payload"], ("value",))["value"], ("birthName",))
-    birth = value["birthName"]
-    if not isinstance(birth, str) or not birth.strip():
-        raise NotTab("the file's name")
+    birth = _exact(_exact(made["payload"], ("value",))["value"], ("birthName",))["birthName"]
     body = _exact(body, ("$lid", "verb", "object", "engine", "payload"))
     n = body["$lid"]
     if (body["verb"] != "create" or body["object"] != "node" or body["engine"] != ENGINE
@@ -644,8 +659,7 @@ def tab_batch(tool_input, notebook: str):
         raise NotTab("the body's file")
     source = _exact(payload["source"], ("as", "from"))
     inline = _exact(source["from"], ("kind", "content"))
-    if (source["as"] != "markdown" or inline["kind"] != "inline"
-            or not isinstance(inline["content"], str)):
+    if source["as"] != "markdown" or inline["kind"] != "inline":
         raise NotTab("the body's source")
     content = _exact(content, ("verb", "ref", "payload"))
     if (content["verb"] != "update"
@@ -669,30 +683,44 @@ def tab_batch(tool_input, notebook: str):
     if not isinstance(where, dict) or not {"name", "order"} <= set(where) <= {
             "name", "order", "subtabOf"}:
         raise NotTab("the placement")
-    if not all(isinstance(where[k], str) and where[k].strip() for k in ("name", "order")):
-        raise NotTab("the placement")
-    return _plain_id(where["subtabOf"]) if "subtabOf" in where else None
+    name, order = where["name"], where["order"]
+    if (not isinstance(name, str) or not TAB_NAME.match(name) or name in TAB_RESERVED
+            or not isinstance(order, str) or not TAB_ORDER.match(order)):
+        raise NotTab("the tab's name or order")
+    if birth != name + ".ldoc" or inline["content"] != "# " + name:
+        # the file named for the tab, and the body its heading alone
+        raise NotTab("the tab's file or body")
+    op_id = tool_input.get("opId")
+    if op_id is not None and not isinstance(op_id, str):
+        raise NotTab("the operation id")
+    under = _plain_id(where["subtabOf"]) if "subtabOf" in where else None
+    return under, name, op_id
 
 
 def made_tab(tool_input, notebook: str, parents) -> dict:
     """The decision for the AI's recorder's batch: no opinion where it makes
-    one tab under a tab of the AI's whose tab id the key ai_root gives;
-    refused otherwise."""
+    one tab under a tab of the AI's whose tab id the key ai_root gives, with
+    the operation id the tool gives it; refused otherwise."""
     try:
-        parent = tab_batch(tool_input, notebook)
+        parent, name, op_id = tab_batch(tool_input, notebook)
     except (NotTab, Unclear):
         return _answer("deny", NEW_TAB)
     mine = {plain(t).strip().lower() for t in parents}
     if parent is None or parent.lower() not in mine:
+        return _answer("deny", NEW_TAB)
+    if op_id != tab_op_id("tab", parent, name):
         return _answer("deny", NEW_TAB)
     return {}
 
 
 def made_root(tool, tool_input, cwd, env) -> dict:
     """The decision for the speaker's one write of the notebook: no opinion
-    on a batch that makes one tab, while the key ai_root is unset; refused
-    once the key names a root, and None for any other call, which the rest
-    of the gate decides."""
+    on the batch that makes the AI's root, at the top level, its body its
+    heading alone, with the one operation id the tool gives every root of
+    this notebook, while the key ai_root is unset; refused once the key
+    names a root, and refused in any other placement or operation id. None
+    for a call that is not a tab's batch of the notebook, which the rest of
+    the gate decides."""
     if not isinstance(tool, str) or tool.rsplit("__", 1)[-1] != "batch":
         return None
     if not isinstance(cwd, str) or not cwd:
@@ -701,7 +729,7 @@ def made_root(tool, tool_input, cwd, env) -> dict:
         notebook = find_notebook(cwd, env)
         if notebook is None:
             return None
-        tab_batch(tool_input, notebook)
+        parent, _, op_id = tab_batch(tool_input, notebook)
     except (NotTab, Unclear, TypeError, ValueError, RecursionError):
         return None
     try:
@@ -709,6 +737,8 @@ def made_root(tool, tool_input, cwd, env) -> dict:
             return _answer("deny", ROOT_MADE)
     except ValueError:
         return _answer("deny", UNCLEAR)
+    if parent is not None or op_id != tab_op_id("root", notebook):
+        return _answer("deny", ROOT_SHAPE)
     return {}
 
 

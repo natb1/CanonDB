@@ -40,7 +40,8 @@ that creates it, and written with `update` and `create`. What should be written 
 goes as rows to the recorder through a `record` job on the board; you do not try to work around
 the guard. The one exception is the AI's own root: while the key `ai_root` of
 `.principal/notebook.json` is unset you may make it, once, by sending as one `batch` exactly what
-`tools/ai_tab.py root` printed, and then put it in the key with `tools/ai_tab.py add`, as the
+`tools/ai_tab.py root` printed, at the top level, and then put it in the key with
+`tools/ai_tab.py add` from that batch and its answer, as the
 entry point says (**The line in the AI's graph**); once the key is set the guard refuses you that
 batch too.
 

@@ -714,8 +714,8 @@
         "CLAUDE.md",
         ".principal/bootstrap.json"
       ],
-      "pull_request": null,
-      "rounds": 1
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3216",
+      "rounds": 2
     }
   ]
 }

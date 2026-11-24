@@ -9,18 +9,26 @@ unset. This module prints the one batch either sends, and writes the key.
 
 **The batch.** A tab is made by four calls of one ``batch`` of the
 notebook, the shape the connector gives for adding a tab and the only one the
-guard admits: the tab's file created, its body created from one inline
-markdown text, the body set as the file's content, and the new tab's
-placement set in the document's ``tabs``, nested under the parent's tab id
-by ``subtabOf`` where it has a parent. A new tab holds its heading and
-nothing else unless a text is given.
+guard admits: the tab's file created, named ``<name>.ldoc``, its body
+created as the tab's heading ``# <name>`` and nothing else, the body set as
+the file's content, and the new tab's placement set in the document's
+``tabs``, nested under the parent's tab id by ``subtabOf``; the root stands
+at the top level. What the tab says is inserted on it after, as on any tab
+of the AI's. The operation id is fixed by what is made: a root by the
+notebook's id alone, so that a second root sent lands as the first; a tab by
+its parent's tab id and its name.
 
 **The key.** Each entry this module writes is ``{"node": <the body's node
 id>, "tab": <the tab's own id>}``: the node id is what an ``update`` names,
 the tab id what a new tab is nested under. An entry that is a bare node id,
 as the key was first written, is still read, and no tab can be made under
-it. The root is added only while the key is unset; a tab only under a parent
-the key already lists, and never twice.
+it. An entry is added only from the batch this module printed, printed again
+from the key as it stands now and found the same, so that the parent it was
+made under is one the key gives (the root only while the key is unset), and
+from the connector's answer to that batch, whose ids for the aliases ``f``
+and ``n`` are the entry's; never an id the key holds already. That those
+ids are the ones the connector made is not checked here, having no live
+notebook: the tab is read back for that.
 
 Nothing here reaches the network or writes the notebook.
 """
@@ -53,8 +61,13 @@ class Refused(ValueError):
     """A tab or an entry this module will not print or write."""
 
 
-def find(cwd: str) -> str:
-    """The nearest ``.principal/notebook.json`` from ``cwd`` upward."""
+def find(cwd: str, env=None) -> str:
+    """The notebook file the guard reads: under ``CLAUDE_PROJECT_DIR`` where
+    it is set and holds one, else the nearest from ``cwd`` upward."""
+    env = os.environ if env is None else env
+    project = env.get("CLAUDE_PROJECT_DIR")
+    if project and os.path.isfile(os.path.join(project, NOTEBOOK)):
+        return os.path.join(project, NOTEBOOK)
     here = os.path.abspath(cwd)
     while True:
         path = os.path.join(here, NOTEBOOK)
@@ -137,18 +150,15 @@ def op_id(*parts: str) -> str:
     return "ai-tab-" + digest
 
 
-def batch(notebook: str, name: str, order: str, under: Optional[str],
-          content: Optional[str] = None) -> dict:
+def batch(notebook: str, name: str, order: str, under: Optional[str]) -> dict:
     """The container and the four calls of one batch that make one tab of
-    the notebook named ``name`` and place it, under the tab id ``under``
-    where one is given; its body ``content``, or its heading alone."""
+    the notebook named ``name``, its body its heading alone, and place it,
+    under the tab id ``under`` where one is given."""
     check_name(name)
     check_order(order)
     if under is not None:
         plain_id(under, "the parent's tab id")
-    text = content if content is not None else "# %s" % name
-    if not isinstance(text, str) or not text.strip():
-        raise Refused("a tab's body is a markdown text, and not an empty one")
+    text = "# %s" % name
     birth = name + ".ldoc"
     where = {"name": name, "order": order}
     if under is not None:
@@ -173,19 +183,19 @@ def batch(notebook: str, name: str, order: str, under: Optional[str],
     }
 
 
-def root(named: dict, name: str, order: str, under: Optional[str] = None,
-         content: Optional[str] = None) -> dict:
-    """The speaker's batch that makes the AI's root, refused once the key
-    names one; as the ``batch`` call's arguments, with its ``opId``."""
+def root(named: dict, name: str, order: str) -> dict:
+    """The speaker's batch that makes the AI's root at the top level,
+    refused once the key names one; as the ``batch`` call's arguments, with
+    the one ``opId`` every root of this notebook is sent with."""
     if entries(named):
         raise Refused("the key %s names a root already; the root is made once" % KEY)
-    out = batch(document(named), name, order, under, content)
-    out["opId"] = op_id("root", name)
+    notebook = document(named)
+    out = batch(notebook, name, order, None)
+    out["opId"] = op_id("root", notebook)
     return out
 
 
-def tab(named: dict, parent: str, name: str, order: str,
-        content: Optional[str] = None) -> dict:
+def tab(named: dict, parent: str, name: str, order: str) -> dict:
     """The rows entry for the ``ai-recorder`` that makes a tab under the
     tab of the AI's whose node id is ``parent``: its node, the batch's
     container and calls, and the operation id."""
@@ -199,31 +209,73 @@ def tab(named: dict, parent: str, name: str, order: str,
     if under is None:
         raise Refused("the key %s gives no tab id for %r, so nothing can be made under it; "
                       "write its entry as {\"node\": …, \"tab\": …}" % (KEY, parent))
-    return {"node": parent, "batch": batch(document(named), name, order, under, content),
-            "op_id": op_id("tab", parent, name)}
+    return {"node": parent, "batch": batch(document(named), name, order, under),
+            "op_id": op_id("tab", under, name)}
 
 
-def add(named: dict, node: str, tab_id: str, parent: Optional[str] = None) -> dict:
-    """The notebook file with a tab put in the key: the root where no
-    ``parent`` is given, which the key must not yet name; else a tab under
-    ``parent``, which the key must list. Returns a new object."""
-    plain_id(node, "the node id")
-    plain_id(tab_id, "the tab id")
+def _placed(call: dict) -> dict:
+    """The placement a printed batch sets: the tab's name and order."""
+    try:
+        return call["batch"][3]["payload"]["patch"][0]["value"]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise Refused("that is no batch this tool printed") from exc
+
+
+def lids(answer) -> Tuple[str, str]:
+    """The ids the connector's answer to a batch gives its aliases ``f``
+    and ``n``, under a key ``lids`` at its top or within it."""
+    stack = [answer]
+    while stack:
+        part = stack.pop(0)
+        if isinstance(part, dict):
+            got = part.get("lids")
+            if isinstance(got, dict) and isinstance(got.get("f"), str) and isinstance(
+                    got.get("n"), str):
+                return got["f"], got["n"]
+            stack.extend(part.values())
+        elif isinstance(part, list):
+            stack.extend(part)
+    raise Refused("the answer gives no ids under lids for the aliases f and n")
+
+
+#: what ``add`` says it could not check
+UNCHECKED = ("not checked, there being no live notebook here: that the tab %s and the body "
+             "%s are the ones the connector made for this batch; read the tab back to see it")
+
+
+def add(named: dict, made: dict, answer) -> Tuple[dict, str]:
+    """The notebook file with a tab put in the key, and the line that says
+    what was not checked. ``made`` is what this tool printed, the root's
+    batch or a tab's rows entry, and it must be what the tool prints from
+    the key as it stands now; ``answer`` the connector's answer to it."""
+    if not isinstance(made, dict):
+        raise Refused("that is no batch this tool printed")
     have = entries(named)
-    if parent is None:
+    if "node" in made:
+        call = made.get("batch")
+        where = _placed(call)
+        again = tab(named, made["node"], where.get("name"), where.get("order"))
+        if again != made:
+            raise Refused("the entry is not the one this tool prints from the key as it "
+                          "stands, so the tab it made is not under a tab the key gives")
+    else:
+        where = _placed(made)
         if have:
             raise Refused("the key %s names a root already" % KEY)
-    else:
-        plain_id(parent, "the parent's node id")
-        if parent.lower() not in {n.lower() for n, _ in have}:
-            raise Refused("the key %s lists no tab %r" % (KEY, parent))
-    if node.lower() in {n.lower() for n, _ in have} or tab_id.lower() in {
-            (t or "").lower() for _, t in have}:
+        if root(named, where.get("name"), where.get("order")) != made:
+            raise Refused("the batch is not the root this tool prints")
+    tab_id, node = lids(answer)
+    plain_id(node, "the body's node id")
+    plain_id(tab_id, "the tab id")
+    if node.lower() == tab_id.lower():
+        raise Refused("the answer gives one id for the tab and its body")
+    held = {n.lower() for n, _ in have} | {(t or "").lower() for _, t in have}
+    if node.lower() in held or tab_id.lower() in held:
         raise Refused("the key %s lists that tab already" % KEY)
     out = dict(named)
     out[KEY] = [n if t is None else {"node": n, "tab": t} for n, t in have] + [
         {"node": node, "tab": tab_id}]
-    return out
+    return out, UNCHECKED % (tab_id, node)
 
 
 def write(path: str, named: dict) -> None:

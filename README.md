@@ -246,7 +246,8 @@ is read and written through these entry points.
      `page` a sitting runs with no page and says so. The AI's own record has a root tab of its
      own, made once by the speaker from what `tools/ai_tab.py root --name <name>` prints, and
      its tabs are listed under `"ai_root"`, each `{"node": "<its body's node id>", "tab": "<its
-     tab id>"}`, the root's first, which `tools/ai_tab.py add` writes; until the root is there
+     tab id>"}`, the root's first, which `tools/ai_tab.py add` writes from the batch and the
+     connector's answer to it; until the root is there
      the AI's recorder is refused every write, and after it the AI's recorder makes the tabs
      under it.
    - `bootstrap.json` — `{"applications": []}`, the manifest `/principal:bootstrap` keeps.

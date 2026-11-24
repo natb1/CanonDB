@@ -131,10 +131,14 @@ What no tool decides. Hold these by reading.
   from before the root, where the comparer's insert lands is read. That the `ai-recorder`'s
   texts are the draws word for word is its definition's check, and no gate's. The guard lets
   the `ai-recorder` make a tab only by the four calls `tools/ai_tab.py tab` prints, under a tab
-  the key gives with its tab id, and the speaker make the root only while the key is unset; a
-  root made and never put in the key leaves it unset, so a second could be made, and what a new
-  tab's body says is read, not checked. A tab made is the AI's to the guard only once
-  `tools/ai_tab.py add` has put it in the key. No tool yet prints the insert of an answer, so
+  the key gives with its tab id, and the speaker make the root only at the top level while the
+  key is unset; each tab's body is its heading alone and its name a question's id, and the
+  guard checks both. The guard keeps no count: that a second root sent while the key is unset
+  lands as the first rests on the one operation id every root is sent with, and on the
+  connector landing an operation id once, which no test here can show. A tab made is the AI's
+  to the guard only once `tools/ai_tab.py add` has put it in the key; `add` ties the entry to a
+  parent the key gives, and cannot see that the ids it is given are the ones the connector
+  made. No tool yet prints the insert of an answer, so
   no draw is placed (**The line in the AI's graph**, rule 9).
 - **The open lines are held by reading.** `tools/lines.py` checks an export of the collection,
   flags the lines whose ground moved, sweeps, orders, and refuses a close without a sentence

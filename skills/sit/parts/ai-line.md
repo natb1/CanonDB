@@ -18,19 +18,26 @@ The AI's own record is a graph of the AI's answers, in its own words. Its tabs s
 of their own in the notebook, and the key `ai_root` of `.principal/notebook.json` lists them, the
 root's first, each as its body's node id and its own tab id; until the root is made the key is
 unset, and the guard on the notebook refuses the `ai-recorder` every write. The AI makes the
-tabs under its own root, and no dictation is needed for one. The root is made once, by the
-speaker: `tools/ai_tab.py root --name <name> > $SCRATCH/speaker/ai-root.json` prints the batch,
-which the speaker sends as one `batch` exactly as printed, its `opId` included, and then
-`tools/ai_tab.py add --node <n> --tab <f>` puts it in the key, `<f>` and `<n>` being the ids the
-batch's answer gives for its aliases `f` and `n`. The root's name is a question's id and names
-neither the user nor anything private; the guard refuses the speaker that batch once the key is
-set, and every other write of the notebook as before. A tab under the root is made by the
-`ai-recorder` alone, in a `place` job: `tools/ai_tab.py tab --parent <node id> --name <name>`
-prints a rows entry that makes it under the tab of the AI's whose node id is given, which the
-key must list with its tab id; the guard lets the `ai-recorder` that batch and no other shape of
-it, under no other tab. A tab made is the AI's to the guard only once the speaker, from the
-ids the `ai-recorder` hands back, runs `tools/ai_tab.py add --node <n> --tab <f> --parent <node
-id>`; until then nothing is inserted on it. An answer of the AI's given before the root, past held on
+tabs under its own root, and no dictation is needed for one. A tab is made holding its heading,
+`# <name>`, and nothing else, its name a question's id that names neither the user nor anything
+private; what it says is inserted on it after. The root is made once, by the speaker, at the top
+level: `tools/ai_tab.py root --name <name> > $SCRATCH/speaker/ai-root.json` prints the batch,
+which the speaker sends as one `batch` exactly as printed, its `opId` included, the one every root
+of the notebook is sent with, so that a second lands as the first. The speaker keeps the batch's
+answer, or writes `{"lids": {"f": <the tab's id>, "n": <its body's node id>}}` from it with the
+Write tool, as `$SCRATCH/speaker/ai-root-answer.json`, and `tools/ai_tab.py add --made
+$SCRATCH/speaker/ai-root.json --answer $SCRATCH/speaker/ai-root-answer.json` puts the root in the
+key. The guard refuses the speaker that batch nested, with a body or a name other than these, or
+once the key is set, and every other write of the notebook as before. A tab under the root is
+made by the `ai-recorder` alone, in a `place` job: `tools/ai_tab.py tab --parent <node id> --name
+<name>` prints a rows entry that makes it under the tab of the AI's whose node id is given, which
+the key must list with its tab id; the guard lets the `ai-recorder` that batch and no other shape
+of it, under no other tab. A tab made is the AI's to the guard only once the speaker, from the
+ids the `ai-recorder` hands back written as such an answer file, runs `tools/ai_tab.py add --made
+<the entry> --answer <the answer file>`; until then nothing is inserted on it. `add` takes only an
+entry it prints again, the same, from the key as it stands, and says what it could not check:
+that the ids are the ones the connector made, which the tab read back shows. The key's change
+reaches the repository's main only through a pull request. An answer of the AI's given before the root, past held on
 a tab wherever it stands, is the AI's too. A line is a run of questions put to that record. Each
 is put in a clean turn: a run of the harness of its own, started by `tools/clean_turn.py` in an
 empty directory with no tools, settings, memory or rules file, whose context holds the AI's own

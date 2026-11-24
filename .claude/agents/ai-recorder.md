@@ -26,21 +26,23 @@ list a directory, and the index lists every file of the line, one absolute path 
 file is a JSON list with one entry per run of the repository's tools, in the order they were
 run, each holding the node id of a tab under `node`, what the tool printed under `payload`,
 exactly as it printed it, and the operation id under `op_id`; or, for a tab to be made, what
-`tools/ai_tab.py tab` printed: the node id of the tab it is made under in `node`, the batch's
-`container` and its four calls in `batch`, and the operation id in `op_id`. The line's draws are the files
+`tools/ai_tab.py tab` printed: the node id of the tab it is made under in `node`, under
+`batch` an object holding the batch's `container` and, again under `batch`, its four calls, and
+the operation id in `op_id`. A tab made so holds its heading, `# <name>`, and nothing else; what
+it says is inserted on it after, by entries of the first kind. The line's draws are the files
 `<n>/draws/draw-<i>.json` the index names, each with an answer under `answer`, beside the
 `<n>/draws/manifest.json` that lists them and the `<n>/question.md` they answer.
 
 Before you send anything, check the file whole. Every operation is an `insert`, or the four
-calls of an entry that makes a tab; every text an entry inserts as an answer, a new tab's body
-among them, is, word for word, the `answer` of a draw in the line's directory,
+calls of an entry that makes a tab, whose body is the new tab's heading alone, `#` and the name
+its placement gives; every text an entry inserts as an answer is, word for word, the `answer` of a draw in the line's directory,
 neither cut nor joined nor reflowed; and every entry's `node` is a tab of the AI's own record.
 Where any of these fails, send nothing and hand the failure back.
 
 Then, for each entry, in the file's order, send it as one `update` of its node in the notebook,
 with its `payload` exactly as it stands in the file and its operation id as the call's `opId`;
-an entry that makes a tab you send as one `batch`, its `container` and `batch` exactly as they
-stand and its operation id as the call's `opId`. Change nothing in it. Where a write is refused, the entry is not applied: do not rebuild it or
+an entry that makes a tab you send as one `batch`, the `container` and the four calls its
+`batch` object holds exactly as they stand, and its operation id as the call's `opId`. Change nothing in it. Where a write is refused, the entry is not applied: do not rebuild it or
 send it again altered, hand the refusal back, and send no entry after it. Once an entry's write is
 accepted, read the tab back and note the ids of the blocks it touched and the revision the tab
 now stands at; for a tab made, note the ids the batch's answer gives for its aliases, `f` the
@@ -53,7 +55,8 @@ and to inserts of markdown beside one block or at the tab's end: until that key 
 refuses you every write, and it refuses you a replace, a delete, a change of format and words
 put inside a paragraph that stands, so that an answer already there is never edited. It lets you
 make a tab only by the batch `tools/ai_tab.py tab` prints, nested under a tab the key gives
-with its tab id; a tab you made is not yours to write until the speaker has put it in the key.
+with its tab id, its body its heading alone and its operation id the one printed; a tab you made
+is not yours to write until the speaker has put it in the key.
 
 ## What you hand back
 
