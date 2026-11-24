@@ -16,7 +16,7 @@ the file's content, and the new tab's placement set in the document's
 at the top level. What the tab says is inserted on it after, as on any tab
 of the AI's. The operation id is fixed by what is made: a root by the
 notebook's id alone, so that a second root sent lands as the first; a tab by
-its parent's tab id and its name.
+its parent's tab id, in lower case, and its name.
 
 **The key.** Each entry this module writes is ``{"node": <the body's node
 id>, "tab": <the tab's own id>}``: the node id is what an ``update`` names,
@@ -124,20 +124,20 @@ def entries(named: dict) -> List[Tuple[str, Optional[str]]]:
 
 
 def plain_id(value: str, what: str) -> str:
-    if not isinstance(value, str) or not PLAIN_ID.match(value):
+    if not isinstance(value, str) or not PLAIN_ID.fullmatch(value):
         raise Refused("%s %r is not a plain id (letters, digits, _ and -)" % (what, value))
     return value
 
 
 def check_name(name: str) -> str:
-    if not isinstance(name, str) or not NAME.match(name) or name in RESERVED:
+    if not isinstance(name, str) or not NAME.fullmatch(name) or name in RESERVED:
         raise Refused("a tab's name is a question's id: lower-case letters and digits in "
                       "words joined by -, and not %s; got %r" % (" or ".join(RESERVED), name))
     return name
 
 
 def check_order(order: str) -> str:
-    if not isinstance(order, str) or not ORDER.match(order):
+    if not isinstance(order, str) or not ORDER.fullmatch(order):
         raise Refused("an order is a letter and then letters or digits, as a0; got %r"
                       % (order,))
     return order
@@ -210,7 +210,7 @@ def tab(named: dict, parent: str, name: str, order: str) -> dict:
         raise Refused("the key %s gives no tab id for %r, so nothing can be made under it; "
                       "write its entry as {\"node\": …, \"tab\": …}" % (KEY, parent))
     return {"node": parent, "batch": batch(document(named), name, order, under),
-            "op_id": op_id("tab", under, name)}
+            "op_id": op_id("tab", under.lower(), name)}
 
 
 def _placed(call: dict) -> dict:

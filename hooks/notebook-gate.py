@@ -600,8 +600,8 @@ TAB_ORDER = re.compile(r"^[a-z][0-9a-z]*$")
 def tab_op_id(*parts: str) -> str:
     """The operation id `tools/ai_tab.py` gives a batch that makes a tab,
     fixed by what it makes: the root by the notebook alone, so that a second
-    root sent lands as the first; a tab by its parent's tab id and its
-    name."""
+    root sent lands as the first; a tab by its parent's tab id, in lower
+    case as the key's ids are compared, and its name."""
     digest = hashlib.sha256("\x00".join(parts).encode("utf-8")).hexdigest()[:16]
     return "ai-tab-" + digest
 
@@ -616,7 +616,7 @@ def _exact(part, keys) -> dict:
 
 def _plain_id(value) -> str:
     """An id given plainly, nothing the connector might fold."""
-    if not isinstance(value, str) or not PLAIN_ID.match(value) or plain(value) != value:
+    if not isinstance(value, str) or not PLAIN_ID.fullmatch(value) or plain(value) != value:
         raise NotTab("an id")
     return value
 
@@ -645,13 +645,13 @@ def tab_batch(tool_input, notebook: str):
     if made["verb"] != "create" or made["object"] != "file":
         raise NotTab("the file")
     f = made["$lid"]
-    if not isinstance(f, str) or not LID.match(f):
+    if not isinstance(f, str) or not LID.fullmatch(f):
         raise NotTab("an alias")
     birth = _exact(_exact(made["payload"], ("value",))["value"], ("birthName",))["birthName"]
     body = _exact(body, ("$lid", "verb", "object", "engine", "payload"))
     n = body["$lid"]
     if (body["verb"] != "create" or body["object"] != "node" or body["engine"] != ENGINE
-            or not isinstance(n, str) or not LID.match(n) or n == f):
+            or not isinstance(n, str) or not LID.fullmatch(n) or n == f):
         raise NotTab("the body")
     payload = _exact(body["payload"], ("parent", "source"))
     parent = _exact(payload["parent"], ("object", "id"))
@@ -684,8 +684,8 @@ def tab_batch(tool_input, notebook: str):
             "name", "order", "subtabOf"}:
         raise NotTab("the placement")
     name, order = where["name"], where["order"]
-    if (not isinstance(name, str) or not TAB_NAME.match(name) or name in TAB_RESERVED
-            or not isinstance(order, str) or not TAB_ORDER.match(order)):
+    if (not isinstance(name, str) or not TAB_NAME.fullmatch(name) or name in TAB_RESERVED
+            or not isinstance(order, str) or not TAB_ORDER.fullmatch(order)):
         raise NotTab("the tab's name or order")
     if birth != name + ".ldoc" or inline["content"] != "# " + name:
         # the file named for the tab, and the body its heading alone
@@ -708,7 +708,7 @@ def made_tab(tool_input, notebook: str, parents) -> dict:
     mine = {plain(t).strip().lower() for t in parents}
     if parent is None or parent.lower() not in mine:
         return _answer("deny", NEW_TAB)
-    if op_id != tab_op_id("tab", parent, name):
+    if op_id != tab_op_id("tab", parent.lower(), name):
         return _answer("deny", NEW_TAB)
     return {}
 
@@ -785,7 +785,7 @@ def sided(kind: str, tool, tool_input, cwd, env) -> dict:
         if ref is None or ref.get("object") != "node" or not isinstance(ref.get("id"), str):
             return _answer("deny", refusal)
         node = ref["id"]
-        if not PLAIN_ID.match(node) or plain(node) != node:
+        if not PLAIN_ID.fullmatch(node) or plain(node) != node:
             # a spelling the connector might fold to another node's id
             return _answer("deny", refusal)
         mine = {plain(t).strip().lower() for t in tabs}

@@ -70,13 +70,22 @@ class BatchTest(unittest.TestCase):
         self.assertEqual(gate.TAB_RESERVED, ai_tab.RESERVED)
 
     def test_a_name_is_a_question_s_id(self):
-        for name in ("lease", "Ai-Root", "ai root", "a/b", "", "-a", "a--b", "ai_root"):
+        for name in ("lease", "Ai-Root", "ai root", "a/b", "", "-a", "a--b", "ai_root",
+                     "lease\n", "ai-root\n"):
             with self.subTest(name=name):
                 with self.assertRaises(ai_tab.Refused):
                     ai_tab.root(UNSET, name, "a0")
-        for order in ("", "0a", "A0", "a-0"):
+        for order in ("", "0a", "A0", "a-0", "a0\n"):
             with self.assertRaises(ai_tab.Refused):
                 ai_tab.root(UNSET, "ai-root", order)
+        named = dict(UNSET, ai_root=[{"node": "n-root", "tab": "t-root"}])
+        for name in ("lease\n", "q\n"):
+            with self.assertRaises(ai_tab.Refused):
+                ai_tab.tab(named, "n-root", name, "a0")
+        with self.assertRaises(ai_tab.Refused):
+            ai_tab.tab(named, "n-root\n", "q", "a0")
+        with self.assertRaises(ai_tab.Refused):
+            ai_tab.add(UNSET, ai_tab.root(UNSET, "ai-root", "a0"), answer("t-r\n", "n-r"))
 
 
 class KeyTest(unittest.TestCase):

@@ -1055,7 +1055,7 @@ class TabTest(Base):
     def test_nowhere_but_under_a_tab_the_key_gives_with_its_tab_id(self):
         agent = "principal:ai-recorder"
         for under in ("t-other", "T-TAB​", "t%2Dtab", "tab/t-tab", "n-tab", "n-old", "",
-                      "T-TAB"):
+                      "t-tab\n"):
             c = self.made()
             c["batch"][3]["payload"]["patch"][0]["value"]["subtabOf"] = under
             with self.subTest(under=under):
@@ -1063,6 +1063,14 @@ class TabTest(Base):
         c = self.made()
         del c["batch"][3]["payload"]["patch"][0]["value"]["subtabOf"]
         self.deny(call(self.root, agent, BATCH, c), self.gate.NEW_TAB)
+        # R1: the parent's tab id in another case is the same tab, with one operation id
+        c = self.made()
+        c["batch"][3]["payload"]["patch"][0]["value"]["subtabOf"] = "T-TAB"
+        self.assertEqual(c["opId"], self.gate.tab_op_id("tab", "t-tab", "q-one"))
+        self.silent(call(self.root, agent, BATCH, c))
+        upper = dict(self.NAMED, ai_root=[{"node": "n-root", "tab": "T-ROOT"}])
+        self.assertEqual(self.tool.tab(upper, "n-root", "q-one", "a0")["op_id"],
+                         self.tool.tab(dict(self.NAMED), "n-root", "q-one", "a0")["op_id"])
         # the operation id is the one the tool derives, or none is admitted
         for op in (None, "other", self.gate.tab_op_id("tab", "t-root", "q-one"),
                    self.gate.tab_op_id("root", NOTEBOOK)):
@@ -1079,10 +1087,11 @@ class TabTest(Base):
 
     def test_s2_the_name_the_order_the_file_and_the_body_at_the_gate(self):
         agent = "principal:ai-recorder"
-        for name in ("lease", "Q-one", "q one", "a/b", "q--one", "-q", "the user's rule", ""):
+        for name in ("lease", "Q-one", "q one", "a/b", "q--one", "-q", "the user's rule", "",
+                     "lease\n", "q-one\n"):
             with self.subTest(name=name):
                 self.deny(call(self.root, agent, BATCH, self.named_tab(name)), self.gate.NEW_TAB)
-        for order in ("!!", "", "A0", "0a", "a-0"):
+        for order in ("!!", "", "A0", "0a", "a-0", "a0\n"):
             with self.subTest(order=order):
                 self.deny(call(self.root, agent, BATCH, self.named_tab("q-one", order=order)),
                           self.gate.NEW_TAB)
@@ -1154,6 +1163,9 @@ class TabTest(Base):
         change(lambda c: c["batch"][3]["payload"]["patch"][0]["value"].update(name=""))
         change(lambda c: c.update(batch="["))
         change(lambda c: c.update(opId=7))
+        # R1: an alias with a trailing newline
+        change(lambda c: c["batch"][0].update(**{"$lid": "f\n"}))
+        change(lambda c: c["batch"][1].update(**{"$lid": "n\n"}))
         for c in bad:
             with self.subTest(c=c):
                 self.assertEqual(self.decision(call(self.root, agent, BATCH, c)), "deny")
@@ -1196,9 +1208,15 @@ class TabTest(Base):
                 c = json.loads(json.dumps(made))
                 c["batch"][part]["payload"]["source"]["from"]["content"] = value
                 self.refused(call(root, speaker, BATCH, c))
-            for name in ("lease", "The user's rule", "a/b"):
-                c = json.loads(json.dumps(made).replace("ai-root", name))
+            for name in ("lease", "The user's rule", "a/b", "lease\n", "ai-root\n"):
+                c = json.loads(json.dumps(made).replace("ai-root", json.dumps(name)[1:-1]))
                 self.refused(call(root, speaker, BATCH, c))
+            c = json.loads(json.dumps(made))
+            c["batch"][3]["payload"]["patch"][0]["value"]["order"] = "z0\n"
+            self.refused(call(root, speaker, BATCH, c))
+            c = json.loads(json.dumps(made))
+            c["batch"][0]["$lid"] = "f\n"
+            self.refused(call(root, speaker, BATCH, c))
             c = json.loads(json.dumps(made))
             c["batch"][0]["payload"]["value"]["birthName"] = "../x"
             c["batch"][2]["payload"]["value"]["birthName"] = "../x"
@@ -1250,6 +1268,10 @@ class TabTest(Base):
         for node in ("n-root", "n-old"):
             self.deny(call(self.root, "principal:comparer", UPDATE, inserting(node)),
                       self.gate.USER_SIDE)
+        # R1: a node id with a trailing newline is no id of either side
+        for agent in ("principal:ai-recorder", "principal:comparer"):
+            self.assertEqual(self.decision(call(self.root, agent, UPDATE,
+                                                inserting("n-root\n"))), "deny")
         # a tab id is no node to insert on
         self.deny(call(self.root, "principal:ai-recorder", UPDATE, inserting("t-root")),
                   self.gate.AI_SIDE)
