@@ -13,8 +13,9 @@ and `user` capabilities and rules under which only its owner reads and writes,
 so that anyone else, or anyone signed out, sees it empty. It has three sections in a fixed
 order, the action context, the next action and the helpers' action context, and above them a
 bell notice while a rung bell's office has an item of the principal's unresolved; beside them
-stands the context panel. The page is display only: it has no button and no input, its source
-holds no data, and it writes nothing. It reads four documents of the collection `ordo` in its
+stands the context panel. The page is display only: it has no input and one button, at its
+foot, that goes back to the top and does nothing else; its source holds no data, and it writes
+nothing. It reads four documents of the collection `ordo` in its
 store, and the speaker writes all four, the day's marks included.
 
 On a wide screen the main column is on the left and the context panel on the right, kept in

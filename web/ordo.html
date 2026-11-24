@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
 <style>
-/* Display only: no buttons, no inputs, no writes. Layout: one column on a phone; from 60rem two, the main column left and the context panel right (sticky). Main column: bell notice (while a rung bell's office has an owner item unresolved), then the action context (paragraphs, tradition, prediction, notes), then the next action as the largest thing (the first unresolved owner office item while there is one, a taken one first, with the session's action and its deferred action, if any, as quiet "After the office" notes; a recommendation, on a review of mechanism, after the prompt; otherwise, or while the owner has set the rung bell's office aside (current.office_deferred), the session's action, with the set-aside office and a deferred action, if any, as quiet notes inside it; or while the session's action was put before the bell rang (next.put_at) and is not yet resolved (next.resolved_at), and asks something of the owner (next.asks not false), that action, with "After this: the <bell> office" listing the items as a quiet note inside it; every bell rung after that action was put is carried, earliest first, so that when it is resolved the office shows with all their items; a session's action resolved and not yet replaced is drawn as resolved, under "After the office" and as the card's action alike, never as the action to come), then the helper list. On a phone the panel sits under the next-action card. Panel: the latest rung bell and its remaining items (session-run ones marked, and kept with their state), then one timeline of the bells and calendar events of the next 48 hours, then when the calendar was read; under that card, a second card holding only the "Waiting, in order" list (current.queue) in a native details element, closed by default. The action context may end with appended log records (context.log), each under a divider carrying its time. */
+/* Display only: no inputs, no writes, and one button, at the foot, that goes back to the top and moves focus to the main landmark. Layout: one column on a phone; from 60rem two, the main column left and the context panel right (sticky). Main column: bell notice (while a rung bell's office has an owner item unresolved), then the action context (paragraphs, tradition, prediction, notes), then the next action as the largest thing (the first unresolved owner office item while there is one, a taken one first, with the session's action and its deferred action, if any, as quiet "After the office" notes; a recommendation, on a review of mechanism, after the prompt; otherwise, or while the owner has set the rung bell's office aside (current.office_deferred), the session's action, with the set-aside office and a deferred action, if any, as quiet notes inside it; or while the session's action was put before the bell rang (next.put_at) and is not yet resolved (next.resolved_at), and asks something of the owner (next.asks not false), that action, with "After this: the <bell> office" listing the items as a quiet note inside it; every bell rung after that action was put is carried, earliest first, so that when it is resolved the office shows with all their items; a session's action resolved and not yet replaced is drawn as resolved, under "After the office" and as the card's action alike, never as the action to come), then the helper list. On a phone the panel sits under the next-action card. Panel: the latest rung bell and its remaining items (session-run ones marked, and kept with their state), then one timeline of the bells and calendar events of the next 48 hours, then when the calendar was read; under that card, a second card holding only the "Waiting, in order" list (current.queue) in a native details element, closed by default. The action context may end with appended log records (context.log), each under a divider carrying its time. */
 :root {
   --bg: #f3f5f6; --surface: #ffffff; --ink: #18242b; --muted: #5a6a73;
   --line: #d5dce0; --accent: #1f6f5c; --accent-soft: #e2f0ec; --against: #8a4b2a; --against-soft: #f6ebe3;
@@ -52,6 +52,11 @@ h3.sub { font-family: var(--display); font-weight: 600; font-size: 0.98rem; marg
 .plain { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 4px; }
 hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
 [hidden] { display: none !important; }
+main:focus { outline: none; }
+.foot { max-width: 42rem; margin: 28px auto 0; display: flex; justify-content: center; }
+.top { font-family: var(--display); font-weight: 600; font-size: 0.95rem; line-height: 1.2; color: var(--accent); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; min-height: 44px; min-width: 44px; padding: 10px 22px; cursor: pointer; }
+.top:hover { background: var(--accent-soft); border-color: var(--accent); }
+.top:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .bell { background: var(--against-soft); border-left: 3px solid var(--against); border-radius: 0 8px 8px 0; padding: 10px 16px; display: flex; flex-direction: column; gap: 2px; }
 .bell p { margin: 0; }
 .bell-msg { font-weight: 600; color: var(--against); }
@@ -85,10 +90,11 @@ summary { cursor: pointer; font-family: var(--display); font-weight: 600; }
   #col-a { grid-column: 1; grid-row: 1; }
   #col-b { grid-column: 1; grid-row: 2; }
   #side { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
+  .foot { max-width: 66rem; }
 }
 </style>
 
-<main>
+<main id="main" tabindex="-1">
  <div class="col" id="col-a">
   <div id="bell" class="bell" role="status" hidden>
     <p id="bell-msg" class="bell-msg"></p>
@@ -180,6 +186,10 @@ summary { cursor: pointer; font-family: var(--display); font-weight: 600; }
   <p class="status quiet" id="status">Loading…</p>
  </div>
 </main>
+
+<footer class="foot">
+  <button type="button" class="top" id="top">Back to top</button>
+</footer>
 
 <script>
 (function () {
@@ -773,6 +783,15 @@ summary { cursor: pointer; font-family: var(--display); font-weight: 600; }
     renderAll();
     setInterval(clock, 30000);
   }
+
+  // The one control: back to the top, smoothly unless motion is reduced, then focus on the main
+  // landmark. It reads no data, so it works while the store is empty, slow or unreachable.
+  function toTop() {
+    var still = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    window.scrollTo({ top: 0, behavior: still ? "auto" : "smooth" });
+    $("main").focus({ preventScroll: true });
+  }
+  $("top").onclick = toTop;
 
   start().catch(function () { renderStatus(); });
 })();
