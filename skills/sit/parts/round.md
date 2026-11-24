@@ -152,11 +152,20 @@ bind every action.
    viewed in, for the Rule's day.
 9. **The speaker, at the full tier, writes no code, page or tooling itself.** Such work is
    briefed to a helper of the mid tier and reviewed adversarially by a helper of the full tier;
-   the judge is never the tier judged. Run the open way, the speaker briefs both directly, with
+   the judge is never the tier judged. Each brief, the implementing helper's and the
+   adversarial reviewer's, states the mechanism wanted and never the occasion, carries nothing
+   the principal reported of the principal's own life, and carries ground rule 9 in substance:
+   a fact of a real person's life met in the work is carried no further and handed back, and an
+   example is invented. The reviewer reads the pull request for such a fact as well as for its
+   faults. Run the open way, the speaker briefs both directly, with
    what each must read and must not;
    run the confined way, it can start neither, and the work is named to the principal as an
    open note of kind `change`. The principal has given leave to merge pull requests unless the principal says otherwise, and asked that a needed reload of the plugin or a skill be given as an action after the merge. So, run the open way, in this order: the pull request's checks
-   pass; the full tier's adversarial review of it returns, with no blocker left open; what was
+   pass; the full tier's adversarial review of it returns, with no blocker left open; the
+   speaker reads the pull request's whole text, title, body, comments, reviews and review
+   comments, commit messages, branch, tag and file names, and diff, as a reader looking for the
+   principal, the reviewer having read it so too, and says in the action context that it did and
+   what it read (ground rule 9), and merges nothing that carries a sensitive fact; what was
    built is reported in the action context; a build that changes what the principal decides, a
    rule of a skill or what the page shows among it, is put to the principal as a review and
    waits for the answer; and then the speaker may merge, unless the principal said otherwise.

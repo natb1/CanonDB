@@ -1266,9 +1266,16 @@ class PageTest(unittest.TestCase):
                      "postMessage", "import(", "window.open", "location", "localStorage",
                      "sessionStorage", "indexedDB", "document.cookie", "eval", "Function("):
             self.assertNotIn(word, self.script)
-        # no control, made in the source or at run time, in any quoting or case
+        # no control, made in the source or at run time, in any quoting or case, but the
+        # one button at the foot that goes back to the top (test_page_top), wired once by
+        # its property and focusing the main landmark, which alone takes a tabindex
+        page = self.page
+        for allowed in ('<button type="button" class="top" id="top">', '<main id="main" tabindex="-1">',
+                        'if (top) top.onclick = toTop;'):
+            self.assertEqual(page.count(allowed), 1, allowed)
+            page = page.replace(allowed, "")
         controls = r"(?:button|input|textarea|select|form|option|dialog|a)"
-        self.assertIsNone(re.search(r"<\s*%s\b" % controls, self.page, re.I))
+        self.assertIsNone(re.search(r"<\s*%s\b" % controls, page, re.I))
         # one native details element, the waiting list's card, closed in the source and
         # never opened or closed by the script
         self.assertEqual(re.findall(r"<\s*details\b[^>]*>", self.page, re.I),
@@ -1279,7 +1286,7 @@ class PageTest(unittest.TestCase):
         self.assertIsNone(re.search(r"[\"'`]\s*%s\s*[\"'`]" % controls, self.script, re.I))
         for word in ("onclick", "addEventListener", "contenteditable", "contentEditable",
                      "innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "tabindex"):
-            self.assertNotIn(word.lower(), self.page.lower())
+            self.assertNotIn(word.lower(), page.lower())
         self.assertNotIn("href", self.script)
         made = re.findall(r"\bel\(\s*([\"'`])(\w+)\1", self.script)
         self.assertTrue(made)
@@ -1396,7 +1403,9 @@ class PageTest(unittest.TestCase):
             # what the page computes
             "b", "m", "ds", "rd", "md", "mins", "wd", "date", "key", "v", "state", "rung",
             "unres", "applied", "all", "left", "aside", "session", "now", "at", "ev", "allDay",
-            "y", "mo", "d", "hold", "carry"}
+            "y", "mo", "d", "hold", "carry",
+            # the button back to the top (test_page_top)
+            "onclick", "focus", "scrollTo", "matchMedia", "matches"}
         given = {"context", "next", "queue", "background", "updated",
                  "heading", "paragraphs", "for", "against", "prediction", "notes", "who", "text",
                  "kind", "line", "case", "prompt", "how", "deferred", "reason", "title",
@@ -1520,8 +1529,9 @@ class PageTest(unittest.TestCase):
                       self.contract)
 
     def test_round_two_sentences_of_the_contract(self):
-        for words in ("The page is display only: it has no button and no input, its source holds "
-                      "no data, and it writes nothing.",
+        for words in ("The page is display only: it has no input and one button, at its foot, that "
+                      "goes back to the top and does nothing else; its source holds no data, and "
+                      "it writes nothing.",
                       "and the speaker writes all four, the day's marks included",
                       "Each write sets `updated`, and the clock is read before it is stamped",
                       "the speaker reads `ordo/current` with `ArtifactData` at `as_level` "
@@ -2119,6 +2129,106 @@ class BriefLinesTest(unittest.TestCase):
                       "no hook approves a launch", "A read is never checked.", "`ordo/session.schedule`",
                       "goes to the notebook's statement of conventions first"):
             self.assertIn(words, section)
+
+
+class SensitiveRuleTest(unittest.TestCase):
+    """Ground rule 9 is held by reading: each place where it binds carries its
+    own sentences, and the skill says no tool decides it."""
+
+    def part(self, name):
+        return flat(os.path.join(PARTS, name + ".md"))
+
+    def skill(self, name):
+        return flat(os.path.join(ROOT, "skills", name, "SKILL.md"))
+
+    def has(self, text, *sentences):
+        for words in sentences:
+            self.assertIn(words, text)
+
+    def test_the_ground_rule_in_full(self):
+        rules = self.part("ground-rules")
+        self.has(rules,
+                 "9. **What the principal reports of the principal's own life is sensitive, and "
+                 "goes nowhere a stranger can read.**",
+                 "it notes there, in words, that the fact is sensitive; a form for a mark that "
+                 "records carry is not yet defined.",
+                 "the notebook, the page and its store, the line doc, the sitting's `$SCRATCH`, "
+                 "the brief's directory under the config home (`tools/brief.py where`), "
+                 "and a project's own private repository only where a standing rule already "
+                 "places such a record there",
+                 "Whether a private repository may hold more is the principal's to decide.",
+                 "nor a message to another session, a document other than the notebook and the "
+                 "line doc, or an artifact other than the page, unless that place is private.",
+                 "carries this rule in substance",
+                 "an example in it is invented and neutral",
+                 "it stops and hands that back to the speaker, without judging whose the fact is.",
+                 "is doing its work when it handles such a fact, and does not stop on it.",
+                 "A helper that builds cannot know that a fact is the principal's",
+                 "the speaker and the full tier's adversarial reviewer each read the pull "
+                 "request's whole text",
+                 "commit messages, branch, tag and file names, and diff",
+                 "no search for strings stands in for it",
+                 "no history is rewritten without the principal's word.",
+                 "This rule binds a sitting and the publish steps of `/principal:bootstrap` and "
+                 "`/principal:dictate`; a session outside those is not reached by it")
+        # the hand-back is scoped to a helper whose work leaves (B1 of the second review)
+        hand_back = rules.index("carries it no further: it stops and hands that back")
+        self.assertIn("A helper whose work leaves for a repository or any published place, and "
+                      "that finds in what it handles", rules[hand_back - 200:hand_back])
+        # the line doc is among the private places (B2 of the second review)
+        self.assertNotIn("recorded only in the notebook, the page and its store, and `$SCRATCH`",
+                         rules)
+
+    def test_the_core(self):
+        with open(SKILL, encoding="utf-8") as fh:
+            core = " ".join(fh.read().split())
+        self.has(core, "**Ground rules** 1 to 9 in full",
+                 "9. What the principal reports of the principal's own state",
+                 "the notebook, the page and its store, the line doc, `$SCRATCH`, the brief's "
+                 "directory, and a private "
+                 "repository only where a standing rule puts such a record",
+                 "a helper of the notebook handles it as its work",
+                 "Before a merge the speaker and the full tier's reviewer read the pull "
+                 "request's whole text",
+                 "The rule binds a sitting and the publish steps of bootstrap and dictate, and no "
+                 "session outside those.")
+
+    def test_the_round(self):
+        self.has(self.part("round"),
+                 "Each brief, the implementing helper's and the adversarial reviewer's, states "
+                 "the mechanism wanted and never the occasion",
+                 "carries ground rule 9 in substance",
+                 "The reviewer reads the pull request for such a fact as well as for its faults.",
+                 "comments, commit messages, branch, tag and file names, and diff, as a reader "
+                 "looking for the principal, the reviewer having read it so too, and says in "
+                 "the action context that it did and what it read (ground rule 9)")
+
+    def test_the_brief_and_attenuation(self):
+        self.has(self.part("brief"),
+                 "(ground rule 9). The speaker composes such a brief from the rule",
+                 "carries the rule itself in substance")
+        self.has(self.part("attenuation"),
+                 "**Sensitive information is held by reading.** No tool decides ground rule 9.",
+                 "A helper that builds cannot know a fact is the principal's",
+                 "It binds a sitting and the publish steps of bootstrap and dictate; a session "
+                 "outside those is not reached by it.")
+
+    def test_bootstrap_and_dictate(self):
+        for name in ("bootstrap", "dictate"):
+            self.has(self.skill(name),
+                     "an example is invented and neutral",
+                     "commit messages, branch, tag and file names, and diff, as a reader looking "
+                     "for the principal, and says that it did and what it read",
+                     "in for that reading.",
+                     "reported to the principal at once, with what its removal would take, and "
+                     "no history is rewritten without the principal's word.")
+        self.has(self.skill("dictate"), "kept only in the private places ground rule 9 of "
+                 "`/principal:sit` names (the notebook, the page and its store, the line doc, "
+                 "the sitting's scratch, the brief's directory")
+        self.assertNotIn("recorded only in the notebook", self.skill("dictate"))
+        self.has(self.skill("bootstrap"), "Before a merge, its own or the author's",
+                 "the full tier's adversarial reviewer is briefed with this rule, never the "
+                 "occasion, and reads for it too")
 
 
 if __name__ == "__main__":
