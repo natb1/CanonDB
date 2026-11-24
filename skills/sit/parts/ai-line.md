@@ -15,9 +15,29 @@ The speaker claims a `turn` job under the sitting's id and runs it itself with
 ## The line in the AI's graph
 
 The AI's own record is a graph of the AI's answers, in its own words. Its tabs stand under a root
-of their own in the notebook, and the key `ai_root` of `.principal/notebook.json` lists their node
-ids, the root's first; until the root is made the key is unset, and the guard on the notebook
-refuses the `ai-recorder` every write. An answer of the AI's given before the root, past held on
+of their own in the notebook, and the key `ai_root` of `.principal/notebook.json` lists them, the
+root's first, each as its body's node id and its own tab id; until the root is made the key is
+unset, and the guard on the notebook refuses the `ai-recorder` every write but the root. The AI makes the
+tabs under its own root, the root among them, and no dictation is needed for one; the speaker
+makes none, and never writes the notebook. Every tab of the AI's is made by the `ai-recorder` in
+a `place` job, holding its heading, `# <name>`, and nothing else, its name the id of a question of
+the AI's record that names neither the user nor anything private; the question's words and what
+answers it are inserted on it after, by a `place` job like any other. The root is such a
+question: one the speaker drafted and the principal approved (rule 3), its id the root's name.
+While the key is unset, `tools/ai_tab.py root --name <question id> > $SCRATCH/lines/<line>/root.json`
+prints the rows entry that makes it, at the top level, in the form `tab` prints with `node` null,
+sent with the one operation id every root of the notebook gets, so that a second lands as the
+first; the guard admits the `ai-recorder` that batch while the key is unset and refuses it once the
+key is set. A tab under the root is made from `tools/ai_tab.py tab --parent <node id> --name
+<question id>`, which prints a rows entry that makes it under the tab of the AI's whose node id is
+given, which the key must list with its tab id; the guard lets the `ai-recorder` that batch and no
+other shape of it, under no other tab. A tab made is the AI's to the guard only once the speaker,
+from the ids the `ai-recorder` hands back for the batch's aliases, written with the Write tool as
+`{"lids": {"f": <the tab's id>, "n": <its body's node id>}}`, runs `tools/ai_tab.py add --made <the
+entry> --answer <that file>`; until then nothing is inserted on it. `add` takes only an entry it
+prints again, the same, from the key as it stands, and says what it could not check: that the ids
+are the ones the connector made, which the tab read back shows. The key's change
+reaches the repository's main only through a pull request. An answer of the AI's given before the root, past held on
 a tab wherever it stands, is the AI's too. A line is a run of questions put to that record. Each
 is put in a clean turn: a run of the harness of its own, started by `tools/clean_turn.py` in an
 empty directory with no tools, settings, memory or rules file, whose context holds the AI's own
@@ -138,11 +158,12 @@ or its question, and a question or an answer holding `<<<` or `>>>`, which no te
    the answerer gave its presuppositions one a line gives them on the label's own line, and
    the tool parts them there; nothing is redrawn for it. It reads the line's directory alone, and nothing of
    the user's record. A placed question is a tab of its own under the tab the line stands
-   under; a new tab is outside a sitting (step 4) and outside what the guard lets the
-   `ai-recorder` write, inserts beside a block of a tab `ai_root` lists. So the place goes by
-   `/principal:dictate` from that file, carried until then as an open note of kind `change`,
-   and a `place` job is added only once the guard admits the `ai-recorder` a new tab under the
-   AI's root. The comparing run's lines go on the user's side.
+   under, made by the `ai-recorder` in a `place` job from the entry `tools/ai_tab.py tab
+   --parent <id> --name <question id>` prints, and put in the key by the speaker after
+   (above); a new tab of the AI's own record needs no dictation. The answer, its question
+   and its hinge are then inserts on that tab, and no tool yet prints them: until one does, a
+   `place` job makes the tab alone, and the place's file is carried as an open note of kind
+   `change`. The comparing run's lines go on the user's side.
 10. **Every presupposition is a hinge.** Every presupposition a question carries in, drafted on
    the user's side or drawn, as the AI's answer names it under `Presupposes:`, one a line, is
    recorded as a hinge at the place, unjustified. A hinge is justified only by a later answer of

@@ -988,6 +988,319 @@ class SidedTest(Base):
                              ["permissionDecision"], "deny")
 
 
+class TabTest(Base):
+    """The AI's recorder makes a tab under a tab of the AI's the key gives
+    with its tab id, by the one batch `tools/ai_tab.py` prints, and nothing
+    else, and the AI's root once, at the top level, while the key is unset;
+    the speaker makes no tab."""
+
+    AI = [{"node": "n-root", "tab": "t-root"}, {"node": "n-tab", "tab": "t-tab"}, "n-old"]
+    NAMED = {"artifact": SITE + NOTEBOOK, "project": "x", "ai_root": AI}
+    UNSET = {"artifact": SITE + NOTEBOOK, "project": "x"}
+
+    def setUp(self):
+        super().setUp()
+        sys.path.insert(0, HERE)
+        from hypo import ai_tab
+        self.tool = ai_tab
+
+    def made(self, parent="n-tab", named=None, name="q-one"):
+        """The batch the tool prints for a tab under ``parent``."""
+        entry = self.tool.tab(named or self.NAMED, parent, name, "a0")
+        self.assertEqual(entry["node"], parent)
+        return dict(entry["batch"], opId=entry["op_id"])
+
+    def named_tab(self, name, order="a0", under="t-tab"):
+        """The batch made under ``under`` and named ``name`` by hand, its
+        operation id the one the gate derives, so only the name is at
+        fault."""
+        c = self.made()
+        where = c["batch"][3]["payload"]["patch"][0]["value"]
+        where.update(name=name, order=order)
+        c["batch"][0]["payload"]["value"]["birthName"] = "%s.ldoc" % name
+        c["batch"][2]["payload"]["value"]["birthName"] = "%s.ldoc" % name
+        c["batch"][1]["payload"]["source"]["from"]["content"] = "# %s" % name
+        c["opId"] = self.gate.tab_op_id("tab", under, name)
+        return c
+
+    def deny(self, c, reason):
+        self.assertEqual(self.reason(c), reason, c)
+
+    def test_the_ai_recorder_makes_a_tab_under_a_tab_of_its_own(self):
+        for agent in ("principal:ai-recorder", "ai-recorder"):
+            if agent == "ai-recorder":
+                define(self.root, kind="ai-recorder")
+            for parent in ("n-root", "n-tab"):
+                for tool in (p + "batch" for p in PREFIXES):
+                    with self.subTest(agent=agent, parent=parent, tool=tool):
+                        self.silent(call(self.root, agent, tool, self.made(parent)))
+        self.silent(call(self.root, "principal:ai-recorder", BATCH,
+                         self.named_tab("q-two", order="b07")))
+
+    def test_s4_never_as_text_and_never_a_key_twice(self):
+        agent = "principal:ai-recorder"
+        c = self.made()
+        text = dict(c, batch=json.dumps(c["batch"]))
+        self.deny(call(self.root, agent, BATCH, text), self.gate.NEW_TAB)
+        # the fourth member's payload twice, a delete of a user's tab hidden first
+        members = json.dumps(c["batch"][:3])[:-1]
+        fourth = json.dumps(c["batch"][3])
+        hidden = fourth.replace('"payload": ', '"payload": {"kind": "patch", "patch": [{"op": '
+                                '"delete", "path": ["tabs", "t-user"]}]}, "payload": ', 1)
+        self.deny(call(self.root, agent, BATCH, dict(c, batch=members + ", " + hidden + "]")),
+                  self.gate.NEW_TAB)
+        self.deny(call(self.root, agent, BATCH, dict(c, container=json.dumps(c["container"]))),
+                  self.gate.NEW_TAB)
+
+    def test_nowhere_but_under_a_tab_the_key_gives_with_its_tab_id(self):
+        agent = "principal:ai-recorder"
+        for under in ("t-other", "T-TAB​", "t%2Dtab", "tab/t-tab", "n-tab", "n-old", "",
+                      "t-tab\n"):
+            c = self.made()
+            c["batch"][3]["payload"]["patch"][0]["value"]["subtabOf"] = under
+            with self.subTest(under=under):
+                self.deny(call(self.root, agent, BATCH, c), self.gate.NEW_TAB)
+        c = self.made()
+        del c["batch"][3]["payload"]["patch"][0]["value"]["subtabOf"]
+        self.deny(call(self.root, agent, BATCH, c), self.gate.NEW_TAB)
+        # R1: the parent's tab id in another case is the same tab, with one operation id
+        c = self.made()
+        c["batch"][3]["payload"]["patch"][0]["value"]["subtabOf"] = "T-TAB"
+        self.assertEqual(c["opId"], self.gate.tab_op_id("tab", "t-tab", "q-one"))
+        self.silent(call(self.root, agent, BATCH, c))
+        upper = dict(self.NAMED, ai_root=[{"node": "n-root", "tab": "T-ROOT"}])
+        self.assertEqual(self.tool.tab(upper, "n-root", "q-one", "a0")["op_id"],
+                         self.tool.tab(dict(self.NAMED), "n-root", "q-one", "a0")["op_id"])
+        # the operation id is the one the tool derives, or none is admitted
+        for op in (None, "other", self.gate.tab_op_id("tab", "t-root", "q-one"),
+                   self.gate.tab_op_id("root", NOTEBOOK)):
+            c = self.made()
+            if op is None:
+                del c["opId"]
+            else:
+                c["opId"] = op
+            with self.subTest(op=op):
+                self.deny(call(self.root, agent, BATCH, c), self.gate.NEW_TAB)
+        # an entry that is a bare node id gives no tab to make one under
+        with self.assertRaises(self.tool.Refused):
+            self.tool.tab(self.NAMED, "n-old", "q-one", "a0")
+
+    def test_s2_the_name_the_order_the_file_and_the_body_at_the_gate(self):
+        agent = "principal:ai-recorder"
+        for name in ("lease", "Q-one", "q one", "a/b", "q--one", "-q", "the user's rule", "",
+                     "lease\n", "q-one\n"):
+            with self.subTest(name=name):
+                self.deny(call(self.root, agent, BATCH, self.named_tab(name)), self.gate.NEW_TAB)
+        for order in ("!!", "", "A0", "0a", "a-0", "a0\n"):
+            with self.subTest(order=order):
+                self.deny(call(self.root, agent, BATCH, self.named_tab("q-one", order=order)),
+                          self.gate.NEW_TAB)
+        for birth in ("../x", "q-one", "q-two.ldoc", "Q-one.ldoc"):
+            c = self.named_tab("q-one")
+            c["batch"][0]["payload"]["value"]["birthName"] = birth
+            c["batch"][2]["payload"]["value"]["birthName"] = birth
+            with self.subTest(birth=birth):
+                self.deny(call(self.root, agent, BATCH, c), self.gate.NEW_TAB)
+        for body in ("# q-one\n\nany prose", "# Anything", "", "#  q-one", "# q-one\n", 7):
+            c = self.named_tab("q-one")
+            c["batch"][1]["payload"]["source"]["from"]["content"] = body
+            with self.subTest(body=body):
+                self.deny(call(self.root, agent, BATCH, c), self.gate.NEW_TAB)
+
+    def test_s3_the_container_is_the_notebook_s_bare_id(self):
+        agent = "principal:ai-recorder"
+        for where in (SITE + OTHER + "?x=" + NOTEBOOK, OTHER + "#" + NOTEBOOK,
+                      NOTEBOOK + "/../" + OTHER, NOTEBOOK[:8], SITE + NOTEBOOK,
+                      NOTEBOOK.replace("-", ""), " " + NOTEBOOK, NOTEBOOK + "?a=1"):
+            c = self.made()
+            c["container"] = {"kind": "project", "id": where}
+            c["batch"][3]["ref"]["id"] = where
+            with self.subTest(where=where):
+                self.assertEqual(self.decision(call(self.root, agent, BATCH, c)), "deny")
+        c = self.made()
+        c["container"] = {"kind": "project", "id": NOTEBOOK.upper()}
+        c["batch"][3]["ref"]["id"] = NOTEBOOK.upper()
+        self.silent(call(self.root, agent, BATCH, c))
+
+    def test_nothing_but_the_root_while_the_key_is_unset(self):
+        c = self.made()
+        for named in (self.UNSET, {"artifact": SITE + NOTEBOOK, "ai_root": []}):
+            with project(named) as root:
+                self.assertEqual(self.reason(call(root, "principal:ai-recorder", BATCH, c)),
+                                 self.gate.ROOT_SHAPE)
+                self.assertEqual(self.reason(call(root, "principal:ai-recorder", UPDATE,
+                                                  inserting("n-tab"))), self.gate.UNSET)
+
+    def test_one_shape_alone(self):
+        agent = "principal:ai-recorder"
+        bad = []
+
+        def change(fn):
+            c = self.made()
+            fn(c)
+            bad.append(c)
+        change(lambda c: c.update(answering="u1"))
+        change(lambda c: c.update(container={"kind": "project", "id": OTHER}))
+        change(lambda c: c["container"].update(create={}))
+        change(lambda c: c["batch"].append(c["batch"][3]))
+        change(lambda c: c["batch"].pop())
+        change(lambda c: c["batch"].reverse())
+        change(lambda c: c["batch"].__setitem__(3, {
+            "verb": "update", "ref": {"object": "node", "id": "b1"}, "engine": "prose",
+            "payload": {"ops": [{"op": "replace"}]}}))
+        change(lambda c: c["batch"].__setitem__(0, dict(c["batch"][0], verb="delete")))
+        change(lambda c: c["batch"][0].update(container={"kind": "project", "id": NOTEBOOK}))
+        change(lambda c: c["batch"][1].update(engine="table"))
+        change(lambda c: c["batch"][1]["payload"].update(parent={"object": "file", "id": "t-x"}))
+        change(lambda c: c["batch"][1]["payload"]["source"].update(blocks={"b": {}}))
+        change(lambda c: c["batch"][1]["payload"]["source"].update(**{"as": "text"}))
+        change(lambda c: c["batch"][2]["payload"]["value"].update(birthName="other.ldoc"))
+        change(lambda c: c["batch"][2]["payload"]["value"]["content"].update(id="b1"))
+        change(lambda c: c["batch"][3]["ref"].update(id=OTHER))
+        change(lambda c: c["batch"][3]["payload"]["patch"].append(
+            {"op": "set", "path": ["tabs", "t-root", "subtabOf"], "value": "t-tab"}))
+        change(lambda c: c["batch"][3]["payload"]["patch"][0].update(
+            path=["tabs", "t-root"]))
+        change(lambda c: c["batch"][3]["payload"]["patch"][0]["value"].update(extra=1))
+        change(lambda c: c["batch"][3]["payload"]["patch"][0]["value"].update(name=""))
+        change(lambda c: c.update(batch="["))
+        change(lambda c: c.update(opId=7))
+        # R1: an alias with a trailing newline
+        change(lambda c: c["batch"][0].update(**{"$lid": "f\n"}))
+        change(lambda c: c["batch"][1].update(**{"$lid": "n\n"}))
+        for c in bad:
+            with self.subTest(c=c):
+                self.assertEqual(self.decision(call(self.root, agent, BATCH, c)), "deny")
+        for tool in (p + v for p in PREFIXES for v in ("create", "delete")):
+            self.assertEqual(self.decision(call(self.root, agent, tool, self.made())), "deny")
+
+    def test_no_other_kind_makes_a_tab_by_it(self):
+        c = self.made()
+        self.deny(call(self.root, "principal:comparer", BATCH, c), self.gate.USER_SIDE)
+        for agent in SILENT:
+            self.refused(call(self.root, "principal:" + agent, BATCH, c))
+        for agent in FOREIGN + ("other:ai-recorder", "x:interviewer"):
+            with self.subTest(agent=agent):
+                self.assertEqual(self.decision(call(self.root, agent, BATCH, c)), "deny")
+        # a bare ai-recorder the project does not define as the plugin's
+        define(self.root, b"---\nname: ai-recorder\n---\nmine\n", kind="ai-recorder")
+        self.refused(call(self.root, "ai-recorder", BATCH, c))
+        # the interviewer
+        self.refused(call(self.root, "principal:interviewer", BATCH, c))
+
+    def a_root(self, name="ai-root", order="z0"):
+        """The batch call the AI's recorder sends for the root, from the
+        rows entry the tool prints."""
+        entry = self.tool.root(self.UNSET, name, order)
+        self.assertIsNone(entry["node"])
+        return dict(entry["batch"], opId=entry["op_id"])
+
+    def test_the_speaker_writes_no_tab_in_any_state(self):
+        root_batch, tab_batch = self.a_root(), self.made()
+        for named in (self.UNSET, self.NAMED):
+            with project(named) as root:
+                define(root, kind="interviewer")
+                for agent in ("principal:interviewer", "interviewer"):
+                    for c in (root_batch, tab_batch):
+                        for tool in (p + "batch" for p in PREFIXES):
+                            with self.subTest(named=named, agent=agent, tool=tool):
+                                self.refused(call(root, agent, tool, c))
+                    self.refused(call(root, agent, UPDATE))
+                # its own document, in the same shape, is still its own
+                mine = json.loads(json.dumps(root_batch).replace(NOTEBOOK, OTHER))
+                self.silent(call(root, "principal:interviewer", BATCH, mine))
+
+    def test_the_ai_recorder_makes_the_root_at_the_top_level_with_its_heading_alone(self):
+        made = self.a_root()
+        agent = "principal:ai-recorder"
+        with project(self.UNSET) as root:
+            define(root, kind="ai-recorder")
+            for who in (agent, "ai-recorder"):
+                with self.subTest(agent=who):
+                    self.silent(call(root, who, BATCH, made))
+            # nested under any tab, the user's among them
+            nested = json.loads(json.dumps(made))
+            nested["batch"][3]["payload"]["patch"][0]["value"]["subtabOf"] = "t-user"
+            self.deny(call(root, agent, BATCH, nested), self.gate.ROOT_SHAPE)
+            # a body other than its heading, a name no question has, an order, an alias or a
+            # file other than the tool's
+            bad = []
+            for value in ("# ai-root\n\nany prose", "# Anything"):
+                c = json.loads(json.dumps(made))
+                c["batch"][1]["payload"]["source"]["from"]["content"] = value
+                bad.append(c)
+            for name in ("lease", "The user's rule", "a/b", "lease\n", "ai-root\n"):
+                bad.append(json.loads(json.dumps(made).replace("ai-root",
+                                                               json.dumps(name)[1:-1])))
+            c = json.loads(json.dumps(made))
+            c["batch"][3]["payload"]["patch"][0]["value"]["order"] = "z0\n"
+            bad.append(c)
+            c = json.loads(json.dumps(made))
+            c["batch"][0]["$lid"] = "f\n"
+            bad.append(c)
+            c = json.loads(json.dumps(made))
+            c["batch"][0]["payload"]["value"]["birthName"] = "../x"
+            c["batch"][2]["payload"]["value"]["birthName"] = "../x"
+            bad.append(c)
+            bad.append(dict(made, batch=made["batch"][:3]))
+            bad.append(dict(made, container={"kind": "project", "id": OTHER}))
+            for c in bad:
+                with self.subTest(c=c):
+                    self.deny(call(root, agent, BATCH, c), self.gate.ROOT_SHAPE)
+            # no other kind makes it
+            self.deny(call(root, "principal:comparer", BATCH, made), self.gate.USER_SIDE)
+            for other in SILENT + ("general-purpose", "fork", "x:ai-recorder"):
+                self.assertEqual(self.decision(call(root, other, BATCH, made)), "deny")
+        # once the key is set the root's shape is refused
+        self.deny(call(self.root, agent, BATCH, made), self.gate.NEW_TAB)
+        with self.assertRaises(self.tool.Refused):
+            self.tool.root(self.NAMED, "ai-root", "z0")
+        with project({"artifact": SITE + NOTEBOOK, "ai_root": [{"node": 7}]}) as root:
+            self.unclear(call(root, agent, BATCH, made))
+
+    def test_a_second_root_while_the_key_is_unset(self):
+        """The gate keeps no count: what makes the root once is the one
+        operation id every root of the notebook is sent with, which the
+        connector lands once. Another id is refused."""
+        first, second = self.a_root(), self.a_root("other-root", "a0")
+        self.assertEqual(first["opId"], second["opId"])
+        self.assertEqual(first["opId"], self.gate.tab_op_id("root", NOTEBOOK))
+        agent = "principal:ai-recorder"
+        with project(self.UNSET) as root:
+            self.silent(call(root, agent, BATCH, first))
+            self.silent(call(root, agent, BATCH, second))
+            for op in ("ai-tab-0000000000000000", None, self.gate.tab_op_id("root", OTHER),
+                       self.gate.tab_op_id("tab", NOTEBOOK, "other-root")):
+                c = dict(second)
+                if op is None:
+                    del c["opId"]
+                else:
+                    c["opId"] = op
+                with self.subTest(op=op):
+                    self.deny(call(root, agent, BATCH, c), self.gate.ROOT_SHAPE)
+
+    def test_the_key_s_entries_hold_both_sides(self):
+        self.silent(call(self.root, "principal:ai-recorder", UPDATE, inserting("n-root")))
+        self.silent(call(self.root, "principal:ai-recorder", UPDATE, inserting("n-old")))
+        for node in ("n-root", "n-old"):
+            self.deny(call(self.root, "principal:comparer", UPDATE, inserting(node)),
+                      self.gate.USER_SIDE)
+        # R1: a node id with a trailing newline is no id of either side
+        for agent in ("principal:ai-recorder", "principal:comparer"):
+            self.assertEqual(self.decision(call(self.root, agent, UPDATE,
+                                                inserting("n-root\n"))), "deny")
+        # a tab id is no node to insert on
+        self.deny(call(self.root, "principal:ai-recorder", UPDATE, inserting("t-root")),
+                  self.gate.AI_SIDE)
+        for value in ([{"node": "n"}], [{"node": "n", "tab": ""}], [{"node": "n", "tab": 7}],
+                      [{"node": "n", "tab": "t", "x": 1}]):
+            with project({"artifact": SITE + NOTEBOOK, "ai_root": value}) as root:
+                for agent in ("principal:ai-recorder", "principal:comparer"):
+                    with self.subTest(value=value, agent=agent):
+                        self.unclear(call(root, agent, UPDATE, inserting("n")))
+                self.unclear(call(root, "principal:ai-recorder", BATCH, self.made()))
+
+
 class HooksFileTest(unittest.TestCase):
     """The plugin installs the gate beside the canon agent's, which stands as
     it was."""

@@ -26,7 +26,8 @@ nothing, and sends nothing after an entry not applied. Writes in place are
 guarded block by block and need no lease (`/principal:dictate`, **Several sessions**). Whatever the tools cannot print as
 operations, a body, a section, a new tab, the tab patch, or anything that needs a lease, is
 outside a sitting: it goes by `/principal:dictate`, and the sitting leaves it as an open note of
-kind `change`.
+kind `change`. A new tab of the AI's own record is not of these: the `ai-recorder` makes it in a
+`place` job, its root among them (`ai-line.md`, **The line in the AI's graph**).
 
 The approved rows become four jobs in a chain, each waiting on the one before: `record`;
 `fetch` of the tabs the rows touched and their ancestors; `check`, its `views` and `list` that

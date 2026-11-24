@@ -243,9 +243,13 @@ is read and written through these entry points.
      with the db capability and rules that let only its owner read and write, and put its
      address in this key; and `"page": "<artifact address>"`: publish `web/ordo.html` once the
      same way, with the db and user capabilities, and put its address in this key. Without a
-     `page` a sitting runs with no page and says so. Once the AI's own record has a root tab,
-     add `"ai_root": ["<its node id>", "<the node id of each tab under it>", …]`; until then the
-     AI's recorder is refused every write.
+     `page` a sitting runs with no page and says so. The AI's own record has a root tab of its
+     own, made once by the AI's recorder from what `tools/ai_tab.py root --name <name>` prints, and
+     its tabs are listed under `"ai_root"`, each `{"node": "<its body's node id>", "tab": "<its
+     tab id>"}`, the root's first, which `tools/ai_tab.py add` writes from the batch and the
+     connector's answer to it; until the root is there
+     the AI's recorder is refused every write but the root, and after it the AI's recorder
+     makes the tabs under it.
    - `bootstrap.json` — `{"applications": []}`, the manifest `/principal:bootstrap` keeps.
 
 3. Write the root question under `canon/`. Canon is what is under that directory, and nothing

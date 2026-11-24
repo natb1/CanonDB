@@ -724,6 +724,32 @@
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3217",
       "rounds": 1
+    },
+    {
+      "question": "context",
+      "application": "the tabs of the AI's own record",
+      "files": [
+        "tools/ai_tab.py",
+        "tools/hypo/ai_tab.py",
+        "tools/test_ai_tab.py",
+        "hooks/notebook-gate.py",
+        "hooks/kinds.py",
+        "hooks/hooks.json",
+        "agents/ai-recorder.md",
+        ".claude/agents/ai-recorder.md",
+        "tools/test_notebook_gate.py",
+        "tools/test_agents.py",
+        "tools/test_cli.py",
+        "tools/test_sit_skill.py",
+        "skills/sit/parts/ai-line.md",
+        "skills/sit/parts/batch-point.md",
+        "skills/sit/parts/attenuation.md",
+        "README.md",
+        "CLAUDE.md",
+        ".principal/bootstrap.json"
+      ],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3216",
+      "rounds": 3
     }
   ]
 }

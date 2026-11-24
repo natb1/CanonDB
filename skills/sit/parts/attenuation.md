@@ -121,7 +121,7 @@ What no tool decides. Hold these by reading.
   directory removed, is seen by no tool, and the answer of record is the first kept draw of the
   directory the line holds. The speaker draws each question once, into its own `draws/`.
 - **The sides of the notebook are held by node, not by block.** The guard holds the
-  `ai-recorder` to the tabs `ai_root` lists, and refuses it every write while the key is unset,
+  `ai-recorder` to the tabs `ai_root` lists, and refuses it every write but the root while the key is unset,
   and holds the `comparer` to every other tab, the tab given by a plain id and compared in lower
   case; each only by inserts of markdown beside one block named by id, or at the tab's end, in a
   call that names nothing else. While the key is unset the guard lets the comparer insert on any
@@ -129,8 +129,17 @@ What no tool decides. Hold these by reading.
   the root that the key does not list is the user's to the guard; a block id inside a list or a
   table is read, not checked; and on a tab of the user's that still holds an answer of the AI's
   from before the root, where the comparer's insert lands is read. That the `ai-recorder`'s
-  texts are the draws word for word is its definition's check, and no gate's. No tool yet
-  prints the insert of an answer, so no draw is placed (**The line in the AI's graph**, rule 9).
+  texts are the draws word for word is its definition's check, and no gate's. The guard lets
+  the `ai-recorder` make a tab only by the four calls `tools/ai_tab.py tab` prints, under a tab
+  the key gives with its tab id, and make the root only at the top level while the key is
+  unset; each tab's body is its heading alone and its name a question's id, and the guard
+  checks both. The speaker writes no tab. The guard keeps no count: that a second root sent while the key is unset
+  lands as the first rests on the one operation id every root is sent with, and on the
+  connector landing an operation id once, which no test here can show. A tab made is the AI's
+  to the guard only once `tools/ai_tab.py add` has put it in the key; `add` ties the entry to a
+  parent the key gives, and cannot see that the ids it is given are the ones the connector
+  made. No tool yet prints the insert of an answer, so
+  no draw is placed (**The line in the AI's graph**, rule 9).
 - **The open lines are held by reading.** `tools/lines.py` checks an export of the collection,
   flags the lines whose ground moved, sweeps, orders, and refuses a close without a sentence
   quoted and a merge or a drop without a word given; it cannot tell that the words are the
