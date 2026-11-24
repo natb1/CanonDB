@@ -682,13 +682,46 @@
         "skills/bootstrap/SKILL.md",
         "tools/test_notebook_gate.py",
         "README.md",
-        "CLAUDE.md",
-        "tools/hypo/sensitive.py",
-        "tools/sensitive.py",
-        "tools/test_sensitive.py",
-        "tools/fixtures/sensitive.txt"
+        "CLAUDE.md"
       ],
       "pull_request": null,
+      "rounds": 1
+    },
+    {
+      "question": "context",
+      "application": "the rule on sensitive information, held by reading",
+      "files": [
+        "skills/sit/parts/ground-rules.md",
+        "skills/sit/SKILL.md",
+        "skills/sit/parts/round.md",
+        "skills/sit/parts/brief.md",
+        "skills/sit/parts/attenuation.md",
+        "skills/bootstrap/SKILL.md",
+        "skills/dictate/SKILL.md",
+        "tools/test_agents.py",
+        "tools/test_sit_skill.py",
+        "agents/ai-recorder.md",
+        "agents/checker.md",
+        "agents/clean-reader.md",
+        "agents/comparer.md",
+        "agents/coordinator.md",
+        "agents/fetcher.md",
+        "agents/grader.md",
+        "agents/interviewer.md",
+        "agents/recorder.md",
+        "agents/reviewer.md",
+        ".claude/agents/ai-recorder.md",
+        ".claude/agents/checker.md",
+        ".claude/agents/clean-reader.md",
+        ".claude/agents/comparer.md",
+        ".claude/agents/coordinator.md",
+        ".claude/agents/fetcher.md",
+        ".claude/agents/grader.md",
+        ".claude/agents/interviewer.md",
+        ".claude/agents/recorder.md",
+        ".claude/agents/reviewer.md"
+      ],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3217",
       "rounds": 1
     }
   ]

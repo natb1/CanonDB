@@ -181,6 +181,12 @@ What no tool decides. Hold these by reading.
   a run of masked words bound for a public place. A pronoun for the user, a definition in other
   words, what a commit stages and a text sent by a tool it does not fire on are read. It reads the
   graph the last `install` copied, so a term fixed since is unknown to it until the next.
+- **Sensitive information is held by reading.** No tool decides ground rule 9. What the
+  principal reports of the principal's own life is known by its meaning, and no list of words
+  or search for strings finds it or shows it absent: a gate or a check that passes a text says
+  nothing of it. The rule is held by the speaker's mark when the fact is heard, by briefs
+  composed from the rule and read again for the occasion, by every helper's definition, and by
+  the speaker's reading of a pull request's whole text before a merge.
 - **A copy on disk can be read.** The brief's directory holds the notebook's graph outside every
   repository, and the grader and the reviewer hold `Read`: what keeps a blind kind from opening it
   is its definition, not a gate.

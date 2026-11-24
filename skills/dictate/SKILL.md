@@ -201,7 +201,11 @@ an ERROR (`scope-closed`), not a gap read over.
 
 **6 — Commit** the tooling and skill changes on a branch of their own and open a pull request
 against `main`. There is one standing branch, `main`, and every other is a pull request's, so
-nothing waits on a branch that is not going to be merged. Nothing is committed for the
+nothing waits on a branch that is not going to be merged. What the principal reports of the
+principal's own state, health, habits, relations or circumstances is sensitive: it is recorded
+only in the notebook, and never enters a commit, the pull request's text, a comment, a test, a
+fixture or a file; the rationale cites the rule or the mechanism, and an example is invented
+and neutral. Nothing is committed for the
 notebook's content: it lives in the artifact, which is shared between users as it stands. What
 a turn may carry is decided by the configuration of the entry point that runs it — a skill, an
 agent, a gate — and never by which branch is checked out.

@@ -1,5 +1,0 @@
-# A neutral list for the tests: no real category of anyone's.
-alpha-secret
-
-re:beta-\d{3}
-gamma   delta

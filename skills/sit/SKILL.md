@@ -128,6 +128,13 @@ the plugin's kinds for work a kind carries.
 8. No sitting ends without residue, and none waits to: what an answer opens is a document of
    `lines` at once, an item of *Opened*, and at the batch point an open note. No reading awaiting
    confirmation and no predicted answer is ever written as such a note.
+9. What the principal reports of the principal's own state, health, habits, relations or
+   circumstances is sensitive, marked so when heard, and recorded only in the notebook, the page
+   and its store, and `$SCRATCH`: never in a repository, a commit, a tag, a pull request, an
+   issue, a release or a published page, nor in the brief of a helper whose work leaves for one,
+   which states the mechanism and never the occasion. A build's rationale cites the rule, its
+   examples invented; before a merge the speaker reads the pull request's whole text for the
+   principal, by meaning, and says so; a fact found published is put to the principal at once.
 
 **The round** (`round.md`, procedure 3). One next action a turn, on the page.
 
@@ -194,7 +201,7 @@ skill's text runs:
 | `arrangement.md` | **The arrangement**: the notebook, the board, `$SCRATCH` and its directories, the parties' exports, the kinds | at the opening, before `$SCRATCH` is made; before naming a path, id or fingerprint the core does not spell; before starting any helper |
 | `brief.md` | **The brief and the neighbourhood**: what the brief holds, its size, where it lives, who receives one, the check on a text leaving, the work in hand | when the opening's graph is made; when the line in hand changes or a batch point's check moves the notebook; when a text leaving is refused; when any act begins or ends; before a seal, a row or a note |
 | `serves.md` | **What the sitting serves**, and **Observations** | when a prediction fails, the action ranked first is overridden or deferred, or an action or sitting is not taken up; before a rule here is rebuilt |
-| `ground-rules.md` | **Ground rules** 1 to 8 in full | at the opening; when a ground rule's short form leaves the act unsettled |
+| `ground-rules.md` | **Ground rules** 1 to 9 in full | at the opening; when a ground rule's short form leaves the act unsettled |
 | `page.md` | **The page**: its sections and panel, the owner-only read, the writes, `ordo/current` and its fields | at the opening, before the first write to the page's store; before any write to `ordo/current` |
 | `bells.md` | **The page**, continued: `ordo/rule`, `ordo/ticks-<day>`, `ordo/agenda`, and what is read and written at each turn | at each turn, before the Rule and the marks are read; when a bell rings; when the principal reports an office item or sets an office aside; before running an item of the session's; at a sync |
 | `open-lines.md` | **The open lines**, **The tool** | at the opening and after a compaction; when an answer comes in; when a line is opened; when the notebook's revision moves; at the first sitting of the Rule's week |

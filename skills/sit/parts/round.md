@@ -152,11 +152,16 @@ bind every action.
    viewed in, for the Rule's day.
 9. **The speaker, at the full tier, writes no code, page or tooling itself.** Such work is
    briefed to a helper of the mid tier and reviewed adversarially by a helper of the full tier;
-   the judge is never the tier judged. Run the open way, the speaker briefs both directly, with
+   the judge is never the tier judged. Each brief states the mechanism wanted and never the
+   occasion, and carries nothing the principal reported of the principal's own life (ground
+   rule 9). Run the open way, the speaker briefs both directly, with
    what each must read and must not;
    run the confined way, it can start neither, and the work is named to the principal as an
    open note of kind `change`. The principal has given leave to merge pull requests unless the principal says otherwise, and asked that a needed reload of the plugin or a skill be given as an action after the merge. So, run the open way, in this order: the pull request's checks
-   pass; the full tier's adversarial review of it returns, with no blocker left open; what was
+   pass; the full tier's adversarial review of it returns, with no blocker left open; the
+   speaker reads the pull request's whole text, title, body, comments, commit messages and diff,
+   as a reader looking for the principal, and says in the action context that it did (ground
+   rule 9), and merges nothing that carries a sensitive fact; what was
    built is reported in the action context; a build that changes what the principal decides, a
    rule of a skill or what the page shows among it, is put to the principal as a review and
    waits for the answer; and then the speaker may merge, unless the principal said otherwise.

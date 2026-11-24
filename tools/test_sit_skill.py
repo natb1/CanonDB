@@ -2121,5 +2121,44 @@ class BriefLinesTest(unittest.TestCase):
             self.assertIn(words, section)
 
 
+class SensitiveRuleTest(unittest.TestCase):
+    """Ground rule 9 is held by reading: its text stands where it binds,
+    and the skill says no tool decides it."""
+
+    def part(self, name):
+        return flat(os.path.join(PARTS, name + ".md"))
+
+    def test_the_ground_rule_in_full_and_in_the_core(self):
+        rules = self.part("ground-rules")
+        for words in ("9. **What the principal reports of the principal's own life is sensitive, "
+                      "and never leaves.**",
+                      "The speaker marks it sensitive at the moment it is heard",
+                      "It is recorded only in the notebook, the page and its store, and the "
+                      "sitting's `$SCRATCH`",
+                      "a brief for a build states the mechanism wanted and never the occasion",
+                      "an example in it is invented and neutral",
+                      "it stops and hands that back to the speaker",
+                      "no search for strings stands in for it",
+                      "no history is rewritten without the principal's word"):
+            self.assertIn(words, rules)
+        with open(SKILL, encoding="utf-8") as fh:
+            core = " ".join(fh.read().split())
+        self.assertIn("9. What the principal reports of the principal's own state", core)
+        self.assertIn("**Ground rules** 1 to 9 in full", core)
+
+    def test_where_it_binds(self):
+        self.assertIn("as a reader looking for the principal, and says in the action context "
+                      "that it did (ground rule 9)", self.part("round"))
+        self.assertIn("never the occasion, and carries nothing the principal reported",
+                      self.part("round"))
+        self.assertIn("(ground rule 9). The speaker composes such a brief from the rule",
+                      self.part("brief"))
+        self.assertIn("**Sensitive information is held by reading.** No tool decides ground "
+                      "rule 9.", self.part("attenuation"))
+        for skill in ("bootstrap", "dictate"):
+            text = flat(os.path.join(ROOT, "skills", skill, "SKILL.md"))
+            self.assertIn("an example is invented and neutral", text, skill)
+
+
 if __name__ == "__main__":
     unittest.main()

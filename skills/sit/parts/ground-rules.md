@@ -85,3 +85,22 @@ Read this part at the opening, and whenever a ground rule's short form in the co
    prediction, which names who predicted, the kind of action, the grade and the direction, and
    never the sealed text, the answer or the case (**Written as the round goes**, **The record of
    predictions**).
+9. **What the principal reports of the principal's own life is sensitive, and never leaves.**
+   What the principal reports of the principal's own state, health, habits, relations or
+   circumstances is sensitive by its nature. The speaker marks it sensitive at the moment it is
+   heard, and every record of it carries the mark. It is recorded only in the notebook, the page
+   and its store, and the sitting's `$SCRATCH`; it never enters a repository's file, a commit
+   message, a tag, a pull request's title, body, review or comment, an issue, a release, a
+   published page, or any other place a stranger can read. It never enters the brief of a
+   helper whose work leaves for a repository: a brief for a build states the mechanism wanted
+   and never the occasion that prompted it, is composed from the rule or from the AI's own line,
+   and is read once more for the occasion before it is sent. A build's rationale, in a comment,
+   a test, a fixture or a pull request's text, cites the rule or the mechanism and never an
+   event of the principal's life, and an example in it is invented and neutral. A helper that
+   finds such a fact in what it was handed carries it no further: it stops and hands that back
+   to the speaker. Before a merge the speaker reads the pull request's whole text, its title,
+   body, comments, commit messages and diff, as a reader looking for the principal, and says in
+   the action context that it did; this is a reading by meaning, and no search for strings
+   stands in for it (**Attenuation**). A sensitive fact found already published is an error,
+   put to the principal at once as an action, with what its removal would take; no history is
+   rewritten without the principal's word.
