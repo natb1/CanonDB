@@ -41,6 +41,25 @@ never edited. Which side a node is on is read from the key `ai_root` of
 AI's, compared with the ref's in lower case, every other node is the
 user's. While the key is unset the AI's recorder is refused every write,
 and the comparer may write any tab, there being no tab of the AI's yet.
+
+The AI's tabs are made. The AI's recorder may also make a tab, by one
+`batch` of the notebook addressed by its container that is exactly the four
+calls `tools/ai_tab.py tab` prints (`tab_batch`): the tab's file created, its
+body created from one inline markdown text, that body set as the file's
+content, and one `set` of the new tab's placement, nested by `subtabOf`
+under a tab whose own id an entry `{"node": …, "tab": …}` of `ai_root`
+gives (`kinds.ai_parents`), the tab id compared in lower case; a batch of
+any other shape, a tab at the top level or under a tab the key does not
+give, is refused, as is every batch while the key is unset. A new tab is
+the AI's to the gate only once `tools/ai_tab.py add` has put it in the key.
+The speaker, held by this plugin's name or its bare name where the
+project's copy is the plugin's, may make the AI's root, once: a batch of
+the same shape, at the top level or under any tab, gets no opinion while
+`ai_root` is unset and is refused once it is set; every other write of the
+speaker's aimed at the notebook is refused as before. What the gate cannot
+see: a root made and never written into the key leaves the key unset, so a
+second root may be made; the speaker's root, and the text in either kind's
+new tab, is read, not checked, for what it says.
 Each is held so by this plugin's name in front of it, or by its bare name
 where the project's copy is the plugin's byte for byte; a bare name
 otherwise, and any other plugin's name, is refused as any kind without a
@@ -165,7 +184,7 @@ def _sibling(name: str, file: str):
 SHARED = ("kind_of", "named_any", "spelled", "plugin_name", "places", "defined_here",
           "consumer", "held", "resolved", "within", "within_folded", "claude_home",
           "in_jobs_tmp", "project_roots", "plugin_roots", "under", "below_scratch",
-          "ai_tabs")
+          "ai_tabs", "ai_parents")
 
 try:
     KINDS_MODULE = _sibling("principal_kinds", "kinds.py")
@@ -230,6 +249,11 @@ AI_SIDE = ("the AI's recorder writes only the tabs the key ai_root names, one ta
            "and only by inserting; an answer already there is never edited")
 USER_SIDE = ("the comparer writes only the user's side, outside the tabs the key ai_root "
              "names, one tab a call, and only by inserting")
+NEW_TAB = ("the AI's recorder makes a tab only under a tab the key ai_root names with its "
+           "tab id, by one batch of the four calls tools/ai_tab.py prints, and nothing else")
+ROOT_MADE = ("the AI's root is made once, while the key ai_root is unset, by the batch "
+             "tools/ai_tab.py root prints; it is made already, and the speaker writes nothing "
+             "more of the notebook")
 
 
 class Unclear(Exception):
@@ -554,6 +578,140 @@ def _insert_only(op) -> bool:
     return False
 
 
+class NotTab(Exception):
+    """A batch that is not one tab made in the one shape the gate admits."""
+
+
+#: what a batch making a tab may hold, and no other key
+TAB_CALL = ("container", "batch", "opId", "verbose")
+#: an alias a batch member takes, `$lid`, and the reference to it
+LID = re.compile(r"^[A-Za-z0-9_]{1,32}$")
+
+
+def _exact(part, keys) -> dict:
+    """A part of a tab's batch, an object holding exactly ``keys``."""
+    if not isinstance(part, dict) or set(part) != set(keys):
+        raise NotTab(keys)
+    return part
+
+
+def _plain_id(value) -> str:
+    """An id given plainly, nothing the connector might fold."""
+    if not isinstance(value, str) or not PLAIN_ID.match(value) or plain(value) != value:
+        raise NotTab("an id")
+    return value
+
+
+def tab_batch(tool_input, notebook: str):
+    """The tab a batch makes, where it is exactly the four calls that make
+    one tab of the notebook and place it (`tools/ai_tab.py`): the tab's file
+    created, its body created as one markdown insert, the body set as the
+    file's content, and one `set` of the new tab's placement in the
+    document's `tabs`. Returns the id the placement nests it under, or None
+    where it stands at the top level. Raises NotTab for any other batch."""
+    if not isinstance(tool_input, dict) or any(k not in TAB_CALL for k in tool_input):
+        raise NotTab("the call")
+    container = _exact(_object(tool_input.get("container"), "container"), ("kind", "id"))
+    if container["kind"] != "project" or not _aimed(container["id"], notebook):
+        raise NotTab("the container")
+    members = tool_input.get("batch")
+    if isinstance(members, str):
+        try:
+            members = json.loads(members)
+        except ValueError as exc:
+            raise NotTab("the batch") from exc
+    if not isinstance(members, list) or len(members) != 4:
+        raise NotTab("the batch")
+    made, body, content, placed = members
+    made = _exact(made, ("$lid", "verb", "object", "payload"))
+    if made["verb"] != "create" or made["object"] != "file":
+        raise NotTab("the file")
+    f = made["$lid"]
+    if not isinstance(f, str) or not LID.match(f):
+        raise NotTab("an alias")
+    value = _exact(_exact(made["payload"], ("value",))["value"], ("birthName",))
+    birth = value["birthName"]
+    if not isinstance(birth, str) or not birth.strip():
+        raise NotTab("the file's name")
+    body = _exact(body, ("$lid", "verb", "object", "engine", "payload"))
+    n = body["$lid"]
+    if (body["verb"] != "create" or body["object"] != "node" or body["engine"] != ENGINE
+            or not isinstance(n, str) or not LID.match(n) or n == f):
+        raise NotTab("the body")
+    payload = _exact(body["payload"], ("parent", "source"))
+    parent = _exact(payload["parent"], ("object", "id"))
+    if parent != {"object": "file", "id": "$lid:" + f}:
+        raise NotTab("the body's file")
+    source = _exact(payload["source"], ("as", "from"))
+    inline = _exact(source["from"], ("kind", "content"))
+    if (source["as"] != "markdown" or inline["kind"] != "inline"
+            or not isinstance(inline["content"], str)):
+        raise NotTab("the body's source")
+    content = _exact(content, ("verb", "ref", "payload"))
+    if (content["verb"] != "update"
+            or _exact(content["ref"], ("object", "id")) != {"object": "file", "id": "$lid:" + f}):
+        raise NotTab("the file's content")
+    value = _exact(content["payload"], ("kind", "value"))
+    if value["kind"] != "value" or _exact(value["value"], ("birthName", "content")) != {
+            "birthName": birth, "content": {"kind": "node", "id": "$lid:" + n}}:
+        raise NotTab("the file's content")
+    placed = _exact(placed, ("verb", "ref", "payload"))
+    ref = _exact(placed["ref"], ("object", "id"))
+    if placed["verb"] != "update" or ref["object"] != "project" or ref["id"] != container["id"]:
+        raise NotTab("the placement")
+    patch = _exact(placed["payload"], ("kind", "patch"))
+    if patch["kind"] != "patch" or not isinstance(patch["patch"], list) or len(patch["patch"]) != 1:
+        raise NotTab("the placement")
+    op = _exact(patch["patch"][0], ("op", "path", "value"))
+    if op["op"] != "set" or op["path"] != ["tabs", "$lid:" + f]:
+        raise NotTab("the placement")
+    where = op["value"]
+    if not isinstance(where, dict) or not {"name", "order"} <= set(where) <= {
+            "name", "order", "subtabOf"}:
+        raise NotTab("the placement")
+    if not all(isinstance(where[k], str) and where[k].strip() for k in ("name", "order")):
+        raise NotTab("the placement")
+    return _plain_id(where["subtabOf"]) if "subtabOf" in where else None
+
+
+def made_tab(tool_input, notebook: str, parents) -> dict:
+    """The decision for the AI's recorder's batch: no opinion where it makes
+    one tab under a tab of the AI's whose tab id the key ai_root gives;
+    refused otherwise."""
+    try:
+        parent = tab_batch(tool_input, notebook)
+    except (NotTab, Unclear):
+        return _answer("deny", NEW_TAB)
+    mine = {plain(t).strip().lower() for t in parents}
+    if parent is None or parent.lower() not in mine:
+        return _answer("deny", NEW_TAB)
+    return {}
+
+
+def made_root(tool, tool_input, cwd, env) -> dict:
+    """The decision for the speaker's one write of the notebook: no opinion
+    on a batch that makes one tab, while the key ai_root is unset; refused
+    once the key names a root, and None for any other call, which the rest
+    of the gate decides."""
+    if not isinstance(tool, str) or tool.rsplit("__", 1)[-1] != "batch":
+        return None
+    if not isinstance(cwd, str) or not cwd:
+        return None
+    try:
+        notebook = find_notebook(cwd, env)
+        if notebook is None:
+            return None
+        tab_batch(tool_input, notebook)
+    except (NotTab, Unclear, TypeError, ValueError, RecursionError):
+        return None
+    try:
+        if KINDS_MODULE.ai_tabs(cwd, env):
+            return _answer("deny", ROOT_MADE)
+    except ValueError:
+        return _answer("deny", UNCLEAR)
+    return {}
+
+
 def sided(kind: str, tool, tool_input, cwd, env) -> dict:
     """The decision for a writer held to a side: the AI's recorder to the
     tabs the notebook file's `ai_root` names, the comparer to every other
@@ -572,6 +730,13 @@ def sided(kind: str, tool, tool_input, cwd, env) -> dict:
             raise Unclear("the notebook file") from exc
         if kind == AI_WRITER and not tabs:
             return _answer("deny", UNSET)
+        if (kind == AI_WRITER and isinstance(tool, str)
+                and tool.rsplit("__", 1)[-1] == "batch"):
+            try:
+                parents = KINDS_MODULE.ai_parents(cwd, env)
+            except ValueError as exc:
+                raise Unclear("the notebook file") from exc
+            return made_tab(tool_input, notebook, parents)
         refusal = AI_SIDE if kind == AI_WRITER else USER_SIDE
         if not isinstance(tool, str) or tool.rsplit("__", 1)[-1] != "update":
             return _answer("deny", refusal)
@@ -669,6 +834,12 @@ def decide(call, env=None, plugin=None, own: str = AGENTS) -> dict:
     if kind in SIDED and ((plugin and agent == plugin + ":" + kind)
                           or (agent == kind and defined_here(kind, call.get("cwd"), env, own))):
         return sided(kind, tool, call.get("tool_input"), call.get("cwd"), env)
+    if kind == SPEAKER and ((plugin and agent == plugin + ":" + kind)
+                            or (agent == kind and defined_here(kind, call.get("cwd"), env,
+                                                               own))):
+        root = made_root(tool, call.get("tool_input"), call.get("cwd"), env)
+        if root is not None:
+            return root
     if kind == WRITER:
         # a bare recorder this project does not define as ours: a helper
         kind = ""

@@ -88,7 +88,7 @@ What no tool decides. Hold these by reading.
   it. This is untested. Then the speaker puts it to the principal as an action on the page
   (rule 10), and the principal either allows the tool by a permission rule or has the rows
   written by `/principal:dictate`. The speaker never writes the notebook. Never work around a
-  refusal.
+  refusal. (The AI's own root, made once, is the one exception, **The line in the AI's graph**.)
 - **The page shows what its documents hold, and was read as code.** Whether a rule of `owner`
   for reading is accepted at publishing is untested, and no viewer has yet shown the page drawn;
   whether a read comes back to its owner alone is read at each sitting before any private data
@@ -129,8 +129,13 @@ What no tool decides. Hold these by reading.
   the root that the key does not list is the user's to the guard; a block id inside a list or a
   table is read, not checked; and on a tab of the user's that still holds an answer of the AI's
   from before the root, where the comparer's insert lands is read. That the `ai-recorder`'s
-  texts are the draws word for word is its definition's check, and no gate's. No tool yet
-  prints the insert of an answer, so no draw is placed (**The line in the AI's graph**, rule 9).
+  texts are the draws word for word is its definition's check, and no gate's. The guard lets
+  the `ai-recorder` make a tab only by the four calls `tools/ai_tab.py tab` prints, under a tab
+  the key gives with its tab id, and the speaker make the root only while the key is unset; a
+  root made and never put in the key leaves it unset, so a second could be made, and what a new
+  tab's body says is read, not checked. A tab made is the AI's to the guard only once
+  `tools/ai_tab.py add` has put it in the key. No tool yet prints the insert of an answer, so
+  no draw is placed (**The line in the AI's graph**, rule 9).
 - **The open lines are held by reading.** `tools/lines.py` checks an export of the collection,
   flags the lines whose ground moved, sweeps, orders, and refuses a close without a sentence
   quoted and a merge or a drop without a word given; it cannot tell that the words are the

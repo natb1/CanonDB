@@ -19,7 +19,9 @@ Read this part at the opening, and whenever a ground rule's short form in the co
    (**Written as the round goes**). What refuses this session a write to the
    notebook is the guard, the plugin's `hooks/notebook-gate.py`, which refuses every kind but the
    recorder, the interviewer included; the tool list does not. Run the open way, nothing refuses
-   it, and this text alone holds it (**Before anything**).
+   it, and this text alone holds it (**Before anything**). The one exception is the AI's own
+   root, which the speaker makes once, while the key `ai_root` is unset, by the batch
+   `tools/ai_tab.py root` prints (**The line in the AI's graph**).
 3. **Everything that must outlive the sitting is on the notebook or the board.** The sitting's
    own record is the line doc of `/principal:dictate` (**The line doc**), with one section more,
    *Opened*, its items `- O1. …`. It is made when the sitting opens as a document of its own (a

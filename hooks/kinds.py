@@ -37,8 +37,11 @@ not, that refuses a little more and admits nothing more.
 
 The AI's own record. `ai_tabs` reads the key `ai_root` of the nearest
 `.principal/notebook.json`: the node id of the AI's root tab, or a list of
-node ids, the root's first and each tab under it after. The notebook gate
-holds the AI's recorder to those tabs and the comparer off them; while the
+its tabs, the root's first and each tab under it after, each the node id of
+the tab's body or an object `{"node": …, "tab": …}` that gives the tab's own
+id beside it (`tools/ai_tab.py` writes the second). The notebook gate holds
+the AI's recorder to those tabs and the comparer off them, and lets the
+first make a tab only under one whose tab id `ai_parents` gives; while the
 key is unset the first is refused every write. A tab under the root that
 the key does not list is, to the gates, the user's.
 
@@ -266,17 +269,19 @@ def held(path, cwd, env) -> str:
 
 
 #: the key of `.principal/notebook.json` that names the AI's own record: the
-#: node id of its root tab, or a list of node ids, the root's first and then
-#: each tab under it; unset, the AI's own record has no tab yet
+#: node id of its root tab, or a list of its tabs, the root's first and then
+#: each tab under it, each the node id of the tab's body or an object
+#: ``{"node": <that id>, "tab": <the tab's own id>}``; unset, the AI's own
+#: record has no tab yet
 AI_ROOT = "ai_root"
 
 
-def ai_tabs(cwd, env) -> frozenset:
-    """The node ids of the AI's own record, as the nearest
-    `.principal/notebook.json` names them under ``AI_ROOT``; empty where no
+def _ai_entries(cwd, env) -> list:
+    """The AI's tabs as the nearest `.principal/notebook.json` names them
+    under ``AI_ROOT``, each a pair (node id, tab id or None); empty where no
     such file is found or the key is unset. Raises ValueError where the file
-    cannot be read or the key is neither a string nor a list of strings, so
-    that a gate fails closed."""
+    cannot be read or the key is not one of its shapes, so that a gate fails
+    closed."""
     for root in places(cwd, env):
         path = os.path.join(root, NOTEBOOK)
         try:
@@ -290,14 +295,38 @@ def ai_tabs(cwd, env) -> frozenset:
             raise ValueError("the notebook file")
         value = named.get(AI_ROOT)
         if value is None or value == "" or value == []:
-            return frozenset()
+            return []
         if isinstance(value, str):
             value = [value]
-        if not isinstance(value, list) or not all(isinstance(v, str) and v.strip()
-                                                  for v in value):
+        if not isinstance(value, list):
             raise ValueError("the key %s" % AI_ROOT)
-        return frozenset(v.strip() for v in value)
-    return frozenset()
+        out = []
+        for entry in value:
+            if isinstance(entry, str) and entry.strip():
+                out.append((entry.strip(), None))
+            elif (isinstance(entry, dict) and set(entry) == {"node", "tab"}
+                  and all(isinstance(entry[k], str) and entry[k].strip()
+                          for k in ("node", "tab"))):
+                out.append((entry["node"].strip(), entry["tab"].strip()))
+            else:
+                raise ValueError("the key %s" % AI_ROOT)
+        return out
+    return []
+
+
+def ai_tabs(cwd, env) -> frozenset:
+    """The node ids of the AI's own record, as the nearest
+    `.principal/notebook.json` names them under ``AI_ROOT``; empty where no
+    such file is found or the key is unset. Raises ValueError where the file
+    cannot be read or the key is not one of its shapes."""
+    return frozenset(node for node, _ in _ai_entries(cwd, env))
+
+
+def ai_parents(cwd, env) -> frozenset:
+    """The tab ids of the AI's own record, those entries of ``AI_ROOT`` that
+    give one: the tabs a new tab of the AI's may be made under. Raises
+    ValueError as ``ai_tabs`` does."""
+    return frozenset(tab for _, tab in _ai_entries(cwd, env) if tab is not None)
 
 
 def below_scratch(where: str, env) -> list | None:

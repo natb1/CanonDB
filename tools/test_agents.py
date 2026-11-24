@@ -55,8 +55,8 @@ KINDS = {
     "comparer": {"tools": docs("read", "guide", "update") + ["Read"],
                  "disallowedTools": docs("batch", "create", "delete") + ["Agent"],
                  "model": "fable"},
-    "ai-recorder": {"tools": docs("read", "guide", "update") + ["Read"],
-                    "disallowedTools": docs("batch", "create", "delete") + ["Agent"],
+    "ai-recorder": {"tools": docs("read", "guide", "update", "batch") + ["Read"],
+                    "disallowedTools": docs("create", "delete") + ["Agent"],
                     "model": "sonnet"},
 }
 
@@ -184,7 +184,12 @@ class FrontmatterTest(unittest.TestCase):
             got = dict(fields)
             granted = set(listed(got["tools"])) & set(WRITES)
             denied = set(listed(got["disallowedTools"]))
-            if kind == "recorder" or kind in SIDED:
+            if kind == "ai-recorder":
+                # the batch that makes a tab under the AI's root, which the
+                # guard admits in one shape alone (test_notebook_gate)
+                self.assertEqual(granted, set(docs("update", "batch")))
+                self.assertLessEqual(set(docs("create", "delete")), denied)
+            elif kind == "recorder" or kind in SIDED:
                 self.assertEqual(granted, set(docs("update")))
             elif kind == "interviewer":
                 self.assertEqual(granted, set(docs("update", "create", "batch")))
