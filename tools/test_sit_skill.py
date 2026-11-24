@@ -1266,9 +1266,16 @@ class PageTest(unittest.TestCase):
                      "postMessage", "import(", "window.open", "location", "localStorage",
                      "sessionStorage", "indexedDB", "document.cookie", "eval", "Function("):
             self.assertNotIn(word, self.script)
-        # no control, made in the source or at run time, in any quoting or case
+        # no control, made in the source or at run time, in any quoting or case, but the
+        # one button at the foot that goes back to the top (test_page_top), wired once by
+        # its property and focusing the main landmark, which alone takes a tabindex
+        page = self.page
+        for allowed in ('<button type="button" class="top" id="top">', '<main id="main" tabindex="-1">',
+                        'if (top) top.onclick = toTop;'):
+            self.assertEqual(page.count(allowed), 1, allowed)
+            page = page.replace(allowed, "")
         controls = r"(?:button|input|textarea|select|form|option|dialog|a)"
-        self.assertIsNone(re.search(r"<\s*%s\b" % controls, self.page, re.I))
+        self.assertIsNone(re.search(r"<\s*%s\b" % controls, page, re.I))
         # one native details element, the waiting list's card, closed in the source and
         # never opened or closed by the script
         self.assertEqual(re.findall(r"<\s*details\b[^>]*>", self.page, re.I),
@@ -1279,7 +1286,7 @@ class PageTest(unittest.TestCase):
         self.assertIsNone(re.search(r"[\"'`]\s*%s\s*[\"'`]" % controls, self.script, re.I))
         for word in ("onclick", "addEventListener", "contenteditable", "contentEditable",
                      "innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "tabindex"):
-            self.assertNotIn(word.lower(), self.page.lower())
+            self.assertNotIn(word.lower(), page.lower())
         self.assertNotIn("href", self.script)
         made = re.findall(r"\bel\(\s*([\"'`])(\w+)\1", self.script)
         self.assertTrue(made)
@@ -1396,7 +1403,9 @@ class PageTest(unittest.TestCase):
             # what the page computes
             "b", "m", "ds", "rd", "md", "mins", "wd", "date", "key", "v", "state", "rung",
             "unres", "applied", "all", "left", "aside", "session", "now", "at", "ev", "allDay",
-            "y", "mo", "d", "hold", "carry"}
+            "y", "mo", "d", "hold", "carry",
+            # the button back to the top (test_page_top)
+            "onclick", "focus", "scrollTo", "matchMedia", "matches"}
         given = {"context", "next", "queue", "background", "updated",
                  "heading", "paragraphs", "for", "against", "prediction", "notes", "who", "text",
                  "kind", "line", "case", "prompt", "how", "deferred", "reason", "title",
@@ -1520,8 +1529,9 @@ class PageTest(unittest.TestCase):
                       self.contract)
 
     def test_round_two_sentences_of_the_contract(self):
-        for words in ("The page is display only: it has no button and no input, its source holds "
-                      "no data, and it writes nothing.",
+        for words in ("The page is display only: it has no input and one button, at its foot, that "
+                      "goes back to the top and does nothing else; its source holds no data, and "
+                      "it writes nothing.",
                       "and the speaker writes all four, the day's marks included",
                       "Each write sets `updated`, and the clock is read before it is stamped",
                       "the speaker reads `ordo/current` with `ArtifactData` at `as_level` "
