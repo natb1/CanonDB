@@ -205,7 +205,11 @@ nothing waits on a branch that is not going to be merged. What the principal rep
 principal's own state, health, habits, relations or circumstances is sensitive: it is recorded
 only in the notebook, and never enters a commit, the pull request's text, a comment, a test, a
 fixture or a file; the rationale cites the rule or the mechanism, and an example is invented
-and neutral. Nothing is committed for the
+and neutral. Before a merge the run reads the pull request's whole text, title, body, comments,
+reviews and review comments, commit messages, branch, tag and file names, and diff, as a reader
+looking for the principal, and says that it did and what it read; no search for strings stands
+in for that reading. A fact found already published is reported to the principal at once, with
+what its removal would take, and no history is rewritten without the principal's word. Nothing is committed for the
 notebook's content: it lives in the artifact, which is shared between users as it stands. What
 a turn may carry is decided by the configuration of the entry point that runs it — a skill, an
 agent, a gate — and never by which branch is checked out.

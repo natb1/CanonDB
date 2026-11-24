@@ -188,10 +188,12 @@ can decide is tooled, as `/principal:dictate` step 3 says. Run the plugin's test
 built, by tab and name, the manifest's diff, and what step 3 listed and left. Nothing the
 principal reported of the principal's own state, health, habits, relations or circumstances
 enters a commit, the pull request's text, a comment, a test, a fixture or a file: the rationale
-cites the rule or the mechanism, and an example is invented and neutral. Before a merge the
-run reads the pull request's whole text, title, body, comments, commit messages and diff, as a
-reader looking for the principal, and says that it did; no search for strings stands in for
-that reading. A fact found already published is reported to the principal at once, with what
+cites the rule or the mechanism, and an example is invented and neutral. Before a merge, its own or
+the author's, the run reads the pull request's whole text, title, body, comments, reviews and
+review comments, commit messages, branch, tag and file names, and diff, as a reader looking for
+the principal, and says that it did and what it read; the full tier's adversarial reviewer is
+briefed with this rule, never the occasion, and reads for it too; no search for strings stands
+in for that reading. A fact found already published is reported to the principal at once, with what
 its removal would take, and no history is rewritten without the principal's word. The author
 merges, or this run does as rule 5 allows; that merge is what makes the branch `main`, and
 nothing here counts as canon for it.
