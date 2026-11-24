@@ -175,7 +175,7 @@ class CheckTest(Base):
     def test_no_chain_of_blocks_returns_to_where_it_began(self):
         found = every(lines.check({"a": rec("a", blocks=["b"]), "b": rec("b", blocks=["c"]),
                              "c": rec("c", blocks=["a"]), "s": rec("s", blocks=["s"])}))
-        self.assertIn("a cycle of blocks: a -> b -> c -> a", found)
+        self.assertIn("a cycle of blocks and waits_on: a -> b -> c -> a", found)
         self.assertIn("s: blocks itself", found)
 
     def test_one_line_put_and_no_rank_held_twice(self):
@@ -192,8 +192,7 @@ class CheckTest(Base):
         given = self.given(records)
         self.assertEqual(given.found.faults, [])
         self.assertEqual(len(given.found.mendable), 2)
-        writes, _ = lines.order(given, {}, T)
-        self.assertTrue(writes)
+        self.assertTrue(lines.order(given, {}, T).writes)
         self.assertEqual(ids(lines.orphans(given, T)[1]), ["g"])
         self.assertEqual(len(lines.queue(given)), 5)
         self.assertIn("do not check", self.refused(lines.close, given, "a", "Yes.", "x", T))
@@ -448,62 +447,186 @@ class CloseTest(Base):
 class OrderTest(Base):
     SHARES = {"mornings": 0.5, "mornings/b1": 0.25, "evenings": 0.1}
 
-    def test_the_weight_is_share_times_pressure_times_what_it_holds_up(self):
-        records = standard()
-        records[1]["pressure"] = 1
-        given = self.given(records)
+    def test_the_weight_is_share_times_unblocks_over_cost(self):
+        given = self.given()
         r = given.records
-        # a: mornings/b1 0.25, holding up its child c
-        self.assertAlmostEqual(lines.weight(given, r["a"], self.SHARES), 0.25 * 2)
-        # b: mornings/b1 and mornings (b2 has no share of its own), no more than
-        # the tab's 0.5, pressure 1
-        self.assertAlmostEqual(lines.weight(given, r["b"], self.SHARES), 0.5 * 2)
+        # a: mornings/b1 0.25, its child c waiting on it, a question
+        t = lines.terms(given, r["a"], self.SHARES)
+        self.assertEqual((t.share, t.unblocks, t.cost, t.provisional), (0.25, 2, 1, None))
+        self.assertAlmostEqual(t.weight, 0.5)
+        # b: mornings/b1 and mornings (b2 has no share of its own), summed, and
+        # no more than the tab's 0.5
+        self.assertAlmostEqual(lines.weight(given, r["b"], self.SHARES), 0.5)
         self.assertAlmostEqual(lines.weight(given, r["c"], self.SHARES), 0.1)
 
-    def test_the_same_key_is_counted_once(self):
+    def test_several_anchors_are_summed_each_key_once(self):
+        r = rec("x", anchors=[anchor("mornings", "b1"), anchor("evenings"),
+                              anchor("evenings", "b9")])
+        self.assertAlmostEqual(lines.share_of(r, self.SHARES), 0.35)
         r = rec("x", anchors=[anchor("mornings", "b7"), anchor("mornings", "b8")])
         self.assertAlmostEqual(lines.share_of(r, self.SHARES), 0.5)
 
-    def test_put_first_then_heaviest_then_stored_rank_then_oldest_then_id(self):
+    def test_a_tab_counts_no_more_than_its_own_share(self):
+        r = rec("x", anchors=[anchor("mornings", "b1"), anchor("mornings")])
+        self.assertAlmostEqual(lines.share_of(r, {"mornings": 0.5, "mornings/b1": 0.4}), 0.5)
+
+    def test_pressure_is_kept_and_weighs_nothing(self):
+        records = standard()
+        records[1]["pressure"] = 4
+        given = self.given(records)
+        self.assertEqual(given.problems, [])
+        self.assertAlmostEqual(lines.weight(given, given.records["b"], self.SHARES), 0.5)
+
+    def test_unblocks_counts_each_live_line_waiting_directly_once(self):
+        records = [rec("p", anchors=[anchor("evenings")], children=["k"], blocks=["k", "q"]),
+                   rec("k", anchors=[anchor("evenings")], parent="p", children=["g"],
+                       waits_on=["p"]),
+                   rec("g", anchors=[anchor("evenings")], parent="k"),
+                   rec("q", anchors=[anchor("evenings")]),
+                   rec("w", anchors=[anchor("evenings")], waits_on=["p"]),
+                   rec("z", state="closed", answered_by="answers/1.md", waits_on=["p"])]
+        given = self.given(records)
+        self.assertEqual(given.problems, [])
+        # k (child, blocked and waiting), q (blocked), w (waiting); g is k's,
+        # not p's, and z is closed
+        self.assertEqual(lines.blocked(given, given.records["p"]), ["k", "q", "w"])
+        self.assertEqual(lines.terms(given, given.records["p"], self.SHARES).unblocks, 4)
+        self.assertEqual(lines.terms(given, given.records["q"], self.SHARES).unblocks, 1)
+
+    def test_the_cost_by_kind_and_the_stated_scale(self):
+        cases = [(rec("q"), 1), (rec("r", kind="review"), 1), (rec("w", kind="work"), 3),
+                 (rec("w9", kind="work", cost=9), 9), (rec("w1", kind="work", cost=1), 1),
+                 (rec("q3", cost=3), 3), (rec("s", kind="work", owed_by="session"), 1),
+                 (rec("u", kind="work", owed_by="user"), 3)]
+        for r, want in cases:
+            self.assertEqual(lines.cost_of(r), want, r["id"])
+        given = self.given([rec("cheap", kind="work", cost=1, opened="2030-01-03T00:00:00Z"),
+                            rec("dear", kind="work", cost=9, opened="2030-01-01T00:00:00Z"),
+                            rec("plain", kind="work", opened="2030-01-02T00:00:00Z")])
+        self.assertEqual([l for l, _ in lines.ordered(given, {"t": 1.0})],
+                         ["cheap", "plain", "dear"])
+
+    def test_the_cost_and_the_owner_are_checked(self):
+        found = every(lines.check({
+            "a": rec("a", cost=2), "b": rec("b", cost=True), "c": rec("c", owed_by="team"),
+            "d": rec("d", owed_by="session"),
+            "e": rec("e", kind="work", owed_by="session", cost=3),
+            "f": rec("f", kind="work", owed_by="session", state="put"),
+            "g": rec("g", project=""), "h": rec("h", waits_on=["nowhere"]),
+            "i": rec("i", waits_on=["i"])}))
+        for words in ("a: cost is not one of 1, 3, 9", "b: cost is not one of 1, 3, 9",
+                      "c: owed_by is not one of user, session",
+                      "d: owed_by names the session on a line that is not work",
+                      "e: cost is set on the session's work",
+                      "f: state is put on the session's work",
+                      "g: project is not a project's name",
+                      "h: waits on nowhere, which is no line", "i: waits on itself"):
+            self.assertTrue(any(p.startswith(words) for p in found), (words, found))
+
+    def test_a_cycle_through_waits_on_is_a_fault(self):
+        found = every(lines.check({"a": rec("a", blocks=["b"]), "b": rec("b", waits_on=["c"]),
+                                   "c": rec("c", waits_on=["a"])}))
+        # a holds up b; c holds up b; a holds up c: no cycle yet
+        self.assertFalse(any("cycle" in p for p in found), found)
+        found = every(lines.check({"a": rec("a", blocks=["b"]), "b": rec("b"),
+                                   "c": rec("c", waits_on=["b"]), "d": rec("d", blocks=["a"],
+                                                                           waits_on=["c"])}))
+        self.assertIn("a cycle of blocks and waits_on: a -> b -> c -> d -> a", found)
+
+    def test_a_line_with_no_anchor_takes_half_its_project_s_root_provisionally(self):
+        given = self.given([rec("x", project="north"), rec("y", project="south"),
+                            rec("z"), rec("v", project="nowhere")])
+        r = given.records
+        roots = {"north": 1.0}
+        shares = {"south": 0.6, "evenings": 0.1}
+        t = lines.terms(given, r["x"], shares, roots)
+        self.assertEqual((t.share, t.provisional), (0.5, "no anchor"))
+        # a project the shares key by its root's question id
+        t = lines.terms(given, r["y"], shares, roots)
+        self.assertAlmostEqual(t.share, 0.3)
+        self.assertEqual(t.provisional, "no anchor")
+        for lid in ("z", "v"):
+            t = lines.terms(given, r[lid], shares, roots)
+            self.assertEqual(t.share, 0.5)
+            self.assertEqual(t.provisional,
+                             "no anchor; no project the shares know, the whole root")
+
+    def test_anchors_the_shares_do_not_key_count_as_none(self):
+        given = self.given([rec("x", anchors=[anchor("elsewhere", "b1")], project="north")])
+        t = lines.terms(given, given.records["x"], {"evenings": 0.1}, {"north": 0.8})
+        self.assertAlmostEqual(t.share, 0.4)
+        self.assertEqual(t.provisional, "no anchor the shares key")
+
+    def test_with_no_shares_every_line_is_provisional_and_weighs_a_share_of_one(self):
+        given = self.given()
+        for lid in ("a", "b", "c", "f"):
+            t = lines.terms(given, given.records[lid], {})
+            self.assertEqual((t.share, t.provisional), (1.0, "no shares given"))
+        # d put; a holds up c; then b, c by age; f has no opening time
+        self.assertEqual([l for l, _ in lines.ordered(given, {})], ["d", "a", "b", "c", "f"])
+
+    def test_put_first_then_heaviest_then_oldest_then_id(self):
         records = standard() + [rec("g", anchors=[anchor("evenings")], opened=None),
                                 rec("h", anchors=[anchor("evenings")],
-                                    opened="2029-01-01T00:00:00Z")]
-        writes, queue = lines.order(self.given(records), self.SHARES, T)
+                                    opened="2029-01-01T00:00:00Z"),
+                                rec("i", anchors=[anchor("evenings")], opened=None, rank=1)]
+        records[1]["rank"] = 9  # a stored rank breaks no tie
         given = self.given(records)
+        done = lines.order(given, self.SHARES, T)
         order = [l for l, _ in lines.ordered(given, self.SHARES)]
-        # a and b weigh 0.5 each and keep their stored order; c, f, g, h 0.1
-        self.assertEqual(order, ["d", "a", "b", "c", "f", "h", "g"])
-        self.assertEqual(queue, [{"kind": "question", "title": "Line %s" % l}
-                                 for l in order[1:]])
+        # a and b weigh 0.5, a the older; c, f, g, h, i 0.1: h, c by age, then
+        # those with no opening time by id
+        self.assertEqual(order, ["d", "a", "b", "h", "c", "f", "g", "i"])
+        self.assertEqual(done.queue, [{"kind": "question", "title": "Line %s" % l}
+                                      for l in order[1:]])
+        self.assertEqual([r["id"] for r in done.asks], order)
+        self.assertEqual([r["rank"] for r in done.asks], list(range(1, 9)))
+
+    def test_the_session_s_work_is_ordered_apart_and_never_queued(self):
+        records = standard() + [
+            rec("s1", kind="work", owed_by="session", anchors=[anchor("mornings")],
+                blocks=["a", "b"]),
+            rec("s2", kind="work", owed_by="session", anchors=[anchor("evenings")]),
+            rec("u", kind="work", owed_by="user", anchors=[anchor("evenings")])]
+        given = self.given(records)
+        done = lines.order(given, self.SHARES, T)
+        # s1 weighs 1.5, more than any ask, and still stands after them all; u,
+        # the user's work, costs 3
+        self.assertEqual([r["id"] for r in done.asks], ["d", "a", "b", "c", "f", "u"])
+        self.assertEqual([r["id"] for r in done.session], ["s1", "s2"])
+        self.assertEqual([(r["rank"], r["weight"], r["cost"]) for r in done.session],
+                         [(7, 1.5, 1), (8, 0.1, 1)])
+        self.assertNotIn("Line s1", [q["title"] for q in done.queue])
+        self.assertEqual(done.queue[-2:], [{"kind": "question", "title": "Line f"},
+                                           {"kind": "work", "title": "Line u"}])
+        for w in done.writes:
+            given.records[w["doc_id"]].update(w["data"])
+        self.assertEqual([q["title"] for q in lines.queue(given)],
+                         [q["title"] for q in done.queue])
+        shown, _ = lines.chunk(given, self.SHARES, 9, T)
+        self.assertNotIn("s1", [s["id"] for s in shown])
+        self.assertNotIn("s2", [s["id"] for s in shown])
+
+    def test_each_row_carries_the_weight_its_terms_and_the_mark(self):
+        given = self.given(standard() + [rec("g", kind="work", project="north")])
+        done = lines.order(given, self.SHARES, T, {"north": 1.0})
+        rows = {r["id"]: r for r in done.asks}
+        self.assertEqual(rows["g"], {
+            "rank": 4, "id": "g", "kind": "work", "title": "Line g", "state": "open",
+            "weight": round(0.5 / 3, 6), "share": 0.5, "unblocks": 1, "cost": 3,
+            "provisional": True, "provisional_why": "no anchor",
+            "opened_at": "2030-01-01T00:00:00Z"})
+        self.assertFalse(rows["a"]["provisional"])
+        self.assertIsNone(rows["a"]["provisional_why"])
 
     def test_only_a_changed_rank_is_written(self):
-        writes, _ = lines.order(self.given(), self.SHARES, T)
+        writes = lines.order(self.given(), self.SHARES, T).writes
         # d 1, a 2, b 3, c 4, f 5 as stored; e, closed, gives its rank up
         self.assertEqual({w["doc_id"]: w["data"]["rank"] for w in writes}, {"e": None})
-        writes, _ = lines.order(self.given(), {"mornings/b2": 1.0, "evenings": 0.1}, T)
+        writes = lines.order(self.given(), {"mornings/b2": 2.0, "mornings/b1": 0.25,
+                                            "evenings": 0.1}, T).writes
         self.assertEqual({w["doc_id"]: w["data"]["rank"] for w in writes},
                          {"b": 2, "a": 3, "e": None})
-
-    def test_with_no_shares_the_store_s_order_is_kept(self):
-        records = [rec("p%d" % i, rank=r, opened="2030-01-0%dT00:00:00Z" % (9 - i))
-                   for i, r in enumerate((3, 1, 7, 2, 9))]
-        writes, queue = lines.order(self.given(records), {}, T)
-        self.assertEqual([q["title"] for q in queue],
-                         ["Line p1", "Line p3", "Line p0", "Line p2", "Line p4"])
-        self.assertEqual({w["doc_id"]: w["data"]["rank"] for w in writes},
-                         {"p2": 4, "p4": 5})
-
-    def test_a_line_no_share_keys_takes_the_least_share_so_pressure_and_holds_tell(self):
-        records = [rec("b", rank=1, opened="2030-01-01T00:00:00Z"),
-                   rec("c", rank=2, opened="2030-01-01T00:00:00Z"),
-                   rec("a", rank=3, opened="2030-01-05T00:00:00Z", pressure=9,
-                       blocks=["b", "c"])]
-        order = [l for l, _ in lines.ordered(self.given(records), {})]
-        self.assertEqual(order, ["a", "b", "c"])
-        records.append(rec("k", rank=4, anchors=[anchor("mornings")]))
-        given = self.given(records)
-        self.assertEqual(lines.floor(given, {"mornings": 0.2}), 0.2)
-        self.assertAlmostEqual(lines.weight(given, given.records["b"], {"mornings": 0.2}), 0.2)
 
     def test_a_rank_held_twice_is_mended_and_the_order_converges_over_split_batches(self):
         records = [rec("l%02d" % i, rank=i + 1, anchors=[anchor("t%d" % (i % 3))],
@@ -513,7 +636,7 @@ class OrderTest(Base):
         store = {r["id"]: dict(r) for r in records}
 
         def run_order(limit=None):
-            writes, _ = lines.order(self.given(list(store.values())), shares, T)
+            writes = lines.order(self.given(list(store.values())), shares, T).writes
             for w in writes[:limit]:
                 store[w["doc_id"]].update(w["data"])
             return writes
@@ -534,10 +657,6 @@ class OrderTest(Base):
         late = rec("y", opened="2030-01-01T23:00:00-02:00")  # 01:00 on the 2nd, UTC
         self.assertLess(lines._age(early), lines._age(late))
 
-    def test_a_tab_counts_no_more_than_its_own_share(self):
-        r = rec("x", anchors=[anchor("mornings", "b1"), anchor("mornings")])
-        self.assertAlmostEqual(lines.share_of(r, {"mornings": 0.5, "mornings/b1": 0.4}), 0.5)
-
     def test_the_shares_listing_is_read_as_shares_py_prints_it(self):
         listing = "mornings   0.5000\nevenings   0.1000  pressure 2\n\n"
         self.assertEqual(lines.read_shares(listing), {"mornings": 0.5, "evenings": 0.1})
@@ -546,17 +665,30 @@ class OrderTest(Base):
         self.assertRaises(lines.Refused, lines.read_shares, '{"t": "x"}')
         self.assertRaises(lines.Refused, lines.read_shares, "[1, 2]")
 
-    def test_the_cli_takes_shares_or_a_graph_and_prints_the_queue(self):
-        self.given()
+    def test_the_cli_takes_shares_or_a_graph_and_prints_the_order_and_the_queue(self):
+        self.given(standard() + [rec("s", kind="work", owed_by="session"),
+                                 rec("n", project="ti-esti")])
         shares = self.d.file("shares.txt", "mornings  0.5000\nevenings  0.1000\n")
-        done = run("lines.py", "order", self.d.root, "--shares", shares, "--at", T,
-                   "--versions", self.d.versions)
+        out_file = os.path.join(self.d.root, "queue.json")
+        argv = ["lines.py", "order", self.d.root, "--shares", shares, "--at", T,
+                "--versions", self.d.versions, "--queue-out", out_file]
+        done = run(*argv)
         self.assertEqual(done.returncode, 0, done.stderr)
         out = json.loads(done.stdout)
-        self.assertEqual(len(out["queue"]), 4)
+        self.assertEqual(set(out), {"order", "session_work", "queue", "writes"})
+        self.assertEqual(len(out["queue"]), 5)
+        self.assertEqual([r["id"] for r in out["session_work"]], ["s"])
+        for r in out["order"]:
+            self.assertTrue({"weight", "share", "unblocks", "cost", "provisional"} <= set(r))
+        with open(out_file) as fh:
+            self.assertEqual(json.load(fh), out["queue"])
+        self.assertEqual(run(*argv).stdout, done.stdout)  # deterministic
         done = run("lines.py", "order", self.d.root, "--graph", fixture("valid"), "--at", T,
                    "--versions", self.d.versions)
         self.assertEqual(done.returncode, 0, done.stderr)
+        rows = {r["id"]: r for r in json.loads(done.stdout)["order"]}
+        # n names the graph's one root by its question id: half of its one
+        self.assertEqual((rows["n"]["share"], rows["n"]["provisional_why"]), (0.5, "no anchor"))
 
     def test_the_queue_as_the_ranks_stand(self):
         self.assertEqual([q["title"] for q in lines.queue(self.given())],
@@ -565,6 +697,150 @@ class OrderTest(Base):
         records[5]["rank"] = 2  # f now shares a's rank: read as it stands
         self.assertEqual([q["title"] for q in lines.queue(self.given(records))],
                          ["Line a", "Line f", "Line b", "Line c"])
+
+
+class OverrideTest(Base):
+    SHARES = {"mornings": 0.5, "mornings/b1": 0.25, "evenings": 0.1}
+
+    def test_an_override_records_the_line_taken_ahead_of_the_order_s_first(self):
+        given = self.given()
+        entry = lines.override(given, self.SHARES, "c", "  The evening  is near. ", T)
+        self.assertEqual(entry, {
+            "at": T, "head": "d", "ground": "The evening is near.",
+            "taken": {"id": "c", "place": 4, "weight": 0.1, "share": 0.1, "unblocks": 1,
+                      "cost": 1, "provisional": False},
+            "over": {"id": "d", "place": 1, "weight": 0.1, "share": 0.1, "unblocks": 1,
+                     "cost": 1, "provisional": False}})
+        entry = lines.override(given, self.SHARES, "c", "Sooner.", T, over="b")
+        self.assertEqual((entry["over"]["id"], entry["head"]), ("b", "d"))
+
+    def test_the_refusals(self):
+        given = self.given(standard() + [rec("s", kind="work", owed_by="session")])
+        self.assertIn("give --ground", self.refused(lines.override, given, self.SHARES,
+                                                    "c", " ", T))
+        self.assertIn("a few words", self.refused(lines.override, given, self.SHARES, "c",
+                                                  " ".join(["word"] * 26), T))
+        self.assertIn("first by the order already",
+                      self.refused(lines.override, given, self.SHARES, "d", "G.", T))
+        self.assertIn("stands after c", self.refused(lines.override, given, self.SHARES,
+                                                     "c", "G.", T, over="f"))
+        self.assertIn("e is closed", self.refused(lines.override, given, self.SHARES,
+                                                  "e", "G.", T))
+        self.assertIn("never holds the user's card",
+                      self.refused(lines.override, given, self.SHARES, "s", "G.", T))
+        self.assertIn("not an ask", self.refused(lines.override, given, self.SHARES, "c",
+                                                 "G.", T, over="s"))
+        self.assertIn("no line zz", self.refused(lines.override, given, self.SHARES, "zz",
+                                                 "G.", T))
+        self.assertIn("--at", self.refused(lines.override, given, self.SHARES, "c", "G.",
+                                           "yesterday"))
+
+    def test_the_cli_appends_beside_the_records_and_writes_no_store(self):
+        scratch = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, scratch, ignore_errors=True)
+        d = Dir(self, standard())
+        records = os.path.join(scratch, "lines")
+        shutil.copytree(d.root, records)
+        shares = d.file("shares.json", self.SHARES)
+        log = os.path.join(scratch, "lines-overrides.jsonl")
+        done = run("lines.py", "override", records, "--taken", "c", "--ground", "Sooner.",
+                   "--shares", shares, "--at", T)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        out = json.loads(done.stdout)
+        self.assertEqual(out["log"], log)
+        self.assertNotIn("writes", out)
+        with open(log) as fh:
+            first = fh.read()
+        done = run("lines.py", "override", records, "--taken", "f", "--ground", "Later.",
+                   "--shares", shares, "--at", T1)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        with open(log) as fh:
+            both = fh.read()
+        self.assertTrue(both.startswith(first))
+        self.assertEqual([json.loads(x)["taken"]["id"] for x in both.splitlines()], ["c", "f"])
+        done = run("lines.py", "override", records, "--taken", "c", "--at", T)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("REFUSED: an override keeps the user's ground", done.stderr)
+        with open(log) as fh:
+            self.assertEqual(fh.read(), both)
+        other = os.path.join(scratch, "elsewhere.jsonl")
+        done = run("lines.py", "override", records, "--taken", "c", "--ground", "G.",
+                   "--log", other, "--at", T)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertTrue(os.path.exists(other))
+
+    def test_the_overrides_change_no_weight(self):
+        given = self.given()
+        before = lines.order(given, self.SHARES, T)
+        log = os.path.join(self.d.root, "log.jsonl")
+        lines.append_override(log, lines.override(given, self.SHARES, "c", "G.", T))
+        self.assertEqual(lines.order(self.d.lines(), self.SHARES, T), before)
+
+
+def side(lid, share, unblocks=1, cost=1, provisional=False):
+    return {"id": lid, "share": share, "unblocks": unblocks, "cost": cost,
+            "weight": share * unblocks / cost, "provisional": provisional}
+
+
+class ReportTest(Base):
+    def test_the_term_each_override_most_contradicts(self):
+        self.assertEqual(lines.contradicted({"taken": side("x", 0.1), "over": side("y", 0.4)}),
+                         ["share"])
+        self.assertEqual(lines.contradicted({"taken": side("x", 0.4, cost=9),
+                                             "over": side("y", 0.2)}), ["cost"])
+        self.assertEqual(lines.contradicted({"taken": side("x", 0.2, unblocks=1),
+                                             "over": side("y", 0.1, unblocks=3)}),
+                         ["unblocks"])
+        # the worst by ratio: share a half, cost a third
+        self.assertEqual(lines.contradicted({"taken": side("x", 0.1, cost=3),
+                                             "over": side("y", 0.2)}), ["cost"])
+        self.assertEqual(lines.contradicted({"taken": side("x", 0.1, cost=3),
+                                             "over": side("y", 0.3)}), ["share", "cost"])
+        self.assertEqual(lines.contradicted({"taken": side("x", 0.2), "over": side("y", 0.2)}),
+                         [])
+
+    def test_the_report_reads_the_log_against_the_order(self):
+        entries = [
+            {"at": T, "taken": side("x", 0.1), "over": side("y", 0.4), "ground": "One."},
+            {"at": T1, "taken": side("x", 0.1, provisional=True), "over": side("z", 0.3),
+             "ground": "Two."},
+            {"at": "2030-02-03T00:00:00Z", "taken": side("w", 0.4, cost=9),
+             "over": side("y", 0.2), "ground": "Three."}]
+        got = lines.report(entries)
+        self.assertEqual(got["overrides"], 3)
+        self.assertEqual((got["first"], got["last"]), (T, T1))
+        self.assertEqual(got["taken"], {"x": 2, "w": 1})
+        self.assertEqual(got["passed_over"], {"y": 2, "z": 1})
+        self.assertEqual(got["contradicts"], {"share": 2, "unblocks": 0, "cost": 1, "none": 0})
+        self.assertEqual(got["most_contradicted"], ["share"])
+        self.assertEqual(got["on_a_provisional_share"], 1)
+        self.assertEqual([e["contradicts"] for e in got["entries"]],
+                         [["share"], ["share"], ["cost"]])
+        empty = lines.report([])
+        self.assertEqual((empty["overrides"], empty["most_contradicted"]), (0, []))
+
+    def test_the_log_is_read_whole_or_refused(self):
+        d = Dir(self, standard())
+        self.assertEqual(lines.read_overrides(os.path.join(d.root, "none.jsonl")), [])
+        bad = d.file("bad.jsonl", '{"taken": {"id": "x"}, "over": {"id": "y"}}\nnot json\n')
+        self.assertRaises(lines.Refused, lines.read_overrides, bad)
+        bad = d.file("odd.jsonl", '{"taken": 1}\n')
+        self.assertRaises(lines.Refused, lines.read_overrides, bad)
+
+    def test_the_cli_reports_what_the_cli_logged(self):
+        self.given()
+        shares = self.d.file("shares.json", OverrideTest.SHARES)
+        log = os.path.join(self.d.root, "o.jsonl")
+        for taken in ("c", "f"):
+            done = run("lines.py", "override", self.d.root, "--taken", taken, "--over",
+                       "a", "--ground", "G.", "--shares", shares, "--log", log, "--at", T)
+            self.assertEqual(done.returncode, 0, done.stderr)
+        done = run("lines.py", "report", self.d.root, "--log", log)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        got = json.loads(done.stdout)
+        self.assertEqual(got["overrides"], 2)
+        self.assertEqual(got["passed_over"], {"a": 2})
+        self.assertEqual(got["most_contradicted"], ["share"])
 
 
 class LinkTest(Base):
@@ -707,7 +983,7 @@ class SkillLinesTest(Base):
         modes = {each.split()[1] for each in found}
         self.assertEqual(modes, {"check", "moved", "sweep", "close", "touch-flag", "order",
                                  "queue", "link", "orphans", "chunk", "decide", "reopen",
-                                 "unflag"})
+                                 "unflag", "override", "report"})
         scratch = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, scratch, ignore_errors=True)
         speaker = os.path.join(scratch, "speaker")
@@ -726,7 +1002,8 @@ class SkillLinesTest(Base):
                   "<answer>": "answers/1.md", "<the user's sentence>": "That is settled.",
                   "<the user's word>": "Drop it.", "<parent>": "b", "<child>": "g",
                   "<closed line>": "e", "<flagged line>": "c",
-                  "<keep|merge|drop>": "drop", "<other line>": "a"}
+                  "<keep|merge|drop>": "drop", "<other line>": "a",
+                  "<taken line>": "c", "<the ground, in a few words>": "Sooner, for now."}
         for each in found:
             command = each.replace("tools/", HERE + "/", 1)
             for key, value in values.items():
@@ -736,6 +1013,10 @@ class SkillLinesTest(Base):
             done = subprocess.run(["bash", "-c", command], capture_output=True, text=True,
                                   timeout=60)
             self.assertEqual(done.returncode, 0, (command, done.stdout, done.stderr))
+        with open(os.path.join(speaker, "queue.json")) as fh:
+            self.assertTrue(json.load(fh))
+        with open(os.path.join(speaker, "lines-overrides.jsonl")) as fh:
+            self.assertEqual(json.loads(fh.readline())["taken"]["id"], "c")
 
 
 if __name__ == "__main__":

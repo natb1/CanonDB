@@ -22,26 +22,43 @@ closed line keeps ``closed_by: {sentence, answer}`` and ``reopenable: true``,
 so that the user can reopen it. A line that leaves the live states carries
 no rank; a reopened one waits unranked, last, until the next order.
 
-**The order.** A line's weight is
+**The order.** Every live line is in one list, anchored or not, and its
+weight is
 
-    weight = share * (1 + pressure) * (1 + blocked)
+    weight = share * unblocks / cost
 
-where ``share`` is the share of the root carried by the sentences it is
-anchored to (each anchor read as its ``tab/block`` where the shares give
-one, else as its ``tab``, each key counted once and no tab counted for more
-than the tab's own share), ``pressure`` the number recorded on the line (0
-when unset), and ``blocked`` the number of open lines it holds up: those its
-``blocks`` names and its children. A line whose anchors the shares do not
-key takes the least share any live line carries, or 1 where none carries
-one, so that its pressure and what it holds up still tell. The line ``put``
-comes first; then the heaviest; ties by the stored ``rank`` (a line with
-none after), then ``opened_at`` (oldest first, a line with none after), then
-id. So an order with no shares keeps the order the store holds. ``rank`` is
-the place in that order counted from 1; the queue is the open lines in it,
-the one put being ``ordo/current.next``. Two live lines of one rank are no
-fault the order refuses: it is the fault the order mends. Its writes may
-land in several batches, and where only some land the next order starts
-from what did and writes the rest.
+``share`` is the share of the root carried by the sentences it is anchored
+to: each anchor read as its ``tab/block`` where the shares give one, else as
+its ``tab``, each key counted once, the keys summed, and no tab counted for
+more than the tab's own share. A line with no anchor the shares key takes
+half the share of its ``project``'s root (the whole root's one where the
+line names no project the shares know), and is provisional; with no shares
+given at all, every line's share is one and every line is provisional.
+``unblocks`` is one and the number of live lines that wait on it directly:
+its children (by either side of ``parent``), those its ``blocks`` names, and
+those whose ``waits_on`` names it, each once. ``cost`` is what the line asks
+of the user: its stated ``cost``, one of 1, 3 and 9, where set; else 3 for
+the user's work and 1 for anything else. Work ``owed_by`` the session costs
+the user nothing and is weighed at 1; it is ordered by the same weight but
+apart, after every ask, and never stands in the queue: it never holds the
+user's card. ``pressure`` is kept on a line as recorded and weighs nothing.
+
+The line ``put`` comes first; then the heaviest; ties by ``opened_at``
+(oldest first, a line with none after), then id. ``rank`` is the place in
+that order counted from 1, the asks first and the session's work after; the
+queue is the open asks in it, the one put being ``ordo/current.next``. Two
+live lines of one rank are no fault the order refuses: it is the fault the
+order mends. Its writes may land in several batches, and where only some
+land the next order starts from what did and writes the rest.
+
+**The user's override.** The user may always take another line ahead of
+the order. ``override`` appends one entry to a local log, never the store:
+the line taken, the line the order put first ahead of it, each with its
+terms as computed, the time handed in, and the user's ground restated in a
+few words by the caller. ``report`` reads the log against the order as it
+was computed: how many overrides, which lines, and which term of the weight
+each most contradicts. An override changes no weight; a change to the
+method is proposed from the report.
 
 **The weekly chunk.** From the lower half of the queue, the lines at its
 far end are shown to the user a few at a time, the oldest of them first,
@@ -73,6 +90,21 @@ WITHDRAWN = (MERGED, DROPPED)
 FLAGS = ("ground-moved", "parent-withdrawn", "touched")
 MOVED, ORPHANED, TOUCHED = FLAGS
 CHOICES = ("keep", "merge", "drop")
+#: who owes a line of work: the user, or the session
+OWNERS = ("user", "session")
+USER, SESSION = OWNERS
+#: the stated scale of what a line costs the user
+COSTS = (1, 3, 9)
+#: the cost of the user's work where none is stated
+WORK_COST = 3
+#: what an unanchored line takes of its project's root
+UNANCHORED = 0.5
+#: the most words an override's ground is restated in
+GROUND_WORDS = 25
+#: the terms of the weight, as the report names them
+TERMS = ("share", "unblocks", "cost")
+#: the override log's name, beside the records' directory
+OVERRIDES = "lines-overrides.jsonl"
 DROP_AFTER = 3
 CHUNK = 5
 MIN_DAYS = 6
@@ -219,9 +251,23 @@ def shape(rec: dict) -> List[str]:
     p = rec.get("parent")
     if p is not None and not (isinstance(p, str) and ID.fullmatch(p)):
         bad("parent", "is not one line id")
-    for field in ("children", "blocks"):
+    for field in ("children", "blocks", "waits_on"):
         if rec.get(field) is not None and not _ids(rec.get(field)):
             bad(field, "is not a list of line ids")
+    cost = rec.get("cost")
+    if cost is not None and (isinstance(cost, bool) or cost not in COSTS):
+        bad("cost", "is not one of %s" % ", ".join(str(c) for c in COSTS))
+    if rec.get("owed_by") not in (None,) + OWNERS:
+        bad("owed_by", "is not one of %s" % ", ".join(OWNERS))
+    if rec.get("owed_by") == SESSION:
+        if rec.get("kind") != "work":
+            bad("owed_by", "names the session on a line that is not work")
+        if cost is not None:
+            bad("cost", "is set on the session's work, which costs the user nothing")
+        if rec.get("state") == PUT:
+            bad("state", "is put on the session's work, which never holds the user's card")
+    if rec.get("project") is not None and not _str(rec.get("project")):
+        bad("project", "is not a project's name")
     for field in ("rank", "review_count", "review_since"):
         v = rec.get(field)
         if v is not None and not (isinstance(v, int) and not isinstance(v, bool) and v >= 0):
@@ -298,6 +344,11 @@ def check(records: Dict[str, dict]) -> Found:
                 faults.append("%s: blocks %s, which is no line" % (lid, b))
             elif b == lid:
                 faults.append("%s: blocks itself" % lid)
+        for w in rec["waits_on"] if isinstance(rec.get("waits_on"), list) else []:
+            if w not in records:
+                faults.append("%s: waits on %s, which is no line" % (lid, w))
+            elif w == lid:
+                faults.append("%s: waits on itself" % lid)
         if rec.get("state") == MERGED and _str(rec.get("answered_by")) \
                 and rec["answered_by"] not in records:
             faults.append("%s: merged into %s, which is no line" % (lid, rec["answered_by"]))
@@ -310,7 +361,7 @@ def check(records: Dict[str, dict]) -> Found:
             seen.add(cur)
             cur = parent(records[cur])
     for cycle in _blocks_cycles(records):
-        faults.append("a cycle of blocks: %s" % " -> ".join(cycle))
+        faults.append("a cycle of blocks and waits_on: %s" % " -> ".join(cycle))
     put = sorted(l for l, r in records.items() if r.get("state") == PUT)
     if len(put) > 1:
         faults.append("more than one line is put: %s" % ", ".join(put))
@@ -333,13 +384,21 @@ def check(records: Dict[str, dict]) -> Found:
 
 
 def _blocks_cycles(records: Dict[str, dict]) -> List[List[str]]:
-    """Each cycle of ``blocks`` once, read from its least id."""
+    """Each cycle of holding up once, read from its least id: a line holds
+    up those its ``blocks`` names and those whose ``waits_on`` names it."""
     found: List[List[str]] = []
     seen: Set[Tuple[str, ...]] = set()
+    held: Dict[str, Set[str]] = {lid: set() for lid in records}
+    for lid, rec in records.items():
+        for x in rec["blocks"] if isinstance(rec.get("blocks"), list) else []:
+            if x in records and x != lid:
+                held[lid].add(x)
+        for x in rec["waits_on"] if isinstance(rec.get("waits_on"), list) else []:
+            if x in records and x != lid:
+                held[x].add(lid)
 
     def edges(lid):
-        b = records[lid].get("blocks")
-        return [x for x in b if x in records and x != lid] if isinstance(b, list) else []
+        return sorted(held[lid])
 
     def walk(start, cur, path):
         for nxt in edges(cur):
@@ -693,28 +752,81 @@ def share_of(rec: dict, shares: Dict[str, float]) -> float:
 
 
 def blocked(lines: Lines, rec: dict) -> List[str]:
-    """The live lines this one holds up: those it blocks, and its children."""
+    """The live lines that wait on this one directly: its children, by
+    either side of ``parent``, those its ``blocks`` names, and those whose
+    ``waits_on`` names it, each once."""
     held = set(rec.get("blocks") or []) | set(children(rec))
     held |= {l for l, r in lines.records.items() if parent(r) == rec["id"]}
+    held |= {l for l, r in lines.records.items()
+             if isinstance(r.get("waits_on"), list) and rec["id"] in r["waits_on"]}
     held.discard(rec["id"])
     return sorted(l for l in held if l in lines.records and live(lines.records[l]))
 
 
-def floor(lines: Lines, shares: Dict[str, float]) -> float:
-    """What a line no share keys stands in with: the least share a live line
-    carries, or 1 where none carries one."""
-    carried = [share_of(r, shares) for r in lines.records.values() if live(r)]
-    carried = [s for s in carried if s > 0]
-    return min(carried) if carried else 1.0
+def session_s(rec: dict) -> bool:
+    """Whether a line is work the session owes, and not the user."""
+    return rec.get("owed_by") == SESSION
+
+
+def cost_of(rec: dict) -> int:
+    """What a line asks of the user: its stated cost where set; else 3 for
+    the user's work and 1 for anything else; the session's work 1."""
+    if session_s(rec):
+        return 1
+    stated = rec.get("cost")
+    if stated in COSTS and not isinstance(stated, bool):
+        return stated
+    return WORK_COST if rec.get("kind") == "work" else 1
+
+
+class Terms(NamedTuple):
+    """A line's weight and the three terms it is made of; ``provisional``
+    names why the share is not the line's own, or is None."""
+    share: float
+    unblocks: int
+    cost: int
+    provisional: Optional[str]
+
+    @property
+    def weight(self) -> float:
+        return self.share * self.unblocks / self.cost
+
+
+def root_share(rec: dict, shares: Dict[str, float],
+               roots: Optional[Dict[str, float]] = None) -> Tuple[float, bool]:
+    """The share of the line's project's root, and whether the project was
+    known: from ``roots`` (a project's name to its root's share, as a graph
+    gives them), else from ``shares`` keyed by the root's question id; one,
+    the whole root's, where neither knows it."""
+    name = rec.get("project")
+    if _str(name):
+        for known in (roots or {}, shares):
+            if name in known and known[name] > 0:
+                return known[name], True
+    return 1.0, False
+
+
+def terms(lines: Lines, rec: dict, shares: Dict[str, float],
+          roots: Optional[Dict[str, float]] = None) -> Terms:
+    """The weight's terms for one line (the module's docstring)."""
+    unblocks = 1 + len(blocked(lines, rec))
+    cost = cost_of(rec)
+    if not shares and not roots:
+        return Terms(1.0, unblocks, cost, "no shares given")
+    s = share_of(rec, shares)
+    if s > 0:
+        return Terms(s, unblocks, cost, None)
+    anchored = any(isinstance(a, dict) for a in rec.get("anchors") or [])
+    root, known = root_share(rec, shares, roots)
+    why = "no anchor the shares key" if anchored else "no anchor"
+    if not known:
+        why += "; no project the shares know, the whole root"
+    return Terms(root * UNANCHORED, unblocks, cost, why)
 
 
 def weight(lines: Lines, rec: dict, shares: Dict[str, float],
-           least: Optional[float] = None) -> float:
-    s = share_of(rec, shares)
-    if s <= 0:
-        s = floor(lines, shares) if least is None else least
-    pressure = rec.get("pressure") or 0
-    return s * (1 + pressure) * (1 + len(blocked(lines, rec)))
+           roots: Optional[Dict[str, float]] = None) -> float:
+    return terms(lines, rec, shares, roots).weight
 
 
 def when(value) -> Optional[datetime.datetime]:
@@ -738,39 +850,70 @@ def _age(rec: dict) -> datetime.datetime:
     return when(rec.get("opened_at")) or _LAST
 
 
-def ordered(lines: Lines, shares: Dict[str, float]) -> List[Tuple[str, float]]:
-    """The live lines in their order, each with its weight: the put line
-    first, then the heaviest; ties by the stored rank, ``opened_at``, id."""
-    least = floor(lines, shares)
-    rows = [(lid, weight(lines, rec, shares, least))
+def weighed(lines: Lines, shares: Dict[str, float],
+            roots: Optional[Dict[str, float]] = None) -> List[Tuple[str, Terms]]:
+    """The live lines in their order, each with its terms: the asks, the
+    put line first, then the heaviest, ties by ``opened_at``, oldest first,
+    then id; then the session's work, in the same order."""
+    rows = [(lid, terms(lines, rec, shares, roots))
             for lid, rec in lines.records.items() if live(rec)]
-    return sorted(rows, key=lambda r: (lines.records[r[0]].get("state") != PUT,
-                                       -round(r[1], 12), _rank_key(lines.records[r[0]]),
+    return sorted(rows, key=lambda r: (session_s(lines.records[r[0]]),
+                                       lines.records[r[0]].get("state") != PUT,
+                                       -round(r[1].weight, 12),
                                        _age(lines.records[r[0]]), r[0]))
 
 
+def ordered(lines: Lines, shares: Dict[str, float],
+            roots: Optional[Dict[str, float]] = None) -> List[Tuple[str, float]]:
+    """The live lines in their order, each with its weight."""
+    return [(lid, t.weight) for lid, t in weighed(lines, shares, roots)]
+
+
+def row(rec: dict, rank: int, t: Terms) -> dict:
+    """One line of the printed order: its place, its weight and the terms."""
+    return {"rank": rank, "id": rec["id"], "kind": rec.get("kind"),
+            "title": rec.get("title"), "state": rec.get("state"),
+            "weight": round(t.weight, 6), "share": round(t.share, 6),
+            "unblocks": t.unblocks, "cost": t.cost,
+            "provisional": t.provisional is not None,
+            "provisional_why": t.provisional, "opened_at": rec.get("opened_at")}
+
+
 def projection(lines: Lines, order: List[str]) -> List[dict]:
-    """The queue the page draws: the open lines in order, ``{kind, title}``."""
+    """The queue the page draws: the open asks in order, ``{kind, title}``;
+    the session's work is never in it."""
     return [{"kind": lines.records[l].get("kind"), "title": lines.records[l].get("title")}
-            for l in order if lines.records[l].get("state") == OPEN]
+            for l in order if lines.records[l].get("state") == OPEN
+            and not session_s(lines.records[l])]
 
 
-def order(lines: Lines, shares: Dict[str, float], at: str) -> Tuple[List[dict], List[dict]]:
+class Order(NamedTuple):
+    writes: List[dict]
+    queue: List[dict]
+    asks: List[dict]
+    session: List[dict]
+
+
+def order(lines: Lines, shares: Dict[str, float], at: str,
+          roots: Optional[Dict[str, float]] = None) -> Order:
     """The rank writes for every live line whose rank changes, the order's
-    head first, and the queue. It runs over ranks held twice, and mends
-    them; a line not live that still holds a rank has it taken off."""
+    head first; the queue; and the order printed, the asks and the
+    session's work apart. It runs over ranks held twice, and mends them; a
+    line not live that still holds a rank has it taken off."""
     sound(lines, mends=True)
     _time(at)
-    rows = ordered(lines, shares)
-    writes = []
-    for n, (lid, _) in enumerate(rows, 1):
-        if lines.records[lid].get("rank") != n:
+    rows = weighed(lines, shares, roots)
+    writes, asks, session = [], [], []
+    for n, (lid, t) in enumerate(rows, 1):
+        rec = lines.records[lid]
+        if rec.get("rank") != n:
             writes.append(write(lines, lid, at, rank=n))
+        (session if session_s(rec) else asks).append(row(rec, n, t))
     for lid in sorted(lines.records):
         rec = lines.records[lid]
         if not live(rec) and rec.get("rank") is not None:
             writes.append(write(lines, lid, at, rank=None))
-    return writes, projection(lines, [l for l, _ in rows])
+    return Order(writes, projection(lines, [l for l, _ in rows]), asks, session)
 
 
 def queue(lines: Lines) -> List[dict]:
@@ -782,6 +925,149 @@ def queue(lines: Lines) -> List[dict]:
     live_ids.sort(key=lambda l: (lines.records[l].get("state") != PUT,
                                  _rank_key(lines.records[l]), _age(lines.records[l]), l))
     return projection(lines, live_ids)
+
+
+# --- the user's override -------------------------------------------------
+
+def log_path(directory: str) -> str:
+    """The override log's default place: beside the records' directory."""
+    base = os.path.dirname(os.path.abspath(os.path.normpath(directory)))
+    return os.path.join(base, OVERRIDES)
+
+
+def _side(rec: dict, place: int, t: Terms) -> dict:
+    return {"id": rec["id"], "place": place, "weight": round(t.weight, 6),
+            "share": round(t.share, 6), "unblocks": t.unblocks, "cost": t.cost,
+            "provisional": t.provisional is not None}
+
+
+def override(lines: Lines, shares: Dict[str, float], taken: str, ground: Optional[str],
+             at: str, over: Optional[str] = None,
+             roots: Optional[Dict[str, float]] = None) -> dict:
+    """The log entry of the user taking ``taken`` ahead of the order: by
+    default ahead of the ask the order puts first, or ahead of ``over``,
+    which must stand before it. Refused without the ground, with a ground of
+    more than a few words, or where nothing is overridden. It writes nothing
+    to the store and changes no weight."""
+    sound(lines, mends=True)
+    _time(at)
+    reasons = []
+    if not _str(ground):
+        reasons.append("an override keeps the user's ground, restated: give --ground")
+    elif len(ground.split()) > GROUND_WORDS:
+        reasons.append("restate the ground in a few words, %d at most" % GROUND_WORDS)
+    rec = lines.get(taken)
+    rows = [(l, t) for l, t in weighed(lines, shares, roots)
+            if not session_s(lines.records[l])]
+    place = {l: n for n, (l, _) in enumerate(rows, 1)}
+    if not live(rec):
+        reasons.append("%s is %s, not open" % (taken, rec.get("state")))
+    elif session_s(rec):
+        reasons.append("%s is the session's work, which never holds the user's card" % taken)
+    if over is None and rows:
+        over = rows[0][0]
+    if over is not None and not reasons:
+        lines.get(over)
+        if over == taken:
+            reasons.append("%s is first by the order already: nothing is overridden" % taken)
+        elif over not in place:
+            reasons.append("%s is not an ask the order holds" % over)
+        elif place[over] > place[taken]:
+            reasons.append("%s stands after %s in the order: nothing is overridden"
+                           % (over, taken))
+    if over is None and not reasons:
+        reasons.append("the order holds no ask")
+    if reasons:
+        raise Refused(reasons)
+    t = dict(rows)
+    return {"at": at, "taken": _side(rec, place[taken], t[taken]),
+            "over": _side(lines.records[over], place[over], t[over]),
+            "head": rows[0][0], "ground": " ".join(ground.split())}
+
+
+def append_override(path: str, entry: dict) -> None:
+    """Append one entry to the log, one JSON object a line; never rewrite."""
+    try:
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(entry, ensure_ascii=False, sort_keys=True) + "\n")
+    except OSError as exc:
+        raise Refused(["the override log cannot be written: %s" % exc])
+
+
+def read_overrides(path: str) -> List[dict]:
+    """The log's entries in order; none where there is no log yet."""
+    if not os.path.exists(path):
+        return []
+    out = []
+    try:
+        with open(path, encoding="utf-8") as fh:
+            for n, text in enumerate(fh, 1):
+                if not text.strip():
+                    continue
+                try:
+                    entry = json.loads(text)
+                except ValueError:
+                    raise Refused(["the override log's line %d is not JSON" % n])
+                if not (isinstance(entry, dict) and isinstance(entry.get("taken"), dict)
+                        and isinstance(entry.get("over"), dict)):
+                    raise Refused(["the override log's line %d is not an override" % n])
+                out.append(entry)
+    except OSError as exc:
+        raise Refused(["the override log cannot be read: %s" % exc])
+    return out
+
+
+def contradicted(entry: dict) -> List[str]:
+    """The terms of the weight an override most contradicts: the term on
+    which the line taken stood worst against the line passed over, by the
+    ratio of the two (share and unblocks taken over passed; cost passed
+    over taken), each term tied for the least counted; none where the line
+    taken stood no worse on any term."""
+    a, b = entry["taken"], entry["over"]
+
+    def ratio(x, y):
+        return x / y if y else (1.0 if not x else float("inf"))
+
+    got = {"share": ratio(a.get("share", 0), b.get("share", 0)),
+           "unblocks": ratio(a.get("unblocks", 1), b.get("unblocks", 1)),
+           "cost": ratio(b.get("cost", 1), a.get("cost", 1))}
+    least = min(got.values())
+    if least >= 1:
+        return []
+    return [k for k in TERMS if abs(got[k] - least) < 1e-12]
+
+
+def report(entries: List[dict]) -> dict:
+    """The overrides read against the order as it was computed: how many,
+    over what span, which lines were taken and passed over and how often,
+    which term each most contradicts and which most often, and how many
+    stood on a provisional share."""
+    taken: Dict[str, int] = {}
+    over: Dict[str, int] = {}
+    count = {k: 0 for k in TERMS}
+    count["none"] = 0
+    provisional = 0
+    rows = []
+    for e in entries:
+        taken[e["taken"]["id"]] = taken.get(e["taken"]["id"], 0) + 1
+        over[e["over"]["id"]] = over.get(e["over"]["id"], 0) + 1
+        terms_hit = contradicted(e)
+        for k in terms_hit or ["none"]:
+            count[k] += 1
+        if e["taken"].get("provisional") or e["over"].get("provisional"):
+            provisional += 1
+        rows.append({"at": e.get("at"), "taken": e["taken"]["id"], "over": e["over"]["id"],
+                     "contradicts": terms_hit, "ground": e.get("ground")})
+    top = max((count[k] for k in TERMS), default=0)
+    times = sorted(e["at"] for e in entries if _str(e.get("at")))
+    return {"overrides": len(entries),
+            "first": times[0] if times else None, "last": times[-1] if times else None,
+            "taken": dict(sorted(taken.items(), key=lambda kv: (-kv[1], kv[0]))),
+            "passed_over": dict(sorted(over.items(), key=lambda kv: (-kv[1], kv[0]))),
+            "contradicts": count,
+            "most_contradicted": [k for k in TERMS if top and count[k] == top],
+            "on_a_provisional_share": provisional,
+            "entries": rows}
 
 
 # --- 5: parent and children ----------------------------------------------
@@ -823,8 +1109,9 @@ def link(lines: Lines, parent_id: str, child_id: str, at: str) -> List[dict]:
 # --- 6: the weekly chunk, and the user's decision ------------------------
 
 def chunk(lines: Lines, shares: Dict[str, float], n: int, at: str,
-          drop_after: int = DROP_AFTER, min_days: int = MIN_DAYS) -> Tuple[List[dict], List[dict]]:
-    """The ``n`` open lines at the far end of the queue, from its lower half
+          drop_after: int = DROP_AFTER, min_days: int = MIN_DAYS,
+          roots: Optional[Dict[str, float]] = None) -> Tuple[List[dict], List[dict]]:
+    """The ``n`` open asks at the far end of the queue, from its lower half
     and never its head, the oldest of them shown first, none shown within
     ``min_days`` of its last showing; and the writes adding one to each
     one's ``review_count`` and stamping ``reviewed_at``. A line's weight
@@ -842,10 +1129,11 @@ def chunk(lines: Lines, shares: Dict[str, float], n: int, at: str,
     if min_days < 0:
         raise Refused(["--min-days must be zero or more"])
     now = parse_time(at)
-    rows = ordered(lines, shares)
+    rows = ordered(lines, shares, roots)
     weights = dict(rows)
     rank = {lid: i for i, (lid, _) in enumerate(rows, 1)}
-    open_ids = [l for l, _ in rows if lines.records[l].get("state") == OPEN]
+    open_ids = [l for l, _ in rows if lines.records[l].get("state") == OPEN
+                and not session_s(lines.records[l])]
     head = (len(open_ids) + 1) // 2
     pool = []
     for lid in reversed(open_ids[head:]):

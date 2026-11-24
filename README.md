@@ -66,8 +66,10 @@ kind's file writes to its own scratch. `tools/board.py` is the gate on the board
 writing mode printing a batch for the session to send, and `tools/views.py` lifts the whole-tab
 reads out of a helper's transcript, one file each. `tools/lines.py` reads an export of the
 page's open lines: it checks them, flags those whose anchored sentences moved, sweeps the few an
-answer may bear on, orders them by the share they carry, their pressure and what they hold up,
-picks the week's lines of least weight, and prints the writes for the session to send; it closes
+answer may bear on, orders every one of them by the share it carries, times what it unblocks, over what it costs
+the user, the session's own work apart and out of the queue, keeps a log of the user's
+overrides of that order and reports on it, picks the week's lines of least weight, and prints
+the writes for the session to send; it closes
 a line only by the user's sentence quoted, and merges or drops one only at the user's word.
 `tools/predictions.py` prints the words of a failed prediction's divergence note, refusing a
 grade or a direction outside its lists, and reads those notes back from a graph and the notes

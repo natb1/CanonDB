@@ -686,6 +686,20 @@
       ],
       "pull_request": null,
       "rounds": 1
+    },
+    {
+      "question": "hypomnemata",
+      "application": "the weight of the open lines",
+      "files": [
+        "tools/lines.py",
+        "tools/hypo/lines.py",
+        "tools/test_lines.py",
+        "skills/sit/parts/open-lines.md",
+        "README.md",
+        ".principal/bootstrap.json"
+      ],
+      "pull_request": null,
+      "rounds": 1
     }
   ]
 }
