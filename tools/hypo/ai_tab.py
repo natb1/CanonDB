@@ -3,9 +3,10 @@
 The AI's own record stands under a root of its own in the notebook, and the
 key ``ai_root`` of ``.principal/notebook.json`` lists its tabs, the root's
 first. The notebook's guard (``hooks/notebook-gate.py``) reads that key: the
-``ai-recorder`` inserts on the tabs it lists, and makes a new tab only under
-one whose tab id it gives; the speaker makes the root once, while the key is
-unset. This module prints the one batch either sends, and writes the key.
+``ai-recorder`` inserts on the tabs it lists, makes a new tab only under
+one whose tab id it gives, and makes the root, once, while the key is unset.
+This module prints the rows entry the ``ai-recorder`` sends for either, and
+writes the key, which is the speaking session's step after.
 
 **The batch.** A tab is made by four calls of one ``batch`` of the
 notebook, the shape the connector gives for adding a tab and the only one the
@@ -22,7 +23,7 @@ its parent's tab id, in lower case, and its name.
 id>, "tab": <the tab's own id>}``: the node id is what an ``update`` names,
 the tab id what a new tab is nested under. An entry that is a bare node id,
 as the key was first written, is still read, and no tab can be made under
-it. An entry is added only from the batch this module printed, printed again
+it. An entry is added only from the rows entry this module printed, printed again
 from the key as it stands now and found the same, so that the parent it was
 made under is one the key gives (the root only while the key is unset), and
 from the connector's answer to that batch, whose ids for the aliases ``f``
@@ -184,15 +185,15 @@ def batch(notebook: str, name: str, order: str, under: Optional[str]) -> dict:
 
 
 def root(named: dict, name: str, order: str) -> dict:
-    """The speaker's batch that makes the AI's root at the top level,
-    refused once the key names one; as the ``batch`` call's arguments, with
-    the one ``opId`` every root of this notebook is sent with."""
+    """The rows entry for the ``ai-recorder`` that makes the AI's root at
+    the top level, in the form ``tab`` prints, its ``node`` null, there
+    being no tab above it; refused once the key names a root. Its operation
+    id is the one every root of this notebook is sent with."""
     if entries(named):
         raise Refused("the key %s names a root already; the root is made once" % KEY)
     notebook = document(named)
-    out = batch(notebook, name, order, None)
-    out["opId"] = op_id("root", notebook)
-    return out
+    return {"node": None, "batch": batch(notebook, name, order, None),
+            "op_id": op_id("root", notebook)}
 
 
 def tab(named: dict, parent: str, name: str, order: str) -> dict:
@@ -248,22 +249,20 @@ def add(named: dict, made: dict, answer) -> Tuple[dict, str]:
     what was not checked. ``made`` is what this tool printed, the root's
     batch or a tab's rows entry, and it must be what the tool prints from
     the key as it stands now; ``answer`` the connector's answer to it."""
-    if not isinstance(made, dict):
-        raise Refused("that is no batch this tool printed")
+    if not isinstance(made, dict) or "node" not in made:
+        raise Refused("that is no rows entry this tool printed")
     have = entries(named)
-    if "node" in made:
-        call = made.get("batch")
-        where = _placed(call)
+    where = _placed(made.get("batch"))
+    if made["node"] is None:
+        if have:
+            raise Refused("the key %s names a root already" % KEY)
+        if root(named, where.get("name"), where.get("order")) != made:
+            raise Refused("the entry is not the root this tool prints")
+    else:
         again = tab(named, made["node"], where.get("name"), where.get("order"))
         if again != made:
             raise Refused("the entry is not the one this tool prints from the key as it "
                           "stands, so the tab it made is not under a tab the key gives")
-    else:
-        where = _placed(made)
-        if have:
-            raise Refused("the key %s names a root already" % KEY)
-        if root(named, where.get("name"), where.get("order")) != made:
-            raise Refused("the batch is not the root this tool prints")
     tab_id, node = lids(answer)
     plain_id(node, "the body's node id")
     plain_id(tab_id, "the tab id")

@@ -737,15 +737,11 @@
         "hooks/hooks.json",
         "agents/ai-recorder.md",
         ".claude/agents/ai-recorder.md",
-        "agents/interviewer.md",
-        ".claude/agents/interviewer.md",
         "tools/test_notebook_gate.py",
         "tools/test_agents.py",
         "tools/test_cli.py",
         "tools/test_sit_skill.py",
-        "skills/sit/SKILL.md",
         "skills/sit/parts/ai-line.md",
-        "skills/sit/parts/ground-rules.md",
         "skills/sit/parts/batch-point.md",
         "skills/sit/parts/attenuation.md",
         "README.md",
@@ -753,7 +749,7 @@
         ".principal/bootstrap.json"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3216",
-      "rounds": 2
+      "rounds": 3
     }
   ]
 }

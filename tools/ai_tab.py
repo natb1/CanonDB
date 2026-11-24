@@ -2,10 +2,11 @@
 """ai_tab.py root|tab|add … — the tabs of the AI's own record: the batch that makes one, and the key that names them.
 
     root --name NAME [--order ORDER]
-                                   the batch that makes the AI's root at the top
-                                   level, as the connector's `batch` arguments
-                                   with its opId, for the speaker to send once;
-                                   refused once the key ai_root names a root
+                                   a rows entry for the ai-recorder, in the form
+                                   `tab` prints with `node` null: the batch that
+                                   makes the AI's root at the top level, sent
+                                   with the one op_id every root of the notebook
+                                   gets; refused once the key ai_root names a root
     tab --parent NODE --name NAME [--order ORDER]
                                    a rows entry for the ai-recorder: the batch
                                    that makes a tab under the AI's tab whose node
@@ -20,7 +21,8 @@
 
 NODE is the node id of a tab's body, the id an `update` names; the tab's own
 id is the one a tab is nested under. A tab's NAME is a question's id, and it
-names neither the user nor anything private. ORDER defaults to a0. A new tab
+names neither the user nor anything private; the root's is that of a question the
+speaking session drafted and the user approved. ORDER defaults to a0. A new tab
 holds its heading alone; what it says is inserted on it after. The notebook
 file is the one the guard reads, under CLAUDE_PROJECT_DIR, else the nearest
 `.principal/notebook.json` from the working directory, or --notebook. Only

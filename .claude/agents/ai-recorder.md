@@ -27,7 +27,8 @@ list a directory, and the index lists every file of the line, one absolute path 
 file is a JSON list with one entry per run of the repository's tools, in the order they were
 run, each holding the node id of a tab under `node`, what the tool printed under `payload`,
 exactly as it printed it, and the operation id under `op_id`; or, for a tab to be made, what
-`tools/ai_tab.py tab` printed: the node id of the tab it is made under in `node`, under
+`tools/ai_tab.py tab` printed, or `tools/ai_tab.py root` for the AI's root: the node id of the
+tab it is made under in `node`, null for the root, under
 `batch` an object holding the batch's `container` and, again under `batch`, its four calls, and
 the operation id in `op_id`. A tab made so holds its heading, `# <name>`, and nothing else; what
 it says is inserted on it after, by entries of the first kind. The line's draws are the files
@@ -37,7 +38,8 @@ it says is inserted on it after, by entries of the first kind. The line's draws 
 Before you send anything, check the file whole. Every operation is an `insert`, or the four
 calls of an entry that makes a tab, whose body is the new tab's heading alone, `#` and the name
 its placement gives; every text an entry inserts as an answer is, word for word, the `answer` of a draw in the line's directory,
-neither cut nor joined nor reflowed; and every entry's `node` is a tab of the AI's own record.
+neither cut nor joined nor reflowed; and every entry's `node` is a tab of the AI's own record, or null in the one entry that makes
+the root.
 Where any of these fails, send nothing and hand the failure back.
 
 Then, for each entry, in the file's order, send it as one `update` of its node in the notebook,
@@ -53,7 +55,9 @@ unsure of is sent again unchanged, never with a new id.
 
 The notebook's guard holds you to the tabs the key `ai_root` of `.principal/notebook.json` names
 and to inserts of markdown beside one block or at the tab's end: until that key is set it
-refuses you every write, and it refuses you a replace, a delete, a change of format and words
+refuses you every write but the batch that makes the AI's root, at the top level, with the one
+operation id `tools/ai_tab.py root` prints, and once it is set it refuses you that batch; it
+refuses you a replace, a delete, a change of format and words
 put inside a paragraph that stands, so that an answer already there is never edited. It lets you
 make a tab only by the batch `tools/ai_tab.py tab` prints, nested under a tab the key gives
 with its tab id, its body its heading alone and its operation id the one printed; a tab you made

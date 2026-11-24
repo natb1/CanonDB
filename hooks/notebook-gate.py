@@ -39,8 +39,8 @@ or words put inside a paragraph that stands, so an answer already there is
 never edited. Which side a node is on is read from the key `ai_root` of
 `.principal/notebook.json` (`kinds.ai_tabs`): the node ids it lists are the
 AI's, compared with the ref's in lower case, every other node is the
-user's. While the key is unset the AI's recorder is refused every write,
-and the comparer may write any tab, there being no tab of the AI's yet.
+user's. While the key is unset the AI's recorder is refused every write but
+the AI's root (below), and the comparer may write any tab, there being no tab of the AI's yet.
 
 The AI's tabs are made. The AI's recorder may also make a tab, by one
 `batch` of the notebook that is exactly the four calls `tools/ai_tab.py tab`
@@ -56,15 +56,15 @@ whose own id an entry `{"node": …, "tab": …}` of `ai_root` gives
 (`kinds.ai_parents`), compared in lower case, and the call's `opId` is the
 one the tool derives from that tab id and the name. A batch of any other
 shape, a tab at the top level or under a tab the key does not give, is
-refused, as is every batch while the key is unset. A new tab is the AI's to
+refused. A new tab is the AI's to
 the gate only once `tools/ai_tab.py add` has put it in the key.
-The speaker, held by this plugin's name or its bare name where the
-project's copy is the plugin's, may make the AI's root: a batch of the same
-shape, at the top level, with the one `opId` the tool derives from the
-notebook's id alone, gets no opinion while `ai_root` is unset; nested, or
-under another operation id, it is refused, and once the key is set it is
-refused. Every other write of the speaker's aimed at the notebook is
-refused as before. What the gate cannot see: that a root sent twice lands
+While the key is unset the AI's recorder may send one batch and nothing
+else: the AI's root, a batch of the same shape at the top level, with the
+one `opId` the tool derives from the notebook's id alone (`tools/ai_tab.py
+root`); nested, or under another operation id, it is refused, and once the
+key is set a tab at the top level is refused as one under a tab the key does
+not give is. The speaker makes no tab: every write of the speaker's aimed at
+the notebook is refused. What the gate cannot see: that a root sent twice lands
 once rests on the connector's landing one operation id once; a root made
 and never written into the key leaves the key unset; and which ids go into
 the key is `tools/ai_tab.py add`'s check, made without the live notebook.
@@ -245,18 +245,16 @@ FILES = ("this kind's data calls keep their local files under its own directory;
          "give an out_dir or a file_path there, or none")
 
 UNSET = ("the AI's own record has no root yet: until the key ai_root of "
-         ".principal/notebook.json names it, the AI's recorder writes nothing")
+         ".principal/notebook.json names it, the AI's recorder writes nothing but the root")
 AI_SIDE = ("the AI's recorder writes only the tabs the key ai_root names, one tab a call, "
            "and only by inserting; an answer already there is never edited")
 USER_SIDE = ("the comparer writes only the user's side, outside the tabs the key ai_root "
              "names, one tab a call, and only by inserting")
 NEW_TAB = ("the AI's recorder makes a tab only under a tab the key ai_root names with its "
            "tab id, by one batch of the four calls tools/ai_tab.py prints, and nothing else")
-ROOT_SHAPE = ("the AI's root stands at the top level, its body its heading alone, and is sent "
-              "with the operation id tools/ai_tab.py root prints, so that it is made once")
-ROOT_MADE = ("the AI's root is made once, while the key ai_root is unset, by the batch "
-             "tools/ai_tab.py root prints; it is made already, and the speaker writes nothing "
-             "more of the notebook")
+ROOT_SHAPE = ("while the key ai_root is unset the AI's recorder makes the AI's root and nothing "
+              "else: one tab at the top level, its body its heading alone, by the batch "
+              "tools/ai_tab.py root prints, with its operation id")
 
 
 class Unclear(Exception):
@@ -713,30 +711,15 @@ def made_tab(tool_input, notebook: str, parents) -> dict:
     return {}
 
 
-def made_root(tool, tool_input, cwd, env) -> dict:
-    """The decision for the speaker's one write of the notebook: no opinion
-    on the batch that makes the AI's root, at the top level, its body its
-    heading alone, with the one operation id the tool gives every root of
-    this notebook, while the key ai_root is unset; refused once the key
-    names a root, and refused in any other placement or operation id. None
-    for a call that is not a tab's batch of the notebook, which the rest of
-    the gate decides."""
-    if not isinstance(tool, str) or tool.rsplit("__", 1)[-1] != "batch":
-        return None
-    if not isinstance(cwd, str) or not cwd:
-        return None
+def made_root(tool_input, notebook: str) -> dict:
+    """The decision for the AI's recorder's batch while the key ai_root is
+    unset: no opinion on the one batch that makes the AI's root, at the top
+    level, its body its heading alone, with the one operation id the tool
+    gives every root of this notebook; refused otherwise."""
     try:
-        notebook = find_notebook(cwd, env)
-        if notebook is None:
-            return None
         parent, _, op_id = tab_batch(tool_input, notebook)
-    except (NotTab, Unclear, TypeError, ValueError, RecursionError):
-        return None
-    try:
-        if KINDS_MODULE.ai_tabs(cwd, env):
-            return _answer("deny", ROOT_MADE)
-    except ValueError:
-        return _answer("deny", UNCLEAR)
+    except (NotTab, Unclear):
+        return _answer("deny", ROOT_SHAPE)
     if parent is not None or op_id != tab_op_id("root", notebook):
         return _answer("deny", ROOT_SHAPE)
     return {}
@@ -758,10 +741,11 @@ def sided(kind: str, tool, tool_input, cwd, env) -> dict:
             tabs = KINDS_MODULE.ai_tabs(cwd, env)
         except ValueError as exc:
             raise Unclear("the notebook file") from exc
+        batch = isinstance(tool, str) and tool.rsplit("__", 1)[-1] == "batch"
         if kind == AI_WRITER and not tabs:
-            return _answer("deny", UNSET)
-        if (kind == AI_WRITER and isinstance(tool, str)
-                and tool.rsplit("__", 1)[-1] == "batch"):
+            # the one write while the key is unset: the AI's root
+            return made_root(tool_input, notebook) if batch else _answer("deny", UNSET)
+        if kind == AI_WRITER and batch:
             try:
                 parents = KINDS_MODULE.ai_parents(cwd, env)
             except ValueError as exc:
@@ -864,12 +848,6 @@ def decide(call, env=None, plugin=None, own: str = AGENTS) -> dict:
     if kind in SIDED and ((plugin and agent == plugin + ":" + kind)
                           or (agent == kind and defined_here(kind, call.get("cwd"), env, own))):
         return sided(kind, tool, call.get("tool_input"), call.get("cwd"), env)
-    if kind == SPEAKER and ((plugin and agent == plugin + ":" + kind)
-                            or (agent == kind and defined_here(kind, call.get("cwd"), env,
-                                                               own))):
-        root = made_root(tool, call.get("tool_input"), call.get("cwd"), env)
-        if root is not None:
-            return root
     if kind == WRITER:
         # a bare recorder this project does not define as ours: a helper
         kind = ""

@@ -107,8 +107,7 @@ the plugin's kinds for work a kind carries.
 1. One session speaks, and it alone prompts the principal; no helper asks the principal
    anything: what a helper needs of the principal it hands back, and the speaker raises it.
 2. It writes its own record and never the notebook: every write to the notebook goes to the
-   recorder as a rows file through a job on the board, at a batch point or at the round. The
-   one exception is the AI's own root, made once (`ai-line.md`).
+   recorder as a rows file through a job on the board, at a batch point or at the round.
 3. Everything that must outlive the sitting is on the notebook or the board: the line doc is
    made at the opening, its bare id put on the board by the sitting's `probe` job, and emptied
    at each batch point, so that nothing stands only in it at the close.

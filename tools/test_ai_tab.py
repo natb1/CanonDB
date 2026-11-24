@@ -22,7 +22,11 @@ def answer(f, n, **more):
 
 class BatchTest(unittest.TestCase):
     def test_the_root_is_the_connector_s_four_calls_at_the_top_level(self):
-        out = ai_tab.root(UNSET, "ai-root", "z0")
+        entry = ai_tab.root(UNSET, "ai-root", "z0")
+        # a rows entry for the ai-recorder, in the form `tab` prints, with no node above it
+        self.assertEqual(sorted(entry), ["batch", "node", "op_id"])
+        self.assertIsNone(entry["node"])
+        out = entry["batch"]
         self.assertEqual(out["container"], {"kind": "project", "id": NOTEBOOK})
         self.assertEqual([m["verb"] for m in out["batch"]],
                          ["create", "create", "update", "update"])
@@ -31,7 +35,8 @@ class BatchTest(unittest.TestCase):
         where = out["batch"][3]["payload"]["patch"][0]["value"]
         self.assertEqual(where, {"name": "ai-root", "order": "z0"})
         # one operation id for every root of the notebook, so a second lands as the first
-        self.assertEqual(out["opId"], ai_tab.root(UNSET, "other", "a0")["opId"])
+        self.assertEqual(entry["op_id"], ai_tab.root(UNSET, "other", "a0")["op_id"])
+        self.assertEqual(entry["op_id"], ai_tab.op_id("root", NOTEBOOK))
 
     def test_the_root_is_made_once(self):
         named, _ = ai_tab.add(UNSET, ai_tab.root(UNSET, "ai-root", "a0"),
@@ -126,7 +131,7 @@ class KeyTest(unittest.TestCase):
         with self.assertRaises(ai_tab.Refused):
             ai_tab.add(self.named, self.made, answer("t-x", "n-x"))
         nested = json.loads(json.dumps(self.made))
-        nested["batch"][3]["payload"]["patch"][0]["value"]["subtabOf"] = "t-user"
+        nested["batch"]["batch"][3]["payload"]["patch"][0]["value"]["subtabOf"] = "t-user"
         with self.assertRaises(ai_tab.Refused):
             ai_tab.add(UNSET, nested, answer("t-x", "n-x"))
 

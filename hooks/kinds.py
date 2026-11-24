@@ -42,7 +42,7 @@ the tab's body or an object `{"node": …, "tab": …}` that gives the tab's own
 id beside it (`tools/ai_tab.py` writes the second). The notebook gate holds
 the AI's recorder to those tabs and the comparer off them, and lets the
 first make a tab only under one whose tab id `ai_parents` gives; while the
-key is unset the first is refused every write. A tab under the root that
+key is unset the first is refused every write but the AI's root. A tab under the root that
 the key does not list is, to the gates, the user's.
 
 A kind's own directory, `coordinator` or `check`, counts only below a
