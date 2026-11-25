@@ -161,9 +161,25 @@ or its question, and a question or an answer holding `<<<` or `>>>`, which no te
    under, made by the `ai-recorder` in a `place` job from the entry `tools/ai_tab.py tab
    --parent <id> --name <question id>` prints, and put in the key by the speaker after
    (above); a new tab of the AI's own record needs no dictation. The answer, its question
-   and its hinge are then inserts on that tab, and no tool yet prints them: until one does, a
-   `place` job makes the tab alone, and the place's file is carried as an open note of kind
-   `change`. The comparing run's lines go on the user's side.
+   and its hinge are then inserts on that tab, which holds its heading alone: `tools/hinges.py
+   rows $SCRATCH/lines/<line>/<n>/place.json --node <node id> --kind <kind> >
+   $SCRATCH/lines/<line>/<n>/rows.json` prints the rows entry that places them, `<node id>`
+   the tab's body as the key lists it and `<kind>` the question's kind. The entry is one
+   update of three inserts at the tab's end: the question and its question line, the answer
+   word for word as an insert of its own, and the hinge, in the form of the notebook's own
+   tabs, which `tools/read.py` reads back and `tools/packet.py` carries as an answer of the
+   AI's past held, in thread; its operation id is fixed by the line, the question's number and
+   the node, so that a second sending lands once. It refuses, saying why, an answer the page
+   would not give back word for word, a line broken inside a paragraph among them, and never
+   alters it; such an answer is not placed, and its place's file is carried as an open note
+   of kind `change`. Placing on a new tab is two steps, in this order, and no one command
+   prints both, since the new tab's body node id is known only once the batch that makes it
+   has landed: first a `place` job whose rows file is a list of the one entry `tools/ai_tab.py
+   tab` printed, after which the speaker runs `tools/ai_tab.py add` from the ids the
+   `ai-recorder` hands back; then `rows` with the node id `add` put in the key, and a second
+   `place` job whose rows file is a list of the one entry `rows` printed. A tab that already
+   stands and holds its heading alone, the root's among them, takes the second step alone.
+   The comparing run's lines go on the user's side.
 10. **Every presupposition is a hinge.** Every presupposition a question carries in, drafted on
    the user's side or drawn, as the AI's answer names it under `Presupposes:`, one a line, is
    recorded as a hinge at the place, unjustified. A hinge is justified only by a later answer of

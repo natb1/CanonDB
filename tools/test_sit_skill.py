@@ -891,7 +891,10 @@ class StopgapTest(unittest.TestCase):
                       "$SCRATCH/lines/<line>/<n>/place.json`",
                       "It reads the line's directory alone, and nothing of the user's record.",
                       "a new tab of the AI's own record needs no dictation",
-                      "a `place` job makes the tab alone"):
+                      "`tools/hinges.py rows $SCRATCH/lines/<line>/<n>/place.json --node "
+                      "<node id> --kind <kind> > $SCRATCH/lines/<line>/<n>/rows.json`",
+                      "Placing on a new tab is two steps, in this order, and no one command "
+                      "prints both"):
             self.assertIn(words, line)
         answerer = flat(os.path.join(ROOT, "clean", "answerer.md"))
         self.assertIn("\"Presupposes:\" stands on a line of its own, and under it, one to a "

@@ -6,6 +6,7 @@ listed with the builds that rest on it. Every line here is invented."""
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -169,6 +170,310 @@ class PlaceCliTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         with open(os.path.join(self.line, "1", "place.json")) as fh:
             self.assertEqual(json.load(fh)["came_in_by"], "l1/1")
+
+
+#: an answer as the answerer gives one that the page holds as it stands: each
+#: labelled line a paragraph of its own, the presuppositions a list
+HELD = ("The morning is for the plants, before anything is sent.\n\n"
+        "Rests on: nothing earlier\n\n"
+        "Presupposes:\n\n"
+        "- that the plants need water every morning\n"
+        "- that the post can wait an hour")
+QUESTION = "What is the morning for?"
+#: the key ai_root of an invented notebook, and the notebook file holding it
+LISTED = [{"node": "n-root", "tab": "t-root"}, {"node": "n-tab", "tab": "t-tab"}]
+
+
+def as_view(markdown, rev=4):
+    """A tab's markdown as the document holds it once inserted, in the view a
+    read prints: a block a paragraph, a heading by its marks, a block wholly
+    in single stars in italics, and a run of items a list. A line under a
+    paragraph's line is joined to it, and one under an item to the item, as
+    the document joins a wrapped line; an item under a paragraph's line
+    opens a list of its own. No inline mark is read: the texts here hold
+    none."""
+    from xml.sax.saxutils import escape
+    out, ids = [], iter(range(1, 10000))
+
+    def para(words, heading=None, italic=False):
+        inner = "<text id='s1.%d'>%s</text>" % (next(ids), escape(words))
+        if italic:
+            inner = "<italic>%s</italic>" % inner
+        return "<paragraph id='s1.%d'%s>%s</paragraph>" % (
+            next(ids), " heading='%d'" % heading if heading else "", inner)
+
+    for block in markdown.strip().split("\n\n"):
+        head = re.match(r"^(#{1,6}) (.*)$", block)
+        if head and "\n" not in block:
+            out.append(para(head.group(2), len(head.group(1))))
+            continue
+        if block.startswith("*") and block.endswith("*") and "\n" not in block:
+            out.append(para(block[1:-1], italic=True))
+            continue
+        lines, items = [], None
+        for row in block.split("\n"):
+            if row.startswith("- "):
+                if items is None:
+                    if lines:
+                        out.append(para(" ".join(lines)))
+                        lines = []
+                    items = []
+                items.append(row[2:])
+            elif items is not None:
+                items[-1] += " " + row
+            else:
+                lines.append(row)
+        if lines:
+            out.append(para(" ".join(lines)))
+        if items is not None:
+            out.append("<list kind='bullet'>%s</list>" % "".join(
+                "<listItem>%s</listItem>" % para(i) for i in items))
+    return "<doc rev='%d' sinceRev='0'>%s</doc>" % (rev, "".join(out))
+
+
+def tab_after(entry, name="q-one"):
+    """The tab a fresh one, its heading alone, holds once the entry's inserts
+    have landed at its end, as markdown."""
+    return "\n\n".join(["# " + name] + [op["source"]["from"]["content"]
+                                         for op in entry["payload"]["ops"]])
+
+
+class RowsTest(unittest.TestCase):
+    """The rows that place an answer of record on its tab: the form the reader
+    reads back as the AI's answer, the answer word for word, the operation id
+    fixed, the refusals, and the guard."""
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
+        self.line = os.path.join(self.dir, "lines", "l1")
+        answered(self.line, 1, QUESTION + "\n", HELD)
+        self.notebook = os.path.join(self.dir, "notebook.json")
+        with open(self.notebook, "w", encoding="utf-8") as fh:
+            json.dump({"artifact": "https://example.invalid/code/artifact/"
+                                   "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
+                       "ai_root": LISTED}, fh)
+
+    def placed(self, line=None, n=1):
+        done = run("hinges.py", "place", line or self.line, "--n", str(n), "--under", "ai-root")
+        self.assertEqual(done.returncode, 0, done.stderr)
+        path = os.path.join(self.dir, "place.json")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(done.stdout)
+        return path
+
+    def loaded(self):
+        with open(self.placed(), encoding="utf-8") as fh:
+            return json.load(fh)
+
+    def rows(self, place, node="n-tab", kind="definitional"):
+        return run("hinges.py", "rows", place, "--node", node, "--kind", kind,
+                   "--notebook", self.notebook)
+
+    def entry(self, **kw):
+        done = self.rows(self.placed(), **kw)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return json.loads(done.stdout)
+
+    def test_the_entry_is_one_update_of_three_inserts_at_the_tab_s_end(self):
+        entry = self.entry()
+        self.assertEqual(sorted(entry), ["node", "op_id", "payload"])
+        self.assertEqual(entry["node"], "n-tab")
+        self.assertEqual(list(entry["payload"]), ["ops"])
+        for op in entry["payload"]["ops"]:
+            self.assertEqual(op, {"op": "insert", "target": {"kind": "root"}, "side": "end",
+                                  "source": {"as": "markdown", "from": {
+                                      "kind": "inline",
+                                      "content": op["source"]["from"]["content"]}}})
+        self.assertEqual(len(entry["payload"]["ops"]), 3)
+
+    def test_the_form_is_the_notebook_s_question_answer_and_hinge(self):
+        ops = [op["source"]["from"]["content"] for op in self.entry()["payload"]["ops"]]
+        self.assertEqual(ops[0], "*What is the morning for?*\n\n"
+                         "question: in thread · definitional · answerer: ai · pressure 0 · "
+                         "backlog 0 · load 0\n\n## Thesis\n\n"
+                         "### ◆ The morning is for the plants, before anything\n\n"
+                         "assent: none · in thread · provenance: thesis hinge")
+        self.assertEqual(ops[2], "## Hinge\n\n"
+                         "### ⚓ question: what the asking presupposes\n\n"
+                         "that the plants need water every morning (unjustified; came in by "
+                         "l1/1)\n\n"
+                         "that the post can wait an hour (unjustified; came in by l1/1)\n\n"
+                         "### ⚓ thesis: what the answer was drawn from\n\n"
+                         "model: a-model · harness: a clean turn with no tools, over the "
+                         "line's packet · canon: the AI's answers of ai-root and above it, and "
+                         "the line l1 before question 1")
+
+    def test_the_answer_is_an_insert_of_its_own_word_for_word(self):
+        """What the ai-recorder checks: the text inserted as the answer is the
+        draw's answer, neither cut nor joined nor reflowed."""
+        ops = self.entry()["payload"]["ops"]
+        with open(os.path.join(self.line, "1", "draws", "draw-1.json"), encoding="utf-8") as fh:
+            self.assertEqual(ops[1]["source"]["from"]["content"], json.load(fh)["answer"])
+        self.assertNotIn(HELD, ops[0]["source"]["from"]["content"])
+        self.assertNotIn(HELD, ops[2]["source"]["from"]["content"])
+
+    def test_the_tab_reads_back_as_the_ai_s_answer_under_its_question(self):
+        """Rendered into the view a read prints, spelled by page.py, read by
+        read.py and carried by packet.py: the AI's answer past held, word
+        for word, under its question, with its hinges unjustified."""
+        import read as reader
+        from hypo import page, spec
+        entry = self.entry()
+        bodies = {"q-one": page.markdown(as_view(tab_after(entry)))}
+        manifest = {"value": {"tabs": {"t-tab": {"name": "q-one", "order": "a0"}}},
+                    "files": [{"id": "t-tab", "content": {"id": "n-tab"}}]}
+        graph_path = os.path.join(self.dir, "graph.json")
+        with open(graph_path, "w", encoding="utf-8") as fh:
+            json.dump(reader.assemble(manifest, bodies), fh)
+        out = os.path.join(self.dir, "packet.md")
+        done = run("packet.py", graph_path, "--whole", "-o", out)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        import packet
+        with open(out, encoding="utf-8") as fh:
+            self.assertEqual(packet.parse(fh.read()), [(QUESTION, HELD)])
+        graph = model.load(graph_path)
+        (q,) = graph.questions
+        self.assertEqual((q.answerer, q.state, [t.state for t in q.theses]),
+                         ("ai", "in thread", ["in thread"]))
+        self.assertTrue(q.claude)
+        self.assertEqual([(h.words, h.came_in_by, h.justified_by) for h in hinges.read(q)],
+                         [("that the plants need water every morning", "l1/1", None),
+                          ("that the post can wait an hour", "l1/1", None)])
+        self.assertEqual(q.hinge.thesis.split(" · ")[0], "model: a-model")
+        self.assertEqual([f.line() for f in spec.run(graph, only=(
+            "text-unwrapped", "text-unquoted", "state-order", "only-ai-put", "hinge-present",
+            "provenance-complete", "assent-present", "headline-not-identifier"))], [])
+
+    def test_the_operation_id_is_fixed_by_the_line_the_number_and_the_node(self):
+        first, again = self.entry(), self.entry()
+        self.assertEqual(first, again)
+        self.assertEqual(first["op_id"], hinges.place_op_id("l1", 1, "n-tab"))
+        self.assertEqual(self.entry(node="N-TAB")["op_id"], first["op_id"])
+        self.assertNotEqual(self.entry(node="n-root")["op_id"], first["op_id"])
+        self.assertNotEqual(hinges.place_op_id("l1", 2, "n-tab"), first["op_id"])
+        self.assertNotEqual(hinges.place_op_id("l2", 1, "n-tab"), first["op_id"])
+        self.assertTrue(first["op_id"].startswith("ai-place-"))
+
+    def test_an_answer_the_page_would_not_give_back_is_refused_unaltered(self):
+        """The answerer's closing lines as a draw may give them, one under the
+        other, are a line break inside a paragraph: the document joins them,
+        so the tab would read back another text, and the rows are refused."""
+        line = os.path.join(self.dir, "lines", "l2")
+        answered(line, 1, QUESTION + "\n", ANSWER)
+        done = self.rows(self.placed(line))
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("REFUSED: the answer breaks a line inside a paragraph", done.stderr)
+        self.assertEqual(done.stdout, "")
+        # and this is why: the page would give back another text
+        from hypo import page, read
+        joined = read.parse_tab(page.markdown(as_view("# q-two\n\n" + ANSWER.strip())))
+        self.assertEqual(joined["id"], "q-two")
+        self.assertNotIn(ANSWER.strip(), page.markdown(as_view(ANSWER.strip())))
+
+    def test_each_mark_the_form_reserves_is_refused_and_named(self):
+        for words, why in (
+                ("A.\n\n## B", "opens a block on #"),
+                ("A.\n\n> B", "blockquote"),
+                ("A.\n\n**Support**", "opens the citations"),
+                ("A.\nB.", "breaks a line inside a paragraph"),
+                ("A.\n\n\nB.", "more than one blank line"),
+                ("A.\n\n  - B", "indented"),
+                ("A. ", "space at its ends"),
+                ("A <<< B", "packet"),
+                ("A <?claude block m_x?> B", "chip"),
+                ("A \\ B", "backslash"),
+                ("A [B] C", "bracket"),
+                ("A _B_ C", "underscore"),
+                ("A * B", "star"),
+                ("A `B C", "backtick"),
+                ("A.\n\n* B", "markers"),
+                ("A.\n\n2. B", "markers"),
+                ("A.\n\n```\nB\n```", "code fence"),
+                ("A.\n\n---", "rule")):
+            with self.subTest(words=words):
+                why_given = hinges.unheld(words, "the answer")
+                self.assertIsNotNone(why_given)
+                self.assertIn(why, why_given)
+        for words in (HELD, "A **bold** word and an *aside*.", "1. one\n2. two",
+                      "snake_case stays", "A `code` span."):
+            with self.subTest(words=words):
+                self.assertIsNone(hinges.unheld(words, "the answer"))
+
+    def test_the_question_stands_on_one_line_in_italics(self):
+        place = self.loaded()
+        for question in ("What is *the* morning for?", "What is\nthe morning for?"):
+            with self.subTest(question=question):
+                with self.assertRaises(hinges.Refused):
+                    hinges.rows(dict(place, question=question), "n-tab", "case", ["n-tab"])
+
+    def test_a_place_not_as_place_printed_it_is_refused(self):
+        place = self.loaded()
+        bad = [dict(place, answer=place["answer"].replace("an hour", "a day")),
+               dict(place, rests_on=["something"]),
+               dict(place, came_in_by="l1"),
+               dict(place, hinge=dict(place["hinge"], thesis="from somewhere")),
+               dict(place, question=None), "not a place"]
+        for each in bad:
+            with self.subTest(each=str(each)[:40]):
+                with self.assertRaises(hinges.Refused):
+                    hinges.rows(each, "n-tab", "case", ["n-tab"])
+        with self.assertRaises(hinges.Refused):
+            hinges.rows(place, "n-tab", "a-kind", ["n-tab"])
+        with self.assertRaises(hinges.Refused):
+            hinges.rows(place, "n tab", "case", ["n tab"])
+
+    def test_a_node_the_key_does_not_list_is_refused(self):
+        done = self.rows(self.placed(), node="n-other")
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("lists no tab 'n-other'", done.stderr)
+
+    def test_the_guard_admits_the_ai_recorder_every_op_on_a_listed_tab_alone(self):
+        import test_notebook_gate as gated
+        entry = self.entry()
+        gate = gated.load_gate()
+
+        def decide(named, agent="principal:ai-recorder"):
+            with gated.project(named) as root:
+                return gate.decide(gated.call(root, agent, gated.UPDATE, {
+                    "container": {"kind": "project", "id": gated.NOTEBOOK},
+                    "ref": {"object": "node", "id": entry["node"]},
+                    "payload": entry["payload"], "opId": entry["op_id"]}),
+                    env={}, plugin="principal")
+
+        listed = {"artifact": gated.SITE + gated.NOTEBOOK, "ai_root": LISTED}
+        self.assertEqual(decide(listed), {})
+        for op in entry["payload"]["ops"]:
+            self.assertTrue(gate._insert_only(op))
+        elsewhere = dict(listed, ai_root=[{"node": "n-root", "tab": "t-root"}])
+        self.assertEqual(decide(elsewhere)["hookSpecificOutput"]["permissionDecisionReason"],
+                         gate.AI_SIDE)
+        self.assertEqual(decide({"artifact": gated.SITE + gated.NOTEBOOK})
+                         ["hookSpecificOutput"]["permissionDecisionReason"], gate.UNSET)
+        # the user's side is not the AI's recorder's, nor the AI's the comparer's
+        self.assertEqual(decide(listed, "principal:comparer")
+                         ["hookSpecificOutput"]["permissionDecisionReason"], gate.USER_SIDE)
+
+    def test_the_skill_s_rows_line_runs(self):
+        import test_sit_skill as walk
+        self.placed()
+        os.makedirs(os.path.join(self.line, "1"), exist_ok=True)
+        shutil.copy(os.path.join(self.dir, "place.json"),
+                    os.path.join(self.line, "1", "place.json"))
+        (each,) = [s for s in walk.lines(SKILL, "hinges.py") if s.split()[1] == "rows"]
+        command = each.replace("tools/", HERE + "/", 1)
+        for key, value in {"$SCRATCH": self.dir, "<line>": "l1", "<n>": "1",
+                           "<node id>": "n-tab", "<kind>": "case"}.items():
+            command = command.replace(key, value)
+        self.assertIsNone(walk.UNFILLED.search(command), command)
+        os.makedirs(os.path.join(self.dir, ".principal"))
+        shutil.copy(self.notebook, os.path.join(self.dir, ".principal", "notebook.json"))
+        env = dict(os.environ, CLAUDE_PROJECT_DIR=self.dir)
+        done = subprocess.run(["bash", "-c", command], capture_output=True, text=True,
+                              timeout=60, env=env, cwd=self.dir)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        with open(os.path.join(self.line, "1", "rows.json"), encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh)["node"], "n-tab")
 
 
 class UnjustifiedTest(unittest.TestCase):
