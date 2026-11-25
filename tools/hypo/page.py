@@ -26,9 +26,10 @@ A character the page holds that markdown would read as a mark — a star, a
 bracket, a backslash — is spelled behind a backslash, as the exporter
 spelled it, so that the reader takes it for the character; spelled bare, the
 next render wrote it as a mark. Inside code nothing is a mark, and a code
-run is spelled as it stands. A code block is a text held word for word
-(``text.fence``): its characters are spelled under a fence longer than any
-run of backticks they hold, and nothing in them is escaped.
+run is spelled as it stands. On a tab held word for word (``held_tab``), a
+code block of a held text is spelled under a fence longer than any run of
+backticks it holds (``text.fence``), nothing in it escaped; a code block
+anywhere else is refused, as a block the tab's grammar does not hold.
 """
 
 from __future__ import annotations
@@ -235,7 +236,7 @@ def _table(node: ET.Element) -> str:
     return "\n".join(lines)
 
 
-def _block(node: ET.Element) -> str:
+def _block(node: ET.Element, held: bool = False) -> str:
     tag = node.tag
     if tag == "paragraph":
         return _paragraph(node)
@@ -247,13 +248,16 @@ def _block(node: ET.Element) -> str:
         return _table(node)
     if tag == "pending":
         return ""
-    if tag == "codeBlock":
+    if tag == "codeBlock" and held and node.get("language") == text.HELD:
         # a text held word for word: the block's characters as they stand,
-        # every run joined, under a fence no line of them can close
-        return text.fence("".join(node.itertext()), node.get("language") or "")
-    # spelled as nothing, a divider or a block of a kind not known here would be gone from the
+        # every run and every CDATA section of them joined, under a fence no
+        # line of them can close
+        return text.fence("".join(node.itertext()), text.HELD)
+    # spelled as nothing, a code block or a divider would be gone from the
     # markdown and from everything downstream, and the next body write would
-    # take it off the page; a tab holding one is not rewritten from a read
+    # take it off the page; a tab holding one is not rewritten from a read. A
+    # tab held word for word (``held_tab``) is the one exception, and there
+    # only for a code block of a held text
     raise ValueError("a block the tab's grammar does not hold: <%s>" % tag)
 
 
@@ -296,17 +300,34 @@ def outline(source) -> str:
     return _GONE.sub("", _TAG.sub(tag, xml))
 
 
+def held_tab(root: ET.Element) -> bool:
+    """Whether the tab is held word for word: the block under its title,
+    the header list there aside, is a code block of a held text, as
+    ``hinges.rows`` places the AI's answers. Only there does a code block
+    stand in a tab's grammar."""
+    top = [node for node in root if node.tag != "gone"]
+    for i, node in enumerate(top):
+        if node.tag == "paragraph" and node.get("heading") == "1":
+            rest = top[i + 1:]
+            if rest and rest[0].tag == "list":
+                rest = rest[1:]
+            return bool(rest) and rest[0].tag == "codeBlock" \
+                and rest[0].get("language") == text.HELD
+    return False
+
+
 def blocks(source) -> List[Tuple[str, str]]:
     """(block id, markdown) per block of the tab, in order; a ``gone`` block is
     not a block."""
     root = ET.fromstring(view_xml(source))
     _whole(root)
     full = full_ids(root)
+    held = held_tab(root)
     out: List[Tuple[str, str]] = []
     for node in root:
         if node.tag == "gone":
             continue
-        words = _block(node)
+        words = _block(node, held)
         if words.strip():
             out.append((own_id(node, full), words))
     return out

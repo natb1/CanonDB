@@ -19,8 +19,10 @@
                                    line, the answer word for word in a code block
                                    as an insert of its own, and the hinge, guarded
                                    by the rev of VIEW, a whole read of that tab
-                                   showing its heading alone; NAME the line's
-                                   name, KIND the question's kind
+                                   naming its node and showing its heading
+                                   alone; NAME the line's name, KIND the
+                                   question's kind, checked against the kinds
+                                   alone
     unjustified GRAPH
                                    every unjustified hinge of the AI's graph, with
                                    the builds that cite an answer resting on it
@@ -33,8 +35,10 @@ question of the line not yet answered, and a draw that is not the one
 nothing unless PLACE is what ``place`` prints from it for the question PLACE
 names, under the line's name NAME (a directory named otherwise is named by
 ``place --line-name``); it refuses a node the key ai_root does not list, a
-read that shows the tab holding more than its heading, and a text a code
-block cannot hold as it stands, saying why, and never alters one. The key
+read that names no node or another, or shows the tab holding more than its
+heading, what a packet would refuse to carry, and a text a code block cannot
+hold as it stands, saying why, and never alters one. Which tab a place goes
+to is the speaker's: ``rows`` holds it to a blank tab of the AI's. The key
 ai_root is read from the notebook file the guard reads, or --notebook.
 Nothing of the user's record is read. Nothing here reaches the network or
 writes the notebook.
@@ -146,7 +150,10 @@ def rows(args) -> int:
             root = page.ET.fromstring(page.view_xml(view))
         except (ValueError, page.ET.ParseError) as exc:
             raise hinges.Refused("the tab's read is not a whole view: %s" % exc) from exc
-        if root.get("node") and root.get("node").lower() != args.node.lower():
+        if not root.get("node"):
+            raise hinges.Refused("the read names no node, so it cannot be told for a read of "
+                                 "%r" % args.node)
+        if root.get("node").lower() != args.node.lower():
             raise hinges.Refused("the read is of the node %r, not %r"
                                  % (root.get("node"), args.node))
         hinges.blank_tab(shown)

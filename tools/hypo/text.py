@@ -309,14 +309,12 @@ def fence(words: str, language: str = HELD) -> str:
 
 def unfenceable(words: str) -> str:
     """Why a code block cannot hold ``words`` as they stand, or ''. It holds
-    any line, any mark and any spacing; not an empty text, a line break at
-    either end, which the block's own line endings swallow, a carriage
-    return, which markdown reads as a line ending, or a character XML
-    cannot carry."""
+    any line, any mark and any spacing, blank lines at its ends among them;
+    not an empty text, which would stand for no text, a carriage return,
+    which markdown reads as a line ending, or a character XML cannot
+    carry."""
     if not words:
         return "it is empty"
-    if words[0] == "\n" or words[-1] == "\n":
-        return "it opens or ends with a line break, which a code block's own lines take"
     found = _UNHOLDABLE.search(words)
     if found:
         return ("it holds the character U+%04X, which a code block of the document cannot "

@@ -579,11 +579,16 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
         start, _, language, _ = next(((a, b, c, d) for a, b, c, d in found
                                       if a > title.end()), (None, 0, "", ""))
         between = markdown[title.end():start] if start is not None else "x"
-        if language != text.HELD or any(
-                block.strip() and not block.strip().startswith("- ")
-                for block in BLANK.split(between)):
+        if any(block.strip() and not block.strip().startswith("- ")
+               for block in BLANK.split(between)):
             # a prose tab, whatever code its texts quote: read as it always was
             return markdown
+        # the question stands in a code block: the tab is held, strictly
+        others = sorted({lang or "none" for _, _, lang, _ in found if lang != text.HELD})
+        if others:
+            raise ParseError("a code block in %s where a tab held word for word keeps only "
+                             "code blocks of a held text (%s)"
+                             % (" and ".join(others), text.HELD))
         out, last = [], 0
         for start, end, _, words in found:
             out += [markdown[last:start], HELD_BLOCK % len(words_held)]
@@ -640,9 +645,15 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
                     incoming.append((strip_chips(item.group("text"), labels),
                                      target(keys[0]) if keys else ""))
         elif HELD_TOKEN.fullmatch(block):
+            if "question" in q:
+                raise ParseError("a code block above the Thesis section after the "
+                                 "question, which would stand for the question")
             q["question"] = held_words(block)  # word for word, in its code block
             q["fenced"] = True
         elif block.startswith("*") and block.endswith("*"):
+            if q.get("fenced"):
+                raise ParseError("a line in italics beside a question held in a code "
+                                 "block, which would stand for the question")
             q["question"] = _unwrap(block)  # one layer: the question's own
         elif block.startswith(LINEAGE):
             continue  # the breadcrumb is projected, never stored

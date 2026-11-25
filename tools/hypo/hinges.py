@@ -68,16 +68,17 @@ Every text that comes from the line stands in a code block of its own,
 which the document gives back character for character whatever marks,
 lines and spacing it holds; its fence is longer than any run of backticks
 in it, so no line of it closes the block (``text.fence``). A code block
-cannot hold an empty text, one that opens or ends with a line break, a
-carriage return or a character XML cannot carry, and only such a text is
-refused; nothing is altered. Every other word of the inserts is the tool's
+cannot hold an empty text, a carriage return or a character XML cannot
+carry, and only such a text is refused, with what a packet would refuse to
+carry (``packet._pair``); nothing is altered. Every other word of the inserts is the tool's
 own. The answer carries its own ``Rests on:`` and ``Presupposes:`` lines,
 which are words of it; where it presupposes nothing the hinge's question
-part says ``nothing``, which ``read`` takes for no presupposition. The
+part says ``nothing``, which ``read`` takes for no presupposition on a held
+tab alone. The
 question and its answer are both in thread, so the reader takes the answer
 for one of the AI's past held and ``packet.py`` carries it under its
 question. The operation id is fixed by the line, the question's number, the
-node and every word the inserts carry.
+node, the read's rev and every word the inserts carry.
 """
 
 from __future__ import annotations
@@ -197,8 +198,10 @@ def read(q) -> List[Hinge]:
     """The presuppositions a question's hinge holds, each with its standing;
     a hinge's question part with no ending is one presupposition, unjustified."""
     text = (q.hinge.question if q.hinge else "") or ""
-    if not text.strip() or text.strip().lower().rstrip(".") in NOTHING:
-        return []  # the answer presupposed nothing, and the hinge says so
+    if not text.strip() or (q.fenced and text == NOTHING_HELD):
+        # a held tab's hinge reads the one word ``rows`` writes where the
+        # answer presupposed nothing
+        return []
     out: List[Hinge] = []
     at = 0
     for m in ENDING.finditer(text):
@@ -303,13 +306,15 @@ def _insert(content: str) -> dict:
             "source": {"as": "markdown", "from": {"kind": "inline", "content": content}}}
 
 
-def place_op_id(line_name: str, n: int, node: str, ops: List[dict]) -> str:
+def place_op_id(line_name: str, n: int, node: str, rev: int, ops: List[dict]) -> str:
     """The operation id of a place's rows, fixed by the line, the question's
-    number, the node, in lower case, and every word the inserts carry, so
-    that a second sending of the same entry lands once and a changed answer,
-    question or kind is a new operation."""
-    body = json.dumps({"line": line_name, "n": n, "node": node.lower(), "ops": ops},
-                      sort_keys=True, ensure_ascii=False)
+    number, the node, in lower case, the rev of the read it was built from
+    and every word the inserts carry, so that a second sending of the same
+    entry lands once, and a changed answer, question or kind, or an entry
+    printed again from a new read after the notebook refused a stale one,
+    is a new operation."""
+    body = json.dumps({"line": line_name, "n": n, "node": node.lower(), "rev": rev,
+                       "ops": ops}, sort_keys=True, ensure_ascii=False)
     return PLACE_OP + hashlib.sha256(body.encode("utf-8")).hexdigest()[:16]
 
 
@@ -340,6 +345,13 @@ def rows(placed: dict, node: str, kind: str, listed: Iterable[str], rev: int) ->
     if isinstance(rev, bool) or not isinstance(rev, int) or rev < 0:
         raise Refused("the tab's read gives no rev to guard the write by")
     line_name, n = came_in_by(placed)
+    # what a packet would refuse to carry, refused here by the packet's own check
+    import packet
+    try:
+        packet._pair(placed.get("question") or "", placed.get("answer") or "",
+                     "the place")
+    except packet.Refused as exc:
+        raise Refused(str(exc)) from exc
     if not LINE_NAME.fullmatch(line_name):
         raise Refused("the line's name %r is not lower-case words joined by -" % line_name)
     hinge = placed.get("hinge") if isinstance(placed.get("hinge"), dict) else {}
@@ -361,4 +373,4 @@ def rows(placed: dict, node: str, kind: str, listed: Iterable[str], rev: int) ->
         held(hinge.get("thesis"), "the hinge's thesis part")))
     ops = [_insert(head), _insert(answer), _insert(tail)]
     return [{"node": node, "n": n, "payload": {"ifRev": rev, "ops": ops},
-             "op_id": place_op_id(line_name, n, node, ops)}]
+             "op_id": place_op_id(line_name, n, node, rev, ops)}]

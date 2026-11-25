@@ -187,22 +187,30 @@ NOTHING = ("The morning is for the plants.\n\n"
            "Rests on: nothing earlier\n"
            "Presupposes:\n"
            "- nothing")
+#: what the live document was seen to give back inside a held code block:
+#: a tab, runs of three and four backticks, a fence-like line with an info
+#: word, a bare ampersand, a closing CDATA mark, and a line of spaces
+EDGES = ("Water first.\tThen ``` and ```` stand.\n```python\nx = 1 & y ]]> z\n   \n"
+         "Rests on: nothing earlier\nPresupposes:\n- that water comes first")
 QUESTION = "What is the *morning* for, `now`?"
 #: the key ai_root of an invented notebook
 LISTED = [{"node": "n-root", "tab": "t-root"}, {"node": "n-tab", "tab": "t-tab"}]
 #: a whole read of a tab just made, holding its heading alone
-BLANK = ("<doc rev='5' sinceRev='0'><paragraph id='s1.1' h='0' heading='1'>"
+BLANK = ("<doc rev='5' sinceRev='0' node='n-tab'><paragraph id='s1.1' h='0' heading='1'>"
          "<text id='.2'>q-one</text></paragraph></doc>")
 
 
-def as_view(markdown, rev=6):
+def as_view(markdown, rev=6, node="n-tab"):
     """A tab's markdown as a whole read of the document prints it: a code
     block as the document holds one, ``<codeBlock id h language='text'>``
     with its words in a text run, in CDATA sections and with each angle
     bracket written as an entity between them; a heading by its marks; and
     every other block, which here is one line of the tool's own words, a
-    paragraph."""
+    paragraph. A closing CDATA mark in the words is split across two
+    sections, as the document prints it."""
     def cdata(words):
+        if "]]>" in words:
+            return "<![CDATA[%s]]>" % words.replace("]]>", "]]]]><![CDATA[>")
         parts = re.split(r"([<>])", words)
         return "".join({"<": "&lt;", ">": "&gt;"}.get(p) or
                        ("<![CDATA[%s]]>" % p.replace("]]>", "]]]]><![CDATA[>") if p else "")
@@ -230,7 +238,7 @@ def as_view(markdown, rev=6):
             out.append("<paragraph id='s1.%d' h='0'%s><text id='s1.%d'>%s</text></paragraph>"
                        % (next(ids), " heading='%d'" % level if level else "", next(ids),
                           escape(words)))
-    return "<doc rev='%d' sinceRev='0'>%s</doc>" % (rev, "".join(out))
+    return "<doc rev='%d' sinceRev='0' node='%s'>%s</doc>" % (rev, node, "".join(out))
 
 
 def tab_after(entry, name="q-one"):
@@ -253,6 +261,7 @@ class RowsTest(unittest.TestCase):
         answered(self.line, 1, QUESTION + "\n", MARKED)
         answered(self.line, 2, "And the evening?\n", ANSWER)
         answered(self.line, 3, "And at night?\n", NOTHING + "\n")
+        answered(self.line, 4, "And at noon?\n", EDGES)
         self.notebook = os.path.join(self.dir, "notebook.json")
         with open(self.notebook, "w", encoding="utf-8") as fh:
             json.dump({"artifact": "https://example.invalid/code/artifact/"
@@ -328,7 +337,7 @@ class RowsTest(unittest.TestCase):
         self.assertEqual(text.fence("a ```` b"), "`````text\na ```` b\n`````")
 
     def test_the_answer_insert_holds_the_draw_s_answer_word_for_word(self):
-        for n in (1, 2, 3):
+        for n in (1, 2, 3, 4):
             with self.subTest(n=n):
                 (start, end, language, words), = text.fences(
                     self.entry(n)["payload"]["ops"][1]["source"]["from"]["content"])
@@ -343,10 +352,14 @@ class RowsTest(unittest.TestCase):
         import packet
         import read as reader
         from hypo import page, spec
-        for n, question in ((1, QUESTION), (2, "And the evening?"), (3, "And at night?")):
+        for n, question in ((1, QUESTION), (2, "And the evening?"), (3, "And at night?"),
+                            (4, "And at noon?")):
             with self.subTest(n=n):
                 entry = self.entry(n)
-                bodies = {"q-one": page.markdown(as_view(tab_after(entry)))}
+                view = as_view(tab_after(entry))
+                if n == 4:
+                    self.assertIn("]]]]><![CDATA[>", view)
+                bodies = {"q-one": page.markdown(view)}
                 manifest = {"value": {"tabs": {"t-tab": {"name": "q-one", "order": "a0"}}},
                             "files": [{"id": "t-tab", "content": {"id": "n-tab"}}]}
                 graph_path = self.file("graph.json", json.dumps(
@@ -362,9 +375,9 @@ class RowsTest(unittest.TestCase):
                                  (question, True, "ai", "in thread", True))
                 self.assertEqual(q.theses[0].text, self.draw(n).strip())
                 got = [(h.words, h.came_in_by) for h in hinges.read(q)]
-                self.assertEqual(got, [] if n == 3 else
-                                 [("that the plants need water every morning", "l1/%d" % n),
-                                  ("that the post can wait an hour", "l1/%d" % n)])
+                self.assertEqual(got, {3: [], 4: [("that water comes first", "l1/4")]}.get(n, [
+                    ("that the plants need water every morning", "l1/%d" % n),
+                    ("that the post can wait an hour", "l1/%d" % n)]))
                 # every error but the two a lone tab owes to the graph around it
                 errors = [f.line() for f in spec.run(graph) if f.severity == spec.ERROR
                           and f.check not in ("one-root", "end-stated")]
@@ -378,42 +391,94 @@ class RowsTest(unittest.TestCase):
                                   {"question": q.hinge.question, "thesis": q.hinge.thesis},
                                   True))
 
-    def test_a_prose_tab_quoting_code_is_read_as_it_always_was(self):
-        from hypo import read
+    def test_a_code_block_on_a_prose_tab_is_refused_as_on_main(self):
+        """A read of a prose tab holding a code block is refused by page.py, as
+        it always was; read.py, handed prose markdown, reads a quoted fence
+        as the prose it stands in."""
+        from hypo import page, read
+        view = ("<doc rev='1' sinceRev='0' node='n'><paragraph id='a.1' heading='1'><text>"
+                "q-two</text></paragraph><paragraph id='.2'><italic><text>Why?</text></italic>"
+                "</paragraph><codeBlock id='.3' h='0' language='text'><text>x</text>"
+                "</codeBlock></doc>")
+        with self.assertRaises(ValueError):
+            page.markdown(view)
         tab = ("# q-two\n\n*Why?*\n\nquestion: held · case · pressure 0 · backlog 0 · load 0"
                "\n\n## Thesis\n\n### ◆ A reason\n\nassent: none · held · provenance: thesis "
                "hinge\n\nSay it so:\n\n```text\nx\n```")
         q = read.parse_tab(tab)
         self.assertNotIn("fenced", q)
         self.assertEqual(q["theses"][0]["text"], "Say it so:\n\n```text\nx\n```")
-        for bad in (tab.replace("*Why?*", "```text\nWhy?\n```").replace(
-                        "Say it so:\n\n```text\nx\n```", "Prose."),
-                    tab.replace("*Why?*", "```text\nWhy?\n```")):
-            with self.subTest(bad=bad[-30:]):
+
+    def test_a_held_tab_is_read_strictly(self):
+        """No stray code block, no other language, no prose beside a held
+        text, and nothing that would stand for the question."""
+        from hypo import read
+        held = tab_after(self.entry())
+        question_line = "\n\nquestion: in thread"
+        cases = {
+            "a stray block after the question": held.replace(
+                question_line, "\n\n```text\nSTRAY\n```" + question_line),
+            "a stray block before the title": "```text\nSTRAY\n```\n\n" + held,
+            "italics beside the question": held.replace(question_line,
+                                                        "\n\n*Stray?*" + question_line),
+            "a stray block under the Thesis heading": held.replace(
+                "## Thesis\n\n", "## Thesis\n\n```text\nSTRAY\n```\n\n"),
+            "a stray block at the end": held + "\n\n```text\nSTRAY\n```",
+            "two blocks in the answer": held.replace(
+                "assent: none · in thread · provenance: thesis hinge\n\n",
+                "assent: none · in thread · provenance: thesis hinge\n\n```text\nX\n```\n\n"),
+            "the question in another language": held.replace("```text\n" + QUESTION,
+                                                             "```python\n" + QUESTION),
+            "the question in no language": held.replace("```text\n" + QUESTION,
+                                                        "```\n" + QUESTION),
+            "the answer in another language": held.replace("```text\n" + MARKED,
+                                                           "```python\n" + MARKED),
+            "a hinge part as prose": held.replace("```text\nmodel:", "model:").replace(
+                "line l1 before question 1\n```", "line l1 before question 1"),
+        }
+        self.assertEqual(read.parse_tab(held)["question"], QUESTION)
+        for name, tab in cases.items():
+            with self.subTest(name=name):
+                self.assertNotEqual(tab, held)
                 with self.assertRaises(read.ParseError):
-                    read.parse_tab(bad)
+                    read.parse_tab(tab)
+
+    def test_nothing_is_no_presupposition_on_a_held_tab_alone(self):
+        for fenced, words, count in ((True, "nothing", 0), (False, "nothing", 1),
+                                     (True, "None.", 1), (True, "nothing earlier", 1)):
+            with self.subTest(fenced=fenced, words=words):
+                q = model.Question(id="x", tab="t", body="b", question="q", state="held",
+                                   kind="case", pressure=0, fenced=fenced,
+                                   hinge=model.Hinge(question=words))
+                self.assertEqual(len(hinges.read(q)), count)
 
     def test_the_operation_id_covers_the_line_the_number_the_node_and_the_words(self):
         first = self.entry()
         self.assertEqual(first, self.entry())
         self.assertEqual(self.entry(node="N-TAB")["op_id"], first["op_id"])
         self.assertTrue(first["op_id"].startswith("ai-place-"))
-        for other in (self.entry(node="n-root"), self.entry(kind="case"), self.entry(2)):
+        later = self.file("later.xml", BLANK.replace("rev='5'", "rev='9'"))
+        for other in (self.entry(node="n-root", read=self.file(
+                          "root.xml", BLANK.replace("node='n-tab'", "node='n-root'"))),
+                      self.entry(kind="case"), self.entry(2), self.entry(read=later)):
             self.assertNotEqual(other["op_id"], first["op_id"])
         place = self.loaded()
         edited = dict(place, answer=place["answer"] + " More.")
         self.assertNotEqual(hinges.rows(edited, "n-tab", "definitional", ["n-tab"], 5)[0]
                             ["op_id"], first["op_id"])
+        # what a packet would refuse to carry, the packet's own check refuses here
+        for words in ("A <<< B", "A >>> B"):
+            with self.assertRaises(hinges.Refused):
+                hinges.rows(dict(place, answer=words), "n-tab", "case", ["n-tab"], 5)
 
     def test_only_what_a_code_block_cannot_hold_is_refused(self):
-        for words, why in (("", "empty"), ("\nA", "line break"), ("A\n", "line break"),
-                           ("A\rB", "U+000D"), ("A\x01B", "U+0001")):
+        for words, why in (("", "empty"), ("A\rB", "U+000D"), ("A\x01B", "U+0001")):
             with self.subTest(words=words):
                 with self.assertRaises(hinges.Refused) as caught:
                     hinges.held(words, "the answer")
                 self.assertIn(why, str(caught.exception))
         for words in (MARKED, ANSWER.strip(), "> a\n\n## b\n\n**Support**\n\n<div>c</div>",
-                      "- \n\n```\nd\n```", "a  \n\tb"):
+                      "- \n\n```\nd\n```", "a  \n\tb", "\nA", "A\n   ", EDGES):
             with self.subTest(words=words):
                 self.assertEqual(text.fences(hinges.held(words, "the answer"))[0][3], words)
 
@@ -444,13 +509,16 @@ class RowsTest(unittest.TestCase):
         done = self.rows(self.placed(2), read=held)
         self.assertEqual(done.returncode, 1)
         self.assertIn("holds more than its heading", done.stderr)
-        other = self.file("other.xml", BLANK.replace("<doc ", "<doc node='n-root' "))
+        other = self.file("other.xml", BLANK.replace("node='n-tab'", "node='n-root'"))
         self.assertIn("not 'n-tab'", self.rows(self.placed(), read=other).stderr)
+        nameless = self.file("nameless.xml", BLANK.replace(" node='n-tab'", ""))
+        self.assertIn("names no node", self.rows(self.placed(), read=nameless).stderr)
         norev = self.file("norev.xml", BLANK.replace(" rev='5'", ""))
         self.assertIn("no rev", self.rows(self.placed(), read=norev).stderr)
 
     def test_a_node_the_key_does_not_list_and_a_kind_outside_the_vocabulary_are_refused(self):
-        done = self.rows(self.placed(), node="n-other")
+        done = self.rows(self.placed(), node="n-other", read=self.file(
+            "o.xml", BLANK.replace("node='n-tab'", "node='n-other'")))
         self.assertEqual(done.returncode, 1)
         self.assertIn("lists no tab 'n-other'", done.stderr)
         self.assertEqual(self.rows(self.placed(), kind="principle").returncode, 2)

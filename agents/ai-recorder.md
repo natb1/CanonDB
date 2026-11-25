@@ -43,8 +43,11 @@ the root.
 
 An entry that places an answer, the one `tools/hinges.py rows` prints, carries under `n` the
 number of its question on the line, and you check it insert by insert against that question's
-files the index names: `<n>/question.md`, the first draw `<n>/draws/manifest.json` lists as
-kept, and `<n>/place.json`, what `tools/hinges.py place` printed. Its payload holds `ifRev` and
+files the index names: `<n>/question.md`; the draw whose file the first entry of `draws` in
+`<n>/draws/manifest.json` names under `file`, `<n>/draws/<that file>`; and `<n>/place.json`, what
+`tools/hinges.py place` printed, which the index lists once the speaker has written it again
+after `place` ran. Where the index lists none of these for `n`, send nothing and hand that back.
+Its payload holds `ifRev` and
 exactly three inserts, each at the tab's end. A code block below is a line of three or more
 backticks and `text`, the words, and a line of the same backticks. The second insert is the
 answer: one code block whose words are, word for word, the `answer` of that draw, the space at
@@ -64,8 +67,9 @@ Where any of these fails, send nothing and hand the failure back.
 Before you send an entry that places an answer, read its tab: where it holds anything but its
 heading, `# <name>`, send it not and hand that back, since a second answer on a tab makes the
 tab unreadable and an insert cannot be taken back. Its `ifRev` is the rev of the read it was
-built from, and the notebook refuses it once the tab has changed since: that refusal is handed
-back like any other.
+built from, and the notebook refuses it once the tab has changed since: hand that refusal
+back, send nothing after it, and never send the entry again yourself; the speaker reads the tab
+again and prints the rows anew, under a new operation id.
 
 Then, for each entry, in the file's order, send it as one `update` of its node in the notebook,
 with its `payload` exactly as it stands in the file and its operation id as the call's `opId`;
