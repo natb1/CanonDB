@@ -1347,9 +1347,13 @@ def text_unwrapped(graph: Graph) -> Yield:
     It arrives from outside — a draft wrapped at whatever column the tool that
     wrote it used — and nothing downstream could see it, because the local
     round trip renders and reads the same breaks straight back.
+
+    A tab held word for word (``Question.fenced``) keeps its answers in code
+    blocks, which the document gives back line for line, so its answers are
+    not read here.
     """
     for q in graph.questions:
-        for thesis in q.theses:
+        for thesis in ([] if q.fenced else q.theses):
             broken = _WRAPPED.search(thesis.text)
             if broken and broken.end() == len(thesis.text):
                 yield q.id, ("the answer's text ends in a line break, which the "
@@ -1423,9 +1427,13 @@ def text_unquoted(graph: Graph) -> Yield:
     heading and ends the text at, and of a block that is one of the two
     citation headings, which opens the citations; and it holds of every text
     the reader parts into blocks — a definition's body, the hinge's four
-    parts and a work's note as much as an answer's text.
+    parts and a work's note as much as an answer's text. A tab held word for
+    word (``Question.fenced``) keeps each of those texts in a code block,
+    which the reader takes whole, so it is not read here.
     """
     for q in graph.questions:
+        if q.fenced:
+            continue  # each text in a code block, which the reader takes whole
         for what, held in _parted(q):
             quoted = _QUOTED.search(held)
             if quoted:

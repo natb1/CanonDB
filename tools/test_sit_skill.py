@@ -891,8 +891,9 @@ class StopgapTest(unittest.TestCase):
                       "$SCRATCH/lines/<line>/<n>/place.json`",
                       "It reads the line's directory alone, and nothing of the user's record.",
                       "a new tab of the AI's own record needs no dictation",
-                      "`tools/hinges.py rows $SCRATCH/lines/<line>/<n>/place.json --node "
-                      "<node id> --kind <kind> > $SCRATCH/lines/<line>/<n>/rows.json`",
+                      "`tools/hinges.py rows $SCRATCH/lines/<line>/<n>/place.json --line "
+                      "$SCRATCH/lines/<line> --line-name <line> --node <node id> --kind <kind> "
+                      "--read <the tab's read> > $SCRATCH/rows/<job id>.json`",
                       "Placing on a new tab is two steps, in this order, and no one command "
                       "prints both"):
             self.assertIn(words, line)

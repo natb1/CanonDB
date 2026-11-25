@@ -26,7 +26,9 @@ A character the page holds that markdown would read as a mark — a star, a
 bracket, a backslash — is spelled behind a backslash, as the exporter
 spelled it, so that the reader takes it for the character; spelled bare, the
 next render wrote it as a mark. Inside code nothing is a mark, and a code
-run is spelled as it stands.
+run is spelled as it stands. A code block is a text held word for word
+(``text.fence``): its characters are spelled under a fence longer than any
+run of backticks they hold, and nothing in them is escaped.
 """
 
 from __future__ import annotations
@@ -245,7 +247,11 @@ def _block(node: ET.Element) -> str:
         return _table(node)
     if tag == "pending":
         return ""
-    # spelled as nothing, a code block or a divider would be gone from the
+    if tag == "codeBlock":
+        # a text held word for word: the block's characters as they stand,
+        # every run joined, under a fence no line of them can close
+        return text.fence("".join(node.itertext()), node.get("language") or "")
+    # spelled as nothing, a divider or a block of a kind not known here would be gone from the
     # markdown and from everything downstream, and the next body write would
     # take it off the page; a tab holding one is not rewritten from a read
     raise ValueError("a block the tab's grammar does not hold: <%s>" % tag)

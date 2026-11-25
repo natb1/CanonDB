@@ -283,3 +283,69 @@ def forms(word: str) -> List[str]:
     spaced = {head + sep + form for form in out}
     hyphenated = {form.replace(" ", "-") for form in spaced if " " in form}
     return sorted(spaced | hyphenated, key=lambda f: (-len(f), f))
+
+
+# -- a text held word for word ---------------------------------------------
+
+#: the language a held text's code block names, as the document records it
+HELD = "text"
+
+#: what a code block cannot give back as it went in: a carriage return,
+#: which markdown reads as a line ending, and what XML cannot carry at all
+_UNHOLDABLE = re.compile("[\r\x00-\x08\x0b\x0c\x0e-\x1f￾￿\ud800-\udfff]")
+
+#: a line that opens a fenced block: its backticks and its language
+FENCE_OPEN = re.compile(r"^(`{3,})([^`\s]*)[ \t]*$")
+
+
+def fence(words: str, language: str = HELD) -> str:
+    """``words`` as a fenced code block, which the document holds character
+    for character: a fence of backticks longer than any run of them in the
+    words, so that no line of the words can close it."""
+    longest = max((len(run) for run in re.findall(r"`+", words)), default=0)
+    mark = "`" * max(3, longest + 1)
+    return "%s%s\n%s\n%s" % (mark, language, words, mark)
+
+
+def unfenceable(words: str) -> str:
+    """Why a code block cannot hold ``words`` as they stand, or ''. It holds
+    any line, any mark and any spacing; not an empty text, a line break at
+    either end, which the block's own line endings swallow, a carriage
+    return, which markdown reads as a line ending, or a character XML
+    cannot carry."""
+    if not words:
+        return "it is empty"
+    if words[0] == "\n" or words[-1] == "\n":
+        return "it opens or ends with a line break, which a code block's own lines take"
+    found = _UNHOLDABLE.search(words)
+    if found:
+        return ("it holds the character U+%04X, which a code block of the document cannot "
+                "give back" % ord(found.group()))
+    return ""
+
+
+def fences(markdown: str) -> List[Tuple[int, int, str, str]]:
+    """Each fenced block of ``markdown`` that stands as a block of its own:
+    (start, end, language, the words inside), the end past the closing
+    fence. A fence closes on a line of its own backticks, at least as many,
+    and nothing else; one never closed is not a block."""
+    out = []
+    lines = markdown.split("\n")
+    offsets, at = [], 0
+    for line in lines:
+        offsets.append(at)
+        at += len(line) + 1
+    i = 0
+    while i < len(lines):
+        opened = FENCE_OPEN.match(lines[i])
+        if opened and (i == 0 or not lines[i - 1].strip()):
+            close = re.compile(r"^`{%d,}[ \t]*$" % len(opened.group(1)))
+            for j in range(i + 1, len(lines)):
+                if close.match(lines[j]):
+                    start = offsets[i]
+                    end = offsets[j] + len(lines[j])
+                    out.append((start, end, opened.group(2), "\n".join(lines[i + 1:j])))
+                    i = j
+                    break
+        i += 1
+    return out

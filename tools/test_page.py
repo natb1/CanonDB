@@ -174,7 +174,17 @@ class WalkTest(unittest.TestCase):
     def test_a_block_the_grammar_does_not_hold_is_said(self):
         with self.assertRaises(ValueError):
             page.markdown("<doc rev='1' sinceRev='0'><paragraph id='a.1'><text>x</text>"
-                          "</paragraph><codeBlock id='.2'>print(1)</codeBlock></doc>")
+                          "</paragraph><divider id='.2'/></doc>")
+
+    def test_a_code_block_is_spelled_word_for_word_under_its_fence(self):
+        """What a code block holds is spelled as it stands, nothing escaped,
+        under a fence longer than any run of backticks in it."""
+        words = "**A** * b_ [c] &amp; <d>\n\n- e\n1. f  \n```g```"
+        xml = ("<doc rev='1' sinceRev='0'><paragraph id='a.1'><text>x</text></paragraph>"
+               "<codeBlock id='.2' h='0' language='text'><text id='.3'><![CDATA[%s]]>"
+               "</text></codeBlock></doc>" % words)
+        self.assertEqual(page.markdown(xml), "x\n\n````text\n%s\n````\n" % words)
+        self.assertEqual(page.blocks(xml)[1][0], "a.2")
 
     def test_a_read_without_xml_is_said(self):
         with self.assertRaises(ValueError):

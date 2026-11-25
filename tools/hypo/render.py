@@ -272,13 +272,14 @@ def _anchored_text(thesis: Thesis) -> str:
                      for edge in list(thesis.terms) + list(thesis.mentions)])
 
 
-def _thesis_blocks(graph: Graph, thesis: Thesis, index: int) -> List[str]:
+def _thesis_blocks(graph: Graph, thesis: Thesis, index: int, held: bool = False) -> List[str]:
     blocks = ["### %s %s" % (GLYPHS["thesis"], thesis.title)]
     # the answer's own state, and no standing beside it: the standing is read
     # off the state, so writing both would state one datum twice
     blocks.append("assent: %s · %s · provenance: thesis hinge"
                   % (thesis.assent, _dropdown(graph, thesis.state, answer_state_key(index))))
-    blocks.append(_anchored_text(thesis))
+    # a held tab's answer stands word for word in a code block of its own
+    blocks.append(text.fence(thesis.text) if held else _anchored_text(thesis))
     return blocks
 
 
@@ -609,7 +610,7 @@ def _hinge_blocks(q: Question) -> List[str]:
         if part.strip() or cue.strip():
             blocks.append("### %s" % HINGE_HEADING[name])
             if part.strip():
-                blocks.append(part)
+                blocks.append(text.fence(part) if q.fenced else part)
             if cue.strip():
                 blocks.append("cue: %s" % cue)
     return blocks
@@ -647,7 +648,7 @@ def body(graph: Graph, qid: str, par: Parents = None) -> str:
             for src, term in _incoming_terms(graph, qid)
             for anchor in term.anchors))
 
-    blocks.append("*%s*" % q.question)
+    blocks.append(text.fence(q.question) if q.fenced else "*%s*" % q.question)
 
     # no standing here: it is read off the state, and a question's answers
     # carry states of their own on their own sections
@@ -660,7 +661,7 @@ def body(graph: Graph, qid: str, par: Parents = None) -> str:
 
     thesis_blocks: List[str] = []
     for index, thesis in enumerate(q.theses):
-        thesis_blocks.extend(_thesis_blocks(graph, thesis, index))
+        thesis_blocks.extend(_thesis_blocks(graph, thesis, index, q.fenced))
         thesis_blocks.extend(_tradition_blocks(graph, thesis, par))
     for name, section in (("thesis", thesis_blocks),
                           ("glossary", _glossary_blocks(q)),
