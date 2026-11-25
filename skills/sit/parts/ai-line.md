@@ -161,9 +161,37 @@ or its question, and a question or an answer holding `<<<` or `>>>`, which no te
    under, made by the `ai-recorder` in a `place` job from the entry `tools/ai_tab.py tab
    --parent <id> --name <question id>` prints, and put in the key by the speaker after
    (above); a new tab of the AI's own record needs no dictation. The answer, its question
-   and its hinge are then inserts on that tab, and no tool yet prints them: until one does, a
-   `place` job makes the tab alone, and the place's file is carried as an open note of kind
-   `change`. The comparing run's lines go on the user's side.
+   and its hinge are then inserts on that tab, which holds its heading alone: `tools/hinges.py
+   rows $SCRATCH/lines/<line>/<n>/place.json --line $SCRATCH/lines/<line> --line-name <line>
+   --node <node id> --kind <kind> --read <the tab's read> > $SCRATCH/rows/<job id>.json`
+   writes the rows file of the `place` job that places them, a list of one entry: `<node id>`
+   the tab's body as the key lists it, `<kind>` the question's kind, and `<the tab's read>` a
+   whole read of that tab a `fetch` job saved just before, which must name the tab's node and
+   show its heading alone. It opens the line's directory and refuses a place that is not what
+   `place` prints from it for that question under that line's name, and what a packet would
+   refuse to carry. Which tab a place goes to is the speaker's: `rows` holds it only to a
+   blank tab of the AI's. Before the `place` job is added the index is written again, so that
+   it lists `<n>/place.json`, which the `ai-recorder` checks the entry against. The entry is one update of three inserts at the
+   tab's end, guarded by that read's rev, so that a tab written since refuses it: the
+   question and its question line, the answer as an insert of its own, and the hinge, each
+   text of the line in a code block of its own, which the document gives back word for word
+   whatever marks, lists and spacing it holds, so that `tools/read.py` reads the answer back
+   and `tools/packet.py` carries it as one of the AI's past held, in thread; its operation id
+   is fixed by the line, the question's number, the node, the read's rev and every word
+   inserted, so that a second sending lands once. A code block holds any text but an empty
+   one and one holding a carriage return or a character XML cannot carry; such a text is
+   refused, saying why, never altered, and its place's file is carried as an open note of kind
+   `change`. Where the notebook refuses the entry because the tab moved since its read, the
+   `ai-recorder` hands that back and sends nothing more; the speaker reads the tab again by a
+   `fetch` job and prints the rows anew, which gives the entry a new operation id. Placing on a new tab is two steps, in this order, and no one
+   command prints both, since the new tab's body node id is known only once the batch that
+   makes it has landed: first a `place` job whose rows file is a list of the one entry
+   `tools/ai_tab.py tab` printed, after which the speaker runs `tools/ai_tab.py add` from the
+   ids the `ai-recorder` hands back; then a `fetch` job that reads the new tab, `rows` with
+   the node id `add` put in the key and that read, and a second `place` job with the rows file
+   `rows` wrote. A tab that already stands and holds its heading alone, the root's among
+   them, takes the second step alone.
+   The comparing run's lines go on the user's side.
 10. **Every presupposition is a hinge.** Every presupposition a question carries in, drafted on
    the user's side or drawn, as the AI's answer names it under `Presupposes:`, one a line, is
    recorded as a hinge at the place, unjustified. A hinge is justified only by a later answer of

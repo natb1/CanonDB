@@ -74,8 +74,12 @@ grade or a direction outside its lists, and reads those notes back from a graph 
 graded since: it tallies them by kind, grade and direction with the lessons that recur, and
 stamps the tally with a fingerprint that a seal of the speaker's own must end with.
 `tools/hinges.py` places a line's answer of record with its presuppositions as hinges, each
-unjustified until a later answer of the AI's is linked to it, and lists every unjustified hinge
-of the AI's graph with the builds that rest on it.
+unjustified until a later answer of the AI's is linked to it, prints the rows file the
+`ai-recorder` sends to insert them at the end of a blank tab of the AI's, checked against the
+line's directory and guarded by the rev of the tab's read, each text of the line held word for
+word in a code block of its own, which `tools/page.py` and `tools/read.py` read back as such,
+and lists every unjustified hinge of the AI's graph with the builds that rest on it. Which tab
+a place goes to is the speaker's: `rows` holds it only to a blank tab the key gives.
 `tools/brief.py` keeps the relevant part of the notebook in front of a session without a read
 step: from the opening's graph it makes the standing brief (the conventions, each project's end
 and method, the open lines by title, the glossary index) and the neighbourhood of the line in hand

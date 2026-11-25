@@ -539,6 +539,15 @@ class SidedTest(unittest.TestCase):
         self.assertIn("Every operation is an `insert`", body)
         self.assertIn("until that key is set it refuses you every write", body)
         self.assertIn("an answer already there is never edited", body)
+        # the entry `hinges.py rows` prints: which insert is the answer, and
+        # what the other two must be, word for word, and the tab read first
+        for words in ("The second insert is the answer: one code block whose words are, word "
+                      "for word, the `answer` of that draw",
+                      "Nothing else stands in any of the three",
+                      "a code block whose words are the place's `hinge.question`, or `nothing`",
+                      "read its tab: where it holds anything but its heading",
+                      "Its `ifRev` is the rev of the read it was built from"):
+            self.assertIn(words, body)
 
     def test_the_coordinator_maps_the_two_jobs(self):
         body = flat(split(os.path.join(PLUGIN, "coordinator.md"))[1])

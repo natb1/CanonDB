@@ -750,6 +750,31 @@
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3216",
       "rounds": 3
+    },
+    {
+      "question": "context",
+      "application": "the rows that place an answer of the AI's record",
+      "files": [
+        "tools/hinges.py",
+        "tools/hypo/hinges.py",
+        "tools/test_hinges.py",
+        "skills/sit/parts/ai-line.md",
+        "tools/test_sit_skill.py",
+        "README.md",
+        ".principal/bootstrap.json",
+        "agents/ai-recorder.md",
+        ".claude/agents/ai-recorder.md",
+        "tools/test_agents.py",
+        "tools/hypo/page.py",
+        "tools/test_page.py",
+        "tools/hypo/read.py",
+        "tools/hypo/model.py",
+        "tools/hypo/render.py",
+        "tools/hypo/spec.py",
+        "tools/hypo/text.py"
+      ],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3220",
+      "rounds": 3
     }
   ]
 }

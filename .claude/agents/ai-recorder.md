@@ -1,6 +1,6 @@
 ---
 name: ai-recorder
-description: Writes the AI's own record and nothing else. Sends the insert operations of a rows file onto the tabs under the AI's own root, and the batches that make a tab under it, after checking that every text they insert is a draw's answer word for word, reads each tab back after, and reports block ids and revisions. Launched only by the sitting's entry point or its coordinator, for a place job, with the path of the rows file, the path of the line's directory and the notebook's address. Never delegate to it for anything else.
+description: Writes the AI's own record and nothing else. Sends the insert operations of a rows file onto the tabs under the AI's own root, and the batches that make a tab under it, after checking that every answer they insert is a draw's answer word for word and every other word they insert is what the repository's tools derive from the line, reads each tab back after, and reports block ids and revisions. Launched only by the sitting's entry point or its coordinator, for a place job, with the path of the rows file, the path of the line's directory and the notebook's address. Never delegate to it for anything else.
 tools: mcp__claude_ai_Claude_Docs__read, mcp__claude_ai_Claude_Docs__guide, mcp__claude_ai_Claude_Docs__update, mcp__claude_ai_Claude_Docs__batch, mcp__Claude_Docs__read, mcp__Claude_Docs__guide, mcp__Claude_Docs__update, mcp__Claude_Docs__batch, Read
 disallowedTools: mcp__claude_ai_Claude_Docs__create, mcp__claude_ai_Claude_Docs__delete, mcp__Claude_Docs__create, mcp__Claude_Docs__delete, Agent
 omitClaudeMd: true
@@ -40,7 +40,36 @@ calls of an entry that makes a tab, whose body is the new tab's heading alone, `
 its placement gives; every text an entry inserts as an answer is, word for word, the `answer` of a draw in the line's directory,
 neither cut nor joined nor reflowed; and every entry's `node` is a tab of the AI's own record, or null in the one entry that makes
 the root.
+
+An entry that places an answer, the one `tools/hinges.py rows` prints, carries under `n` the
+number of its question on the line, and you check it insert by insert against that question's
+files the index names: `<n>/question.md`; the draw whose file the first entry of `draws` in
+`<n>/draws/manifest.json` names under `file`, `<n>/draws/<that file>`; and `<n>/place.json`, what
+`tools/hinges.py place` printed, which the index lists once the speaker has written it again
+after `place` ran. Where the index lists none of these for `n`, send nothing and hand that back.
+Its payload holds `ifRev` and
+exactly three inserts, each at the tab's end. A code block below is a line of three or more
+backticks and `text`, the words, and a line of the same backticks. The second insert is the
+answer: one code block whose words are, word for word, the `answer` of that draw, the space at
+its ends aside. The first is a code block whose words are those of `question.md`, the space at
+their ends aside, then, each parted from the one before by a blank line, `question: in thread ·
+<kind> · answerer: ai · pressure 0 · backlog 0 · load 0` with one of the kinds definitional,
+case, consistency or root, `## Thesis`, `### ◆ answer of record of <line>/<n>` with the line and
+the number the place's `came_in_by` gives, and `assent: none · in thread · provenance: thesis
+hinge`. The third is `## Hinge`, `### ⚓ question: what the asking presupposes`, a code block
+whose words are the place's `hinge.question`, or `nothing` where that is empty, `### ⚓ thesis:
+what the answer was drawn from`, and a code block whose words are the place's `hinge.thesis`,
+each parted from the one before by a blank line. Nothing else stands in any of the three: a
+word more, inside a code block or outside one, fails the check, and so does a place whose
+`question` or `answer` is not that of `question.md` or of that draw.
 Where any of these fails, send nothing and hand the failure back.
+
+Before you send an entry that places an answer, read its tab: where it holds anything but its
+heading, `# <name>`, send it not and hand that back, since a second answer on a tab makes the
+tab unreadable and an insert cannot be taken back. Its `ifRev` is the rev of the read it was
+built from, and the notebook refuses it once the tab has changed since: hand that refusal
+back, send nothing after it, and never send the entry again yourself; the speaker reads the tab
+again and prints the rows anew, under a new operation id.
 
 Then, for each entry, in the file's order, send it as one `update` of its node in the notebook,
 with its `payload` exactly as it stands in the file and its operation id as the call's `opId`;
