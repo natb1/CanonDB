@@ -877,11 +877,13 @@ class StopgapTest(unittest.TestCase):
                       "The next action is not put while a reading given is unrecorded",
                       "appends to the context, in `context.log`, that the readings were "
                       "recorded",
-                      "Where the `record` job fails, the speaker says so in `context.log`, "
-                      "removes the cause and queues it again as step 4 gives for a failed link; "
-                      "at the board's limit of attempts the readings are carried as an open "
-                      "line of kind `work`, the action context says that they are not "
-                      "recorded, and the next action is then put.",
+                      "Where the `record` job fails, or its rows cannot be made",
+                      "at the board's limit of attempts, or once a second set of rows drawn for "
+                      "the same readings has failed or could not be made, the readings are "
+                      "carried as an open note of kind `work`, the action context says that "
+                      "they are not recorded, and the next action is then put.",
+                      "where that tab has no Hinge section, they go at the end of its last "
+                      "section, named by `--section`",
                       "those writes are not held, and what waits is the speaker's own next "
                       "action, the next write of `next`",
                       "a `fetch` job of the `dictate` tab is run first",

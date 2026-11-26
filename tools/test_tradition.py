@@ -8,6 +8,7 @@ import os
 import shutil
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from unittest import mock
 
 from hypo import inplace, page, tradition
@@ -21,14 +22,32 @@ NOTE = ("> pending: a tradition reading given in the sitting of 2030-01-02, a le
         "verified against the source and owed to a tab of its party: %s: %s")
 
 
+def last_of(source, section):
+    """The last block of a section of a saved view, and the section's heading."""
+    blocks = page.blocks(source)
+    start = next(i for i, (_, md) in enumerate(blocks) if md == "## " + section)
+    end = next((i for i in range(start + 1, len(blocks)) if blocks[i][1].startswith("## ")),
+               len(blocks))
+    return blocks[end - 1][0], blocks[start][0]
+
+
 def view():
     """A saved view of a tab of the fixture graph, the last block of its
-    Thesis section, and its heading."""
+    Hinge section, and that section's heading."""
     source, _ = view_of(load(), "canon")
-    blocks = page.blocks(source)
-    start = next(i for i, (_, md) in enumerate(blocks) if md == "## Thesis")
-    end = next(i for i in range(start + 1, len(blocks)) if blocks[i][1].startswith("## "))
-    return source, blocks[end - 1][0], blocks[start][0]
+    return (source,) + last_of(source, "Hinge")
+
+
+def without_hinge(source):
+    """The same view with its Hinge section gone, as the renderer leaves a
+    section with nothing in it."""
+    root = ET.fromstring(source)
+    kids = list(root)
+    at = next(i for i, node in enumerate(kids)
+              if node.get("heading") == "2" and "".join(node.itertext()).strip() == "Hinge")
+    for node in kids[at:]:
+        root.remove(node)
+    return ET.tostring(root, encoding="unicode")
 
 
 class RowsTest(unittest.TestCase):
@@ -68,8 +87,27 @@ class RowsTest(unittest.TestCase):
         self.assertIn("last block", self.refused(after=self.heading))
         self.assertIn("holds no block", self.refused(after="no-such-block"))
 
+    def test_the_section_is_held(self):
+        thesis, _ = last_of(self.source, "Thesis")
+        self.assertIn("not of Hinge", self.refused(after=thesis))
+        self.assertEqual(len(tradition.rows(self.source, READINGS, thesis, "node-3",
+                                            "2030-01-02", "op", section="Thesis")), 1)
+        self.assertIn("not of Thesis", self.refused_section(self.last, "Thesis"))
+
+    def refused_section(self, after, section, source=None):
+        with self.assertRaises(Refused) as caught:
+            tradition.rows(source or self.source, READINGS, after, "node-3", "2030-01-02",
+                           "op", section=section)
+        return str(caught.exception)
+
+    def test_a_tab_without_the_section_is_refused(self):
+        source = without_hinge(self.source)
+        last = page.blocks(source)[-1][0]
+        self.assertIn("not of Hinge", self.refused_section(last, "Hinge", source))
+
     def test_an_id_holding_whitespace_a_quote_or_a_newline_is_refused(self):
-        for bad in (" blk", 'a","b', "a'b", "a\nb", "a\\b"):
+        for bad in (" blk", 'a","b', "a'b", "a\nb", "a\\b", "a\u200bb", "a\u2060b",
+                    "a\u00a0b", "a\tb"):
             with self.subTest(bad=bad):
                 self.assertIn("--after", self.refused(after=bad))
                 self.assertIn("--node", self.refused(node=bad))

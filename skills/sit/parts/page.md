@@ -56,7 +56,9 @@ object with `who` and `text`; a `context.prediction` out of its three parts; `pa
 `notes`, `heading`, `queue` or `background` out of shape; a time that does not parse; a write
 without `updated`; a `next` that writes a field the card draws without its `kind` and
 `prompt`, or whose `kind`, or a queue entry's, is not one of the four; a recommendation not
-a string or a list of strings; and a `question` carrying a recommendation, or a `question` or
+a string or a list of strings; a `next.deferred` without its `prompt`; an `office_deferred`
+whose `since` is not a time or whose `bell` is not `HHMM`; and a `question` carrying a
+recommendation, or a `question` or
 `review` carrying a `how`. An `update` of `next.resolved_at`, `asks` or `deferred` alone
 needs no `kind` or `prompt`. A refusal of the store is read and the document read again, never forced. The bells and their office
 items live in `ordo/rule`, which is the principal's private data: it is written only at the

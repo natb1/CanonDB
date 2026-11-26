@@ -54,13 +54,15 @@ bind every action, and so does rule 4's tradition on a new fact and its recordin
    has no tab, or no rows can be made for its tab, the reading goes as a note opening with the
    word *pending* on the `dictate` tab, at the end of its Hinge section, naming its party,
    stating the party's position only, never the answer, the question or its case, called a
-   lead and never marked verified. For those, a `fetch` job of the `dictate` tab is run first;
+   lead and never marked verified; where that tab has no Hinge section, they go at the end of
+   its last section, named by `--section`. For those, a `fetch` job of the `dictate` tab is
+   run first;
    the readings are written as a list of `{"party", "position"}` to
    `$SCRATCH/tradition/<job id>.json` with the Write tool, and their rows are printed by
    `tools/tradition.py rows <the dictate tab's file in that fetch's views directory>
    $SCRATCH/tradition/<job id>.json --after <the last block of its Hinge section> --node <the
-   tab's node id> --sitting <the sitting's date, YYYY-MM-DD> --op-id <job id>-1 >
-   $SCRATCH/rows/<job id>.json`, a whole rows file of one entry, the notes joined into one
+   tab's node id> --sitting <the sitting's date, YYYY-MM-DD> --op-id <job id>-1 [--section <its
+   last section, where it has no Hinge>] > $SCRATCH/rows/<job id>.json`, a whole rows file of one entry, the notes joined into one
    insert, since the document takes no second insert after one block; a refusal leaves that
    file empty, and no job is added over it. The recorder sends it in a `record` job of its own.
    The next action is not put while a reading given is unrecorded: the answered action stays
@@ -69,11 +71,13 @@ bind every action, and so does rule 4's tradition on a new fact and its recordin
    recorded, and only then puts the next action. On an office item the page puts the next item
    itself once the item's mark is written, and on an action held through a bell once
    `resolved_at` is written; those writes are not held, and what waits is the speaker's own
-   next action, the next write of `next`. Where the `record` job fails, the speaker says so in
-   `context.log`, removes the cause and queues it again as step 4 gives for a failed
-   link; at the board's limit of attempts the readings are carried as an open line of
-   kind `work`, the action context says that they are not recorded, and the next action is
-   then put. A party's graph is expected to follow the
+   next action, the next write of `next`. Where the `record` job fails, or its rows cannot be
+   made (the `fetch` of the tab fails, or the tool refuses what the speaker cannot mend), the
+   speaker says so in `context.log`, removes the cause and queues the job again, or draws the
+   rows again, as step 4 gives for a failed link; at the board's limit of attempts, or once a
+   second set of rows drawn for the same readings has failed or could not be made, the readings
+   are carried as an open note of kind `work`, the action context says that they are not
+   recorded, and the next action is then put. A party's graph is expected to follow the
    structure of the user's and the AI's; that change of form is not made here, and is carried
    as an open line of kind `work` until it is. Behind the page:
    read the sealed file and state it in the line doc; write the principal's answer to

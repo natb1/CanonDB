@@ -179,6 +179,19 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(card.check({"queue": [{"kind": "review", "title": "Rows"}],
                                      "updated": T}), [])
 
+    def test_the_deferred_action_and_the_set_aside_office_are_held_to_their_shapes(self):
+        self.refused({"next": {"deferred": "x"}, "updated": T}, "next.deferred is not an object")
+        self.refused({"next": {"deferred": {"reason": "Later."}}, "updated": T},
+                     "next.deferred has no prompt")
+        self.refused({"next": {"deferred": {"prompt": "p", "kind": "chore"}}, "updated": T},
+                     "next.deferred.kind 'chore' is not one of")
+        self.refused({"office_deferred": "x", "updated": T}, "office_deferred is not an object")
+        self.refused({"office_deferred": {"since": "garbage", "bell": "08:00"}, "updated": T},
+                     "office_deferred.since", "office_deferred.bell")
+        self.assertEqual(card.check({"office_deferred": {"reason": "Later.", "since": T,
+                                                         "bell": "0800"}, "updated": T}), [])
+        self.assertEqual(card.check({"office_deferred": DELETE, "updated": T}), [])
+
     def test_background_out_of_shape_is_refused(self):
         self.refused({"background": "a string", "updated": T}, "background is not a list")
         self.assertEqual(card.check({"background": ["A helper."], "updated": T}), [])

@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import datetime
 import re
+import unicodedata
 from typing import List
 
 from . import inplace
@@ -32,11 +33,15 @@ from .appline import Refused
 #: the date of a sitting, as the note gives it
 DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
-#: what an id on the command line may not hold: it is sent as it stands
-UNSAFE_ID = re.compile(r"[\s\"'`\\]")
+#: what an id on the command line may not hold besides an invisible character: it is sent as
+#: it stands
+UNSAFE_ID = re.compile(r"[\"'`\\]")
 
 #: every character Python's reader of lines breaks a line at
-BREAKS = "\n\r\v\f\x1c\x1d\x1e\x85  "
+BREAKS = "\n\r\v\f\x1c\x1d\x1e\x85\u2028\u2029"
+
+#: the section of the ``dictate`` tab the notes go under unless another is named
+SECTION = "Hinge"
 
 #: the most a round's file may hold, so that a slip cannot write a page of notes
 MAX_READINGS = 50
@@ -66,8 +71,9 @@ def _date(sitting: str) -> str:
 def _id(name: str, value) -> str:
     if not isinstance(value, str) or not value:
         raise Refused("%s is empty" % name)
-    if UNSAFE_ID.search(value):
-        raise Refused("%s %r holds whitespace, a quote or a backslash" % (name, value))
+    if UNSAFE_ID.search(value) or any(unicodedata.category(ch)[0] in "CZ" for ch in value):
+        raise Refused("%s %r holds whitespace, an invisible or control character, a quote or "
+                      "a backslash" % (name, value))
     return value
 
 
@@ -98,14 +104,18 @@ def _readings(readings) -> List[dict]:
     return readings
 
 
-def rows(source, readings, after: str, node: str, sitting: str, op_id: str) -> List[dict]:
+def rows(source, readings, after: str, node: str, sitting: str, op_id: str,
+         section: str = SECTION) -> List[dict]:
     """The rows entry for the recorder: one insert after block ``after`` of the
     tab ``source`` is a saved read of, whose node id is ``node``, holding one
-    note per reading."""
+    note per reading; ``after`` must be the last block of ``section``."""
     after, node, op_id = _id("--after", after), _id("--node", node), _id("--op-id", op_id)
     date = _date(sitting)
     items = _readings(readings)
-    section = inplace.note_place(source, after)
+    landed = inplace.note_place(source, after)
+    if landed.lower() != (section or "").strip().lower():
+        raise Refused("block %s is the last block of %s, not of %s" % (after, landed, section))
+    section = landed
     bodies = []
     for item in items:
         body = note(date, item["party"].strip(), item["position"].strip())

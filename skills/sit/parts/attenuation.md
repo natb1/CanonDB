@@ -165,9 +165,9 @@ What no tool decides. Hold these by reading.
   in a `set`, which the store refuses, passes it. That the speaker runs it before every write,
   and that what it sends is the file it checked, are read. `tools/tradition.py rows` refuses
   an empty reading, one that breaks a line or runs too long, a party holding `": "`, an id
-  holding whitespace or a quote, a date out of form and a block that is not the last of its
-  section in the read it is given; that the section is the Hinge section of the `dictate` tab,
-  that every reading given is in its file, that each states the party's position and nothing
+  holding whitespace, an invisible character or a quote, a date out of form, and a block that
+  is not the last of the section `--section` names, Hinge unless named, in the read it is
+  given; that the read is the `dictate` tab's, that every reading given is in its file, that each states the party's position and nothing
   of the answer, the question or its case, that the party truly has no tab where the
   `dictate` tab takes it, that an answer brought a new fact, and that the next action waits
   until the `record` job is done, are read. Markup in a position passes it as it passes

@@ -23,7 +23,10 @@ without `kind` and `prompt`; a `kind` of `next` or of a queue entry outside
 question, office, work and review; a recommendation that is not a string or a
 list of strings; a `question` carrying a recommendation, and a `question` or
 `review` carrying a `how`; a `queue` that is not a list of objects each with
-a `title` or a `prompt`; and a `background` that is not a list of strings. A
+a `title` or a `prompt`; a `next.deferred` that is not an object with a
+`prompt`; an `office_deferred` whose `since` is not an ISO time with its
+offset or whose `bell` is not HHMM; and a `background` that is not a list of
+strings. A
 `next` holding only `resolved_at`, `asks`, `deferred` or deletion markers
 needs no kind or prompt. The deletion marker `{"__delete__": true}` is taken
 wherever a field may be removed. Nothing here reaches the network or writes the page.

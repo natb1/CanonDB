@@ -201,6 +201,41 @@ def _next(value) -> List[str]:
     for key in ("put_at", "resolved_at"):
         if _present(value, key) and not _time(value[key]):
             out.append("next.%s is not an ISO time with its offset" % key)
+    if _present(value, "deferred"):
+        out.extend(_deferred(value["deferred"]))
+    return out
+
+
+def _deferred(value) -> List[str]:
+    """``next.deferred``, which the page shows only where its prompt is set."""
+    if not isinstance(value, dict):
+        return ["next.deferred is not an object {prompt, reason, kind, line}"]
+    out = []
+    if not _filled(value.get("prompt")):
+        out.append("next.deferred has no prompt; the page would not show it")
+    for key in ("reason", "line"):
+        if _present(value, key) and not isinstance(value[key], str):
+            out.append("next.deferred.%s is not a string" % key)
+    out.extend(_kind(value, "next.deferred"))
+    return out
+
+
+def _office_deferred(value) -> List[str]:
+    """``office_deferred``, which the page ignores unless ``since`` is a time
+    and ``bell`` a base time without its colon."""
+    if deleted(value):
+        return []
+    if not isinstance(value, dict):
+        return ["office_deferred is not an object {reason, since, bell}"]
+    out = []
+    if not _time(value.get("since")):
+        out.append("office_deferred.since is not an ISO time with its offset; the page "
+                   "would ignore the set-aside")
+    if not (isinstance(value.get("bell"), str) and re.match(r"^\d{4}$", value["bell"])):
+        out.append("office_deferred.bell is not a bell's base time as HHMM; the page would "
+                   "ignore the set-aside")
+    if _present(value, "reason") and not isinstance(value["reason"], str):
+        out.append("office_deferred.reason is not a string")
     return out
 
 
@@ -232,6 +267,8 @@ def check(update) -> List[str]:
         out.extend(_next(update["next"]))
     if "queue" in update:
         out.extend(_queue(update["queue"]))
+    if "office_deferred" in update:
+        out.extend(_office_deferred(update["office_deferred"]))
     if _present(update, "background") and not _strings(update["background"]):
         out.append("background is not a list of strings")
     if "updated" not in update:

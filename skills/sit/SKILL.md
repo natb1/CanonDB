@@ -158,7 +158,8 @@ the plugin's kinds for work a kind carries.
    brings a new fact, whatever the kind of action. Every reading given, on the page or in the
    session's words where there is none, is recorded in the notebook in the same round, the
    speaker's next action not put until its `record` job is done, or until the board's limit of
-   attempts carries the readings as an open line of kind `work`.
+   attempts, or a second set of rows failed or not made, carries the readings as an open note of
+   kind `work`.
 5. The principal may always override the action ranked first; an override is an observation of
    a gap, never a verdict. Where a transient feeling moves the choice, the deferred action stays
    shown as `next.deferred`.
