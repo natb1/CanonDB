@@ -1,16 +1,19 @@
 """The rows that record the readings of tradition given in a round: one
-entry, one insert, the notes joined in the file's order, and each fault in
-the readings refused. Every party and position here is invented."""
+entry, one insert after the last block of a section of a saved read, the
+notes joined in the file's order, and each fault in the readings, the ids or
+the placement refused. Every party and position here is invented."""
 
 import json
 import os
 import shutil
 import tempfile
 import unittest
+from unittest import mock
 
-from hypo import tradition
+from hypo import inplace, page, tradition
 from hypo.appline import Refused
-from support import run
+from support import load, run
+from test_inplace import view_of
 
 READINGS = [{"party": "Example Author", "position": "Example position."},
             {"party": "Another Author", "position": "Another position, held apart."}]
@@ -18,16 +21,35 @@ NOTE = ("> pending: a tradition reading given in the sitting of 2030-01-02, a le
         "verified against the source and owed to a tab of its party: %s: %s")
 
 
+def view():
+    """A saved view of a tab of the fixture graph, the last block of its
+    Thesis section, and its heading."""
+    source, _ = view_of(load(), "canon")
+    blocks = page.blocks(source)
+    start = next(i for i, (_, md) in enumerate(blocks) if md == "## Thesis")
+    end = next(i for i in range(start + 1, len(blocks)) if blocks[i][1].startswith("## "))
+    return source, blocks[end - 1][0], blocks[start][0]
+
+
 class RowsTest(unittest.TestCase):
-    def rows(self, readings=READINGS, sitting="2030-01-02"):
-        return tradition.rows(readings, "blk-9", "node-3", sitting, "s1-record-1")
+    def setUp(self):
+        self.source, self.last, self.heading = view()
+
+    def rows(self, readings=READINGS, sitting="2030-01-02", after=None, node="node-3",
+             op_id="s1-record-1"):
+        return tradition.rows(self.source, readings, after or self.last, node, sitting, op_id)
+
+    def refused(self, **kw):
+        with self.assertRaises(Refused) as caught:
+            self.rows(**kw)
+        return str(caught.exception)
 
     def test_one_entry_one_insert_in_the_shape_the_recorder_sends(self):
         content = "\n\n".join(NOTE % (r["party"], r["position"]) for r in READINGS)
         self.assertEqual(self.rows(), [{
             "node": "node-3",
             "payload": {"ops": [{
-                "op": "insert", "target": {"kind": "blocks", "ids": ["blk-9"]},
+                "op": "insert", "target": {"kind": "blocks", "ids": [self.last]},
                 "side": "after",
                 "source": {"as": "markdown", "from": {"kind": "inline",
                                                       "content": content}}}]},
@@ -42,16 +64,22 @@ class RowsTest(unittest.TestCase):
         content = self.rows(READINGS[:1])[0]["payload"]["ops"][0]["source"]["from"]["content"]
         self.assertEqual(content, NOTE % ("Example Author", "Example position."))
 
-    def refused(self, *args, **kw):
-        with self.assertRaises(Refused) as caught:
-            tradition.rows(*args, **kw)
-        return str(caught.exception)
+    def test_a_block_not_the_last_of_its_section_or_not_on_the_tab_is_refused(self):
+        self.assertIn("last block", self.refused(after=self.heading))
+        self.assertIn("holds no block", self.refused(after="no-such-block"))
+
+    def test_an_id_holding_whitespace_a_quote_or_a_newline_is_refused(self):
+        for bad in (" blk", 'a","b', "a'b", "a\nb", "a\\b"):
+            with self.subTest(bad=bad):
+                self.assertIn("--after", self.refused(after=bad))
+                self.assertIn("--node", self.refused(node=bad))
+                self.assertIn("--op-id", self.refused(op_id=bad))
+        self.assertIn("--node", self.refused(node=""))
+        self.assertIn("--op-id", self.refused(op_id=""))
 
     def test_an_empty_list_is_refused(self):
-        self.assertIn("non-empty list",
-                      self.refused([], "b", "n", "2030-01-02", "op"))
-        self.assertIn("non-empty list",
-                      self.refused({"party": "x"}, "b", "n", "2030-01-02", "op"))
+        self.assertIn("non-empty list", self.refused(readings=[]))
+        self.assertIn("non-empty list", self.refused(readings={"party": "x"}))
 
     def test_an_empty_party_or_position_is_refused(self):
         for bad in ({"party": "", "position": "Example position."},
@@ -59,61 +87,89 @@ class RowsTest(unittest.TestCase):
                     {"party": "Example Author"},
                     "Example Author: Example position."):
             with self.subTest(bad=bad):
-                self.refused([bad], "b", "n", "2030-01-02", "op")
+                self.refused(readings=[bad])
 
-    def test_a_party_or_position_that_breaks_a_line_is_refused(self):
-        for bad in ({"party": "Example\nAuthor", "position": "Example position."},
-                    {"party": "Example Author", "position": "One.\n\nTwo."}):
-            with self.subTest(bad=bad):
-                self.assertIn("breaks a line", self.refused([bad], "b", "n", "2030-01-02",
-                                                            "op"))
+    def test_a_party_or_position_that_breaks_a_line_is_refused_by_name(self):
+        for ch in ("\n", "\r", " ", " ", "\x85", "\v", "\f"):
+            for bad in ({"party": "Example" + ch + "Author", "position": "Example position."},
+                        {"party": "Example Author", "position": "One." + ch + "Two."}):
+                with self.subTest(bad=bad):
+                    self.assertIn("breaks a line", self.refused(readings=[bad]))
+
+    def test_a_party_holding_the_separator_is_refused(self):
+        self.assertIn('holds ": "', self.refused(
+            readings=[{"party": "Example: Author", "position": "Example position."}]))
+        self.rows([{"party": "Example Author", "position": "One: two."}])
+
+    def test_the_size_is_bounded(self):
+        self.refused(readings=READINGS[:1] * (tradition.MAX_READINGS + 1))
+        self.assertIn("longer than", self.refused(
+            readings=[{"party": "Example Author", "position": "x" * 2001}]))
+        self.assertIn("longer than", self.refused(
+            readings=[{"party": "A" * 201, "position": "Example position."}]))
 
     def test_a_date_not_of_the_form_is_refused(self):
         for bad in ("2030-1-2", "02-01-2030", "2030-13-01", "2030-01-02T03:04:05Z", ""):
             with self.subTest(bad=bad):
-                self.refused(READINGS, "b", "n", bad, "op")
-
-    def test_an_empty_block_node_or_op_id_is_refused(self):
-        self.refused(READINGS, "", "n", "2030-01-02", "op")
-        self.refused(READINGS, "b", "", "2030-01-02", "op")
-        self.refused(READINGS, "b", "n", "2030-01-02", "")
+                self.refused(sitting=bad)
 
     def test_a_note_the_reader_would_not_take_is_refused(self):
-        self.refused([{"party": "Example Author", "position": "See <?claude block k?>."}],
-                     "b", "n", "2030-01-02", "op")
+        self.refused(readings=[{"party": "Example Author",
+                                "position": "See <?claude block k?>."}])
+
+    def test_the_read_back_refuses_notes_that_do_not_come_back_as_given(self):
+        """Reached past every earlier check: the reader is made to take back
+        one note fewer than the readings."""
+        real = inplace._read_back
+
+        def short(markdown, ids=None):
+            got = real(markdown, ids)
+            got["notes"] = got["notes"][:-1]
+            return got
+
+        with mock.patch.object(inplace, "_read_back", short):
+            self.assertIn("1 note(s) read back for 2 reading(s)", self.refused())
 
 
 class CliTest(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
+        self.source, self.last, _ = view()
+        self.read = self.file("view.xml", self.source)
 
-    def file(self, data):
-        path = os.path.join(self.dir, "readings.json")
+    def file(self, name, data):
+        path = os.path.join(self.dir, name)
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(data if isinstance(data, str) else json.dumps(data))
         return path
 
-    def args(self, path, sitting="2030-01-02"):
-        return ("rows", path, "--after", "blk-9", "--node", "node-3", "--sitting", sitting,
-                "--op-id", "s1-record-1")
+    def args(self, read, readings, sitting="2030-01-02"):
+        return ("rows", read, readings, "--after", self.last, "--node", "node-3",
+                "--sitting", sitting, "--op-id", "s1-record-1")
 
     def test_prints_the_rows_file(self):
-        done = run("tradition.py", *self.args(self.file(READINGS)))
+        done = run("tradition.py", *self.args(self.read, self.file("r.json", READINGS)))
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(json.loads(done.stdout), tradition.rows(
-            READINGS, "blk-9", "node-3", "2030-01-02", "s1-record-1"))
+            self.source, READINGS, self.last, "node-3", "2030-01-02", "s1-record-1"))
 
-    def test_reads_stdin(self):
-        done = run("tradition.py", *self.args("-"), stdin=json.dumps(READINGS))
+    def test_reads_either_from_stdin_but_not_both(self):
+        done = run("tradition.py", *self.args(self.read, "-"), stdin=json.dumps(READINGS))
         self.assertEqual(done.returncode, 0, done.stderr)
+        done = run("tradition.py", *self.args("-", self.file("r.json", READINGS)),
+                   stdin=self.source)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        done = run("tradition.py", *self.args("-", "-"), stdin="")
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("both be stdin", done.stderr)
 
     def test_a_refusal_is_one_line_and_prints_nothing(self):
-        for path, sitting in ((self.file([]), "2030-01-02"),
-                              (self.file(READINGS), "tomorrow"),
-                              (self.file("[not json"), "2030-01-02")):
+        for readings, sitting in ((self.file("a.json", []), "2030-01-02"),
+                                  (self.file("b.json", READINGS), "tomorrow"),
+                                  (self.file("c.json", "[not json"), "2030-01-02")):
             with self.subTest(sitting=sitting):
-                done = run("tradition.py", *self.args(path, sitting))
+                done = run("tradition.py", *self.args(self.read, readings, sitting))
                 self.assertEqual(done.returncode, 1)
                 self.assertEqual(done.stdout, "")
                 self.assertTrue(done.stderr.startswith("REFUSED: "), done.stderr)

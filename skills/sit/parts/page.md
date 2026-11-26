@@ -50,11 +50,15 @@ whole. Each write sets `updated`, and the clock is read before it is stamped (pr
 8). Before every write of `ordo/current`, whole or an `update`, the object to be written is
 written to a file with the Write tool and checked with `tools/card.py check <that file>`; it is
 sent only once the check prints `ok`, and a refusal is mended in the file and checked again,
-never sent as it stands. The check refuses what the page would draw wrong: a reading of
-tradition in `context.for` or `context.against` that is not an object with `who` and `text`, a
-`context.prediction` out of its three parts, `paragraphs` out of shape, a record of
-`context.log` without its `at`, a `next` without `kind` and `prompt`, so that an `update` of
-`next` carries both, and a `question` carrying a recommendation. A refusal of the store is read and the document read again, never forced. The bells and their office
+never sent as it stands. The check refuses the shapes the page would draw wrong or blank,
+and no others: a reading of tradition in `context.for` or `context.against` that is not an
+object with `who` and `text`; a `context.prediction` out of its three parts; `paragraphs`,
+`notes`, `heading`, `queue` or `background` out of shape; a time that does not parse; a write
+without `updated`; a `next` that writes a field the card draws without its `kind` and
+`prompt`, or whose `kind`, or a queue entry's, is not one of the four; a recommendation not
+a string or a list of strings; and a `question` carrying a recommendation, or a `question` or
+`review` carrying a `how`. An `update` of `next.resolved_at`, `asks` or `deferred` alone
+needs no `kind` or `prompt`. A refusal of the store is read and the document read again, never forced. The bells and their office
 items live in `ordo/rule`, which is the principal's private data: it is written only at the
 principal's word, and never into this repository, a line doc, the board or anything published.
 The day's marks live in `ordo/ticks-<day>`, which the speaker writes when the principal says in

@@ -3,10 +3,13 @@
 The page draws what the document holds and says nothing of a field it
 cannot draw: a reading of tradition given as a plain string draws an empty
 line, a prediction that is not an object draws "No prediction was sealed",
-and a question that carries a recommendation breaks the rule that a question
-is put alone. This module reads the object about to be written, whole or a
-partial ``update`` holding any of its fields, and returns one finding per
-fault. An empty list is a write the page can draw.
+notes or paragraphs given as one string draw nothing, a kind outside the
+four is drawn as `work` and then shows a recommendation, and a time that does
+not parse is drawn bare. A question that carries a recommendation or a `how`
+breaks the rule that a question is put alone. This module reads the object
+about to be written, whole or a partial ``update`` holding any of its
+fields, and returns one finding per fault. An empty list is a write the page
+can draw.
 
 A field may be removed by the deletion marker ``{"__delete__": true}``,
 which is taken wherever a field may stand.
@@ -16,10 +19,21 @@ Nothing here reaches the network or writes the page.
 
 from __future__ import annotations
 
+import datetime
+import re
 from typing import List
 
 #: the parts of a prediction the page draws
 PREDICTION = ("predicted", "diverged", "addressed")
+
+#: the four kinds of action; the page draws any other as `work`
+KINDS = ("question", "office", "work", "review")
+
+#: the fields of `next` the card draws: a write holding one carries the action's kind and prompt
+DRAWN = ("kind", "prompt", "case", "line", "recommendation", "how", "put_at")
+
+#: an ISO 8601 time with its offset, as every stamp the speaker writes is
+ISO = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$")
 
 
 def deleted(value) -> bool:
@@ -29,8 +43,7 @@ def deleted(value) -> bool:
 
 def _texts(value) -> bool:
     """A string or a list of strings."""
-    return isinstance(value, str) or (isinstance(value, list)
-                                      and all(isinstance(x, str) for x in value))
+    return isinstance(value, str) or _strings(value)
 
 
 def _strings(value) -> bool:
@@ -39,6 +52,33 @@ def _strings(value) -> bool:
 
 def _filled(value) -> bool:
     return isinstance(value, str) and bool(value.strip())
+
+
+def _time(value) -> bool:
+    if not isinstance(value, str) or not ISO.match(value):
+        return False
+    try:
+        datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return True
+
+
+def _present(holder: dict, key: str) -> bool:
+    """The field is written with a value, not removed."""
+    return key in holder and not deleted(holder[key])
+
+
+def _list_of_strings(holder: dict, key: str, where: str) -> List[str]:
+    if not _present(holder, key):
+        return []
+    value = holder[key]
+    if isinstance(value, str):
+        return ["%s is a string; the page draws only a list of strings there, so it would show "
+                "nothing" % where]
+    if not _strings(value):
+        return ["%s is not a list of strings" % where]
+    return []
 
 
 def _readings(context: dict, side: str) -> List[str]:
@@ -86,8 +126,11 @@ def _log(value) -> List[str]:
         if not isinstance(record, dict):
             out.append("%s is not an object {at, paragraphs}" % where)
             continue
-        if not _filled(record.get("at")):
+        if "at" not in record:
             out.append("%s has no at" % where)
+        elif not _time(record["at"]):
+            out.append("%s.at is not an ISO time with its offset; the page would draw it "
+                       "bare" % where)
         if "paragraphs" in record and not _texts(record["paragraphs"]):
             out.append("%s.paragraphs is not a string or a list of strings" % where)
     return out
@@ -99,12 +142,12 @@ def _context(context) -> List[str]:
     if not isinstance(context, dict):
         return ["context is not an object"]
     out = []
-    if "paragraphs" in context and not deleted(context["paragraphs"]):
-        if isinstance(context["paragraphs"], str):
-            out.append("context.paragraphs is a string; the page draws only a list of strings "
-                       "there, so it would show nothing")
-        elif not _strings(context["paragraphs"]):
-            out.append("context.paragraphs is not a list of strings")
+    if _present(context, "heading") and not isinstance(context["heading"], str):
+        out.append("context.heading is not a string")
+    out.extend(_list_of_strings(context, "paragraphs", "context.paragraphs"))
+    out.extend(_list_of_strings(context, "notes", "context.notes"))
+    if _present(context, "at") and not _time(context["at"]):
+        out.append("context.at is not an ISO time with its offset")
     for side in ("for", "against"):
         if side in context:
             out.extend(_readings(context, side))
@@ -123,18 +166,58 @@ def _recommends(value) -> bool:
     return False
 
 
+def _kind(holder: dict, where: str) -> List[str]:
+    if _present(holder, "kind") and holder["kind"] not in KINDS:
+        return ["%s.kind %r is not one of %s; the page would draw it as work"
+                % (where, holder["kind"], ", ".join(KINDS))]
+    return []
+
+
 def _next(value) -> List[str]:
     if deleted(value):
         return []
     if not isinstance(value, dict):
         return ["next is not an object"]
     out = []
-    for key in ("kind", "prompt"):
-        if not _filled(value.get(key)):
-            out.append("next has no %s; a write of next carries kind and prompt" % key)
-    if value.get("kind") == "question" and _recommends(value.get("recommendation")):
+    if any(_present(value, key) for key in DRAWN):
+        for key in ("kind", "prompt"):
+            if not _filled(value.get(key)):
+                out.append("next has no %s; a write of a field the card draws carries the "
+                           "action's kind and prompt" % key)
+    out.extend(_kind(value, "next"))
+    for key in ("prompt", "case", "line", "how"):
+        if _present(value, key) and not isinstance(value[key], str):
+            out.append("next.%s is not a string" % key)
+    if _present(value, "recommendation") and not _texts(value["recommendation"]):
+        out.append("next.recommendation is not a string or a list of strings; the page would "
+                   "show none")
+    kind = value.get("kind")
+    if kind == "question" and _recommends(value.get("recommendation")):
         out.append("next is a question and carries a recommendation; a question is put "
                    "with none")
+    if kind in ("question", "review") and _recommends(value.get("how")):
+        out.append("next is a %s and carries a how; a how is never set for a question or a "
+                   "review" % kind)
+    for key in ("put_at", "resolved_at"):
+        if _present(value, key) and not _time(value[key]):
+            out.append("next.%s is not an ISO time with its offset" % key)
+    return out
+
+
+def _queue(value) -> List[str]:
+    if deleted(value):
+        return []
+    if not isinstance(value, list):
+        return ["queue is not a list of actions"]
+    out = []
+    for n, item in enumerate(value):
+        where = "queue[%d]" % n
+        if not isinstance(item, dict):
+            out.append("%s is not an object; the page drops it" % where)
+            continue
+        if not (_filled(item.get("title")) or _filled(item.get("prompt"))):
+            out.append("%s has neither title nor prompt; the page drops it" % where)
+        out.extend(_kind(item, where))
     return out
 
 
@@ -147,4 +230,12 @@ def check(update) -> List[str]:
         out.extend(_context(update["context"]))
     if "next" in update:
         out.extend(_next(update["next"]))
+    if "queue" in update:
+        out.extend(_queue(update["queue"]))
+    if _present(update, "background") and not _strings(update["background"]):
+        out.append("background is not a list of strings")
+    if "updated" not in update:
+        out.append("the write has no updated; every write sets it")
+    elif not _time(update["updated"]):
+        out.append("updated is not an ISO time with its offset")
     return out

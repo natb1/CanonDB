@@ -2,7 +2,7 @@ Read this part at the opening, before putting each next action, when an answer c
 
 **3 — One action at a time: the round.** Each turn puts one next action, on the page where one
 is named, under ten rules. Rules 1 to 4 are a question's, and a review's as rule 6 says; 5 to 10
-bind every action.
+bind every action, and so does rule 4's tradition on a new fact and its recording.
 
 1. **One question at a time, put as one concrete case.** It rests on what the notebook states
    (`/principal:dictate`, **The fidelity round** for how a question is drawn, and **A case rests
@@ -39,30 +39,41 @@ bind every action.
    principal may revise the answer after reading the tradition; unrevised when the next answer
    comes, it stands, and a revision is written over the answer's file and graded again.
    Tradition follows an answer whenever the answer brings a new fact, whatever the kind of
-   action it answers, a question, a review of principle, a review of mechanism or an office
-   report: for and against that fact, each party with its registry status. Which reviews are
-   followed by tradition on the decision itself is rule 6's; tradition on a newly reported fact
-   is always given.
+   action it answers, a question, a review of principle or of mechanism, an office report or a
+   `work` action: for and against that fact, each party with its registry status. Which reviews
+   are followed by tradition on the decision itself is rule 6's; tradition on a newly reported
+   fact is always given, and this part of rule 4 binds every action.
    The principal approved the readings of tradition given and asked that they be recorded as
    the round goes.
    Tradition readings are recorded as the round goes, without waiting for approval: every
-   reading given on the page is recorded in the notebook in the same round, before the next
-   action is put. It is written on the tab of the party it is of as a note opening with the
-   word *pending* that calls it a lead, never marked verified, stating the party's position and
-   never the answer it was given after, the question or its case, through the recorder
-   (**Written as the round goes**). Where the party has no tab, or no rows can be made for its
-   tab, the reading goes as a note opening with the word *pending* on the `dictate` tab, naming
-   its party, stating the party's position only, never the answer, the question or its case,
-   called a lead and never marked verified. Those readings are written as a list of `{"party",
-   "position"}` to `$SCRATCH/tradition/<job id>.json` with the Write tool, and their rows are
-   printed by `tools/tradition.py rows $SCRATCH/tradition/<job id>.json --after <the last block
-   of the section> --node <the tab's node id> --sitting <the sitting's date, YYYY-MM-DD> --op-id
-   <job id>-1 > $SCRATCH/rows/<job id>.json`, a whole rows file of one entry, the notes joined
-   into one insert, since the document takes no second insert after one block; the recorder
-   sends it in a `record` job of its own. The next action is not put while a reading given is
-   unrecorded: the speaker writes the action context with the readings, adds the `record`
+   reading given, on the page or, where there is none, in the session's words, is recorded in
+   the notebook in the same round, before the next action is put. It is written on the tab of
+   the party it is of as a note opening with the word *pending* that calls it a lead, never
+   marked verified, stating the party's position and never the answer it was given after, the
+   question or its case, through the recorder (**Written as the round goes**). Where the party
+   has no tab, or no rows can be made for its tab, the reading goes as a note opening with the
+   word *pending* on the `dictate` tab, at the end of its Hinge section, naming its party,
+   stating the party's position only, never the answer, the question or its case, called a
+   lead and never marked verified. For those, a `fetch` job of the `dictate` tab is run first;
+   the readings are written as a list of `{"party", "position"}` to
+   `$SCRATCH/tradition/<job id>.json` with the Write tool, and their rows are printed by
+   `tools/tradition.py rows <the dictate tab's file in that fetch's views directory>
+   $SCRATCH/tradition/<job id>.json --after <the last block of its Hinge section> --node <the
+   tab's node id> --sitting <the sitting's date, YYYY-MM-DD> --op-id <job id>-1 >
+   $SCRATCH/rows/<job id>.json`, a whole rows file of one entry, the notes joined into one
+   insert, since the document takes no second insert after one block; a refusal leaves that
+   file empty, and no job is added over it. The recorder sends it in a `record` job of its own.
+   The next action is not put while a reading given is unrecorded: the answered action stays
+   `next` meanwhile; the speaker writes the action context with the readings, adds the `record`
    job, and once it is done appends to the context, in `context.log`, that the readings were
-   recorded, and only then puts the next action. A party's graph is expected to follow the
+   recorded, and only then puts the next action. On an office item the page puts the next item
+   itself once the item's mark is written, and on an action held through a bell once
+   `resolved_at` is written; those writes are not held, and what waits is the speaker's own
+   next action, the next write of `next`. Where the `record` job fails, the speaker says so in
+   `context.log`, removes the cause and queues it again as step 4 gives for a failed
+   link; at the board's limit of attempts the readings are carried as an open line of
+   kind `work`, the action context says that they are not recorded, and the next action is
+   then put. A party's graph is expected to follow the
    structure of the user's and the AI's; that change of form is not made here, and is carried
    as an open line of kind `work` until it is. Behind the page:
    read the sealed file and state it in the line doc; write the principal's answer to
@@ -194,11 +205,12 @@ bind every action.
    as it was loaded. A pull request of a round of `/principal:bootstrap` that a
    sitting carries is merged the same way, as that skill says.
    The speaker never tells the principal that the process will change from now on without
-   implementing the mechanism in the same round: a change to this skill's text or its tools, on
-   a branch through a pull request, briefed as this rule says, and said to the principal as
-   such. A note in the speaker's own memory is not the mechanism. Run the confined way, where
-   it can brief no build, the change is named to the principal as an open note of kind
-   `change`, and the process is said not to have changed until that lands.
+   starting the mechanism in the same round: a change to this skill's text or its tools, on a
+   branch through a pull request, briefed as this rule says, and said to the principal as such;
+   and it says that the process has not changed until that pull request is merged and the
+   plugin loaded again. A note in the speaker's own memory is not the mechanism. Run the
+   confined way, where it can brief no build, the change is named to the principal as an open
+   note of kind `change`, and the process is said not to have changed until that lands.
 10. **Every ask of the principal is an action on the page, in order.** The speaker never leaves
     an ask only in the session's text: what it writes in the session is short and points to the
     page. Every explanation, every answer to a question of the principal's, and every report of
@@ -223,12 +235,14 @@ principal may correct it before the job is added. A reading of tradition given a
 (rule 4) is written on the tab of the party it is of as a note opening with the word *pending*,
 calling it a lead, never marked verified, stating the party's position and never the answer it
 was given after, the question or its case, or, where the party has no tab or no rows can be
-made for it, on the `dictate` tab by `tools/tradition.py rows`; every reading given is recorded
-in the round it is given, before the next action is put. A failed prediction is written as **The record of
+made for it, on the `dictate` tab; every reading given is recorded in the round it is given,
+before the next action is put (rule 4). A failed prediction is written as **The record of
 predictions** says. None is first put as a review of rows. Each is made as step 4 makes a rows
 file, by the `note insert` of `tools/inplace.py`, the note's words written to a file with the
 Write tool, or printed by `tools/predictions.py note`, restated and never word for word, and
-passed as step 4 passes them; it goes to the notebook through the recorder, by a chain of
-`record`, `fetch` and `check` added at that round; the `review` of what such a chain wrote is
+passed as step 4 passes them, or, for the readings on the `dictate` tab, as the whole rows file
+`tools/tradition.py rows` prints; it goes to the notebook through the recorder, by a chain of
+`record`, `fetch` and `check` added at that round, the next action waiting on the `record` job
+alone, and a later failure of the `fetch` or the `check` said in `context.log` as it comes; the `review` of what such a chain wrote is
 added at the next batch point, whose `owed` file names it. Everything else, a sentence, a case, and anything
 that changes a standing answer, still goes through the batch point's reviews.

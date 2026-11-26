@@ -1,9 +1,12 @@
 """The check on a write of the page's ordo/current: what the page draws as
 meant passes, and each fault it would draw wrong, or a question carrying a
-recommendation, is one refusal. Every value here is invented."""
+recommendation or a how, is one refusal. The whole write is the invented
+example page.md gives, read from the file."""
 
+import copy
 import json
 import os
+import re
 import shutil
 import tempfile
 import unittest
@@ -11,29 +14,26 @@ import unittest
 from hypo import card
 from support import run
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+PAGE_MD = os.path.join(HERE, "..", "skills", "sit", "parts", "page.md")
 T = "2030-01-02T03:04:05Z"
 DELETE = {"__delete__": True}
 
 
+def _example():
+    with open(PAGE_MD, encoding="utf-8") as fh:
+        text = fh.read()
+    at = text.index("**`ordo/current`**")
+    block = re.search(r"```json\n(.*?)\n```", text[at:], re.S)
+    return json.loads(block.group(1))
+
+
+EXAMPLE = _example()
+
+
 def whole():
-    """A whole write of ordo/current, as page.md's example gives it."""
-    return {
-        "context": {
-            "heading": "Your answer, as read",
-            "paragraphs": ["The plants are watered before the post is opened."],
-            "for": [{"who": "Example Author (lead)", "text": "Example position."}],
-            "against": [{"who": "Another Author (lead)", "text": "Another position."}],
-            "prediction": {"predicted": "Watering waits.", "diverged": ["It came first."],
-                           "addressed": "A case at the next batch point."},
-            "notes": ["A quiet note."],
-            "at": T,
-            "log": [{"at": T, "paragraphs": "An addition."}],
-        },
-        "next": {"kind": "question", "case": "A morning with a bill due.",
-                 "prompt": "Is watering still first?", "put_at": T},
-        "queue": [{"kind": "work", "prompt": "Water the plants."}],
-        "updated": T,
-    }
+    """A whole write of ordo/current: page.md's example, fresh each time."""
+    return copy.deepcopy(EXAMPLE)
 
 
 class CheckTest(unittest.TestCase):
@@ -44,14 +44,21 @@ class CheckTest(unittest.TestCase):
             self.assertTrue(any(w in f for f in findings), (w, findings))
         return findings
 
-    def test_a_whole_write_passes(self):
+    def test_page_md_s_example_passes(self):
         self.assertEqual(card.check(whole()), [])
 
     def test_a_partial_update_passes(self):
         self.assertEqual(card.check({"updated": T}), [])
         self.assertEqual(card.check({"queue": [], "updated": T}), [])
-        self.assertEqual(card.check({"context": {"log": [{"at": T, "paragraphs": ["x"]}]}}),
-                         [])
+        self.assertEqual(card.check({"context": {"log": [{"at": T, "paragraphs": ["x"]}]},
+                                     "updated": T}), [])
+
+    def test_every_write_sets_updated_as_a_time(self):
+        self.refused({"queue": []}, "has no updated")
+        self.refused({"updated": 5}, "updated is not an ISO time")
+        self.refused({"updated": "03:04"}, "updated is not an ISO time")
+        self.refused({"updated": "2030-01-02T03:04:05"}, "updated is not an ISO time")
+        self.assertEqual(card.check({"updated": "2030-01-02T03:04:05+01:00"}), [])
 
     def test_a_reading_as_a_plain_string_is_refused(self):
         u = whole()
@@ -83,7 +90,7 @@ class CheckTest(unittest.TestCase):
         u["context"]["prediction"]["diverged"] = [1]
         self.refused(u, "context.prediction.diverged is not a string or a list of strings")
 
-    def test_paragraphs_out_of_shape_are_refused(self):
+    def test_paragraphs_notes_and_heading_out_of_shape_are_refused(self):
         u = whole()
         u["context"]["paragraphs"] = "One paragraph."
         self.refused(u, "context.paragraphs is a string")
@@ -91,26 +98,69 @@ class CheckTest(unittest.TestCase):
         u["context"]["paragraphs"] = [{"text": "x"}]
         self.refused(u, "context.paragraphs is not a list of strings")
         u = whole()
+        u["context"]["notes"] = "A note."
+        self.refused(u, "context.notes is a string")
+        u = whole()
+        u["context"]["notes"] = [3]
+        self.refused(u, "context.notes is not a list of strings")
+        u = whole()
+        u["context"]["heading"] = 5
+        self.refused(u, "context.heading is not a string")
+        u = whole()
         u["context"]["log"] = [{"at": T, "paragraphs": 3}]
         self.refused(u, "context.log[0].paragraphs is not a string or a list of strings")
 
-    def test_a_log_record_without_its_time_is_refused(self):
+    def test_a_log_record_without_its_time_or_with_one_that_does_not_parse_is_refused(self):
         u = whole()
-        u["context"]["log"] = [{"paragraphs": ["x"]}, "y"]
-        self.refused(u, "context.log[0] has no at", "context.log[1] is not an object")
+        u["context"]["log"] = [{"paragraphs": ["x"]}, "y", {"at": "not a time",
+                                                             "paragraphs": ["x"]}]
+        self.refused(u, "context.log[0] has no at", "context.log[1] is not an object",
+                     "context.log[2].at is not an ISO time")
+        u = whole()
+        u["context"]["at"] = "2030-02-30T03:00:00Z"
+        self.refused(u, "context.at is not an ISO time")
 
-    def test_next_without_kind_or_prompt_is_refused(self):
-        self.refused({"next": {"prompt": "Water the plants."}}, "next has no kind")
-        self.refused({"next": {"kind": "work"}}, "next has no prompt")
-        self.refused({"next": {"resolved_at": T}}, "next has no kind", "next has no prompt")
-        self.refused({"next": "Water the plants."}, "next is not an object")
+    def test_next_holding_a_drawn_field_without_kind_or_prompt_is_refused(self):
+        self.refused({"next": {"prompt": "Water the plants."}, "updated": T},
+                     "next has no kind")
+        self.refused({"next": {"kind": "work"}, "updated": T}, "next has no prompt")
+        self.refused({"next": {"case": "A morning."}, "updated": T},
+                     "next has no kind", "next has no prompt")
+        self.refused({"next": "Water the plants.", "updated": T}, "next is not an object")
 
-    def test_a_question_with_a_recommendation_is_refused(self):
+    def test_next_holding_only_what_the_card_does_not_draw_passes(self):
+        for n in ({"resolved_at": T}, {"asks": False}, {"deferred": DELETE},
+                  {"recommendation": DELETE, "how": DELETE}):
+            with self.subTest(next=n):
+                self.assertEqual(card.check({"next": n, "updated": T}), [])
+        self.refused({"next": {"resolved_at": "soon"}, "updated": T},
+                     "next.resolved_at is not an ISO time")
+
+    def test_a_kind_outside_the_four_is_refused(self):
+        u = whole()
+        u["next"].update(kind="Question", recommendation="Say yes.")
+        self.refused(u, "next.kind 'Question' is not one of")
+        u = whole()
+        u["queue"][0]["kind"] = "quest"
+        self.refused(u, "queue[0].kind 'quest' is not one of")
+
+    def test_a_question_with_a_recommendation_or_a_how_is_refused(self):
         u = whole()
         u["next"]["recommendation"] = "Say yes."
         self.refused(u, "a question is put with none")
         u["next"]["recommendation"] = ["", "Say yes."]
         self.refused(u, "a question is put with none")
+        for kind in ("question", "review"):
+            u = whole()
+            u["next"].update(kind=kind, how="Answer yes.")
+            self.refused(u, "carries a how")
+
+    def test_a_recommendation_of_the_wrong_type_is_refused(self):
+        for bad in ({"a": 1}, [1, 2], 3):
+            with self.subTest(bad=bad):
+                u = whole()
+                u["next"].update(kind="review", recommendation=bad)
+                self.refused(u, "next.recommendation is not a string or a list of strings")
 
     def test_a_review_may_carry_a_recommendation_and_a_question_an_empty_one(self):
         u = whole()
@@ -118,12 +168,28 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(card.check(u), [])
         u["next"].update(kind="question", recommendation="")
         self.assertEqual(card.check(u), [])
+        u["next"].update(kind="work", how="By hand.")
+        self.assertEqual(card.check(u), [])
+
+    def test_a_queue_out_of_shape_is_refused(self):
+        self.refused({"queue": "x", "updated": T}, "queue is not a list")
+        self.refused({"queue": ["a string"], "updated": T}, "queue[0] is not an object")
+        self.refused({"queue": [{"kind": "work"}], "updated": T},
+                     "queue[0] has neither title nor prompt")
+        self.assertEqual(card.check({"queue": [{"kind": "review", "title": "Rows"}],
+                                     "updated": T}), [])
+
+    def test_background_out_of_shape_is_refused(self):
+        self.refused({"background": "a string", "updated": T}, "background is not a list")
+        self.assertEqual(card.check({"background": ["A helper."], "updated": T}), [])
 
     def test_the_deletion_marker_is_taken_wherever_a_field_may_go(self):
-        self.assertEqual(card.check({"context": DELETE, "next": DELETE}), [])
+        self.assertEqual(card.check({"context": DELETE, "next": DELETE, "queue": DELETE,
+                                     "background": DELETE, "updated": T}), [])
         u = whole()
         u["context"].update({"for": DELETE, "against": DELETE, "prediction": DELETE,
-                             "log": DELETE, "paragraphs": DELETE})
+                             "log": DELETE, "paragraphs": DELETE, "notes": DELETE,
+                             "heading": DELETE, "at": DELETE})
         u["next"]["recommendation"] = DELETE
         self.assertEqual(card.check(u), [])
         u = whole()
@@ -132,7 +198,7 @@ class CheckTest(unittest.TestCase):
 
     def test_a_write_that_is_not_an_object_is_refused(self):
         self.refused([], "not a JSON object")
-        self.refused({"context": "x"}, "context is not an object")
+        self.refused({"context": "x", "updated": T}, "context is not an object")
 
 
 class CliTest(unittest.TestCase):

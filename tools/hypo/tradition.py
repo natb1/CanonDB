@@ -11,9 +11,11 @@ the one rows entry that carries those notes.
 
 The document connector refuses several inserts after one block, so the
 notes of a round are one insert, their words joined by a blank line, in the
-order the readings were given. Each note's words are checked as
-``inplace.py`` checks a note's, and the joined insert is read back as that
-many notes, in that order.
+order the readings were given. The insert goes after the last block of a
+section of the tab, which a saved read of the tab is checked for as
+``inplace.py note insert`` checks it; each note's words are checked as that
+mode checks a note's, and the joined insert is read back as that many notes
+of that section, in that order.
 
 Nothing here reaches the network or writes the notebook.
 """
@@ -29,6 +31,17 @@ from .appline import Refused
 
 #: the date of a sitting, as the note gives it
 DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+#: what an id on the command line may not hold: it is sent as it stands
+UNSAFE_ID = re.compile(r"[\s\"'`\\]")
+
+#: every character Python's reader of lines breaks a line at
+BREAKS = "\n\r\v\f\x1c\x1d\x1e\x85  "
+
+#: the most a round's file may hold, so that a slip cannot write a page of notes
+MAX_READINGS = 50
+MAX_PARTY = 200
+MAX_POSITION = 2000
 
 #: the words every note opens with, before its party and its position
 OPENING = ("pending: a tradition reading given in the sitting of %s, a lead, not verified "
@@ -50,41 +63,64 @@ def _date(sitting: str) -> str:
     return sitting
 
 
+def _id(name: str, value) -> str:
+    if not isinstance(value, str) or not value:
+        raise Refused("%s is empty" % name)
+    if UNSAFE_ID.search(value):
+        raise Refused("%s %r holds whitespace, a quote or a backslash" % (name, value))
+    return value
+
+
 def _readings(readings) -> List[dict]:
     if not isinstance(readings, list) or not readings:
         raise Refused("the readings are not a non-empty list")
+    if len(readings) > MAX_READINGS:
+        raise Refused("the readings hold %d, more than %d" % (len(readings), MAX_READINGS))
     problems = []
     for n, item in enumerate(readings, 1):
         if not isinstance(item, dict):
             problems.append("reading %d is not an object" % n)
             continue
-        for key in ("party", "position"):
+        for key, most in (("party", MAX_PARTY), ("position", MAX_POSITION)):
             value = item.get(key)
             if not isinstance(value, str) or not value.strip():
                 problems.append("reading %d has no %s" % (n, key))
-            elif "\n" in value or "\r" in value:
+            elif any(ch in BREAKS for ch in value):
                 problems.append("reading %d: its %s breaks a line" % (n, key))
+            elif len(value) > most:
+                problems.append("reading %d: its %s is longer than %d characters"
+                                % (n, key, most))
+            elif key == "party" and ": " in value:
+                problems.append("reading %d: its party holds \": \", which would part the "
+                                "party from the position in the wrong place" % n)
     if problems:
         raise Refused("; ".join(problems))
     return readings
 
 
-def rows(readings, after: str, node: str, sitting: str, op_id: str) -> List[dict]:
-    """The rows entry for the recorder: one insert after block ``after`` on
-    the tab whose node id is ``node``, holding one note per reading."""
-    for name, value in (("--after", after), ("--node", node), ("--op-id", op_id)):
-        if not isinstance(value, str) or not value.strip():
-            raise Refused("%s is empty" % name)
+def rows(source, readings, after: str, node: str, sitting: str, op_id: str) -> List[dict]:
+    """The rows entry for the recorder: one insert after block ``after`` of the
+    tab ``source`` is a saved read of, whose node id is ``node``, holding one
+    note per reading."""
+    after, node, op_id = _id("--after", after), _id("--node", node), _id("--op-id", op_id)
     date = _date(sitting)
+    items = _readings(readings)
+    section = inplace.note_place(source, after)
     bodies = []
-    for item in _readings(readings):
+    for item in items:
         body = note(date, item["party"].strip(), item["position"].strip())
         inplace._plain_block(body, "the note of %s" % item["party"].strip())
         bodies.append(body)
     content = "\n\n".join("> " + body for body in bodies)
-    got = inplace._read_back(inplace._tab(("Hinge", [content])))
-    if got.get("notes") != [{"section": "hinge", "body": body} for body in bodies]:
-        raise Refused("the notes do not read back as written: %r" % got.get("notes"))
+    read_back(section, content, bodies)
     op = {"op": "insert", "target": {"kind": "blocks", "ids": [after]}, "side": "after",
           "source": {"as": "markdown", "from": {"kind": "inline", "content": content}}}
     return [{"node": node, "payload": {"ops": [op]}, "op_id": op_id}]
+
+
+def read_back(section: str, content: str, bodies: List[str]) -> None:
+    """Refuse an insert the reader would not take back as these notes, in order."""
+    got = inplace._read_back(inplace._tab((section, [content])))
+    if got.get("notes") != [{"section": section.lower(), "body": body} for body in bodies]:
+        raise Refused("the notes do not read back as written: %d note(s) read back for %d "
+                      "reading(s)" % (len(got.get("notes") or []), len(bodies)))

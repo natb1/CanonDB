@@ -11,13 +11,22 @@ Refuses (exit 1, one `REFUSED:` line per finding on standard error):
 an entry of `context.for` or `context.against` that is not an object with a
 non-empty string `who` and `text`; a `context.prediction` that is not an
 object, or holds a key other than `predicted`, `diverged` and `addressed`, or
-a value that is not a string or a list of strings; a `context.paragraphs`
-that is not a list of strings (a plain string there draws nothing); a
-`paragraphs` of a `context.log` record that is not a string or a list of
-strings; a `context.log` record without `at`; a `next` without `kind` and
-`prompt`; and a `next` of kind `question` that carries a recommendation. The
-deletion marker `{"__delete__": true}` is taken wherever a field may be
-removed. Nothing here reaches the network or writes the page.
+a value that is not a string or a list of strings; a `context.paragraphs` or
+`context.notes` that is not a list of strings (a plain string there draws
+nothing); a `context.heading` that is not a string; a `paragraphs` of a
+`context.log` record that is not a string or a list of strings; a
+`context.log` record without `at`; a `context.at`, a log record's `at`,
+`next.put_at`, `next.resolved_at` or `updated` that is not an ISO time with
+its offset; a write without `updated`; a `next` holding a field the card
+draws (`kind`, `prompt`, `case`, `line`, `recommendation`, `how`, `put_at`)
+without `kind` and `prompt`; a `kind` of `next` or of a queue entry outside
+question, office, work and review; a recommendation that is not a string or a
+list of strings; a `question` carrying a recommendation, and a `question` or
+`review` carrying a `how`; a `queue` that is not a list of objects each with
+a `title` or a `prompt`; and a `background` that is not a list of strings. A
+`next` holding only `resolved_at`, `asks`, `deferred` or deletion markers
+needs no kind or prompt. The deletion marker `{"__delete__": true}` is taken
+wherever a field may be removed. Nothing here reaches the network or writes the page.
 """
 
 from __future__ import annotations
