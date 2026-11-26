@@ -159,6 +159,15 @@ What no tool decides. Hold these by reading.
   the answer or the case, and that the grade and the direction are the right ones, are read.
   Two lessons count as one only where their words agree, case, spacing and a closing stop
   aside.
+- **The card's check and the readings' rows hold shapes, not sense.** `tools/card.py check`
+  refuses a write of `ordo/current` the page would draw wrong and a question carrying a
+  recommendation; that the speaker runs it before every write, and that what it sends is the
+  file it checked, are read. `tools/tradition.py rows` refuses an empty reading, one that breaks
+  a line and a date out of form; that every reading given on the page is in its file, that each
+  states the party's position and nothing of the answer, the question or its case, that the
+  party truly has no tab where the `dictate` tab takes it, and that the next action waits until
+  the `record` job is done, are read. That the speaker said a process would change only with
+  the change on a pull request is read too.
 - **A hinge's standing is read off its words.** `tools/hinges.py` takes a presupposition as
   justified only where its line ends `(justified by <question id>)` naming a question of the
   AI's that answers past held; whether that answer is later than the hinge and truly bears it

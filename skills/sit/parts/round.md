@@ -38,13 +38,31 @@ bind every action.
    was predicted, where the result diverged, and how or whether that gap is addressed. The
    principal may revise the answer after reading the tradition; unrevised when the next answer
    comes, it stands, and a revision is written over the answer's file and graded again.
+   Tradition follows an answer whenever the answer brings a new fact, whatever the kind of
+   action it answers, a question, a review of principle, a review of mechanism or an office
+   report: for and against that fact, each party with its registry status. Which reviews are
+   followed by tradition on the decision itself is rule 6's; tradition on a newly reported fact
+   is always given.
    The principal approved the readings of tradition given and asked that they be recorded as
    the round goes.
-   Tradition readings are recorded as the round goes, without waiting for approval: each
-   reading given is written on the tab of the party it is of, at the round it is given, as a
-   note opening with the word *pending* that calls it a lead, never marked verified, stating the
-   party's position and never the answer it was given after, the question or its case, through
-   the recorder (**Written as the round goes**). A party's graph is expected to follow the
+   Tradition readings are recorded as the round goes, without waiting for approval: every
+   reading given on the page is recorded in the notebook in the same round, before the next
+   action is put. It is written on the tab of the party it is of as a note opening with the
+   word *pending* that calls it a lead, never marked verified, stating the party's position and
+   never the answer it was given after, the question or its case, through the recorder
+   (**Written as the round goes**). Where the party has no tab, or no rows can be made for its
+   tab, the reading goes as a note opening with the word *pending* on the `dictate` tab, naming
+   its party, stating the party's position only, never the answer, the question or its case,
+   called a lead and never marked verified. Those readings are written as a list of `{"party",
+   "position"}` to `$SCRATCH/tradition/<job id>.json` with the Write tool, and their rows are
+   printed by `tools/tradition.py rows $SCRATCH/tradition/<job id>.json --after <the last block
+   of the section> --node <the tab's node id> --sitting <the sitting's date, YYYY-MM-DD> --op-id
+   <job id>-1 > $SCRATCH/rows/<job id>.json`, a whole rows file of one entry, the notes joined
+   into one insert, since the document takes no second insert after one block; the recorder
+   sends it in a `record` job of its own. The next action is not put while a reading given is
+   unrecorded: the speaker writes the action context with the readings, adds the `record`
+   job, and once it is done appends to the context, in `context.log`, that the readings were
+   recorded, and only then puts the next action. A party's graph is expected to follow the
    structure of the user's and the AI's; that change of form is not made here, and is carried
    as an open line of kind `work` until it is. Behind the page:
    read the sealed file and state it in the line doc; write the principal's answer to
@@ -77,7 +95,8 @@ bind every action.
    review of mechanism is followed, after its answer, by tradition for and against that answer
    as a question's is (rule 4), its readings recorded the same way, which is the speaker's
    reading of the principal's word that the readings given after two reviews of mechanism were
-   good, and no rule the principal dictated; and a prediction is sealed
+   good, and no rule the principal dictated; neither touches the tradition on a new fact an
+   answer brings, which rule 4 gives after an answer of any kind; and a prediction is sealed
    before every review as well, by the speaker itself, in
    `$SCRATCH/sealed/`, and the file says who predicted and ends with the stamp of the record of
    predictions (**The record of predictions**). The grants and the rows of a batch point
@@ -174,6 +193,12 @@ bind every action.
    principal as a `work` action on the page, naming what to run, since a session reads a skill
    as it was loaded. A pull request of a round of `/principal:bootstrap` that a
    sitting carries is merged the same way, as that skill says.
+   The speaker never tells the principal that the process will change from now on without
+   implementing the mechanism in the same round: a change to this skill's text or its tools, on
+   a branch through a pull request, briefed as this rule says, and said to the principal as
+   such. A note in the speaker's own memory is not the mechanism. Run the confined way, where
+   it can brief no build, the change is named to the principal as an open note of kind
+   `change`, and the process is said not to have changed until that lands.
 10. **Every ask of the principal is an action on the page, in order.** The speaker never leaves
     an ask only in the session's text: what it writes in the session is short and points to the
     page. Every explanation, every answer to a question of the principal's, and every report of
@@ -197,7 +222,9 @@ round it is said, once its restatement has been shown in the action context, so 
 principal may correct it before the job is added. A reading of tradition given after an answer
 (rule 4) is written on the tab of the party it is of as a note opening with the word *pending*,
 calling it a lead, never marked verified, stating the party's position and never the answer it
-was given after, the question or its case. A failed prediction is written as **The record of
+was given after, the question or its case, or, where the party has no tab or no rows can be
+made for it, on the `dictate` tab by `tools/tradition.py rows`; every reading given is recorded
+in the round it is given, before the next action is put. A failed prediction is written as **The record of
 predictions** says. None is first put as a review of rows. Each is made as step 4 makes a rows
 file, by the `note insert` of `tools/inplace.py`, the note's words written to a file with the
 Write tool, or printed by `tools/predictions.py note`, restated and never word for word, and

@@ -399,10 +399,17 @@
         "skills/sit/parts/attenuation.md",
         "skills/sit/parts/departures.md",
         "tools/test_sit_skill.py",
-        "web/ordo.html"
+        "web/ordo.html",
+        "tools/card.py",
+        "tools/hypo/card.py",
+        "tools/test_card.py",
+        "tools/tradition.py",
+        "tools/hypo/tradition.py",
+        "tools/test_tradition.py",
+        "tools/test_cli.py"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
-      "rounds": 1
+      "rounds": 2
     },
     {
       "question": "dictate",

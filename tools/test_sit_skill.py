@@ -860,6 +860,30 @@ class StopgapTest(unittest.TestCase):
                       "Three notes are written at the round without a review of rows"):
             self.assertIn(words, self.skill)
 
+    def test_tradition_on_a_new_fact_is_recorded_before_the_next_action(self):
+        rule = self.section("4. **After the answer, in this order on the page.**",
+                            "5. **The principal may always override")
+        for words in ("Tradition follows an answer whenever the answer brings a new fact, "
+                      "whatever the kind of action it answers",
+                      "tradition on a newly reported fact is always given",
+                      "every reading given on the page is recorded in the notebook in the same "
+                      "round, before the next action is put",
+                      "on the `dictate` tab, naming its party, stating the party's position "
+                      "only, never the answer, the question or its case, called a lead and "
+                      "never marked verified",
+                      "`tools/tradition.py rows $SCRATCH/tradition/<job id>.json",
+                      "The next action is not put while a reading given is unrecorded",
+                      "appends to the context, in `context.log`, that the readings were "
+                      "recorded"):
+            self.assertIn(words, rule)
+        build = self.section("9. **The speaker, at the full tier", "10. **Every ask")
+        for words in ("The speaker never tells the principal that the process will change "
+                      "from now on without implementing the mechanism in the same round",
+                      "A note in the speaker's own memory is not the mechanism."):
+            self.assertIn(words, build)
+        self.assertIn("checked with `tools/card.py check <that file>`; it is sent only once "
+                      "the check prints `ok`", self.skill)
+
     def test_merging_and_the_reload(self):
         rule = self.section("9. **The speaker, at the full tier", "10. **Every ask")
         for words in ("what was built is reported in the action context; a build that "

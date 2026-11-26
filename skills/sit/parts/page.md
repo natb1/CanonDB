@@ -47,7 +47,14 @@ The speaker changes it by one small data write to the document `ordo/current`, w
 it), when the action changes, so that nothing of the last one lingers, `next.deferred` aside
 (rule 5); an `update` when one field alone changes, nested objects merging and lists replaced
 whole. Each write sets `updated`, and the clock is read before it is stamped (procedure 3, rule
-8). A refusal is read and the document read again, never forced. The bells and their office
+8). Before every write of `ordo/current`, whole or an `update`, the object to be written is
+written to a file with the Write tool and checked with `tools/card.py check <that file>`; it is
+sent only once the check prints `ok`, and a refusal is mended in the file and checked again,
+never sent as it stands. The check refuses what the page would draw wrong: a reading of
+tradition in `context.for` or `context.against` that is not an object with `who` and `text`, a
+`context.prediction` out of its three parts, `paragraphs` out of shape, a record of
+`context.log` without its `at`, a `next` without `kind` and `prompt`, so that an `update` of
+`next` carries both, and a `question` carrying a recommendation. A refusal of the store is read and the document read again, never forced. The bells and their office
 items live in `ordo/rule`, which is the principal's private data: it is written only at the
 principal's word, and never into this repository, a line doc, the board or anything published.
 The day's marks live in `ordo/ticks-<day>`, which the speaker writes when the principal says in
