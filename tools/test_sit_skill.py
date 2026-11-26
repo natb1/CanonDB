@@ -1083,24 +1083,37 @@ class LineTest(unittest.TestCase):
                 # 11, new ideas in the draws
                 "reads every kept draw for ideas new to the sitting: every kept draw of a "
                 "question, a drawer turn's draw and the back-brief",
-                "An idea is new where neither the user's record, the page, an open line, nor "
-                "the AI's own record as the packet carried it already holds it, and it was not "
-                "already returned in this sitting.",
+                "An idea is new where neither the user's record, the page, a document of "
+                "`lines` whatever its state, nor the AI's own record as the packet carried it "
+                "already holds it, and it was not already returned in this sitting",
+                "what counts as one idea, and whether it is new, is the speaker's reading",
+                "a `review`, put with no recommendation, since it states no position of the "
+                "notebook's",
+                "A question a drawer turn raised is not an `ai-draw` line.",
                 "Each such idea opens an open line of origin `ai-draw` (**The open lines**) in "
                 "the same round",
-                "the speaker makes no judgment of which are worth following, and the principal "
+                "The speaker makes no judgment of which are worth following, and the principal "
                 "drops what is not wanted",
                 "citing the line, the question's number, or the drawer turn or the back-brief, "
                 "and the draw's index, and saying whether that draw is the answer of record",
                 "Where a context already stands for the round, the naming is a record in "
                 "`context.log`.",
-                "While a question of principle is put on the page, the naming is held and given "
-                "after its answer",
+                "While a question or review of principle is put on the page, or is the next "
+                "action to be put and the idea bears on it, the naming is held and given after "
+                "its answer",
+                "A held naming, and an owed statement that no new idea was found, are kept in "
+                "the work in hand, `tools/inhand.py add $SCRATCH/speaker",
                 "For each question, drawer turn or back-brief read, the action context says "
                 "that its draws yielded no new idea where they yielded none.",
-                "Until the principal has answered the idea's line, no question the speaker "
-                "drafts, no clean turn, drawer or packet, and no build's brief carries an idea "
-                "taken from a draw",
+                "Until the principal has answered the idea's line, the speaker carries no idea "
+                "of a draw not of record anywhere, and no idea of any draw in its own drafting "
+                "of a question, a redraw signal or a build's brief",
+                "What `tools/packet.py` carries of the answer of record, and a question a "
+                "drawer turn raised, go on as rules 3 and 4 give.",
+                "An idea dropped, or closed without being taken up, stays out of the speaker's "
+                "drafting and briefs for good.",
+                "it goes on the tab the idea bears on, and where it bears on none, at the end of "
+                "the `dictate` tab's Hinge section, or of its last section where it has none",
                 "A line of origin `ai-draw` is never queued to a clean turn unasked.",
                 "it enters the AI's record only by rules 1, 3 and 5, in an approved question",
                 "the note says it is an idea from the AI's draws and not a position of the "
@@ -1216,6 +1229,9 @@ class LineTest(unittest.TestCase):
                       "the reading of every kept draw for ideas new to the sitting, and their "
                       "return to the principal through the session and the page alone",
                       "**An idea from a draw is kept out of the line by reading.**",
+                      "nor for good once it is dropped, or that a line of origin `ai-draw` is "
+                      "never queued to a clean turn unasked. What counts as one idea, and "
+                      "whether it is new, is the speaker's reading.",
                       "The principal's approval of a question does not show where a phrase of it "
                       "came from"):
             self.assertIn(words, self.skill)
