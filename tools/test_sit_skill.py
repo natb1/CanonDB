@@ -860,6 +860,57 @@ class StopgapTest(unittest.TestCase):
                       "Three notes are written at the round without a review of rows"):
             self.assertIn(words, self.skill)
 
+    def test_tradition_on_a_new_fact_is_recorded_before_the_next_action(self):
+        rule = self.section("4. **After the answer, in this order on the page.**",
+                            "5. **The principal may always override")
+        for words in ("Tradition follows an answer whenever the answer brings a new fact, "
+                      "whatever the kind of action it answers",
+                      "tradition on a newly reported fact is always given",
+                      "every reading given, on the page or, where there is none, in the "
+                      "session's words, is recorded in the notebook in the same round, before "
+                      "the next action is put",
+                      "on the `dictate` tab, at the end of its Hinge section, naming its party, "
+                      "stating the party's position only, never the answer, the question or its "
+                      "case, called a lead and never marked verified",
+                      "`tools/tradition.py rows <the dictate tab's file in that fetch's views "
+                      "directory> $SCRATCH/tradition/<job id>.json",
+                      "The next action is not put while a reading given is unrecorded",
+                      "appends to the context, in `context.log`, that the readings were "
+                      "recorded",
+                      "Where the `record` job fails, or its rows cannot be made",
+                      "at the board's limit of attempts, or once a second set of rows drawn for "
+                      "the same readings has failed or could not be made, the readings are "
+                      "carried as an open note of kind `work`, the action context says that "
+                      "they are not recorded, and the next action is then put.",
+                      "where that tab has no Hinge section, they go at the end of its last "
+                      "section, named by `--section`",
+                      "those writes are not held, and what waits is the speaker's own next "
+                      "action, the next write of `next`",
+                      "a `fetch` job of the `dictate` tab is run first",
+                      "--after <the last block of its Hinge section>"):
+            self.assertIn(words, rule)
+        self.assertIn("neither touches the tradition on a new fact an answer brings, which "
+                      "rule 4 gives after an answer of any kind", self.skill)
+        self.assertIn("5 to 10 bind every action, and so does rule 4's tradition on a new "
+                      "fact and its recording", self.skill)
+        build = self.section("9. **The speaker, at the full tier", "10. **Every ask")
+        for words in ("The speaker never tells the principal that the process will change "
+                      "from now on without starting the mechanism in the same round",
+                      "it says that the process has not changed until that pull request is "
+                      "merged and the plugin loaded again",
+                      "A note in the speaker's own memory is not the mechanism.",
+                      "the change is named to the principal as an open note of kind `change`, "
+                      "and the process is said not to have changed until that lands"):
+            self.assertIn(words, build)
+        departs = self.skill[self.skill.rindex("What this entry point says now that "
+                                               "reverses"):]
+        self.assertIn("Tradition follows every answer that brings a new fact, whatever the "
+                      "kind of action", departs)
+        self.assertIn("**The card's check and the readings' rows hold shapes, not sense.**",
+                      self.skill)
+        self.assertIn("checked with `tools/card.py check <that file>`; it is sent only once "
+                      "the check prints `ok`", self.skill)
+
     def test_merging_and_the_reload(self):
         rule = self.section("9. **The speaker, at the full tier", "10. **Every ask")
         for words in ("what was built is reported in the action context; a build that "

@@ -47,7 +47,20 @@ The speaker changes it by one small data write to the document `ordo/current`, w
 it), when the action changes, so that nothing of the last one lingers, `next.deferred` aside
 (rule 5); an `update` when one field alone changes, nested objects merging and lists replaced
 whole. Each write sets `updated`, and the clock is read before it is stamped (procedure 3, rule
-8). A refusal is read and the document read again, never forced. The bells and their office
+8). Before every write of `ordo/current`, whole or an `update`, the object to be written is
+written to a file with the Write tool and checked with `tools/card.py check <that file>`; it is
+sent only once the check prints `ok`, and a refusal is mended in the file and checked again,
+never sent as it stands. The check refuses the shapes the page would draw wrong or blank,
+and no others: a reading of tradition in `context.for` or `context.against` that is not an
+object with `who` and `text`; a `context.prediction` out of its three parts; `paragraphs`,
+`notes`, `heading`, `queue` or `background` out of shape; a time that does not parse; a write
+without `updated`; a `next` that writes a field the card draws without its `kind` and
+`prompt`, or whose `kind`, or a queue entry's, is not one of the four; a recommendation not
+a string or a list of strings; a `next.deferred` without its `prompt`; an `office_deferred`
+whose `since` is not a time or whose `bell` is not `HHMM`; and a `question` carrying a
+recommendation, or a `question` or
+`review` carrying a `how`. An `update` of `next.resolved_at`, `asks` or `deferred` alone
+needs no `kind` or `prompt`. A refusal of the store is read and the document read again, never forced. The bells and their office
 items live in `ordo/rule`, which is the principal's private data: it is written only at the
 principal's word, and never into this repository, a line doc, the board or anything published.
 The day's marks live in `ordo/ticks-<day>`, which the speaker writes when the principal says in
