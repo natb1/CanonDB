@@ -181,10 +181,11 @@ def _shares(args):
         if graph is None:
             raise lines.Refused(["the graph cannot be read"])
         carried = share.shares(graph)
-        roots = lines.Roots({name: carried.get(found[0], 0.0)
-                             for name, found in project.candidates(graph).items()
-                             if name and found},
-                            of={q.id: q.project or None for q in graph.questions})
+        found = {name: ids for name, ids in project.candidates(graph).items() if ids}
+        roots = lines.Roots({name: carried.get(ids[0], 0.0)
+                             for name, ids in found.items() if name},
+                            of={q.id: q.project or None for q in graph.questions},
+                            ids={ids[0]: name or None for name, ids in found.items()})
         return carried, roots
     try:
         with open(args.shares, encoding="utf-8") as fh:
@@ -259,6 +260,7 @@ def main(argv=None) -> int:
             raise lines.Refused(["the versions file is not an object"])
         found = lines.read(args.records, versions)
         if args.mode == "check":
+            roots = _shares(args)[1]  # an unreadable graph is refused before any line
             for problem in found.problems:
                 print("ERROR %s" % problem)
             if not found.problems:
@@ -266,7 +268,7 @@ def main(argv=None) -> int:
                 print("ok: %d line(s), %d open or put" % (len(found.records), n))
             for warning in found.found.warnings:
                 print("WARN %s" % warning)
-            stray = lines.unplaced(found, _shares(args)[1])
+            stray = lines.unplaced(found, roots)
             if stray:
                 print("WARN %d live anchored line(s) are of no project: %s; give each its "
                       "project, or check with --graph to take it from its anchors' tabs"
@@ -274,6 +276,16 @@ def main(argv=None) -> int:
                       "WARN %d live anchored line(s) are of no project: %s; no anchor's tab "
                       "is in a project of the graph, give each its project"
                       % (len(stray), ", ".join(stray)))
+            odd = lines.unknown_projects(found, roots)
+            if odd:
+                print("WARN %d live line(s) name a project the graph does not know: %s; "
+                      "give each a project's name or its root's id"
+                      % (len(odd), ", ".join(odd)))
+            loose = lines.unprojected(found, roots)
+            if loose:
+                print("WARN %d live line(s) have no anchor and no project: %s; each is "
+                      "weighed against the anchored lines of every project, give each its "
+                      "project" % (len(loose), ", ".join(loose)))
             return 1 if found.problems else 0
         out = _run(found, args)
     except lines.Refused as exc:

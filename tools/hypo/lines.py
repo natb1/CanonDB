@@ -33,19 +33,24 @@ its ``tab``, each key counted once, the keys summed, and no tab counted for
 more than the tab's own share. A line with no anchor the shares key takes
 half the least share held by any anchored live line (open or put, the
 session's work among them) of its project, and is provisional; so its share
-is below that of every anchored line of its project. A line's project is one
-key: its ``project`` by name, or by its root's id where a graph places that
-id, and, on any line, the project a graph places each of its anchors' tabs
-in; a line of none of these is of the lines naming none. Under shares alone
-no tab and no root's id is placed: a project is then its ``project`` as
-written, and an anchored line with none is of the lines naming none, which
-``check`` warns of. Where its project has no anchored live line,
+is below that of every anchored line of its project. A line may stand in
+several projects: the one its ``project`` names, by the project's name
+(read first) or by its root's id where a graph names that root, and, on any
+line, each project a graph places one of its anchors' tabs in. A line in
+several projects counts as an anchored line of each, and an unanchored
+line in several takes the least over all of them. A line in none is of no
+project: under a graph of named projects it is of the whole root and takes
+the least over every anchored live line; elsewhere the lines of no project
+are one group. Under shares alone no tab and no root's id is placed: a
+project is then its ``project`` as written, and an anchored line with none
+is of no project, which ``check`` warns of. Where its project has no
+anchored live line,
 it takes half the share of its project's root instead (the whole root's one
 where the line names no project the shares know). That fallback is a step:
 an unanchored line's share rises to half its root's when the last anchored
 line of its project leaves the live states, and the unanchored lines of a
-project with no anchored line can weigh above those of a project with one. An anchored line whose
-share is zero is no anchored line here: it takes the provisional share
+project with no anchored line can weigh above those of a project with one.
+An anchored line whose share is zero is no anchored line here: it takes the provisional share
 itself. With no shares given at all, every line's share is one and every
 line is provisional.
 ``unblocks`` is one and the number of live lines that wait on it directly:
@@ -841,34 +846,72 @@ def project_root(lines: Lines, rec: dict, shares: Dict[str, float],
 
 
 class Roots(dict):
-    """Each project's name to its root's share, as a graph gives them, and
+    """Each project's name to its root's share, as a graph gives them;
     ``of``: each question id of the graph (its tabs, the roots among them)
-    to the name of its project, None in a notebook of one project, whose
-    questions are of the lines naming none. A plain dict of the shares by
-    name serves where no question's project is known."""
+    to the name of its project; and ``ids``: each project's root's id to
+    the project's name. In a notebook of one project the name is None, and
+    its questions are of the lines naming none. A plain dict of the shares
+    by name serves where no question's project is known. A ``Roots`` of one
+    project is an empty dict, and so false: read ``of`` and ``ids`` from
+    it, never test it for truth."""
 
-    def __init__(self, shares=(), of: Optional[Dict[str, Optional[str]]] = None):
+    def __init__(self, shares=(), of: Optional[Dict[str, Optional[str]]] = None,
+                 ids: Optional[Dict[str, Optional[str]]] = None):
         super().__init__(shares)
         self.of: Dict[str, Optional[str]] = dict(of or {})
+        self.ids: Dict[str, Optional[str]] = dict(ids or {})
+
+
+def _names(roots) -> Set[Optional[str]]:
+    """The projects' names the roots know."""
+    return (set(roots or {}) | set((getattr(roots, "of", None) or {}).values())
+            | set((getattr(roots, "ids", None) or {}).values()))
+
+
+def several(roots) -> bool:
+    """Whether the roots place questions in named projects: a graph of
+    several projects, or of one named."""
+    return any(v is not None for v in (getattr(roots, "of", None) or {}).values())
 
 
 def project_keys(rec: dict, roots: Optional[Dict[str, float]] = None) -> Set[Optional[str]]:
-    """The projects a line is of, each as one key: its ``project`` read as a
-    project's name where the roots know that name, else as a question id the
-    roots' ``of`` places in a project (a root's id naming its project), else
-    as it is written; and the project of each anchor's tab the roots' ``of``
-    places. A line of none of these is of the lines naming none, the key
-    None."""
+    """The projects a line is of, one key or several: its ``project`` read as
+    a project's name where the roots know that name, before all else; else
+    as a project's root's id the roots' ``ids`` names; else as it is
+    written; and, on any line, the project of each anchor's tab the roots'
+    ``of`` places. A line of none of these is of no project, the key None."""
     of = getattr(roots, "of", None) or {}
-    names = set(roots or {}) | set(of.values())
+    ids = getattr(roots, "ids", None) or {}
     keys: Set[Optional[str]] = set()
     name = rec.get("project")
     if _str(name):
-        keys.add(name if name in names or name not in of else of[name])
+        keys.add(name if name in _names(roots) or name not in ids else ids[name])
     for a in rec.get("anchors") or []:
         if isinstance(a, dict) and a.get("tab") in of:
             keys.add(of[a["tab"]])
     return keys or {None}
+
+
+def unknown_projects(lines: Lines, roots: Optional[Dict[str, float]] = None) -> List[str]:
+    """The live lines whose ``project`` is neither a project's name the
+    roots know nor a root's id they name; nothing is unknown where the roots
+    place no question."""
+    if not (getattr(roots, "of", None) or {}):
+        return []
+    known = _names(roots) | set(getattr(roots, "ids", None) or {})
+    return sorted(lid for lid, r in lines.records.items()
+                  if live(r) and _str(r.get("project")) and r["project"] not in known)
+
+
+def unprojected(lines: Lines, roots: Optional[Dict[str, float]] = None) -> List[str]:
+    """The live lines with no anchor and no ``project``, where the roots
+    place questions in named projects: each is weighed against the anchored
+    lines of every project."""
+    if not several(roots):
+        return []
+    return sorted(lid for lid, r in lines.records.items()
+                  if live(r) and not _str(r.get("project"))
+                  and not any(isinstance(a, dict) for a in r.get("anchors") or []))
 
 
 def unplaced(lines: Lines, roots: Optional[Dict[str, float]] = None) -> List[str]:
@@ -887,18 +930,21 @@ def unplaced(lines: Lines, roots: Optional[Dict[str, float]] = None) -> List[str
 def least_anchored(lines: Lines, rec: dict, shares: Dict[str, float],
                    roots: Optional[Dict[str, float]]) -> Tuple[float, Optional[str]]:
     """The base of the provisional rule as adopted: the least share held by
-    any live line (open or put, the session's work among them) of a project
-    the line is of, by ``project_keys``, whose anchors the shares key (a
-    share above zero), the lines of no project being one group; where there
-    is no such line, ``project_root``'s, with that said. The line itself is
-    never counted: it is weighed by this rule only where its own share is
-    zero."""
+    any live line (open or put, the session's work among them) of any
+    project the line is of, by ``project_keys``, whose anchors the shares
+    key (a share above zero). A line of no project, where the roots place
+    questions in named projects, is of the whole root: the least is taken
+    over every anchored live line. Elsewhere the lines of no project are one
+    group. Where there is no such line, ``project_root``'s, with that said.
+    The line itself is never counted: it is weighed by this rule only where
+    its own share is zero."""
     mine = project_keys(rec, roots)
+    whole = mine == {None} and several(roots)
     held = [share_of(r, shares) for r in lines.records.values()
-            if live(r) and mine & project_keys(r, roots)]
+            if live(r) and (whole or mine & project_keys(r, roots))]
     held = [s for s in held if s > 0]
     if held:
-        return min(held), None
+        return min(held), "of no project, every project's lines" if whole else None
     root, said = project_root(lines, rec, shares, roots)
     none = "no anchored line in its project"
     return root, "%s, its project's root" % none if said is None else "%s; %s" % (none, said)

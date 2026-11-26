@@ -229,6 +229,19 @@ class CheckTest(Base):
         # canon is a tab of the graph: a is placed; mornings is not
         self.assertIn("WARN 1 live anchored line(s) are of no project: b; no anchor's tab",
                       done.stdout)
+        # the graph is of one project: north is a name it does not know, and
+        # a line of no project is warned of only under several projects
+        self.assertIn("WARN 2 live line(s) name a project the graph does not know: c, x",
+                      done.stdout)
+        self.assertNotIn("no anchor and no project", done.stdout)
+
+    def test_check_refuses_an_unreadable_graph_before_any_line(self):
+        self.given()
+        bad = self.d.file("graph.json", "not a graph")
+        done = run("lines.py", "check", self.d.root, "--graph", bad)
+        self.assertEqual(done.returncode, 1)
+        self.assertEqual(done.stdout, "")
+        self.assertIn("REFUSED: the graph cannot be read", done.stderr)
 
     def test_every_writing_mode_refuses_over_records_that_do_not_check(self):
         self.given([rec("a", parent="b")])
@@ -688,7 +701,8 @@ class OrderTest(Base):
                             rec("x", project="north"), rec("y", project="q-north")])
         r = given.records
         shares = {"evenings": 0.1, "q-north": 0.8}
-        placed = lines.Roots({"north": 0.8}, of={"q-north": "north"})
+        placed = lines.Roots({"north": 0.8}, of={"q-north": "north"},
+                             ids={"q-north": "north"})
         self.assertEqual(lines.project_keys(r["a"], placed), {"north"})
         for lid in ("x", "y"):
             t = lines.terms(given, r[lid], shares, placed)
@@ -701,14 +715,15 @@ class OrderTest(Base):
 
     def test_a_line_is_of_every_project_its_field_and_its_anchors_place_it_in(self):
         placed = lines.Roots({"north": 1.0, "south": 0.5},
-                             of={"mornings": "north", "dusk": "south", "q-south": "south"})
+                             of={"mornings": "north", "dusk": "south", "q-south": "south"},
+                             ids={"q-south": "south"})
         r = rec("x", project="q-south", anchors=[anchor("mornings"), anchor("dusk"),
                                                  anchor("elsewhere")])
         self.assertEqual(lines.project_keys(r, placed), {"north", "south"})
         self.assertEqual(lines.project_keys(rec("y", project="west"), placed), {"west"})
         self.assertEqual(lines.project_keys(rec("z"), placed), {None})
         # a notebook of one project places its tabs in none: one group
-        one = lines.Roots({}, of={"ti-esti": None, "mornings": None})
+        one = lines.Roots({}, of={"ti-esti": None, "mornings": None}, ids={"ti-esti": None})
         self.assertEqual(lines.project_keys(rec("n", project="ti-esti"), one), {None})
         self.assertEqual(lines.project_keys(rec("m", anchors=[anchor("mornings")]), one),
                          {None})
@@ -717,6 +732,55 @@ class OrderTest(Base):
         t = lines.terms(given, given.records["n"], {"mornings": 0.3, "ti-esti": 1.0}, one)
         self.assertAlmostEqual(t.share, 0.15)
         self.assertEqual(lines.unplaced(given, one), [])
+
+    def test_a_line_of_no_project_under_several_projects_is_of_the_whole_root(self):
+        placed = lines.Roots({"north": 0.8, "south": 0.2},
+                             of={"mornings": "north", "evenings": "north", "dusk": "south"})
+        shares = {"mornings": 0.5, "evenings": 0.1, "dusk": 0.02}
+        given = self.given([rec("a", anchors=[anchor("evenings", "b1", "h1")]),
+                            rec("b", anchors=[anchor("mornings", "b2", "h2")]),
+                            rec("d", anchors=[anchor("dusk", "b3", "h3")]),
+                            rec("z")])
+        r = given.records
+        t = lines.terms(given, r["z"], shares, placed)
+        self.assertAlmostEqual(t.share, 0.01)
+        self.assertEqual(t.provisional, "no anchor; of no project, every project's lines")
+        for lid in ("a", "b", "d"):
+            self.assertLess(t.share, lines.terms(given, r[lid], shares, placed).share, lid)
+        self.assertEqual(lines.unprojected(given, placed), ["z"])
+        # in a notebook of one project the lines of no project are one group,
+        # and nothing is warned of
+        one = lines.Roots({}, of={"mornings": None, "evenings": None, "dusk": None})
+        self.assertAlmostEqual(lines.terms(given, r["z"], shares, one).share, 0.01)
+        self.assertEqual(lines.unprojected(given, one), [])
+
+    def test_a_line_in_two_projects_sets_the_least_of_each(self):
+        placed = lines.Roots({"north": 1.0, "south": 0.5},
+                             of={"mornings": "north", "dusk": "south"})
+        shares = {"mornings": 0.5, "dusk": 0.1}
+        # both is of north by its field and of south by its anchor
+        given = self.given([rec("big", anchors=[anchor("mornings")], project="north"),
+                            rec("both", anchors=[anchor("dusk")], project="north"),
+                            rec("xn", project="north"), rec("xs", project="south")])
+        r = given.records
+        self.assertAlmostEqual(lines.terms(given, r["xn"], shares, placed).share, 0.05)
+        self.assertAlmostEqual(lines.terms(given, r["xs"], shares, placed).share, 0.05)
+
+    def test_a_project_s_name_is_read_before_a_root_s_id_of_the_same_spelling(self):
+        placed = lines.Roots({"dusk": 0.3, "south": 0.2}, of={"dusk": "south"},
+                             ids={"dusk": "south"})
+        self.assertEqual(lines.project_keys(rec("x", project="dusk"), placed), {"dusk"})
+        # only a root's id spells a project: another question's id is a name
+        # as written, which check warns of
+        placed = lines.Roots({"north": 1.0}, of={"mornings": "north", "q-north": "north"},
+                             ids={"q-north": "north"})
+        self.assertEqual(lines.project_keys(rec("x", project="mornings"), placed),
+                         {"mornings"})
+        self.assertEqual(lines.project_keys(rec("y", project="q-north"), placed), {"north"})
+        given = self.given([rec("x", project="mornings"), rec("y", project="q-north"),
+                            rec("w", project="North"), rec("v", project="north")])
+        self.assertEqual(lines.unknown_projects(given, placed), ["w", "x"])
+        self.assertEqual(lines.unknown_projects(given, {"north": 1.0}), [])
 
     def test_a_put_line_and_the_session_s_work_count_as_anchored_lines(self):
         shares = {"mornings": 0.5, "evenings": 0.1}

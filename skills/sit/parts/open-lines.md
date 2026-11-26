@@ -49,7 +49,8 @@ read, and each stamping `touched_at` from the clock. Its fields, an invented exa
   the session's work.
 - `owed_by`, on a line of work: `user`, the principal's to do, as where unset, or `session`,
   owed by the sitting and not by the principal.
-- `project`, where set: the project the line belongs to, by its name or its root's id. It is
+- `project`, where set: the project the line belongs to, by its name or its root's id (no
+  other question's id spells a project). It is
   read on every line, anchored or not, to place the line in its project, and gives the line
   its root's share where no anchor gives it one.
 - `pressure`, where set: a number kept from an earlier order, which weighs nothing now.
@@ -96,8 +97,10 @@ to where it began, a parent and its child agree on both sides, no line is its ow
 one line at most is put. It does not fail on what a mode mends: a rank two lines hold, which
 `order` mends, and a parent that is no line, which `orphans` flags; and it warns, refusing
 nothing, of anchors that name no block, which no move of the notebook can be judged against,
-and of live anchored lines of no project: no `project`, and no anchor whose tab the graph
-places in a project (with no `--graph`, every live anchored line with no `project`).
+of live anchored lines of no project: no `project`, and no anchor whose tab the graph places in
+a project (with no `--graph`, every live anchored line with no `project`); and, with `--graph`,
+of a `project` that is neither a project's name the graph knows nor a root's id of it, and,
+where the graph's projects are named, of a live line with no anchor and no `project`.
 The lines opened before this tool carry such anchors, `{tab, words}`, the tab named in words:
 until each is given its tab's id, block and `h`, `moved` judges none of them, and says how many
 it could not judge. Whether the `list` with `out_dir` returns each document's version is to be
@@ -117,13 +120,17 @@ anchored sentences carry, each anchor read by its tab and block where the shares
 by its tab, each once, summed, no tab for more than its own share. A line with no anchor the
 shares key takes half the least share held by any anchored live line, open or put, the
 session's work among them, of its project, so that it sorts by share below every anchored line
-of its project, and is marked provisional. A line's project is one key: its `project` by name,
-or by its root's id where the graph places that id; and, on any line, the project the graph
-places each of its anchors' tabs in. A line of none of these is of the lines naming no project,
-which are one group. Under `--shares` alone no tab and no root's id is placed: a project is then
-its `project` as written, a project named by its name on one line and by its root's id on
-another is two projects, and an anchored line with no `project` is of the lines naming none,
-setting no share for an unanchored line of a named project; `check` warns of each such line.
+of its project, and is marked provisional. A line may stand in several projects: the one its
+`project` names, by the project's name, read first, or by its root's id where the graph names
+that root; and, on any line, each project the graph places one of its anchors' tabs in. A line
+in several projects counts as an anchored line of each, so one anchored in two projects sets
+the least of both; an unanchored line in several takes the least over all of them. A line in
+none is of no project: where the graph's projects are named, it is of the whole root and takes
+half the least share of every anchored live line; in a notebook of one project the lines of no
+project are one group. Under `--shares` alone no tab and no root's id is placed: a project is
+then its `project` as written, a project named by its name on one line and by its root's id on
+another is two projects, and an anchored line with no `project` is of no project, setting no
+share for an unanchored line of a named project; `check` warns of each such line.
 Where its project has no anchored live line, it takes half the share of its project's root
 instead, or of the whole root where it names no project the shares know. That fallback is a
 step: an unanchored line's share rises to half its root's when the last anchored line of its
