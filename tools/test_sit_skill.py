@@ -1089,7 +1089,10 @@ class LineTest(unittest.TestCase):
                 "what counts as one idea, and whether it is new, is the speaker's reading",
                 "a `review`, put with no recommendation, since it states no position of the "
                 "notebook's",
-                "A question a drawer turn raised is not an `ai-draw` line.",
+                "In a drawer turn's draw, the questions it raises go on by rule 3 and are not "
+                "`ai-draw` lines; anything else it says is read as any draw is.",
+                "an `ai-draw` line is not put as the next action while its naming is held",
+                "A build's brief cites the answers of record as rule 1 gives.",
                 "Each such idea opens an open line of origin `ai-draw` (**The open lines**) in "
                 "the same round",
                 "The speaker makes no judgment of which are worth following, and the principal "
@@ -1106,12 +1109,12 @@ class LineTest(unittest.TestCase):
                 "For each question, drawer turn or back-brief read, the action context says "
                 "that its draws yielded no new idea where they yielded none.",
                 "Until the principal has answered the idea's line, the speaker carries no idea "
-                "of a draw not of record anywhere, and no idea of any draw in its own drafting "
-                "of a question, a redraw signal or a build's brief",
+                "of a draw not of record anywhere, a build's brief among them, and no idea of "
+                "any draw in its own drafting of a question or a redraw signal",
                 "What `tools/packet.py` carries of the answer of record, and a question a "
                 "drawer turn raised, go on as rules 3 and 4 give.",
                 "An idea dropped, or closed without being taken up, stays out of the speaker's "
-                "drafting and briefs for good.",
+                "drafting and briefs for good, unless the principal states it.",
                 "it goes on the tab the idea bears on, and where it bears on none, at the end of "
                 "the `dictate` tab's Hinge section, or of its last section where it has none",
                 "A line of origin `ai-draw` is never queued to a clean turn unasked.",
@@ -1229,9 +1232,9 @@ class LineTest(unittest.TestCase):
                       "the reading of every kept draw for ideas new to the sitting, and their "
                       "return to the principal through the session and the page alone",
                       "**An idea from a draw is kept out of the line by reading.**",
-                      "nor for good once it is dropped, or that a line of origin `ai-draw` is "
-                      "never queued to a clean turn unasked. What counts as one idea, and "
-                      "whether it is new, is the speaker's reading.",
+                      "nor for good once it is dropped unless the principal states it, or that "
+                      "a line of origin `ai-draw` is never queued to a clean turn unasked. What "
+                      "counts as one idea, and whether it is new, is the speaker's reading.",
                       "The principal's approval of a question does not show where a phrase of it "
                       "came from"):
             self.assertIn(words, self.skill)
