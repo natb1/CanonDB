@@ -523,8 +523,8 @@
         "skills/sit/parts/departures.md",
         "tools/test_sit_skill.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
-      "rounds": 1
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3222",
+      "rounds": 2
     },
     {
       "question": "hypomnemata",
