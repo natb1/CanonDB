@@ -16,7 +16,9 @@ bell notice while a rung bell's office has an item of the principal's unresolved
 stands the context panel. The page is display only: it has no input and one button, at its
 foot, that goes back to the top and does nothing else; its source holds no data, and it writes
 nothing. It reads four documents of the collection `ordo` in its
-store, and the speaker writes all four, the day's marks included.
+store, and the speaker writes all four, the day's marks included. Anything that needs the
+principal's attention is presented here, in the next action, the action context or its log,
+and the session's printed text, a log of operations only, never repeats it (rule 10).
 
 On a wide screen the main column is on the left and the context panel on the right, kept in
 view; on a phone the panel sits under the next action. The panel holds, in this order: "This
@@ -60,7 +62,9 @@ a string or a list of strings; a `next.deferred` without its `prompt`; an `offic
 whose `since` is not a time or whose `bell` is not `HHMM`; and a `question` carrying a
 recommendation, or a `question` or
 `review` carrying a `how`. An `update` of `next.resolved_at`, `asks` or `deferred` alone
-needs no `kind` or `prompt`. A refusal of the store is read and the document read again, never forced. The bells and their office
+needs no `kind` or `prompt`. A refusal of the store is read and the document read again, never forced; where the write
+still cannot be made, the session says so and says the thing itself, since the page cannot
+carry it (rule 10). The bells and their office
 items live in `ordo/rule`, which is the principal's private data: it is written only at the
 principal's word, and never into this repository, a line doc, the board or anything published.
 The day's marks live in `ordo/ticks-<day>`, which the speaker writes when the principal says in
@@ -117,7 +121,8 @@ context among them, and there are no bells.
 
 - `context`, the action context: the last answer as the speaker read it, or the speaker's
   explanation, its answer to a question of the principal's, or its report of what was done, the
-  brief and the close among them (rule 10); `heading`; `paragraphs`, that answer, explanation or
+  brief and the close among them, a result the principal should know, an error, a helper's
+  finding and a thing owed by the principal included (rule 10); `heading`; `paragraphs`, that answer, explanation or
   report;
   `for` and `against`, lists of objects with `who`, the party and its registry status, and
   `text`, shown under "Tradition on the result" after

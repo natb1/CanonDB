@@ -176,9 +176,12 @@ the plugin's kinds for work a kind carries.
    process will change from now on without starting the mechanism in the same round, a change
    to the skill's text or tools through a pull request, and it says the process has not
    changed until that is merged and loaded; a note in its own memory is not the mechanism.
-10. Every ask of the principal is an action on the page, in order; every explanation and report
-    goes in the action context, and the session's own text is one or two lines saying the page
-    changed. The action context is append-only within a round.
+10. Every ask of the principal is an action on the page, in order, and anything that needs the
+    principal's attention, every explanation and report among it, is on the page; what is only
+    in the session's text has not been presented. The session's printed text is a log of
+    operations in the fewest words that identify each, never repeating what the page presents;
+    where the page could not be written, the session says so and says the thing itself. The
+    action context is append-only within a round.
 
 **Written as the round goes** (`round.md`). Three notes go to the notebook at the round, through
 the recorder, each held off what a clean reader could draw an answer from: a requirement the
