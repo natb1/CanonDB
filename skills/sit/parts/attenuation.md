@@ -239,6 +239,10 @@ What no tool decides. Hold these by reading.
   before a constraint binds; the reading of every kept draw for ideas new to the sitting, and
   their return to the principal through the session and the page alone; and the action
   context's being appended to and not changed within a round: no tool checks any of them.
+- **When the speaker asks for a bootstrap is held by reading.** Whether one of the three cases
+  of rule 1 of the line holds is the speaker's judgement, and the principal's approval on the
+  page is what checks it; no tool decides the case, sees that the request was put unasked, or
+  refuses a build begun on a word of approval given only in the session.
 - **An idea from a draw is kept out of the line by reading.** No tool holds that the speaker
   carries no idea of a draw not of record, a build's brief among them, and no idea of any draw
   in its own drafting of a question or a redraw signal, before the principal has answered its

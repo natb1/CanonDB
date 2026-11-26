@@ -81,7 +81,23 @@ or its question, and a question or an answer holding `<<<` or `>>>`, which no te
    AI's answers by their opening words and never the principal's requirement. Then the build is
    checked against the record, by a `compare` job over the line with what was built. Nothing is
    built straight from the principal's words unless the principal asks for that explicitly, once,
-   as an action on the page, for that one build.
+   as an action on the page, for that one build. Such a build is a bootstrap: it is recorded as
+   a postulate, and it gives way when a line in the AI's graph reaches the same thing
+   (`/principal:bootstrap`). **When the speaker asks for a bootstrap.** The speaker itself puts
+   the request for a bootstrap as its next action, on the page, a review of mechanism with its
+   recommendation, without waiting to be told, whenever one of three cases holds: first, drawing
+   the thing in the AI's graph is blocked by the very thing to be built; second, a tool or guard
+   of the process refuses or spoils the work in hand, and would stay so while a line is drawn;
+   third, the principal's words leave no choice of design, so that the build only writes down
+   what was said, a rule of the process among them. Outside the three the order above holds:
+   the requirement recorded, the line drawn in the AI's graph blind, compared, reviewed, built.
+   The request is one action for one build. It names which case holds and why, stated so that
+   the principal can refuse it: the speaker's judgement that a case holds is exactly what the
+   principal's approval checks. The principal's approval of the request on the page is what
+   authorises the build; a word of approval given in the session, for a build that meets a case,
+   does not stand in for putting the request on the page. A bootstrap so approved is still
+   reviewed by an adversary before it is merged (**One action at a time: the round**, rule 9),
+   and recorded in `.principal/bootstrap.json` as any bootstrap is.
 2. **Intention is carried by the line.** Every line opens at the purpose: what the thing is for,
    and what it must never do. A question of how stands only beneath an answer of why. Each answer
    names the answers it rests on, on its `Rests on:` line. Before any build a back-brief is

@@ -166,7 +166,9 @@ the plugin's kinds for work a kind carries.
 6. The next action is a `question`, an `office`, a `work` or a `review`. A review is put as a
    question is; one of mechanism carries the speaker's recommendation in `next.recommendation`,
    one that states or changes a principle carries none. A prediction is sealed before every
-   review by the speaker itself (**The record of predictions**).
+   review by the speaker itself (**The record of predictions**). Where one of the three cases of
+   `ai-line.md` rule 1 holds, the speaker puts the request for a bootstrap unasked, as a review
+   of mechanism.
 7. An unresolved office of the principal's shows first unless the principal has set it aside or
    an action put before the bell rang is still pending; items run by the session never hold the
    card; `office_deferred` is written only at the principal's word.

@@ -125,7 +125,10 @@ bind every action, and so does rule 4's tradition on a new fact and its recordin
    can carry goes to the batch point, and one it cannot goes by rule 9, or by
    `/principal:dictate` or `/principal:bootstrap`, named to the principal as an open note of kind
    `change`; a grant is written at the batch point as a case on the tab of the clause it bears
-   on. Each ends with what it opened.
+   on. Each ends with what it opened. Where a build is owed and one of the three cases of
+   **The line in the AI's graph**, rule 1, holds, the next action is the speaker's request for
+   a bootstrap, put unasked as a review of mechanism with its recommendation, naming the case
+   and why; outside them a build waits on its line.
 7. **Bells.** An unresolved office of the principal's shows first unless the principal has set
    it aside or an action put before the bell rang is still pending; items run by the session
    never hold the card. The page shows a rung bell as a notice and makes that bell's office items

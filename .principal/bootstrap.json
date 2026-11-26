@@ -853,6 +853,21 @@
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3224",
       "rounds": 3
+    },
+    {
+      "question": "context",
+      "application": "the request for a bootstrap",
+      "files": [
+        "skills/sit/SKILL.md",
+        "skills/sit/parts/ai-line.md",
+        "skills/sit/parts/round.md",
+        "skills/sit/parts/attenuation.md",
+        "skills/sit/parts/departures.md",
+        "tools/test_sit_skill.py",
+        ".principal/bootstrap.json"
+      ],
+      "pull_request": null,
+      "rounds": 1
     }
   ]
 }

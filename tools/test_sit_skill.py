@@ -2591,5 +2591,51 @@ class QuestionReadByMeaningTest(unittest.TestCase):
             self.assertIn(words, text)
 
 
+class WhenToAskForABootstrapTest(unittest.TestCase):
+    """Rule 1 of the line: the three cases in which the speaker itself puts
+    the request for a bootstrap on the page, and what still holds of it."""
+
+    @staticmethod
+    def part(name):
+        return flat(os.path.join(PARTS, name + ".md"))
+
+    def test_rule_1_gives_the_three_cases_and_the_approval_on_the_page(self):
+        text = self.part("ai-line")
+        rule = text[text.index("1. **The order.**"):text.index("2. **Intention is carried")]
+        for words in ("Nothing is built straight from the principal's words unless the "
+                      "principal asks for that explicitly, once",
+                      "Such a build is a bootstrap: it is recorded as a postulate, and it gives "
+                      "way when a line in the AI's graph reaches the same thing",
+                      "The speaker itself puts the request for a bootstrap as its next action, "
+                      "on the page, a review of mechanism with its recommendation, without "
+                      "waiting to be told, whenever one of three cases holds",
+                      "drawing the thing in the AI's graph is blocked by the very thing to be "
+                      "built",
+                      "a tool or guard of the process refuses or spoils the work in hand, and "
+                      "would stay so while a line is drawn",
+                      "the principal's words leave no choice of design, so that the build only "
+                      "writes down what was said",
+                      "Outside the three the order above holds",
+                      "The request is one action for one build. It names which case holds and "
+                      "why, stated so that the principal can refuse it",
+                      "a word of approval given in the session, for a build that meets a case, "
+                      "does not stand in for putting the request on the page",
+                      "is still reviewed by an adversary before it is merged",
+                      "recorded in `.principal/bootstrap.json` as any bootstrap is"):
+            self.assertIn(words, rule)
+        self.assertNotIn("—", rule)
+
+    def test_the_round_the_core_attenuation_and_departures_point_to_it(self):
+        self.assertIn("the next action is the speaker's request for a bootstrap, put unasked "
+                      "as a review of mechanism with its recommendation, naming the case and why",
+                      self.part("round"))
+        self.assertIn("the speaker puts the request for a bootstrap unasked, as a review of "
+                      "mechanism", flat(SKILL))
+        self.assertIn("**When the speaker asks for a bootstrap is held by reading.**",
+                      self.part("attenuation"))
+        self.assertIn("The speaker puts the request for a bootstrap as its next action, "
+                      "unasked", self.part("departures"))
+
+
 if __name__ == "__main__":
     unittest.main()
