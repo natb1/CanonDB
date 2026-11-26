@@ -1102,11 +1102,11 @@ def words_markdown(source, bid: str, new: str, ids: Optional[Dict[str, str]] = N
 
 # -- a note -----------------------------------------------------------------
 
-def note_insert(source, after: str, body: str) -> Tuple[List[dict], str, str]:
-    """A note inserted after block ``after``, which must be the last block of
-    its section: the renderer writes a section's notes at its end, so a note
-    put anywhere else would move at the next body write. Read back as one
-    note of that section. Returned with the op: the section and the block."""
+def note_place(source, after: str) -> str:
+    """The section a note inserted after block ``after`` lands in, refused
+    unless the block is the last of its section: the renderer writes a
+    section's notes at its end, so a note put anywhere else would move at the
+    next body write."""
     try:
         blocks_ = page.blocks(source)
     except ValueError as exc:
@@ -1127,6 +1127,14 @@ def note_insert(source, after: str, body: str) -> Tuple[List[dict], str, str]:
                      if i + 1 == len(ids) or blocks_[i + 1][1].startswith("## ")), ids[-1])
         raise Refused("block %s is not the last block of %s; the renderer puts a note "
                       "at the end of its section, so it goes after %s" % (after, section, last))
+    return section
+
+
+def note_insert(source, after: str, body: str) -> Tuple[List[dict], str, str]:
+    """A note inserted after block ``after``, which must be the last block of
+    its section (``note_place``). Read back as one note of that section.
+    Returned with the op: the section and the block."""
+    section = note_place(source, after)
     _plain_block(body, "the note")
     content = "> " + body.strip()
     got = _read_back(_tab((section, [content])))

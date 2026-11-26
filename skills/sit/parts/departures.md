@@ -107,6 +107,11 @@ What this entry point says now that reverses what it said before:
 - Readings of tradition are recorded on the parties' tabs at the round, as leads never marked
   verified, by a `record` job, without waiting for approval, where before they went to the
   notebook only with the principal's approval.
+- Tradition follows every answer that brings a new fact, whatever the kind of action, an
+  office report among them, where before it followed only a question and a review of
+  mechanism; and every reading given is recorded in the same round before the next action is
+  put, on the `dictate` tab where its party has no tab, where before a reading was recorded at
+  the round with nothing holding the next action back and only on a tab of its party.
 - A requirement the principal states is recorded on the notebook as a *pending* note at the
   round it is said, through the recorder, without first being put as a review of rows, where
   before every write to the notebook waited for the batch point's reviews.

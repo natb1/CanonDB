@@ -860,6 +860,57 @@ class StopgapTest(unittest.TestCase):
                       "Three notes are written at the round without a review of rows"):
             self.assertIn(words, self.skill)
 
+    def test_tradition_on_a_new_fact_is_recorded_before_the_next_action(self):
+        rule = self.section("4. **After the answer, in this order on the page.**",
+                            "5. **The principal may always override")
+        for words in ("Tradition follows an answer whenever the answer brings a new fact, "
+                      "whatever the kind of action it answers",
+                      "tradition on a newly reported fact is always given",
+                      "every reading given, on the page or, where there is none, in the "
+                      "session's words, is recorded in the notebook in the same round, before "
+                      "the next action is put",
+                      "on the `dictate` tab, at the end of its Hinge section, naming its party, "
+                      "stating the party's position only, never the answer, the question or its "
+                      "case, called a lead and never marked verified",
+                      "`tools/tradition.py rows <the dictate tab's file in that fetch's views "
+                      "directory> $SCRATCH/tradition/<job id>.json",
+                      "The next action is not put while a reading given is unrecorded",
+                      "appends to the context, in `context.log`, that the readings were "
+                      "recorded",
+                      "Where the `record` job fails, or its rows cannot be made",
+                      "at the board's limit of attempts, or once a second set of rows drawn for "
+                      "the same readings has failed or could not be made, the readings are "
+                      "carried as an open note of kind `work`, the action context says that "
+                      "they are not recorded, and the next action is then put.",
+                      "where that tab has no Hinge section, they go at the end of its last "
+                      "section, named by `--section`",
+                      "those writes are not held, and what waits is the speaker's own next "
+                      "action, the next write of `next`",
+                      "a `fetch` job of the `dictate` tab is run first",
+                      "--after <the last block of its Hinge section>"):
+            self.assertIn(words, rule)
+        self.assertIn("neither touches the tradition on a new fact an answer brings, which "
+                      "rule 4 gives after an answer of any kind", self.skill)
+        self.assertIn("5 to 10 bind every action, and so does rule 4's tradition on a new "
+                      "fact and its recording", self.skill)
+        build = self.section("9. **The speaker, at the full tier", "10. **Every ask")
+        for words in ("The speaker never tells the principal that the process will change "
+                      "from now on without starting the mechanism in the same round",
+                      "it says that the process has not changed until that pull request is "
+                      "merged and the plugin loaded again",
+                      "A note in the speaker's own memory is not the mechanism.",
+                      "the change is named to the principal as an open note of kind `change`, "
+                      "and the process is said not to have changed until that lands"):
+            self.assertIn(words, build)
+        departs = self.skill[self.skill.rindex("What this entry point says now that "
+                                               "reverses"):]
+        self.assertIn("Tradition follows every answer that brings a new fact, whatever the "
+                      "kind of action", departs)
+        self.assertIn("**The card's check and the readings' rows hold shapes, not sense.**",
+                      self.skill)
+        self.assertIn("checked with `tools/card.py check <that file>`; it is sent only once "
+                      "the check prints `ok`", self.skill)
+
     def test_merging_and_the_reload(self):
         rule = self.section("9. **The speaker, at the full tier", "10. **Every ask")
         for words in ("what was built is reported in the action context; a build that "
@@ -890,8 +941,12 @@ class StopgapTest(unittest.TestCase):
                       "`tools/hinges.py place $SCRATCH/lines/<line> --n <n> --under <id> > "
                       "$SCRATCH/lines/<line>/<n>/place.json`",
                       "It reads the line's directory alone, and nothing of the user's record.",
-                      "a `place` job is added only once the guard admits the `ai-recorder` a "
-                      "new tab under the AI's root"):
+                      "a new tab of the AI's own record needs no dictation",
+                      "`tools/hinges.py rows $SCRATCH/lines/<line>/<n>/place.json --line "
+                      "$SCRATCH/lines/<line> --line-name <line> --node <node id> --kind <kind> "
+                      "--read <the tab's read> > $SCRATCH/rows/<job id>.json`",
+                      "Placing on a new tab is two steps, in this order, and no one command "
+                      "prints both"):
             self.assertIn(words, line)
         answerer = flat(os.path.join(ROOT, "clean", "answerer.md"))
         self.assertIn("\"Presupposes:\" stands on a line of its own, and under it, one to a "
@@ -1266,9 +1321,16 @@ class PageTest(unittest.TestCase):
                      "postMessage", "import(", "window.open", "location", "localStorage",
                      "sessionStorage", "indexedDB", "document.cookie", "eval", "Function("):
             self.assertNotIn(word, self.script)
-        # no control, made in the source or at run time, in any quoting or case
+        # no control, made in the source or at run time, in any quoting or case, but the
+        # one button at the foot that goes back to the top (test_page_top), wired once by
+        # its property and focusing the main landmark, which alone takes a tabindex
+        page = self.page
+        for allowed in ('<button type="button" class="top" id="top">', '<main id="main" tabindex="-1">',
+                        'if (top) top.onclick = toTop;'):
+            self.assertEqual(page.count(allowed), 1, allowed)
+            page = page.replace(allowed, "")
         controls = r"(?:button|input|textarea|select|form|option|dialog|a)"
-        self.assertIsNone(re.search(r"<\s*%s\b" % controls, self.page, re.I))
+        self.assertIsNone(re.search(r"<\s*%s\b" % controls, page, re.I))
         # one native details element, the waiting list's card, closed in the source and
         # never opened or closed by the script
         self.assertEqual(re.findall(r"<\s*details\b[^>]*>", self.page, re.I),
@@ -1279,7 +1341,7 @@ class PageTest(unittest.TestCase):
         self.assertIsNone(re.search(r"[\"'`]\s*%s\s*[\"'`]" % controls, self.script, re.I))
         for word in ("onclick", "addEventListener", "contenteditable", "contentEditable",
                      "innerHTML", "outerHTML", "insertAdjacentHTML", "document.write", "tabindex"):
-            self.assertNotIn(word.lower(), self.page.lower())
+            self.assertNotIn(word.lower(), page.lower())
         self.assertNotIn("href", self.script)
         made = re.findall(r"\bel\(\s*([\"'`])(\w+)\1", self.script)
         self.assertTrue(made)
@@ -1396,7 +1458,9 @@ class PageTest(unittest.TestCase):
             # what the page computes
             "b", "m", "ds", "rd", "md", "mins", "wd", "date", "key", "v", "state", "rung",
             "unres", "applied", "all", "left", "aside", "session", "now", "at", "ev", "allDay",
-            "y", "mo", "d", "hold", "carry"}
+            "y", "mo", "d", "hold", "carry",
+            # the button back to the top (test_page_top)
+            "onclick", "focus", "scrollTo", "matchMedia", "matches"}
         given = {"context", "next", "queue", "background", "updated",
                  "heading", "paragraphs", "for", "against", "prediction", "notes", "who", "text",
                  "kind", "line", "case", "prompt", "how", "deferred", "reason", "title",
@@ -1520,8 +1584,9 @@ class PageTest(unittest.TestCase):
                       self.contract)
 
     def test_round_two_sentences_of_the_contract(self):
-        for words in ("The page is display only: it has no button and no input, its source holds "
-                      "no data, and it writes nothing.",
+        for words in ("The page is display only: it has no input and one button, at its foot, that "
+                      "goes back to the top and does nothing else; its source holds no data, and "
+                      "it writes nothing.",
                       "and the speaker writes all four, the day's marks included",
                       "Each write sets `updated`, and the clock is read before it is stamped",
                       "the speaker reads `ordo/current` with `ArtifactData` at `as_level` "
@@ -2119,6 +2184,106 @@ class BriefLinesTest(unittest.TestCase):
                       "no hook approves a launch", "A read is never checked.", "`ordo/session.schedule`",
                       "goes to the notebook's statement of conventions first"):
             self.assertIn(words, section)
+
+
+class SensitiveRuleTest(unittest.TestCase):
+    """Ground rule 9 is held by reading: each place where it binds carries its
+    own sentences, and the skill says no tool decides it."""
+
+    def part(self, name):
+        return flat(os.path.join(PARTS, name + ".md"))
+
+    def skill(self, name):
+        return flat(os.path.join(ROOT, "skills", name, "SKILL.md"))
+
+    def has(self, text, *sentences):
+        for words in sentences:
+            self.assertIn(words, text)
+
+    def test_the_ground_rule_in_full(self):
+        rules = self.part("ground-rules")
+        self.has(rules,
+                 "9. **What the principal reports of the principal's own life is sensitive, and "
+                 "goes nowhere a stranger can read.**",
+                 "it notes there, in words, that the fact is sensitive; a form for a mark that "
+                 "records carry is not yet defined.",
+                 "the notebook, the page and its store, the line doc, the sitting's `$SCRATCH`, "
+                 "the brief's directory under the config home (`tools/brief.py where`), "
+                 "and a project's own private repository only where a standing rule already "
+                 "places such a record there",
+                 "Whether a private repository may hold more is the principal's to decide.",
+                 "nor a message to another session, a document other than the notebook and the "
+                 "line doc, or an artifact other than the page, unless that place is private.",
+                 "carries this rule in substance",
+                 "an example in it is invented and neutral",
+                 "it stops and hands that back to the speaker, without judging whose the fact is.",
+                 "is doing its work when it handles such a fact, and does not stop on it.",
+                 "A helper that builds cannot know that a fact is the principal's",
+                 "the speaker and the full tier's adversarial reviewer each read the pull "
+                 "request's whole text",
+                 "commit messages, branch, tag and file names, and diff",
+                 "no search for strings stands in for it",
+                 "no history is rewritten without the principal's word.",
+                 "This rule binds a sitting and the publish steps of `/principal:bootstrap` and "
+                 "`/principal:dictate`; a session outside those is not reached by it")
+        # the hand-back is scoped to a helper whose work leaves (B1 of the second review)
+        hand_back = rules.index("carries it no further: it stops and hands that back")
+        self.assertIn("A helper whose work leaves for a repository or any published place, and "
+                      "that finds in what it handles", rules[hand_back - 200:hand_back])
+        # the line doc is among the private places (B2 of the second review)
+        self.assertNotIn("recorded only in the notebook, the page and its store, and `$SCRATCH`",
+                         rules)
+
+    def test_the_core(self):
+        with open(SKILL, encoding="utf-8") as fh:
+            core = " ".join(fh.read().split())
+        self.has(core, "**Ground rules** 1 to 9 in full",
+                 "9. What the principal reports of the principal's own state",
+                 "the notebook, the page and its store, the line doc, `$SCRATCH`, the brief's "
+                 "directory, and a private "
+                 "repository only where a standing rule puts such a record",
+                 "a helper of the notebook handles it as its work",
+                 "Before a merge the speaker and the full tier's reviewer read the pull "
+                 "request's whole text",
+                 "The rule binds a sitting and the publish steps of bootstrap and dictate, and no "
+                 "session outside those.")
+
+    def test_the_round(self):
+        self.has(self.part("round"),
+                 "Each brief, the implementing helper's and the adversarial reviewer's, states "
+                 "the mechanism wanted and never the occasion",
+                 "carries ground rule 9 in substance",
+                 "The reviewer reads the pull request for such a fact as well as for its faults.",
+                 "comments, commit messages, branch, tag and file names, and diff, as a reader "
+                 "looking for the principal, the reviewer having read it so too, and says in "
+                 "the action context that it did and what it read (ground rule 9)")
+
+    def test_the_brief_and_attenuation(self):
+        self.has(self.part("brief"),
+                 "(ground rule 9). The speaker composes such a brief from the rule",
+                 "carries the rule itself in substance")
+        self.has(self.part("attenuation"),
+                 "**Sensitive information is held by reading.** No tool decides ground rule 9.",
+                 "A helper that builds cannot know a fact is the principal's",
+                 "It binds a sitting and the publish steps of bootstrap and dictate; a session "
+                 "outside those is not reached by it.")
+
+    def test_bootstrap_and_dictate(self):
+        for name in ("bootstrap", "dictate"):
+            self.has(self.skill(name),
+                     "an example is invented and neutral",
+                     "commit messages, branch, tag and file names, and diff, as a reader looking "
+                     "for the principal, and says that it did and what it read",
+                     "in for that reading.",
+                     "reported to the principal at once, with what its removal would take, and "
+                     "no history is rewritten without the principal's word.")
+        self.has(self.skill("dictate"), "kept only in the private places ground rule 9 of "
+                 "`/principal:sit` names (the notebook, the page and its store, the line doc, "
+                 "the sitting's scratch, the brief's directory")
+        self.assertNotIn("recorded only in the notebook", self.skill("dictate"))
+        self.has(self.skill("bootstrap"), "Before a merge, its own or the author's",
+                 "the full tier's adversarial reviewer is briefed with this rule, never the "
+                 "occasion, and reads for it too")
 
 
 if __name__ == "__main__":

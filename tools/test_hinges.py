@@ -6,12 +6,13 @@ listed with the builds that rest on it. Every line here is invented."""
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
 import unittest
 
-from hypo import hinges, model
+from hypo import hinges, model, text
 from support import fixture, run
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -169,6 +170,404 @@ class PlaceCliTest(unittest.TestCase):
         self.assertEqual(done.returncode, 0, done.stderr)
         with open(os.path.join(self.line, "1", "place.json")) as fh:
             self.assertEqual(json.load(fh)["came_in_by"], "l1/1")
+
+
+#: answers in the forms a draw gives: a bold lead, code, a star and an
+#: entity, numbered items apart, angle brackets, a list straight under a
+#: label line, and the closing labelled lines one under the other
+MARKED = ("**The morning is for the plants.** Water comes before `post`, and 2 * 3 cans "
+          "do it, AT&amp;T or not.\n\n"
+          "1. **First** the seedlings_  \n\n"
+          "2. Then the <beds> and [the pots](#x) with ``a `b` c``.\n"
+          "Rests on: nothing earlier\n"
+          "Presupposes:\n"
+          "- that the plants need water every morning\n"
+          "- that the post can wait an hour")
+NOTHING = ("The morning is for the plants.\n\n"
+           "Rests on: nothing earlier\n"
+           "Presupposes:\n"
+           "- nothing")
+#: what the live document was seen to give back inside a held code block:
+#: a tab, runs of three and four backticks, a fence-like line with an info
+#: word, a bare ampersand, a closing CDATA mark, and a line of spaces
+EDGES = ("Water first.\tThen ``` and ```` stand.\n```python\nx = 1 & y ]]> z\n   \n"
+         "Rests on: nothing earlier\nPresupposes:\n- that water comes first")
+QUESTION = "What is the *morning* for, `now`?"
+#: the key ai_root of an invented notebook
+LISTED = [{"node": "n-root", "tab": "t-root"}, {"node": "n-tab", "tab": "t-tab"}]
+#: a whole read of a tab just made, holding its heading alone
+BLANK = ("<doc rev='5' sinceRev='0' node='n-tab'><paragraph id='s1.1' h='0' heading='1'>"
+         "<text id='.2'>q-one</text></paragraph></doc>")
+
+
+def as_view(markdown, rev=6, node="n-tab"):
+    """A tab's markdown as a whole read of the document prints it: a code
+    block as the document holds one, ``<codeBlock id h language='text'>``
+    with its words in a text run, in CDATA sections and with each angle
+    bracket written as an entity between them; a heading by its marks; and
+    every other block, which here is one line of the tool's own words, a
+    paragraph. A closing CDATA mark in the words is split across two
+    sections, as the document prints it."""
+    def cdata(words):
+        if "]]>" in words:
+            return "<![CDATA[%s]]>" % words.replace("]]>", "]]]]><![CDATA[>")
+        parts = re.split(r"([<>])", words)
+        return "".join({"<": "&lt;", ">": "&gt;"}.get(p) or
+                       ("<![CDATA[%s]]>" % p.replace("]]>", "]]]]><![CDATA[>") if p else "")
+                       for p in parts)
+
+    out, ids = [], iter(range(1, 10000))
+    found = text.fences(markdown)
+    pieces, last = [], 0
+    for start, end, language, words in found:
+        pieces += [("md", markdown[last:start]), ("code", (language, words))]
+        last = end
+    pieces.append(("md", markdown[last:]))
+    from xml.sax.saxutils import escape
+    for kind, piece in pieces:
+        if kind == "code":
+            out.append("<codeBlock id='s1.%d' h='0' language='%s'><text id='s1.%d'>%s</text>"
+                       "</codeBlock>" % (next(ids), piece[0], next(ids), cdata(piece[1])))
+            continue
+        for block in piece.split("\n\n"):
+            if not block.strip():
+                continue
+            assert "\n" not in block.strip(), block
+            head = re.match(r"^(#{1,6}) (.*)$", block.strip())
+            words, level = (head.group(2), len(head.group(1))) if head else (block.strip(), 0)
+            out.append("<paragraph id='s1.%d' h='0'%s><text id='s1.%d'>%s</text></paragraph>"
+                       % (next(ids), " heading='%d'" % level if level else "", next(ids),
+                          escape(words)))
+    return "<doc rev='%d' sinceRev='0' node='%s'>%s</doc>" % (rev, node, "".join(out))
+
+
+def tab_after(entry, name="q-one"):
+    """The tab, its heading alone before, once the entry's inserts have
+    landed at its end, as markdown."""
+    return "\n\n".join(["# " + name] + [op["source"]["from"]["content"]
+                                       for op in entry["payload"]["ops"]])
+
+
+class RowsTest(unittest.TestCase):
+    """The rows that place an answer of record on its tab: every text of the
+    line held word for word in a code block, read back as the AI's answer;
+    the place checked against the line's directory; the tab read blank; the
+    operation id; the refusals; and the guard."""
+
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
+        self.line = os.path.join(self.dir, "lines", "l1")
+        answered(self.line, 1, QUESTION + "\n", MARKED)
+        answered(self.line, 2, "And the evening?\n", ANSWER)
+        answered(self.line, 3, "And at night?\n", NOTHING + "\n")
+        answered(self.line, 4, "And at noon?\n", EDGES)
+        self.notebook = os.path.join(self.dir, "notebook.json")
+        with open(self.notebook, "w", encoding="utf-8") as fh:
+            json.dump({"artifact": "https://example.invalid/code/artifact/"
+                                   "0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0",
+                       "ai_root": LISTED}, fh)
+        self.blank = self.file("blank.xml", BLANK)
+
+    def file(self, name, words):
+        path = os.path.join(self.dir, name)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(words)
+        return path
+
+    def placed(self, n=1, line=None, name="l1"):
+        args = ["place", line or self.line, "--n", str(n), "--under", "ai-root"]
+        if name:
+            args += ["--line-name", name]
+        done = run("hinges.py", *args)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        return self.file("place-%d.json" % n, done.stdout)
+
+    def loaded(self, n=1):
+        with open(self.placed(n), encoding="utf-8") as fh:
+            return json.load(fh)
+
+    def rows(self, place, node="n-tab", kind="definitional", read=None, line=None,
+             name="l1"):
+        return run("hinges.py", "rows", place, "--line", line or self.line, "--line-name", name,
+                   "--node", node, "--kind", kind, "--read", read or self.blank,
+                   "--notebook", self.notebook)
+
+    def entry(self, n=1, **kw):
+        done = self.rows(self.placed(n), **kw)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        out = json.loads(done.stdout)
+        self.assertEqual(len(out), 1)
+        return out[0]
+
+    def draw(self, n):
+        with open(os.path.join(self.line, str(n), "draws", "draw-1.json"), encoding="utf-8") as fh:
+            return json.load(fh)["answer"]
+
+    def test_a_rows_file_of_one_update_guarded_by_the_read_s_rev(self):
+        entry = self.entry()
+        self.assertEqual(sorted(entry), ["n", "node", "op_id", "payload"])
+        self.assertEqual((entry["node"], entry["n"]), ("n-tab", 1))
+        self.assertEqual(sorted(entry["payload"]), ["ifRev", "ops"])
+        self.assertEqual(entry["payload"]["ifRev"], 5)
+        self.assertEqual(len(entry["payload"]["ops"]), 3)
+        for op in entry["payload"]["ops"]:
+            self.assertEqual(op, {"op": "insert", "target": {"kind": "root"}, "side": "end",
+                                  "source": {"as": "markdown", "from": {
+                                      "kind": "inline",
+                                      "content": op["source"]["from"]["content"]}}})
+
+    def test_every_text_of_the_line_stands_in_a_code_block_and_the_rest_is_the_tool_s(self):
+        ops = [op["source"]["from"]["content"] for op in self.entry()["payload"]["ops"]]
+        self.assertEqual(ops[0], "```text\n" + QUESTION + "\n```\n\n"
+                         "question: in thread · definitional · answerer: ai · pressure 0 · "
+                         "backlog 0 · load 0\n\n## Thesis\n\n"
+                         "### ◆ answer of record of l1/1\n\n"
+                         "assent: none · in thread · provenance: thesis hinge")
+        # the answer holds a run of two backticks: the fence is longer
+        self.assertEqual(ops[1], "```text\n" + MARKED + "\n```")
+        self.assertEqual(ops[2], "## Hinge\n\n"
+                         "### ⚓ question: what the asking presupposes\n\n```text\n"
+                         "that the plants need water every morning (unjustified; came in by "
+                         "l1/1)\nthat the post can wait an hour (unjustified; came in by l1/1)"
+                         "\n```\n\n### ⚓ thesis: what the answer was drawn from\n\n```text\n"
+                         "model: a-model · harness: a clean turn with no tools, over the "
+                         "line's packet · canon: the AI's answers of ai-root and above it, and "
+                         "the line l1 before question 1\n```")
+        self.assertEqual(text.fence("a ```` b"), "`````text\na ```` b\n`````")
+
+    def test_the_answer_insert_holds_the_draw_s_answer_word_for_word(self):
+        for n in (1, 2, 3, 4):
+            with self.subTest(n=n):
+                (start, end, language, words), = text.fences(
+                    self.entry(n)["payload"]["ops"][1]["source"]["from"]["content"])
+                self.assertEqual((language, words), ("text", self.draw(n).strip()))
+
+    def test_the_tab_reads_back_as_the_ai_s_answer_word_for_word(self):
+        """Each answer, its marks, lists and spacing included, rendered into
+        the view a read prints, spelled by page.py, read by read.py and
+        carried by packet.py: the AI's answer past held under its question,
+        the hinges read back, and the checks clean, an answer that
+        presupposes nothing among them."""
+        import packet
+        import read as reader
+        from hypo import page, spec
+        for n, question in ((1, QUESTION), (2, "And the evening?"), (3, "And at night?"),
+                            (4, "And at noon?")):
+            with self.subTest(n=n):
+                entry = self.entry(n)
+                view = as_view(tab_after(entry))
+                if n == 4:
+                    self.assertIn("]]]]><![CDATA[>", view)
+                bodies = {"q-one": page.markdown(view)}
+                manifest = {"value": {"tabs": {"t-tab": {"name": "q-one", "order": "a0"}}},
+                            "files": [{"id": "t-tab", "content": {"id": "n-tab"}}]}
+                graph_path = self.file("graph.json", json.dumps(
+                    reader.assemble(manifest, bodies)))
+                out = os.path.join(self.dir, "packet.md")
+                done = run("packet.py", graph_path, "--whole", "-o", out)
+                self.assertEqual(done.returncode, 0, done.stderr)
+                with open(out, encoding="utf-8") as fh:
+                    self.assertEqual(packet.parse(fh.read()), [(question, self.draw(n).strip())])
+                graph = model.load(graph_path)
+                (q,) = graph.questions
+                self.assertEqual((q.question, q.fenced, q.answerer, q.state, q.claude),
+                                 (question, True, "ai", "in thread", True))
+                self.assertEqual(q.theses[0].text, self.draw(n).strip())
+                got = [(h.words, h.came_in_by) for h in hinges.read(q)]
+                self.assertEqual(got, {3: [], 4: [("that water comes first", "l1/4")]}.get(n, [
+                    ("that the plants need water every morning", "l1/%d" % n),
+                    ("that the post can wait an hour", "l1/%d" % n)]))
+                # every error but the two a lone tab owes to the graph around it
+                errors = [f.line() for f in spec.run(graph) if f.severity == spec.ERROR
+                          and f.check not in ("one-root", "end-stated")]
+                self.assertEqual(errors, [])
+                # the renderer writes a held tab back as it stands
+                from hypo import read, render
+                again = read.parse_tab(render.body(graph, q.id))
+                self.assertEqual((again["question"], again["theses"][0]["text"],
+                                  again["hinge"], again["fenced"]),
+                                 (q.question, q.theses[0].text,
+                                  {"question": q.hinge.question, "thesis": q.hinge.thesis},
+                                  True))
+
+    def test_a_code_block_on_a_prose_tab_is_refused_as_on_main(self):
+        """A read of a prose tab holding a code block is refused by page.py, as
+        it always was; read.py, handed prose markdown, reads a quoted fence
+        as the prose it stands in."""
+        from hypo import page, read
+        view = ("<doc rev='1' sinceRev='0' node='n'><paragraph id='a.1' heading='1'><text>"
+                "q-two</text></paragraph><paragraph id='.2'><italic><text>Why?</text></italic>"
+                "</paragraph><codeBlock id='.3' h='0' language='text'><text>x</text>"
+                "</codeBlock></doc>")
+        with self.assertRaises(ValueError):
+            page.markdown(view)
+        tab = ("# q-two\n\n*Why?*\n\nquestion: held · case · pressure 0 · backlog 0 · load 0"
+               "\n\n## Thesis\n\n### ◆ A reason\n\nassent: none · held · provenance: thesis "
+               "hinge\n\nSay it so:\n\n```text\nx\n```")
+        q = read.parse_tab(tab)
+        self.assertNotIn("fenced", q)
+        self.assertEqual(q["theses"][0]["text"], "Say it so:\n\n```text\nx\n```")
+
+    def test_a_held_tab_is_read_strictly(self):
+        """No stray code block, no other language, no prose beside a held
+        text, and nothing that would stand for the question."""
+        from hypo import read
+        held = tab_after(self.entry())
+        question_line = "\n\nquestion: in thread"
+        cases = {
+            "a stray block after the question": held.replace(
+                question_line, "\n\n```text\nSTRAY\n```" + question_line),
+            "a stray block before the title": "```text\nSTRAY\n```\n\n" + held,
+            "italics beside the question": held.replace(question_line,
+                                                        "\n\n*Stray?*" + question_line),
+            "a stray block under the Thesis heading": held.replace(
+                "## Thesis\n\n", "## Thesis\n\n```text\nSTRAY\n```\n\n"),
+            "a stray block at the end": held + "\n\n```text\nSTRAY\n```",
+            "two blocks in the answer": held.replace(
+                "assent: none · in thread · provenance: thesis hinge\n\n",
+                "assent: none · in thread · provenance: thesis hinge\n\n```text\nX\n```\n\n"),
+            "the question in another language": held.replace("```text\n" + QUESTION,
+                                                             "```python\n" + QUESTION),
+            "the question in no language": held.replace("```text\n" + QUESTION,
+                                                        "```\n" + QUESTION),
+            "the answer in another language": held.replace("```text\n" + MARKED,
+                                                           "```python\n" + MARKED),
+            "a hinge part as prose": held.replace("```text\nmodel:", "model:").replace(
+                "line l1 before question 1\n```", "line l1 before question 1"),
+        }
+        self.assertEqual(read.parse_tab(held)["question"], QUESTION)
+        for name, tab in cases.items():
+            with self.subTest(name=name):
+                self.assertNotEqual(tab, held)
+                with self.assertRaises(read.ParseError):
+                    read.parse_tab(tab)
+
+    def test_nothing_is_no_presupposition_on_a_held_tab_alone(self):
+        for fenced, words, count in ((True, "nothing", 0), (False, "nothing", 1),
+                                     (True, "None.", 1), (True, "nothing earlier", 1)):
+            with self.subTest(fenced=fenced, words=words):
+                q = model.Question(id="x", tab="t", body="b", question="q", state="held",
+                                   kind="case", pressure=0, fenced=fenced,
+                                   hinge=model.Hinge(question=words))
+                self.assertEqual(len(hinges.read(q)), count)
+
+    def test_the_operation_id_covers_the_line_the_number_the_node_and_the_words(self):
+        first = self.entry()
+        self.assertEqual(first, self.entry())
+        self.assertEqual(self.entry(node="N-TAB")["op_id"], first["op_id"])
+        self.assertTrue(first["op_id"].startswith("ai-place-"))
+        later = self.file("later.xml", BLANK.replace("rev='5'", "rev='9'"))
+        for other in (self.entry(node="n-root", read=self.file(
+                          "root.xml", BLANK.replace("node='n-tab'", "node='n-root'"))),
+                      self.entry(kind="case"), self.entry(2), self.entry(read=later)):
+            self.assertNotEqual(other["op_id"], first["op_id"])
+        place = self.loaded()
+        edited = dict(place, answer=place["answer"] + " More.")
+        self.assertNotEqual(hinges.rows(edited, "n-tab", "definitional", ["n-tab"], 5)[0]
+                            ["op_id"], first["op_id"])
+        # what a packet would refuse to carry, the packet's own check refuses here
+        for words in ("A <<< B", "A >>> B"):
+            with self.assertRaises(hinges.Refused):
+                hinges.rows(dict(place, answer=words), "n-tab", "case", ["n-tab"], 5)
+
+    def test_only_what_a_code_block_cannot_hold_is_refused(self):
+        for words, why in (("", "empty"), ("A\rB", "U+000D"), ("A\x01B", "U+0001")):
+            with self.subTest(words=words):
+                with self.assertRaises(hinges.Refused) as caught:
+                    hinges.held(words, "the answer")
+                self.assertIn(why, str(caught.exception))
+        for words in (MARKED, ANSWER.strip(), "> a\n\n## b\n\n**Support**\n\n<div>c</div>",
+                      "- \n\n```\nd\n```", "a  \n\tb", "\nA", "A\n   ", EDGES):
+            with self.subTest(words=words):
+                self.assertEqual(text.fences(hinges.held(words, "the answer"))[0][3], words)
+
+    def test_a_place_not_as_the_line_s_directory_gives_it_is_refused(self):
+        place = self.loaded()
+        for name, edited in (
+                ("an answer", dict(place, answer=place["answer"] + " More.")),
+                ("a question", dict(place, question="Another?")),
+                ("a thesis", dict(place, hinge=dict(place["hinge"], thesis="model: x · "
+                                                    "harness: y · canon: z"))),
+                ("a number", dict(place, came_in_by="l1/2")),
+                ("an under", dict(place, under="elsewhere"))):
+            with self.subTest(name=name):
+                done = self.rows(self.file("edited.json", json.dumps(edited)))
+                self.assertEqual(done.returncode, 1)
+                self.assertIn("REFUSED", done.stderr)
+        # a place from another line, and a line whose directory is not its name
+        other = os.path.join(self.dir, "lines", "run")
+        answered(other, 1, QUESTION + "\n", ANSWER)
+        done = self.rows(self.placed(line=other, name=None), line=other, name="l9")
+        self.assertIn("names the line 'run'", done.stderr)
+        done = self.rows(self.placed(line=other, name="l9"), line=self.line, name="l9")
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("not what place prints", done.stderr)
+
+    def test_a_tab_that_holds_more_than_its_heading_is_refused(self):
+        held = self.file("held.xml", as_view(tab_after(self.entry())))
+        done = self.rows(self.placed(2), read=held)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("holds more than its heading", done.stderr)
+        other = self.file("other.xml", BLANK.replace("node='n-tab'", "node='n-root'"))
+        self.assertIn("not 'n-tab'", self.rows(self.placed(), read=other).stderr)
+        nameless = self.file("nameless.xml", BLANK.replace(" node='n-tab'", ""))
+        self.assertIn("names no node", self.rows(self.placed(), read=nameless).stderr)
+        norev = self.file("norev.xml", BLANK.replace(" rev='5'", ""))
+        self.assertIn("no rev", self.rows(self.placed(), read=norev).stderr)
+
+    def test_a_node_the_key_does_not_list_and_a_kind_outside_the_vocabulary_are_refused(self):
+        done = self.rows(self.placed(), node="n-other", read=self.file(
+            "o.xml", BLANK.replace("node='n-tab'", "node='n-other'")))
+        self.assertEqual(done.returncode, 1)
+        self.assertIn("lists no tab 'n-other'", done.stderr)
+        self.assertEqual(self.rows(self.placed(), kind="principle").returncode, 2)
+
+    def test_the_guard_admits_the_ai_recorder_every_op_on_a_listed_tab_alone(self):
+        import test_notebook_gate as gated
+        entry = self.entry()
+        gate = gated.load_gate()
+
+        def decide(named, agent="principal:ai-recorder"):
+            with gated.project(named) as root:
+                return gate.decide(gated.call(root, agent, gated.UPDATE, {
+                    "container": {"kind": "project", "id": gated.NOTEBOOK},
+                    "ref": {"object": "node", "id": entry["node"]},
+                    "payload": entry["payload"], "opId": entry["op_id"]}),
+                    env={}, plugin="principal")
+
+        def reason(found):
+            return found["hookSpecificOutput"]["permissionDecisionReason"]
+
+        listed = {"artifact": gated.SITE + gated.NOTEBOOK, "ai_root": LISTED}
+        self.assertEqual(decide(listed), {})
+        for op in entry["payload"]["ops"]:
+            self.assertTrue(gate._insert_only(op))
+        elsewhere = dict(listed, ai_root=[{"node": "n-root", "tab": "t-root"}])
+        self.assertEqual(reason(decide(elsewhere)), gate.AI_SIDE)
+        self.assertEqual(reason(decide({"artifact": gated.SITE + gated.NOTEBOOK})), gate.UNSET)
+        self.assertEqual(reason(decide(listed, "principal:comparer")), gate.USER_SIDE)
+
+    def test_the_skill_s_rows_line_runs(self):
+        import test_sit_skill as walk
+        place = os.path.join(self.line, "1", "place.json")
+        shutil.copy(self.placed(), place)
+        os.makedirs(os.path.join(self.dir, "rows"))
+        (each,) = [s for s in walk.lines(SKILL, "hinges.py") if s.split()[1] == "rows"]
+        command = each.replace("tools/", HERE + "/", 1)
+        for key, value in {"$SCRATCH": self.dir, "<line>": "l1", "<n>": "1",
+                           "<node id>": "n-tab", "<kind>": "case",
+                           "<the tab's read>": self.blank, "<job id>": "j1"}.items():
+            command = command.replace(key, value)
+        self.assertIsNone(walk.UNFILLED.search(command), command)
+        os.makedirs(os.path.join(self.dir, ".principal"))
+        shutil.copy(self.notebook, os.path.join(self.dir, ".principal", "notebook.json"))
+        env = dict(os.environ, CLAUDE_PROJECT_DIR=self.dir)
+        done = subprocess.run(["bash", "-c", command], capture_output=True, text=True,
+                              timeout=60, env=env, cwd=self.dir)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        with open(os.path.join(self.dir, "rows", "j1.json"), encoding="utf-8") as fh:
+            self.assertEqual([e["node"] for e in json.load(fh)], ["n-tab"])
 
 
 class UnjustifiedTest(unittest.TestCase):

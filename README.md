@@ -76,8 +76,12 @@ grade or a direction outside its lists, and reads those notes back from a graph 
 graded since: it tallies them by kind, grade and direction with the lessons that recur, and
 stamps the tally with a fingerprint that a seal of the speaker's own must end with.
 `tools/hinges.py` places a line's answer of record with its presuppositions as hinges, each
-unjustified until a later answer of the AI's is linked to it, and lists every unjustified hinge
-of the AI's graph with the builds that rest on it.
+unjustified until a later answer of the AI's is linked to it, prints the rows file the
+`ai-recorder` sends to insert them at the end of a blank tab of the AI's, checked against the
+line's directory and guarded by the rev of the tab's read, each text of the line held word for
+word in a code block of its own, which `tools/page.py` and `tools/read.py` read back as such,
+and lists every unjustified hinge of the AI's graph with the builds that rest on it. Which tab
+a place goes to is the speaker's: `rows` holds it only to a blank tab the key gives.
 `tools/brief.py` keeps the relevant part of the notebook in front of a session without a read
 step: from the opening's graph it makes the standing brief (the conventions, each project's end
 and method, the open lines by title, the glossary index) and the neighbourhood of the line in hand
@@ -245,9 +249,13 @@ is read and written through these entry points.
      with the db capability and rules that let only its owner read and write, and put its
      address in this key; and `"page": "<artifact address>"`: publish `web/ordo.html` once the
      same way, with the db and user capabilities, and put its address in this key. Without a
-     `page` a sitting runs with no page and says so. Once the AI's own record has a root tab,
-     add `"ai_root": ["<its node id>", "<the node id of each tab under it>", …]`; until then the
-     AI's recorder is refused every write.
+     `page` a sitting runs with no page and says so. The AI's own record has a root tab of its
+     own, made once by the AI's recorder from what `tools/ai_tab.py root --name <name>` prints, and
+     its tabs are listed under `"ai_root"`, each `{"node": "<its body's node id>", "tab": "<its
+     tab id>"}`, the root's first, which `tools/ai_tab.py add` writes from the batch and the
+     connector's answer to it; until the root is there
+     the AI's recorder is refused every write but the root, and after it the AI's recorder
+     makes the tabs under it.
    - `bootstrap.json` — `{"applications": []}`, the manifest `/principal:bootstrap` keeps.
 
 3. Write the root question under `canon/`. Canon is what is under that directory, and nothing

@@ -87,6 +87,15 @@ MARKERS = {"thesis": (GLYPHS["thesis"],), "glossary": (GLYPHS["glossary"],),
 #: what opens the lineage line, the one block above a tab's title
 LINEAGE = GLYPHS["lineage"]
 
+#: a tab's title line: a tab is held word for word where the block under its
+#: title, or under the header list there, is a code block of a held text
+TITLE_LINE = re.compile(r"^# .*$", re.M)
+
+#: a text held word for word, standing in for its code block while the rest
+#: of the tab is read
+HELD_BLOCK = "\x00held %d\x00"
+HELD_TOKEN = re.compile("\x00held (\\d+)\x00")
+
 CHIPPED_STATE = ("a state is a chip and not a word: this is the renderer's markdown, "
                  "and the reader takes the page as the page spells it")
 
@@ -535,6 +544,15 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     ``ids`` maps a chip key back to a question id. The key drops every
     character an id may carry and a tab does not, so it is not reversible on
     its own; the document's file list supplies the map.
+
+    A tab whose question, under its title or the header list there, is a
+    code block of a held text (``text.HELD``) is held word for word
+    (``Question.fenced``, as ``hinges.rows`` places the AI's answers): its
+    question, each answer and each part of its hinge is the words of a code
+    block of its own, read whole and as they stand, and a text written as
+    prose on such a tab, or a code block anywhere else on it, is refused. On
+    every other tab a code block is part of the prose it stands in, as it
+    always was.
     """
     ids = ids or {}
     # a chip the export kept as text is its label, and the label is the id
@@ -546,7 +564,46 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
     # So do the exporter's own backslashes, and only those: one before a
     # character markdown reads as a mark spells the literal character, and
     # stays, or the next render would write a star the page holds as a mark.
-    markdown = text.canonical(IN_PAGE_LINK.sub(r"\1", markdown))
+    #
+    # A code block is a text held word for word (``text.fence``): it is taken
+    # out whole before anything else is read, so that no link, escape or
+    # blank line inside it is read, and stands as one block in its place.
+    words_held: List[str] = []
+    consumed: Set[int] = set()
+
+    def hold(markdown: str) -> str:
+        found = text.fences(markdown)
+        title = TITLE_LINE.search(markdown)
+        if not found or not title:
+            return markdown
+        start, _, language, _ = next(((a, b, c, d) for a, b, c, d in found
+                                      if a > title.end()), (None, 0, "", ""))
+        between = markdown[title.end():start] if start is not None else "x"
+        if any(block.strip() and not block.strip().startswith("- ")
+               for block in BLANK.split(between)):
+            # a prose tab, whatever code its texts quote: read as it always was
+            return markdown
+        # the question stands in a code block: the tab is held, strictly
+        others = sorted({lang or "none" for _, _, lang, _ in found if lang != text.HELD})
+        if others:
+            raise ParseError("a code block in %s where a tab held word for word keeps only "
+                             "code blocks of a held text (%s)"
+                             % (" and ".join(others), text.HELD))
+        out, last = [], 0
+        for start, end, _, words in found:
+            out += [markdown[last:start], HELD_BLOCK % len(words_held)]
+            words_held.append(words)
+            last = end
+        return "".join(out + [markdown[last:]])
+
+    def held_words(block: str) -> Optional[str]:
+        found = HELD_TOKEN.fullmatch(block)
+        if not found:
+            return None
+        consumed.add(int(found.group(1)))
+        return words_held[int(found.group(1))]
+
+    markdown = text.canonical(IN_PAGE_LINK.sub(r"\1", hold(markdown)))
 
     def target(key: str) -> str:
         # a key with no question behind it names something the graph does not
@@ -587,7 +644,16 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
                                          "raiser: %r" % line[:60])
                     incoming.append((strip_chips(item.group("text"), labels),
                                      target(keys[0]) if keys else ""))
+        elif HELD_TOKEN.fullmatch(block):
+            if "question" in q:
+                raise ParseError("a code block above the Thesis section after the "
+                                 "question, which would stand for the question")
+            q["question"] = held_words(block)  # word for word, in its code block
+            q["fenced"] = True
         elif block.startswith("*") and block.endswith("*"):
+            if q.get("fenced"):
+                raise ParseError("a line in italics beside a question held in a code "
+                                 "block, which would stand for the question")
             q["question"] = _unwrap(block)  # one layer: the question's own
         elif block.startswith(LINEAGE):
             continue  # the breadcrumb is projected, never stored
@@ -625,7 +691,14 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
                     raise ParseError(CHIPPED_STATE)
             elif not block.startswith(">"):
                 rest.append(block)
-        thesis["text"] = PLACED_CHIP.sub("", SEPARATOR.join(rest))
+        if any(HELD_TOKEN.fullmatch(block) for block in rest):
+            if len(rest) != 1:
+                raise ParseError("an answer held in a code block stands with other words "
+                                 "beside it, which would be read into it: %r" % title[:50])
+            thesis["text"] = held_words(rest[0])
+            thesis["held"] = True
+        else:
+            thesis["text"] = PLACED_CHIP.sub("", SEPARATOR.join(rest))
         for relation, note, counter, key in _citations(cited, labels):
             thesis["traditions"].append({"to": target(key), "relation": relation,
                                          "note": note, "counter": counter})
@@ -661,6 +734,8 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
                 "title": title, "to": target(key), "anchors": anchors})
 
     for thesis in theses:
+        if thesis.get("held"):
+            continue  # word for word: nothing in it is a chip
         thesis["text"] = _unchip_prose(
             thesis["text"],
             [(edge["to"], edge["anchors"])
@@ -709,6 +784,7 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
         owner["applications"].append(app)
 
     hinge: dict = {}
+    hinge_held: Set[str] = set()
     for heading, body in _subsections(named.get("hinge", []), GLYPHS["hinge"]):
         # the heading opens with the part's name, as the renderer writes it;
         # a heading naming no part would be read back under another's name
@@ -732,7 +808,14 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
             if cues:
                 hinge["cue"] = cues[0].group("cue")
                 body = [block for block in body if not CUE_LINE.match(block)]
-        hinge[part] = SEPARATOR.join(body)
+        if any(HELD_TOKEN.fullmatch(block) for block in body):
+            if len(body) != 1:
+                raise ParseError("the hinge's %s is held in a code block with other words "
+                                 "beside it" % part)
+            hinge[part] = held_words(body[0])
+            hinge_held.add(part)
+        else:
+            hinge[part] = SEPARATOR.join(body)
     if hinge:
         q["hinge"] = hinge
 
@@ -774,6 +857,23 @@ def parse_tab(markdown: str, ids: Optional[Dict[str, str]] = None) -> dict:
 
     q["notes"] = [note for section in SECTIONS
                   for note in _notes(named.get(section, []), section)]
+    # a tab is held word for word or written as prose, never both: a code
+    # block anywhere but the places a held tab keeps one would be read as
+    # nothing, and one beside a prose question as a text the renderer would
+    # write back as prose
+    if len(consumed) != len(words_held):
+        raise ParseError("a code block where the tab holds no text word for word, which "
+                         "would be lost")
+    if words_held and not q.get("fenced"):
+        raise ParseError("a text held in a code block on a tab whose question is prose")
+    if q.get("fenced"):
+        prose = [t["title"] for t in theses if not t.get("held")]
+        prose += [name for name in hinge if name != "cue" and name not in hinge_held]
+        if prose or "cue" in hinge:
+            raise ParseError("a tab whose question is held in a code block holds a text "
+                             "as prose: %s" % ", ".join(prose or ["the end's cue"]))
+    for thesis in theses:
+        thesis.pop("held", None)
     q["theses"] = theses
     q["definitions"] = definitions
     return q

@@ -128,6 +128,18 @@ the plugin's kinds for work a kind carries.
 8. No sitting ends without residue, and none waits to: what an answer opens is a document of
    `lines` at once, an item of *Opened*, and at the batch point an open note. No reading awaiting
    confirmation and no predicted answer is ever written as such a note.
+9. What the principal reports of the principal's own state, health, habits, relations or
+   circumstances is sensitive, noted so in words where the speaker records it, and kept only in
+   the sitting's private places (the notebook, the page and its store, the line doc,
+   `$SCRATCH`, the brief's directory, and a private repository only where a standing rule puts such a record): never
+   where a stranger can read, nor in the brief of a helper whose work leaves for a repository or
+   any published place, which states the mechanism, never the occasion, and carries this rule. A
+   build's rationale cites the rule, its examples invented; a building helper that meets a fact
+   of a real person's life hands it back, and a helper of the notebook handles it as its work.
+   Before a merge the speaker and the full tier's reviewer read the pull request's whole text for
+   the principal, by meaning, and the speaker says what it read; a fact found published is put
+   to the principal at once. The rule binds a sitting and the publish steps of bootstrap and dictate, and no session
+   outside those.
 
 **The round** (`round.md`, procedure 3). One next action a turn, on the page.
 
@@ -142,6 +154,12 @@ the plugin's kinds for work a kind carries.
    sitting.
 4. After the answer, on the page: the answer restated, never word for word; tradition for and
    against it; the prediction in three parts. Then it is graded, and what it opened is made lines.
+   Tradition is given after every question's answer as above, and after any answer that
+   brings a new fact, whatever the kind of action. Every reading given, on the page or in the
+   session's words where there is none, is recorded in the notebook in the same round, the
+   speaker's next action not put until its `record` job is done, or until the board's limit of
+   attempts, or a second set of rows failed or not made, carries the readings as an open note of
+   kind `work`.
 5. The principal may always override the action ranked first; an override is an observation of
    a gap, never a verdict. Where a transient feeling moves the choice, the deferred action stays
    shown as `next.deferred`.
@@ -154,7 +172,10 @@ the plugin's kinds for work a kind carries.
    card; `office_deferred` is written only at the principal's word.
 8. Every time the speaker stamps is read from the clock, never typed.
 9. The speaker writes no code, page or tooling itself, and merges a pull request only on the
-   conditions the full rule gives, in the open way.
+   conditions the full rule gives, in the open way. It never tells the principal that the
+   process will change from now on without starting the mechanism in the same round, a change
+   to the skill's text or tools through a pull request, and it says the process has not
+   changed until that is merged and loaded; a note in its own memory is not the mechanism.
 10. Every ask of the principal is an action on the page, in order; every explanation and report
     goes in the action context, and the session's own text is one or two lines saying the page
     changed. The action context is append-only within a round.
@@ -164,7 +185,8 @@ the recorder, each held off what a clean reader could draw an answer from: a req
 principal states, as a note opening with the word *pending*, once its restatement is shown in
 the action context; a reading of tradition, as a note opening with the word *pending* that calls
 it a lead, never marked verified, stating the party's position and never the answer it was given
-after, the question or its case; and a failed prediction, naming who predicted, the kind of
+after, the question or its case, on the `dictate` tab by `tools/tradition.py rows` where its
+party has no tab or no rows can be made for its tab; and a failed prediction, naming who predicted, the kind of
 action, the grade and the direction, and never the sealed text, the answer or the case. Each is
 made as step 4 makes a rows file (`batch-point.md`). Everything else waits for the batch point's
 reviews.
@@ -194,7 +216,7 @@ skill's text runs:
 | `arrangement.md` | **The arrangement**: the notebook, the board, `$SCRATCH` and its directories, the parties' exports, the kinds | at the opening, before `$SCRATCH` is made; before naming a path, id or fingerprint the core does not spell; before starting any helper |
 | `brief.md` | **The brief and the neighbourhood**: what the brief holds, its size, where it lives, who receives one, the check on a text leaving, the work in hand | when the opening's graph is made; when the line in hand changes or a batch point's check moves the notebook; when a text leaving is refused; when any act begins or ends; before a seal, a row or a note |
 | `serves.md` | **What the sitting serves**, and **Observations** | when a prediction fails, the action ranked first is overridden or deferred, or an action or sitting is not taken up; before a rule here is rebuilt |
-| `ground-rules.md` | **Ground rules** 1 to 8 in full | at the opening; when a ground rule's short form leaves the act unsettled |
+| `ground-rules.md` | **Ground rules** 1 to 9 in full | at the opening; when a ground rule's short form leaves the act unsettled |
 | `page.md` | **The page**: its sections and panel, the owner-only read, the writes, `ordo/current` and its fields | at the opening, before the first write to the page's store; before any write to `ordo/current` |
 | `bells.md` | **The page**, continued: `ordo/rule`, `ordo/ticks-<day>`, `ordo/agenda`, and what is read and written at each turn | at each turn, before the Rule and the marks are read; when a bell rings; when the principal reports an office item or sets an office aside; before running an item of the session's; at a sync |
 | `open-lines.md` | **The open lines**, **The tool** | at the opening and after a compaction; when an answer comes in; when a line is opened; when the notebook's revision moves; at the first sitting of the Rule's week |

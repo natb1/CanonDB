@@ -25,15 +25,71 @@ nothing nearer the root.
 **The unjustified.** ``unjustified`` lists every unjustified hinge of the
 AI's graph, each with the builds that cite an answer resting on it: the
 applications of its own question's answers and of every question below it.
+
+**The rows.** ``rows`` turns one place into the rows file the
+``ai-recorder`` sends unchanged: one entry, one ``update`` of the tab's body
+node, guarded by the rev of a read that showed the tab holding its heading
+alone, ``# <name>``, as ``ai_tab`` makes one, so that a tab that already
+holds an answer refuses it. Its operations are three inserts of markdown at
+the tab's end, in the form the renderer writes for a tab held word for word
+(``Question.fenced``) and the reader reads back:
+
+    ```text
+    <the question>
+    ```
+
+    question: in thread · <kind> · answerer: ai · pressure 0 · backlog 0 · load 0
+
+    ## Thesis
+
+    ### ◆ answer of record of <line>/<n>
+
+    assent: none · in thread · provenance: thesis hinge
+
+    ```text
+    <the answer, word for word: the second insert, and nothing else>
+    ```
+
+    ## Hinge
+
+    ### ⚓ question: what the asking presupposes
+
+    ```text
+    <each presupposition on a line, ending with its standing; or nothing>
+    ```
+
+    ### ⚓ thesis: what the answer was drawn from
+
+    ```text
+    <what the answer was drawn from>
+    ```
+
+Every text that comes from the line stands in a code block of its own,
+which the document gives back character for character whatever marks,
+lines and spacing it holds; its fence is longer than any run of backticks
+in it, so no line of it closes the block (``text.fence``). A code block
+cannot hold an empty text, a carriage return or a character XML cannot
+carry, and only such a text is refused, with what a packet would refuse to
+carry (``packet._pair``); nothing is altered. Every other word of the inserts is the tool's
+own. The answer carries its own ``Rests on:`` and ``Presupposes:`` lines,
+which are words of it; where it presupposes nothing the hinge's question
+part says ``nothing``, which ``read`` takes for no presupposition on a held
+tab alone. The
+question and its answer are both in thread, so the reader takes the answer
+for one of the AI's past held and ``packet.py`` carries it under its
+question. The operation id is fixed by the line, the question's number, the
+node, the read's rev and every word the inserts carry.
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
 
-from . import project
-from .model import Graph
+from . import project, text
+from .model import ANSWERERS, GLYPHS, KINDS, STATES, Graph, Hinge as Part
 
 PRESUPPOSES = "Presupposes:"
 RESTS_ON = "Rests on:"
@@ -142,7 +198,9 @@ def read(q) -> List[Hinge]:
     """The presuppositions a question's hinge holds, each with its standing;
     a hinge's question part with no ending is one presupposition, unjustified."""
     text = (q.hinge.question if q.hinge else "") or ""
-    if not text.strip():
+    if not text.strip() or (q.fenced and text == NOTHING_HELD):
+        # a held tab's hinge reads the one word ``rows`` writes where the
+        # answer presupposed nothing
         return []
     out: List[Hinge] = []
     at = 0
@@ -197,3 +255,122 @@ def unjustified(graph: Graph) -> List[dict]:
             found.append({"question": q.id, "words": h.words, "came_in_by": h.came_in_by,
                           "named": h.justified_by, "builds": builds})
     return found
+
+
+
+# -- the rows that place an answer on its tab ---------------------------------
+
+#: the states the placed question and its answer stand in: put, and answered
+#: in a turn, and not landed
+IN_THREAD = STATES[1]
+#: what a place's operation id opens with
+PLACE_OP = "ai-place-"
+#: a line's name, as it stands in a hinge's ending and in the headline: the
+#: shape of a question's id, so that it holds no mark
+LINE_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+#: what a place's ``came_in_by`` is: the line's name and the question's number
+CAME = re.compile(r"^(?P<line>[^/]+)/(?P<n>[1-9][0-9]*)$")
+#: a node id as the guard takes it from the ai-recorder
+PLAIN_ID = re.compile(r"^[A-Za-z0-9_-]+$")
+#: what the hinge's question part says where the answer presupposes nothing
+NOTHING_HELD = "nothing"
+
+
+def came_in_by(placed) -> Tuple[str, int]:
+    """The line's name and the question's number a place names."""
+    found = CAME.match(placed.get("came_in_by", "")) if isinstance(placed, dict) else None
+    if not found or not isinstance(placed.get("came_in_by"), str):
+        raise Refused("that is no place this tool printed: it names no <line>/<n>")
+    return found["line"], int(found["n"])
+
+
+def headline(line_name: str, n: int) -> str:
+    """The answer's headline: what it is, by the line and the number that
+    name it, and nothing of its words, so that it holds no mark."""
+    return "answer of record of %s/%d" % (line_name, n)
+
+
+def held(words: str, what: str) -> str:
+    """``words`` in a code block of their own, word for word; refused,
+    saying why, where a code block cannot hold them as they stand."""
+    if not isinstance(words, str):
+        raise Refused("%s is not a text" % what)
+    why = text.unfenceable(words)
+    if why:
+        raise Refused("%s cannot be held word for word in a code block: %s" % (what, why))
+    return text.fence(words)
+
+
+def _insert(content: str) -> dict:
+    return {"op": "insert", "target": {"kind": "root"}, "side": "end",
+            "source": {"as": "markdown", "from": {"kind": "inline", "content": content}}}
+
+
+def place_op_id(line_name: str, n: int, node: str, rev: int, ops: List[dict]) -> str:
+    """The operation id of a place's rows, fixed by the line, the question's
+    number, the node, in lower case, the rev of the read it was built from
+    and every word the inserts carry, so that a second sending of the same
+    entry lands once, and a changed answer, question or kind, or an entry
+    printed again from a new read after the notebook refused a stale one,
+    is a new operation."""
+    body = json.dumps({"line": line_name, "n": n, "node": node.lower(), "rev": rev,
+                       "ops": ops}, sort_keys=True, ensure_ascii=False)
+    return PLACE_OP + hashlib.sha256(body.encode("utf-8")).hexdigest()[:16]
+
+
+def blank_tab(blocks: List[Tuple[str, str]]) -> str:
+    """The tab's name, where a read of it shows its heading alone, the tab
+    as ``ai_tab`` makes it; refused where it holds anything more."""
+    if len(blocks) != 1 or not blocks[0][1].startswith("# "):
+        raise Refused("the tab holds more than its heading (%d block(s)): an answer is placed "
+                      "only on a tab that holds nothing yet" % len(blocks))
+    return blocks[0][1][2:].strip()
+
+
+def rows(placed: dict, node: str, kind: str, listed: Iterable[str], rev: int) -> List[dict]:
+    """The rows file for the ``ai-recorder`` that places one answer of
+    record at the end of the AI's tab whose body's node id is ``node``,
+    which ``listed``, the node ids of the key ``ai_root``, must hold, read
+    at ``rev`` holding its heading alone: one entry, its node, the number of
+    the question on its line, the payload of one ``update`` guarded by that
+    rev, three inserts, and the operation id. ``placed`` is what ``place``
+    printed, already checked against the line's directory."""
+    if not isinstance(node, str) or not PLAIN_ID.fullmatch(node):
+        raise Refused("the node id %r is not a plain id (letters, digits, _ and -)" % (node,))
+    if node.lower() not in {n.lower() for n in listed}:
+        raise Refused("the key ai_root lists no tab %r: a tab made is the AI's only once "
+                      "ai_tab.py add has put it in the key" % node)
+    if kind not in KINDS:
+        raise Refused("a question's kind is one of %s; got %r" % (", ".join(KINDS), kind))
+    if isinstance(rev, bool) or not isinstance(rev, int) or rev < 0:
+        raise Refused("the tab's read gives no rev to guard the write by")
+    line_name, n = came_in_by(placed)
+    # what a packet would refuse to carry, refused here by the packet's own check
+    import packet
+    try:
+        packet._pair(placed.get("question") or "", placed.get("answer") or "",
+                     "the place")
+    except packet.Refused as exc:
+        raise Refused(str(exc)) from exc
+    if not LINE_NAME.fullmatch(line_name):
+        raise Refused("the line's name %r is not lower-case words joined by -" % line_name)
+    hinge = placed.get("hinge") if isinstance(placed.get("hinge"), dict) else {}
+    heading = {name: "%s %s: %s" % (GLYPHS["hinge"], name, gloss)
+               for name, gloss, _ in Part.PARTS}
+    head = "\n\n".join((
+        held(placed.get("question"), "the question"),
+        "question: %s · %s · answerer: %s · pressure 0 · backlog 0 · load 0"
+        % (IN_THREAD, kind, ANSWERERS[0]),
+        "## Thesis",
+        "### %s %s" % (GLYPHS["thesis"], headline(line_name, n)),
+        "assent: none · %s · provenance: thesis hinge" % IN_THREAD))
+    answer = held(placed.get("answer"), "the answer")
+    tail = "\n\n".join((
+        "## Hinge",
+        "### " + heading["question"],
+        held(hinge.get("question") or NOTHING_HELD, "the hinge's question part"),
+        "### " + heading["thesis"],
+        held(hinge.get("thesis"), "the hinge's thesis part")))
+    ops = [_insert(head), _insert(answer), _insert(tail)]
+    return [{"node": node, "n": n, "payload": {"ifRev": rev, "ops": ops},
+             "op_id": place_op_id(line_name, n, node, rev, ops)}]

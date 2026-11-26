@@ -176,6 +176,32 @@ class WalkTest(unittest.TestCase):
             page.markdown("<doc rev='1' sinceRev='0'><paragraph id='a.1'><text>x</text>"
                           "</paragraph><codeBlock id='.2'>print(1)</codeBlock></doc>")
 
+    HELD = ("<doc rev='1' sinceRev='0' node='n'><paragraph id='a.1' heading='1'><text>"
+            "q-one</text></paragraph><codeBlock id='.2' h='0' language='text'>"
+            "<text id='.3'><![CDATA[Why?]]></text></codeBlock>%s</doc>")
+
+    def test_a_code_block_is_spelled_word_for_word_on_a_held_tab_alone(self):
+        """On a tab whose question is a held text, a code block of one is
+        spelled as it stands under a fence longer than any run of backticks
+        in it, its CDATA sections joined; on any other tab, and in any other
+        language, a code block is refused."""
+        words = "**A** * b_ [c] &amp; <d>\n\n- e\n1. f  \n```g````\n```python\n\tt & u ]]> v"
+        cdata = "<![CDATA[%s]]>" % words.replace("]]>", "]]]]><![CDATA[>")
+        answer = ("<codeBlock id='.4' h='0' language='text'><text id='.5'>%s</text>"
+                  "</codeBlock>" % cdata)
+        xml = self.HELD % answer
+        self.assertIn("]]]]><![CDATA[>", xml)
+        self.assertEqual(page.markdown(xml),
+                         "# q-one\n\n```text\nWhy?\n```\n\n`````text\n%s\n`````\n" % words)
+        self.assertEqual(page.blocks(xml)[2][0], "a.4")
+        for bad in (xml.replace("heading='1'", "heading='2'"),
+                    self.HELD.replace("language='text'", "language='python'") % "",
+                    self.HELD % answer.replace("language='text'", "language='python'"),
+                    self.HELD % answer.replace(" language='text'", "")):
+            with self.subTest(bad=bad[:90]):
+                with self.assertRaises(ValueError):
+                    page.markdown(bad)
+
     def test_a_read_without_xml_is_said(self):
         with self.assertRaises(ValueError):
             page.view_xml({"data": {"rev": 1}})

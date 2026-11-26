@@ -121,7 +121,7 @@ What no tool decides. Hold these by reading.
   directory removed, is seen by no tool, and the answer of record is the first kept draw of the
   directory the line holds. The speaker draws each question once, into its own `draws/`.
 - **The sides of the notebook are held by node, not by block.** The guard holds the
-  `ai-recorder` to the tabs `ai_root` lists, and refuses it every write while the key is unset,
+  `ai-recorder` to the tabs `ai_root` lists, and refuses it every write but the root while the key is unset,
   and holds the `comparer` to every other tab, the tab given by a plain id and compared in lower
   case; each only by inserts of markdown beside one block named by id, or at the tab's end, in a
   call that names nothing else. While the key is unset the guard lets the comparer insert on any
@@ -129,8 +129,17 @@ What no tool decides. Hold these by reading.
   the root that the key does not list is the user's to the guard; a block id inside a list or a
   table is read, not checked; and on a tab of the user's that still holds an answer of the AI's
   from before the root, where the comparer's insert lands is read. That the `ai-recorder`'s
-  texts are the draws word for word is its definition's check, and no gate's. No tool yet
-  prints the insert of an answer, so no draw is placed (**The line in the AI's graph**, rule 9).
+  texts are the draws word for word is its definition's check, and no gate's. The guard lets
+  the `ai-recorder` make a tab only by the four calls `tools/ai_tab.py tab` prints, under a tab
+  the key gives with its tab id, and make the root only at the top level while the key is
+  unset; each tab's body is its heading alone and its name a question's id, and the guard
+  checks both. The speaker writes no tab. The guard keeps no count: that a second root sent while the key is unset
+  lands as the first rests on the one operation id every root is sent with, and on the
+  connector landing an operation id once, which no test here can show. A tab made is the AI's
+  to the guard only once `tools/ai_tab.py add` has put it in the key; `add` ties the entry to a
+  parent the key gives, and cannot see that the ids it is given are the ones the connector
+  made. No tool yet prints the insert of an answer, so
+  no draw is placed (**The line in the AI's graph**, rule 9).
 - **The open lines are held by reading.** `tools/lines.py` checks an export of the collection,
   flags the lines whose ground moved, sweeps, orders, and refuses a close without a sentence
   quoted and a merge or a drop without a word given; it cannot tell that the words are the
@@ -150,6 +159,20 @@ What no tool decides. Hold these by reading.
   the answer or the case, and that the grade and the direction are the right ones, are read.
   Two lessons count as one only where their words agree, case, spacing and a closing stop
   aside.
+- **The card's check and the readings' rows hold shapes, not sense.** `tools/card.py check`
+  refuses the shapes of a write of `ordo/current` that `page.md` lists, and a question carrying
+  a recommendation or a `how`; it cannot tell a `set` from an `update`, so a deletion marker
+  in a `set`, which the store refuses, passes it. That the speaker runs it before every write,
+  and that what it sends is the file it checked, are read. `tools/tradition.py rows` refuses
+  an empty reading, one that breaks a line or runs too long, a party holding `": "`, an id
+  holding whitespace, an invisible character or a quote, a date out of form, and a block that
+  is not the last of the section `--section` names, Hinge unless named, in the read it is
+  given; that the read is the `dictate` tab's, that every reading given is in its file, that each states the party's position and nothing
+  of the answer, the question or its case, that the party truly has no tab where the
+  `dictate` tab takes it, that an answer brought a new fact, and that the next action waits
+  until the `record` job is done, are read. Markup in a position passes it as it passes
+  `inplace.py note insert`. That the speaker said a process would change only with the change
+  started on a pull request is read too.
 - **A hinge's standing is read off its words.** `tools/hinges.py` takes a presupposition as
   justified only where its line ends `(justified by <question id>)` naming a question of the
   AI's that answers past held; whether that answer is later than the hinge and truly bears it
@@ -181,6 +204,16 @@ What no tool decides. Hold these by reading.
   a run of masked words bound for a public place. A pronoun for the user, a definition in other
   words, what a commit stages and a text sent by a tool it does not fire on are read. It reads the
   graph the last `install` copied, so a term fixed since is unknown to it until the next.
+- **Sensitive information is held by reading.** No tool decides ground rule 9. What the
+  principal reports of the principal's own life is known by its meaning, and no list of words
+  or search for strings finds it or shows it absent: a gate or a check that passes a text says
+  nothing of it. A helper that builds cannot know a fact is the principal's, since its brief
+  arrives with the occasion taken out; it can only hand back what reads as a fact of a real
+  person's life. So the rule is held by the speaker's note in words where it records such a
+  fact, by briefs composed from the rule and read again for the occasion, by every helper's
+  definition, and by the readings of a pull request's whole text before a merge, the speaker's
+  and the reviewer's. It binds a sitting and the publish steps of bootstrap and dictate; a session outside those
+  is not reached by it.
 - **A copy on disk can be read.** The brief's directory holds the notebook's graph outside every
   repository, and the grader and the reviewer hold `Read`: what keeps a blind kind from opening it
   is its definition, not a gate.

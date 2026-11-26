@@ -642,6 +642,11 @@ class Question:
     #: the cases the user has decided on this question, each under its name;
     #: a party's question carries none (``cases-on-author``)
     cases: List[Case] = field(default_factory=list)
+    #: the tab holds its question, its answers and its hinge's parts each in
+    #: a code block of its own, word for word (``text.fence``), as the AI's
+    #: answers are placed (``hinges.rows``); every other tab holds them as
+    #: prose
+    fenced: bool = False
 
     @property
     def claude(self) -> bool:
@@ -729,6 +734,7 @@ class Question:
                    for i, v in enumerate(r.seq(d, "works", here))],
             cases=[Case.read(r, v, "%s.cases[%d]" % (here, i))
                    for i, v in enumerate(r.seq(d, "cases", here))],
+            fenced=_flag(r, d, "fenced", here),
         )
 
 
@@ -800,6 +806,15 @@ def _optional_number(r: _Reader, d: Dict[str, Any], key: str, where: str) -> int
     if d.get(key) is None:
         return 0
     return r.number(d, key, where)
+
+
+def _flag(r: _Reader, d: Dict[str, Any], key: str, where: str) -> bool:
+    """A true or false the file may leave out, as false."""
+    value = d.get(key, False)
+    if not isinstance(value, bool):
+        r.fail("%s.%s" % (where, key), "expected true or false")
+        return False
+    return value
 
 
 def load(path: str) -> Graph:
