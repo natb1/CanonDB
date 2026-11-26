@@ -20,6 +20,8 @@ ADDED = "2030-01-02T03:00:00Z"
 DONE = "2030-01-02T03:10:00Z"
 CLOCK = "2030-01-02T03:11:00Z"
 SESSION = "sess-1"
+#: a board that holds no job
+EMPTY = board.Board(None, {}, {}, [])
 REPLY = "verdict: does not lead\nreason: It states the case and the ends to be served.\nstatus: ok\n"
 
 
@@ -259,6 +261,40 @@ class RecordTest(Base):
         with self.assertRaises(lead.Refused):
             self.record(launches=rows)
 
+    def test_a_helper_started_before_its_launch_is_refused(self):
+        self.finish()
+        rows = [dict(self.launches[0], started="2030-01-02T03:00:59Z")]
+        with self.assertRaisesRegex(lead.Refused, "beyond doubt"):
+            self.record(launches=rows)
+        rows = [dict(self.launches[0], returned_agent="a1", agent_id="a1",
+                     started="2030-01-02T03:00:59Z")]
+        with self.assertRaisesRegex(lead.Refused, "beyond doubt"):
+            self.record(launches=rows)
+
+    def test_a_launch_that_never_started_is_closed_by_failing_its_job(self):
+        # no return names the helper; the dead launch h0 of job s1-b0-1 took
+        # this reader's start, and stands open until its job is failed
+        dead = "s1-b0-1-lead"
+        self.add(jid=dead)
+        stale = {"id": "h0", "kind": "principal:question-reader", "description": dead,
+                 "at": "2030-01-02T03:00:10Z", "agent_id": "a1",
+                 "started": "2030-01-02T03:01:01Z", "ended": "2030-01-02T03:09:00Z"}
+        bare = {"id": "h1", "kind": "principal:question-reader", "description": JOB,
+                "at": "2030-01-02T03:01:00Z"}
+        self.store.send(board.claim(self.store.load(), dead, "coordinator",
+                                    "2030-01-02T03:00:05Z"))
+        self.finish()
+        with self.assertRaisesRegex(lead.Refused, "closed by failing its job"):
+            self.record(launches=[stale, bare])
+        self.store.send(board.fail(self.store.load(), dead, "coordinator", "refused",
+                                   "2030-01-02T03:00:20Z"))
+        got = self.record(launches=[stale, bare])
+        self.assertEqual(got["helper"]["agent_id"], "a1")
+        # a closed row that fits for two launches at once attests neither
+        other = dict(stale, id="h2", agent_id="a2")
+        with self.assertRaises(lead.Refused):
+            self.record(launches=[stale, other, bare])
+
     # -- B1 and the bound on readings
 
     def test_a_led_record_is_final_and_one_text_is_read_once(self):
@@ -272,10 +308,13 @@ class RecordTest(Base):
         with self.assertRaisesRegex(lead.Refused, "read already"):
             self.record()
         with self.assertRaisesRegex(lead.Refused, "read already"):
-            lead.job(self.question, "s1-b1-3-lead", "doc1")
+            lead.job(self.question, "s1-b1-3-lead", "doc1", self.store.load())
 
     def test_a_job_prints_the_jobs_file_of_one_reading(self):
-        got = lead.job(self.question, "s1-b2-4-lead", "doc1")
+        # the text is on the board already, in the job setUp added
+        with self.assertRaisesRegex(lead.Refused, "on the board already, in the lead job"):
+            lead.job(self.question, "s1-b2-4-lead", "doc1", self.store.load())
+        got = lead.job(self.question, "s1-b2-4-lead", "doc1", EMPTY)
         self.assertEqual(got, [{"id": "s1-b2-4-lead", "sitting": "s1", "batch": "b2",
                                 "row": "4", "kind": "lead", "tier": "full", "waits_on": [],
                                 "inputs": {"notebook": "doc1",
@@ -284,9 +323,9 @@ class RecordTest(Base):
         self.assertEqual(board.given_problems(got[0], "job"), [])
         for jid in ("s1-b2-4-seal", "nope"):
             with self.assertRaises(lead.Refused):
-                lead.job(self.question, jid, "doc1")
+                lead.job(self.question, jid, "doc1", EMPTY)
         with self.assertRaisesRegex(lead.Refused, "question.md on a line"):
-            lead.job(self.reply, "s1-b2-4-lead", "doc1")
+            lead.job(self.reply, "s1-b2-4-lead", "doc1", EMPTY)
 
     def test_a_clock_earlier_than_the_mark_of_done_is_refused(self):
         self.finish()
@@ -419,8 +458,10 @@ class PacketTest(unittest.TestCase):
                            "draws": [{"index": 1, "file": "draw-1.json"}]}, fh)
 
     def reading(self, n, verdict):
+        with open(os.path.join(self.line, str(n), "question.md"), "rb") as fh:
+            qsha = sha(fh.read())
         with open(os.path.join(self.line, str(n), "lead.json"), "w") as fh:
-            json.dump({"tool": "lead.py record", "verdict": verdict}, fh)
+            json.dump({"tool": "lead.py record", "verdict": verdict, "sha256": qsha}, fh)
 
     def test_a_line_with_no_reading_is_carried_as_before(self):
         pairs, _ = self.packet.line(self.line)
@@ -497,14 +538,14 @@ class AsideTest(PacketTest):
             with open(os.path.join(self.line, "2", "question.md"), "w") as fh:
                 fh.write("Draft %d?\n" % k)
             self.assertEqual(lead.job(os.path.join(self.line, "2", "question.md"),
-                                      "s1-b1-%d-lead" % k, "doc1")[0]["kind"], "lead")
+                                      "s1-b1-%d-lead" % k, "doc1", EMPTY)[0]["kind"], "lead")
             self.reading(2, "leads")
             self.assertEqual(lead.aside(self.line, "2")["led_drafts"], k)
             os.makedirs(os.path.join(self.line, "2"))
         with open(os.path.join(self.line, "2", "question.md"), "w") as fh:
             fh.write("Draft 4?\n")
         with self.assertRaisesRegex(lead.Refused, "could not be drafted without leading"):
-            lead.job(os.path.join(self.line, "2", "question.md"), "s1-b1-4-lead", "doc1")
+            lead.job(os.path.join(self.line, "2", "question.md"), "s1-b1-4-lead", "doc1", EMPTY)
 
     def test_a_text_set_aside_is_not_read_again(self):
         self.reading(2, "leads")
@@ -516,7 +557,7 @@ class AsideTest(PacketTest):
         with open(os.path.join(self.line, "2", "question.md"), "w") as fh:
             fh.write("How is it kept?\n")
         with self.assertRaisesRegex(lead.Refused, "set aside"):
-            lead.job(os.path.join(self.line, "2", "question.md"), "s1-b1-5-lead", "doc1")
+            lead.job(os.path.join(self.line, "2", "question.md"), "s1-b1-5-lead", "doc1", EMPTY)
 
     def test_the_command_prints_what_it_set_aside(self):
         self.reading(2, "leads")
@@ -583,6 +624,84 @@ class ReturnTest(unittest.TestCase):
         self.assertIn({"matcher": "Agent|Task", "hooks": [{
             "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/inhand-log.py\"",
             "timeout": 30}]}, post)
+
+
+class BoardReadingTest(Base):
+    """N2: the readings the board holds count, not only the records written."""
+
+    def other_text(self, words):
+        with open(self.question, "w", encoding="utf-8") as fh:
+            fh.write(words)
+
+    def test_a_second_job_for_a_text_on_the_board_is_refused_until_it_failed(self):
+        for _ in range(2):
+            with self.assertRaisesRegex(lead.Refused, "on the board already"):
+                lead.job(self.question, "s1-b1-5-lead", "doc1", self.store.load())
+        self.store.send(board.claim(self.store.load(), JOB, "coordinator", self.CLAIMED))
+        self.store.send(board.fail(self.store.load(), JOB, "coordinator", "timeout", self.DONE))
+        self.assertEqual(lead.job(self.question, "s1-b1-5-lead", "doc1",
+                                  self.store.load())[0]["id"], "s1-b1-5-lead")
+
+    def test_a_reply_that_leads_bars_its_text_though_never_recorded(self):
+        self.write_reply("verdict: leads\nreason: Its second sentence states the design.\n"
+                         "status: ok\n")
+        self.finish()
+        with self.assertRaisesRegex(lead.Refused, "on the board already"):
+            lead.job(self.question, "s1-b1-5-lead", "doc1", self.store.load())
+
+    def test_a_clear_reply_not_recorded_may_be_read_again(self):
+        self.finish()
+        lead.job(self.question, "s1-b1-5-lead", "doc1", self.store.load())
+
+    def test_the_drafts_on_the_board_count_toward_the_bound(self):
+        for k in (2, 3, 4):
+            self.other_text("Draft %d?\n" % k)
+            self.add(jid="s1-b1-%d-lead" % k)
+        self.other_text("Draft 5?\n")
+        with self.assertRaisesRegex(lead.Refused, "could not be drafted without leading"):
+            lead.job(self.question, "s1-b1-6-lead", "doc1", self.store.load())
+
+    def test_record_refuses_where_another_job_read_the_text(self):
+        self.add(jid="s1-b1-2-lead")
+        self.finish()
+        with self.assertRaisesRegex(lead.Refused, "s1-b1-2-lead"):
+            self.record()
+
+
+class CarryTest(PacketTest):
+    """N1: a question set aside only for standing after a led one, read as not
+    leading, is put again in its own words, its reading carried over."""
+
+    def test_the_reading_of_an_innocent_later_question_is_carried_over(self):
+        self.reading(1, "leads")
+        self.reading(2, "does not lead")
+        lead.aside(self.line, "1")
+        for n, words in ((1, "A new first question?\n"), (2, "How is it kept?\n")):
+            os.makedirs(os.path.join(self.line, str(n)))
+            with open(os.path.join(self.line, str(n), "question.md"), "w") as fh:
+                fh.write(words)
+        # the old question 2, set aside only for standing after 1, is carried
+        later = os.path.join(self.line, "2", "question.md")
+        with self.assertRaisesRegex(lead.Refused, "carried over"):
+            lead.job(later, "s1-b1-7-lead", "doc1", EMPTY)
+        got = lead.carry(later)
+        self.assertEqual((got["verdict"], got["sha256"]),
+                         ("does not lead", sha(b"How is it kept?\n")))
+        self.assertTrue(got["carried_from"].endswith(os.path.join("held", "1", "2",
+                                                                  "lead.json")))
+        lead.write(os.path.join(self.line, "2", "lead.json"), got)
+        with self.assertRaises(lead.Refused):
+            lead.carry(later)
+        with self.assertRaisesRegex(lead.Refused, "read already"):
+            lead.job(later, "s1-b1-7-lead", "doc1", EMPTY)
+        # the led one is not carried, and is refused in its own words
+        first = os.path.join(self.line, "1", "question.md")
+        with open(first, "w") as fh:
+            fh.write("What is it for?\n")
+        with self.assertRaisesRegex(lead.Refused, "no reading set aside"):
+            lead.carry(first)
+        with self.assertRaisesRegex(lead.Refused, "read as leading and set aside"):
+            lead.job(first, "s1-b1-8-lead", "doc1", EMPTY)
 
 
 if __name__ == "__main__":

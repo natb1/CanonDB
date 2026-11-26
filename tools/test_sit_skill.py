@@ -1352,7 +1352,9 @@ class LineWalk(Walk):
         apply(writes)
         os.makedirs(os.path.join(self.scratch, "speaker"), exist_ok=True)
         written = [w for w in lines(SKILL, "lead.py") if "--question" in w or "--line" in w]
-        self.assertEqual([w.split()[1] for w in written], ["job", "record", "led", "aside"])
+        self.assertEqual([w.split()[1] for w in written],
+                         ["job", "record", "led", "aside", "carry"])
+        self.export("speaker")
         self.sh(written[0], dict(values, **{"<job id>": jid,
                                             "<the notebook's address>": "doc:abc"}))
         with open(os.path.join(self.scratch, "speaker", "jobs.json")) as fh:
@@ -1401,6 +1403,13 @@ class LineWalk(Walk):
         done = self.sh(written[3], values)
         self.assertIn("question(s) 1", done.stdout)
         self.assertEqual(os.listdir(os.path.join(self.scratch, "lines", "l1")), ["held"])
+        # the index the skill writes leaves out what the line set aside
+        with open(os.path.join(self.scratch, "lines", "l1", "requirement"), "w") as fh:
+            fh.write("rotation\n")
+        self.sh(line(SKILL, "find"), values)
+        with open(os.path.join(self.scratch, "lines", "l1", "index")) as fh:
+            listed = fh.read().split()
+        self.assertEqual([os.path.basename(f) for f in listed], ["requirement"])
 
     def test_a_question_from_packet_to_dry_run(self):
         shutil.copy(os.path.join(TOOLS, "fixtures", "valid.json"),
@@ -2529,6 +2538,7 @@ class QuestionReadByMeaningTest(unittest.TestCase):
                       "it is shown again",
                       "It does not compare the approval's time with the reading's",
                       "one text is read once",
+                      "or by a `lead` job of it the board holds, whatever was recorded of it",
                       "the job is never retried under its id: a new `lead` job, under a new id",
                       "Once three drafts of one question have been read as leading, no draft is "
                       "read again",
@@ -2552,7 +2562,8 @@ class QuestionReadByMeaningTest(unittest.TestCase):
                       "moved under the line's `held/`, nothing renumbered by hand and nothing "
                       "deleted",
                       "The line goes on from that number with a newly drafted question",
-                      "each is carried as an open note of kind `change`"):
+                      "each is carried as an open note of kind `change`",
+                      "carries its earlier reading over, the same text being read once"):
             self.assertIn(words, rule)
 
     def test_the_board_s_table_and_the_coordinator_s_mapping_name_the_lead_job(self):
@@ -2568,8 +2579,10 @@ class QuestionReadByMeaningTest(unittest.TestCase):
         text = self.part("attenuation")
         for words in ("**Whether a question leads is a reading.** No tool decides it",
                       "its verdict is its reading and no more",
-                      "What the tools hold is only that a reading was made, once for one text, "
-                      "and that its order holds.",
+                      "What the tools hold is only that a reading was made, once for one text "
+                      "as the board and the records hold the readings",
+                      "a launch that never started is closed once its job is marked failed",
+                      "a card that names no reading passes",
                       "cannot hand one job's run to another",
                       "A refused record leaves the record that stood",
                       "is held by its definition alone",

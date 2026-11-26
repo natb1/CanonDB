@@ -300,7 +300,8 @@ class ReadingTest(unittest.TestCase):
         self.assertTrue(any("cannot be read" in f for f in card.check(self.card())))
         self.read()
         self.assertTrue(card.check(self.card(kind="question")))
-        self.assertTrue(card.check(self.card(reading="lines/l1/1/lead.json")))
+        found = card.check(self.card(reading="lines/l1/1/lead.json"))
+        self.assertTrue(any("absolute path" in f for f in found), found)
 
 
 if __name__ == "__main__":

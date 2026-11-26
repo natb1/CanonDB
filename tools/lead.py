@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
-"""lead.py job | record | led | aside — the reading of whether a question drafted on the user's side leads, and its record.
+"""lead.py job | record | led | aside | carry — the reading of whether a question drafted on the user's side leads, and its record.
 
-    job --question FILE --id ID --notebook ADDR
+    job --question FILE --id ID --notebook ADDR --board DIR --versions FILE
         The jobs file of one `lead` job, for `board.py add`: the job ID,
         tier full, its inputs the notebook's address, the question's path
         and the SHA-256 of the question as it stands. Refused for a text
-        already read (one reading for one text, whether its record stands
-        beside it or was set aside), for a question whose record says it
-        leads (final for that number: set it aside first), and once three
-        drafts of the question were set aside as leading: it is then put to
-        the principal that the question could not be drafted without
-        leading.
+        already read: by a record beside it, by a record set aside that says
+        it leads, or by a `lead` job of it on the board (one failed, or done
+        with a reply that says `does not lead`, does not bar); for a text
+        set aside as not leading, whose reading is carried over by `carry`;
+        for a question whose record says it leads (final for that number:
+        set it aside first); and once three other texts of the question's
+        number were read as leading or are not known clear, on the board or
+        set aside: it is then put to the principal that the question could
+        not be drafted without leading.
 
     record --question FILE --board DIR --versions FILE --job ID -o FILE [--session ID]
         The record of one `lead` job's reading of the question's file, which
@@ -41,6 +44,12 @@
     led --question FILE -o FILE
         A record with the verdict `leads` and no reading behind it, for a
         question found later to have led all the same.
+
+    carry --question FILE -o FILE
+        Copy to FILE the record, set aside on the line, of a reading of
+        exactly this text that said it does not lead, with `carried_from`
+        naming it: a question set aside only because it stood after a led
+        one is put again in its own words without a second reading.
 
     aside --line DIR --from N
         Set aside question N, recorded as leading, with every later question
@@ -107,6 +116,8 @@ def main(argv=None) -> int:
     p.add_argument("--question", required=True)
     p.add_argument("--id", required=True, dest="jid", metavar="ID")
     p.add_argument("--notebook", required=True, metavar="ADDR")
+    p.add_argument("--board", required=True, metavar="DIR")
+    p.add_argument("--versions", required=True)
     p = sub.add_parser("record")
     p.add_argument("--question", required=True)
     p.add_argument("--board", required=True, metavar="DIR")
@@ -117,13 +128,17 @@ def main(argv=None) -> int:
     p = sub.add_parser("led")
     p.add_argument("--question", required=True)
     p.add_argument("-o", "--out", required=True, metavar="FILE")
+    p = sub.add_parser("carry")
+    p.add_argument("--question", required=True)
+    p.add_argument("-o", "--out", required=True, metavar="FILE")
     p = sub.add_parser("aside")
     p.add_argument("--line", required=True, metavar="DIR")
     p.add_argument("--from", required=True, dest="start", metavar="N")
     args = ap.parse_args(argv)
     try:
         if args.mode == "job":
-            print(json.dumps(lead.job(args.question, args.jid, args.notebook), indent=1))
+            print(json.dumps(lead.job(args.question, args.jid, args.notebook,
+                                      board.load(args.board, args.versions)), indent=1))
             return 0
         if args.mode == "aside":
             moved = lead.aside(args.line, args.start)
@@ -140,6 +155,8 @@ def main(argv=None) -> int:
             return 0
         if args.mode == "led":
             made = lead.led(args.question, lead.now())
+        elif args.mode == "carry":
+            made = lead.carry(args.question)
         else:
             export = board.load(args.board, args.versions)
             made = lead.record(args.question, export, args.job, _launches(args.session),

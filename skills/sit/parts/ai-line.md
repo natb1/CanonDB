@@ -101,9 +101,13 @@ or its question, and a question or an answer holding `<<<` or `>>>`, which no te
    principal, it is read for whether it leads the answerer, in a `lead` job (**Which kind runs
    which job**) whose inputs are `notebook`, `question`, the path of `question.md`, and
    `question_fingerprint`, its SHA-256 as it stands: `tools/lead.py job --question
-   $SCRATCH/lines/<line>/<n>/question.md --id <job id> --notebook <the notebook's address> >
-   $SCRATCH/speaker/jobs.json` prints the jobs file the board's `add` takes (**How jobs reach the board**), and refuses a text
-   already read, since one text is read once. The coordinator hands the path and the
+   $SCRATCH/lines/<line>/<n>/question.md --id <job id> --notebook <the notebook's address>
+   --board $SCRATCH/speaker/board --versions $SCRATCH/speaker/versions.json >
+   $SCRATCH/speaker/jobs.json`, over a fresh export, prints the jobs file the board's `add`
+   takes (**How jobs reach the board**), and refuses a text already read, since one text is read
+   once: by its record, by a record set aside that says it leads, or by a `lead` job of it the
+   board holds, whatever was recorded of it (one failed, or done with a reply that says `does
+   not lead`, does not bar). The coordinator hands the path and the
    notebook's address to a `question-reader`, which holds that file and the notebook and
    nothing else and judges by meaning whether the question hands over an answer, a design or a
    position of the user's record, so that the reply would echo that record instead of being the
@@ -116,13 +120,15 @@ or its question, and a question or an answer holding `<<<` or `>>>`, which no te
    the record of the reading, which the clean turn demands; a refusal leaves whatever record
    stood there as it stood. Where the hooks attest no run of the reader for the job, or the job
    failed, the job is never retried under its id: a new `lead` job, under a new id, is added for
-   the question, and a launch left from the old one cannot answer for the new. A question read as
+   the question, and a launch left from the old one cannot answer for the new; a launch that
+   never started is closed by its job's being marked failed through the board's gate. A question read as
    `leads` is never shown, and its record is final for its number: the speaker sets it aside
    with `tools/lead.py aside` (rule 4), reads the reason, drafts the question again itself at the
    same number, and checks it and reads it again in a new `lead` job. Once three drafts of one
    question have been read as leading, no draft is read again (`lead.py` refuses it): the speaker
    puts it to the principal as one action, saying that the question could not be drafted without
-   leading. Only a question read as `does not lead` becomes its own action on the page, a
+   leading; the drafts are counted from the readings set aside and from the `lead` jobs the board
+   holds of that number, recorded or not. Only a question read as `does not lead` becomes its own action on the page, a
    `review` whose prompt is the question word for word, its `next.reading` the path of its
    `lead.json`, for the principal to approve or revise; `tools/card.py check` refuses such a
    card unless that record is of exactly the question the prompt shows and says `does not lead`,
@@ -160,7 +166,11 @@ or its question, and a question or an answer holding `<<<` or `>>>`, which no te
    its answer, and every drawer turn whose packet carried any of them: their directories are
    moved under the line's `held/`, nothing renumbered by hand and nothing deleted, and the tool
    prints what it set aside and which of it was placed. The line goes on from that number with a
-   newly drafted question, read like any other; the packet, `hinges.py` and the index read the
+   newly drafted question, read like any other. A question set aside only because it stood after
+   the led one, whose own reading said `does not lead`, may be put again in its own words under
+   its new number: `tools/lead.py carry --question $SCRATCH/lines/<line>/<n>/question.md -o
+   $SCRATCH/lines/<line>/<n>/lead.json` carries its earlier reading over, the same text being
+   read once; the packet, `hinges.py` and the index read the
    line without what was set aside, and without a gap. A question read as `leads` before it was
    shown is set aside the same way, alone. An answer already placed in the AI's record from a
    question set aside stays on its tab, carried by the graph's part of every packet, until it is

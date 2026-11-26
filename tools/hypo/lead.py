@@ -1,16 +1,18 @@
 """lead — the record that a question drafted on the user's side was read, by meaning, for
 whether it leads the answerer.
 
-A question drafted on the user's side is put to the AI's own record in a
-clean turn only once a reader that holds the question's file and the
-notebook, the `question-reader` kind, has read it and handed back that it
-does not lead: that it hands the answerer no answer, design or position of
-the user's record, so that the reply would echo that record instead of being
-the AI's own. Whether it leads is a reading; nothing here reads the
-question. What this module holds is that the reading was made, by a helper
-of that kind, over these exact bytes, and what it handed back.
+A question drafted on the user's side is shown to the principal, and put to
+the AI's own record in a clean turn, only once a reader that holds the
+question's file and the notebook, the `question-reader` kind, has read it
+and handed back that it does not lead: that it hands the answerer no answer,
+design or position of the user's record, so that the reply would echo that
+record instead of being the AI's own. Whether it leads is a reading; nothing
+here reads the question. What this module holds is that the reading was
+made, by a helper of that kind, over these exact bytes, once for one text;
+what it handed back; and the line's way back from a question that led.
 
-The reading is a ``lead`` job on the board. The coordinator starts the
+``job`` prints the jobs file of one ``lead`` job, its inputs the notebook's
+address, the question's path and its SHA-256. The coordinator starts the
 reader as ``principal:question-reader`` with the job's id as the launch's
 description, writes its reply whole to ``$SCRATCH/coordinator/replies/<job
 id>``, and marks the job done with the reply's address and fingerprint.
@@ -27,24 +29,38 @@ demands only where:
   ``verdict: does not lead``, ``reason: <one line>`` no longer than
   ``REASON`` characters, and ``status: ok``;
 - the hooks recorded a launch of ``<plugin>:question-reader`` described by
-  the job's id, started and ended, launched no earlier than the job was
-  added and ended no later than it was marked done;
-- the clock reads no earlier than the job was marked done.
+  the job's id while the job stood on the board, and the start and end of
+  the helper it ran, no earlier than the launch and no later than the job's
+  mark of done (``launch`` says which helper that is);
+- the clock reads no earlier than the job's mark of done;
+- and the text may be read (``may_read``): it was not read already, by a
+  record beside it, by a record set aside on the line, or by another
+  ``lead`` job the board holds of it (one failed, or done and clear, does
+  not bar); its number holds no record that says it leads; and fewer than
+  ``DRAFTS`` other texts of its number were read as leading or are not known
+  clear, counted from the records set aside and from the board.
 
-The record holds the question's SHA-256, the verdict, the time from the
-clock, the job's id, the reply's SHA-256 and the helper's launch as the
-hooks recorded it; never the reason, which the speaker reads in the reply.
-``led`` writes a record with the verdict ``leads`` and no reading behind it,
-for a question found later to have led all the same: a record that only
-withholds needs no helper behind it. ``packet.py`` refuses to carry a
-question whose directory holds a record with any verdict but ``does not
-lead``.
+``job`` refuses by the same rule before a job is added. The record holds the
+question's SHA-256, the verdict, the time from the clock, the job's id, the
+reply's SHA-256 and the helper's run; never the reason, which the speaker
+reads in the reply. It is written beside its place and renamed in, so that a
+refusal leaves what stood. ``led`` writes a record with the verdict ``leads``
+and no reading behind it, for a question found later to have led all the
+same: a record that only withholds needs no helper behind it. ``aside``
+moves a question recorded as leading, every later question of the line and
+every drawer turn whose packet carried any of them under the line's
+``held/<k>/``, nothing renumbered and nothing removed. ``carry`` copies to a
+text put again on the line the record, set aside, of a reading of exactly
+that text that said it does not lead, so that a question set aside only for
+standing after a led one is not read twice. ``packet.py`` refuses to carry a
+question whose record says anything but ``does not lead``, or whose manifest
+says it was put on a reading whose record is gone.
 
 The records are plain files: each binds a check to an exact text and catches
 drift, and none is a signature, so one written by hand with the right
 hashes passes. The launch record is the hooks', written with no act of the
-session; it says that a helper of that kind was started for that job and
-stopped, and not what it read or handed back.
+session; it says that a helper of that kind ran for that job, and not what
+it read or handed back.
 """
 
 from __future__ import annotations
@@ -126,20 +142,48 @@ def _agent_rows(rows: List[dict], agent: str) -> List[dict]:
     return [r for r in rows if isinstance(r, dict) and r.get("agent_id") == agent]
 
 
-def launch(rows: List[dict], kind: str, job: dict) -> dict:
+def _closed(row: dict, export: Optional[board.Board], before: datetime.datetime) -> bool:
+    """Whether a launch row's job was marked failed or done through the
+    board's gate before ``before``: such a launch stands open no longer,
+    whatever the hooks recorded of it, and a start it was given was not its
+    job's to give."""
+    if export is None:
+        return False
+    j = export.jobs.get(row.get("description"))
+    if not j or j.get("state") not in (board.FAILED, board.DONE):
+        return False
+    try:
+        return _when(j.get("updated"), "a job's last mark") <= before
+    except Refused:
+        return False
+
+
+def _span(row: dict):
+    try:
+        return _when(row.get("started"), "the start"), _when(row.get("ended"), "the end")
+    except Refused:
+        return None
+
+
+def launch(rows: List[dict], kind: str, job: dict,
+           export: Optional[board.Board] = None) -> dict:
     """The launch the hooks recorded of ``kind`` for ``job``, matched by the
     job's id in its description, and the start and end of the helper that
-    launch ran, all within the job's time on the board.
+    launch ran: launched while the job stood on the board, started no
+    earlier than the launch, ended no later than the job's mark of done.
 
     The helper is the one the launch's own return named (``returned_agent``,
     which the hooks take from the Agent tool's result by the same call), and
     its start and end are read wherever the hooks recorded them, since a
     start is given to a launch by kind and order and may land on another
-    row. Where the return named none, the start the launch row was given is
-    taken only where no other launch of the kind stood open beside it (made
-    before that helper's end and not ended before this launch was made), so
-    that two launches made together cannot cross; a launch that never
-    started stands open, and so refuses only this road, never the first."""
+    row. Where the return named none, the start is the one this row was
+    given, or one a closed row was given after this launch was made (a row
+    whose job the board shows failed or done before it: a launch that never
+    started takes the next start, and is closed when its job is marked
+    failed through the board's gate). That start is taken only where it is
+    the one such start that fits and no launch of the kind that is not
+    closed stood open beside it, so that two launches made together cannot
+    cross."""
     created = _when(job.get("created"), "the job's creation")
     done = _when(job.get("updated"), "the job's mark of done")
     mine = []
@@ -157,46 +201,49 @@ def launch(rows: List[dict], kind: str, job: dict) -> dict:
         raise Refused("the hooks recorded no launch of %s described by the job %s while it "
                       "stood on the board: the coordinator starts the reader with the job's "
                       "id as its description" % (kind, job["id"]))
+
+    def fits(x, at):
+        span = _span(x)
+        return span is not None and at <= span[0] <= span[1] <= done
+
     for at, r in reversed(mine):
         agent = r.get("returned_agent")
         if isinstance(agent, str) and agent:
-            ran = _agent_rows(rows, agent)
-            alone = True
-        else:
-            agent = r.get("agent_id")
-            ran = [r] if agent else []
-            alone = False
-        for x in ran:
+            for x in _agent_rows(rows, agent):
+                if fits(x, at):
+                    return {"kind": kind, "agent_id": agent, "launched": r["at"],
+                            "started": x["started"], "ended": x["ended"]}
+            continue
+        candidates = [x for x in rows if isinstance(x, dict) and x.get("kind") == kind
+                      and x.get("agent_id") and not x.get("returned_agent")
+                      and (x is r or _closed(x, export, at)) and fits(x, at)]
+        if len(candidates) != 1:
+            continue
+        x = candidates[0]
+        ended = _span(x)[1]
+        beside = []
+        for o in rows:
+            if o is r or o is x or not isinstance(o, dict) or o.get("kind") != kind \
+                    or _closed(o, export, at):
+                continue
             try:
-                started = _when(x.get("started"), "the start")
-                ended = _when(x.get("ended"), "the end")
+                when = _when(o.get("at"), "a launch")
             except Refused:
+                beside.append(o)
                 continue
-            if not (at <= started <= ended <= done):
-                continue
-            if not alone:
-                others = []
-                for o in rows:
-                    if o is r or not isinstance(o, dict) or o.get("kind") != kind:
-                        continue
-                    try:
-                        when = _when(o.get("at"), "a launch")
-                    except Refused:
-                        others.append(o)
-                        continue
-                    try:
-                        over = _when(o.get("ended"), "an end") if o.get("ended") else None
-                    except Refused:
-                        over = None
-                    if when <= ended and (over is None or over >= at):
-                        others.append(o)
-                if others:
-                    continue
-            return {"kind": kind, "agent_id": agent, "launched": r["at"],
+            try:
+                over = _when(o.get("ended"), "an end") if o.get("ended") else None
+            except Refused:
+                over = None
+            if when <= ended and (over is None or over >= at):
+                beside.append(o)
+        if not beside:
+            return {"kind": kind, "agent_id": x["agent_id"], "launched": r["at"],
                     "started": x["started"], "ended": x["ended"]}
     raise Refused("the hooks recorded the launch of %s for the job %s and not, beyond doubt, "
                   "a helper it ran that started and ended before the job was marked done: "
-                  "a new lead job is added for the question" % (kind, job["id"]))
+                  "a new lead job is added for the question; a launch that never started is "
+                  "closed by failing its job through the board's gate" % (kind, job["id"]))
 
 
 # --- a question's place on its line, and the readings already made --------
@@ -256,9 +303,79 @@ def led_drafts(line_dir: str, n: str) -> int:
     return sum(1 for r in held_readings(line_dir, n) if r.get("verdict") != CLEAR)
 
 
-def may_read(question: str, qsha: str) -> None:
-    """Refuse a reading of a text already read, of a question whose record
-    says it leads, and of a question drafted the most times allowed."""
+def _verdict_of(j: dict) -> Optional[str]:
+    """The verdict a done ``lead`` job's reply gives, read from the reply the
+    board names where it matches its fingerprint; None where it cannot be
+    read so."""
+    result = j.get("result") or {}
+    path, fingerprint = result.get("reply"), result.get("fingerprint")
+    if not isinstance(path, str) or not isinstance(fingerprint, str):
+        return None
+    try:
+        with open(path, "rb") as fh:
+            body = fh.read()
+        if sha256(body) != fingerprint:
+            return None
+        return reply(body.decode("utf-8"))[0]
+    except (OSError, UnicodeDecodeError, Refused):
+        return None
+
+
+def _same(a, b) -> bool:
+    return isinstance(a, str) and isinstance(b, str) and \
+        os.path.normpath(os.path.abspath(a)) == os.path.normpath(os.path.abspath(b))
+
+
+def board_readings(export: Optional[board.Board], question: str, qsha: str,
+                   but: Optional[str] = None) -> Tuple[List[str], set]:
+    """The readings the board holds of this text and of this question: the
+    ids of the ``lead`` jobs of this very text that bar another (one queued,
+    claimed, waiting, or done with any verdict but ``does not lead``; a
+    failed job read nothing, and a clear one that was not recorded gains a
+    speaker nothing by being read again), and the fingerprints of the other
+    texts of this question's number not known to be clear, each a draft that
+    counts toward the bound. ``but`` is the job being recorded."""
+    barring, drafts = [], set()
+    if export is None:
+        return barring, drafts
+    for jid, j in sorted(export.jobs.items()):
+        if jid == but or j.get("kind") != KIND:
+            continue
+        inputs = j.get("inputs") or {}
+        state = j.get("state")
+        if state == board.FAILED:
+            continue
+        verdict = _verdict_of(j) if state == board.DONE else None
+        known_clear = state == board.DONE and verdict == CLEAR
+        if inputs.get("question_fingerprint") == qsha:
+            if not known_clear:
+                barring.append(jid)
+        elif _same(inputs.get("question"), question) and not known_clear:
+            drafts.add(inputs.get("question_fingerprint"))
+    return barring, drafts
+
+
+def carried(question: str, qsha: str) -> Optional[str]:
+    """The record set aside on the line of a reading of exactly this text
+    that said it does not lead, which is carried over to the text put again;
+    None where there is none."""
+    line_dir, _n = place(question)
+    for where in held_sets(line_dir):
+        for name in sorted(os.listdir(where)):
+            path = os.path.join(where, name, LEAD)
+            got = _load(path)
+            if got and got.get("tool") == RECORD_TOOL and got.get("sha256") == qsha \
+                    and got.get("verdict") == CLEAR:
+                return path
+    return None
+
+
+def may_read(question: str, qsha: str, export: Optional[board.Board] = None,
+             but: Optional[str] = None) -> None:
+    """Refuse a reading of a text already read, by its record, by a record
+    set aside or by a job the board holds; of a question whose record says
+    it leads; and of a question drafted the most times allowed, the drafts
+    counted from the records set aside and from the board."""
     line_dir, n = place(question)
     here = _load(os.path.join(os.path.dirname(os.path.abspath(question)), LEAD))
     if here is not None and here.get("verdict") != CLEAR:
@@ -266,24 +383,40 @@ def may_read(question: str, qsha: str) -> None:
                       "that number: set it aside with lead.py aside, and draft it again" % n)
     if here is not None and here.get("sha256") == qsha:
         raise Refused("this text of question %s was read already: one reading for one text" % n)
-    if any(r.get("sha256") == qsha for r in held_readings(line_dir, n)):
-        raise Refused("this text of question %s was read already and set aside: one reading "
-                      "for one text" % n)
-    if led_drafts(line_dir, n) >= DRAFTS:
+    held = held_readings(line_dir, n)
+    if any(r.get("sha256") == qsha and r.get("verdict") != CLEAR for r in held):
+        raise Refused("this text of question %s was read as leading and set aside: one "
+                      "reading for one text" % n)
+    if carried(question, qsha):
+        raise Refused("this text was read as not leading and set aside: its reading is "
+                      "carried over with lead.py carry, not read again")
+    barring, drafts = board_readings(export, question, qsha, but)
+    if barring:
+        raise Refused("this text is on the board already, in the lead job(s) %s: one reading "
+                      "for one text" % ", ".join(barring))
+    drafts |= {r.get("sha256") for r in held if r.get("verdict") != CLEAR}
+    drafts.discard(qsha)
+    if len(drafts) >= DRAFTS:
         raise Refused("%d drafts of question %s were read as leading: no draft is read again; "
                       "it is put to the principal that the question could not be drafted "
                       "without leading" % (DRAFTS, n))
 
 
-def job(question: str, jid: str, notebook: str) -> List[dict]:
+def job(question: str, jid: str, notebook: str,
+        export: Optional[board.Board] = None) -> List[dict]:
     """The jobs file of one ``lead`` job reading ``question`` as it stands."""
+    if export is None or export.problems:
+        raise Refused("the board's export is not sound: %s"
+                      % ("no board was read" if export is None else "; ".join(export.problems)))
+    if jid in export.jobs:
+        raise Refused("the board holds a job %s already" % jid)
     found = board.JOB_ID.fullmatch(jid or "")
     if not found or found.group(4) != KIND:
         raise Refused("%r is not a job id <sitting>-<batch>-<row>-lead" % jid)
     if not board.is_address(notebook):
         raise Refused("the notebook's address is not an address")
     qsha = sha256(_read(question, "the question"))
-    may_read(question, qsha)
+    may_read(question, qsha, export)
     sitting, batch, row, kind = found.groups()
     return [{"id": jid, "sitting": sitting, "batch": batch, "row": row, "kind": kind,
              "tier": "full", "waits_on": [],
@@ -371,12 +504,30 @@ def record(question: str, export: Optional[board.Board], job_id: str, launches: 
     except UnicodeDecodeError:
         raise Refused("the reply is not UTF-8")
     verdict, _reason = reply(text)
-    helper = launch(launches, "%s:%s" % (plugin, HELPER), job)
-    may_read(question, qsha)
+    helper = launch(launches, "%s:%s" % (plugin, HELPER), job, export)
+    may_read(question, qsha, export, but=job_id)
     if _when(clock, "the clock") < _when(job.get("updated"), "the job's mark of done"):
         raise Refused("the clock reads earlier than the job's mark of done")
     return {"tool": RECORD_TOOL, "sha256": qsha, "verdict": verdict, "read": clock,
             "job": job_id, "reply_sha256": fingerprint, "helper": helper}
+
+
+def carry(question: str) -> Dict[str, object]:
+    """The record of a reading set aside that said this exact text does not
+    lead, carried over to the text put again on the line: a question set
+    aside only because it stood after a led one is read once, in its own
+    words."""
+    raw = _read(question, "the question")
+    qsha = sha256(raw)
+    target = os.path.join(os.path.dirname(os.path.abspath(question)), LEAD)
+    if os.path.lexists(target):
+        raise Refused("question %s holds a record of its reading already" % place(question)[1])
+    source = carried(question, qsha)
+    if source is None:
+        raise Refused("no reading set aside on the line says this exact text does not lead")
+    got = dict(_load(source))
+    got["carried_from"] = source
+    return got
 
 
 def led(question: str, clock: str) -> Dict[str, object]:

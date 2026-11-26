@@ -128,21 +128,28 @@ What no tool decides. Hold these by reading.
   words stands in for it. The `question-reader` judges it by meaning, and its verdict is its
   reading and no more: a question it reads as not leading may lead all the same, and one it
   reads as leading may not. What the tools hold is only that a reading was made, once for one
-  text, and that its order holds. `tools/lead.py record` writes the record the clean turn
+  text as the board and the records hold the readings, and that the review showing it names a
+  reading that says it does not lead. `tools/lead.py record` writes the record the clean turn
   demands only for a `lead` job done by the coordinator over the question's exact bytes, a reply
   of three lines whose verdict it takes, and a launch of the reader's kind that the hooks
   recorded described by the job's id inside the job's time on the board, with the start and end
   of the helper it ran before the job was marked done. The helper is the one the Agent call's
   own return names, which the hooks record with the launch, so that a launch that never started,
   or two made together, cannot hand one job's run to another; where the return names none, the
-  start the launch's row was given is taken only where no other launch of the kind stood open
-  beside it. That the Agent tool's result names the helper's id in a form the hooks read is
-  untested in a live sitting; where it does not, and a launch was left open, no record is
-  written, the question is not put, and a new `lead` job is added under a new id. A refused
+  start the launch's row was given, or one a launch that never started took in its place, is
+  taken only where it is the one that fits and no other launch of the kind stood open beside it;
+  a launch that never started is closed once its job is marked failed through the board's gate.
+  That the hooks' `tool_response` is the Agent result that names the helper's id is untested in
+  a live sitting; where it is not, and a launch stands open beside the reader's, no record is
+  written, the question is not put, and a new `lead` job is added under a new id once the open
+  launch's job is failed. One text is read once only as far as the board holds its jobs: a
+  reading made by any other road leaves nothing to count. A refused
   record leaves the record that stood; a record that says the question leads is final for its
   number. `tools/card.py check` refuses a review that shows a question for the AI's record
   unless the record named on it is of that very question and says it does not lead; what holds
-  the speaker to naming it on such a card is this text. The records are plain files, and one
+  the speaker to naming it on such a card is this text, and so is the order: a card that names
+  no reading passes, and a question approved before it was read is put once a reading says it
+  does not lead. The records are plain files, and one
   written by hand with the right hashes passes. The hooks' record says that a helper of that
   kind ran for that job, and not what it read or handed back; nothing checks the coordinator's
   copy of the reply against what the reader handed back. The reader holds the record, so its
