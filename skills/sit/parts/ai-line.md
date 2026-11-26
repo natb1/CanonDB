@@ -201,14 +201,26 @@ or its question, and a question or an answer holding `<<<` or `>>>`, which no te
    unjustified hinge of the AI's graph with the builds that cite an answer resting on it: read
    for the fourth signal (rule 8), it is where a record that constrains a build unawares is
    looked for first.
-11. **New ideas in the draws come back to the principal.** Once a question's draws are kept,
-   the speaker, which ran the clean turns and holds the draws, reads every kept draw for ideas
-   new to the sitting: an idea that neither the user's record, the page, nor an open line
-   already holds. Each such idea is brought back into the speaking session in the same round:
-   named in the action context on the page as an idea from the AI's record, citing the draw's
-   answer by its opening words, and, where it is worth following, opened as an open line of
-   origin `ai` (**The open lines**), so that it is not lost. This return goes to the principal
-   through the session and the page alone; it goes to no later clean turn, drawer or packet,
-   so the line stays drawn from the AI's answers alone, and nothing of it changes which draw is
-   the answer of record, the first kept (rule 4). A round whose draws yielded no new idea says
-   so in the action context.
+11. **New ideas in the draws come back to the principal.** Once draws are kept, the speaker,
+   which ran the clean turns and holds the draws, reads every kept draw for ideas new to the
+   sitting: every kept draw of a question, a drawer turn's draw and the back-brief. An idea is
+   new where neither the user's record, the page, an open line, nor the AI's own record as the
+   packet carried it already holds it, and it was not already returned in this sitting. Each
+   such idea opens an open line of origin `ai-draw` (**The open lines**) in the same round, so
+   that it is not lost; the speaker makes no judgment of which are worth following, and the
+   principal drops what is not wanted. Each is named in the action context on the page as an
+   idea from a draw of the AI's record, citing the line, the question's number, or the drawer
+   turn or the back-brief, and the draw's index, and saying whether that draw is the answer of
+   record. Where a context already stands for the round, the naming is a record in
+   `context.log`. While a question of principle is put on the page, the naming is held and
+   given after its answer, and the line's title names only the draw it came from until then.
+   For each question, drawer turn or back-brief read, the action context says that its draws
+   yielded no new idea where they yielded none. Until the principal has answered the idea's
+   line, no question the speaker drafts, no clean turn, drawer or packet, and no build's brief
+   carries an idea taken from a draw, so the line stays drawn from the AI's answers alone. A
+   line of origin `ai-draw` is never queued to a clean turn unasked. Once the principal takes
+   the idea up, it is the principal's requirement or stated position, and it enters the AI's
+   record only by rules 1, 3 and 5, in an approved question. Where ground rule 8 sends the line
+   to the notebook as an *open* note, the note says it is an idea from the AI's draws and not a
+   position of the user's. Nothing of this changes which draw is the answer of record, the
+   first kept (rule 4).

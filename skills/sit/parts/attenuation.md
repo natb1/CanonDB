@@ -188,6 +188,12 @@ What no tool decides. Hold these by reading.
   before a constraint binds; the reading of every kept draw for ideas new to the sitting, and
   their return to the principal through the session and the page alone; and the action
   context's being appended to and not changed within a round: no tool checks any of them.
+- **An idea from a draw is kept out of the line by reading.** No tool holds that no question
+  the speaker drafts, no clean turn, drawer or packet, and no build's brief carries an idea
+  taken from a draw before the principal has answered its line, or that a line of origin
+  `ai-draw` is never queued to a clean turn unasked. The principal's approval of a question
+  does not show where a phrase of it came from, and `tools/public.py question` reads masked
+  words and the naming rule alone.
 - **The brief is loaded by the harness and kept fresh by reading.** The hooks print what the last
   `install` wrote; that the speaker installs again when the line in hand changes or the notebook
   moves is read, and a move another session made is seen at the next fetch and not before, since
