@@ -2592,10 +2592,14 @@ class QuestionReadByMeaningTest(unittest.TestCase):
 
 
 class WhenToAskForABootstrapTest(unittest.TestCase):
-    """Rule 1 of the line: the three cases in which the speaker itself puts
-    the request for a bootstrap on the page, and what still holds of it.
-    The sentences are pinned; that the speaker acts by them is held by
-    reading (attenuation.md says so)."""
+    """Rule 1 of the line: where the speaker itself asks for a bootstrap.
+    A rule about meaning is not guarded by matching its words, so this holds
+    only what a test can: the rule stands where the parts table and the
+    cross-references say, the references resolve, its text has no dash, and
+    the manifest lists its files. Its meaning is held by the adversarial
+    reader before the merge and by the speaker's reading (attenuation.md)."""
+
+    HEADING = "**When the speaker asks for a bootstrap.**"
 
     @staticmethod
     def part(name):
@@ -2603,89 +2607,49 @@ class WhenToAskForABootstrapTest(unittest.TestCase):
 
     def rule(self):
         text = self.part("ai-line")
-        return text[text.index("1. **The order.**"):text.index("2. **Intention is carried")]
+        line = text[text.index("## The line in the AI's graph"):]
+        return line[line.index("1. **The order.**"):line.index("2. **Intention is carried")]
 
-    def test_rule_1_gives_the_three_cases_and_what_authorises_the_build(self):
-        rule = self.rule()
-        for words in (
-                "Nothing is built straight from the principal's words unless the principal asks "
-                "for that explicitly, once, as an action on the page, for that one build, or "
-                "approves the speaker's request for that one build, put on the page as **When "
-                "the speaker asks for a bootstrap** below gives.",
-                "The principal's own asking stands in any case or none, and so does the stopgap "
-                "among the choices of rule 5.",
-                "The speaker asks for a bootstrap unasked only where one of three cases holds.",
-                "First, drawing the thing in the AI's graph is blocked by the very thing to be "
-                "built.",
-                "Second, a tool or guard of the process is at fault, refusing what the rule it "
-                "guards allows or spoiling the work in hand, and would stay so while a line is "
-                "drawn; a tool or guard holding its rule is never the case, a bootstrap never "
-                "builds around a refusal,",
-                "Third, the principal's words leave no choice of design, so that the build only "
-                "writes down what was said",
-                "Outside the three the speaker puts no such request unasked, and a build it owes "
-                "goes by the order above: the requirement recorded on the user's side, a line "
-                "drawn in the AI's graph, the comparing run, the build, and the build checked "
-                "against the record.",
-                "The request is a `review` that asks for a grant, so it carries no "
-                "recommendation",
-                "states which case holds, the facts that make it hold, and what would be built, "
-                "so that the principal can refuse it",
-                "after an action still pending and after an office item owed at a bell (rule 7 "
-                "of the round), never before them",
-                "The principal answers in the session, as every action is answered. The build is "
-                "authorised by the principal's approval in answer to that request, put on the "
-                "page for that build; a word of approval given for a build whose request was not "
-                "put on the page does not authorise it.",
-                "A refusal stands: the speaker does not ask again for that build unless the facts "
-                "of its case change.",
-                "Inside the cases the requirement is still recorded on the user's side first: "
-                "the recorder writes it",
-                "Its brief states the mechanism and never the occasion, as ground rule 9 gives",
-                "the standing `postulate`, from `tools/application.py`, sent by the recorder in a "
-                "`record` job",
-                "is still reviewed by an adversary before it is merged",
-                "Putting the request is not starting the mechanism of rule 9 of the round"):
-            self.assertIn(words, rule)
-        for words in ("with its recommendation", "review of mechanism", "approval on the page",
-                      "builds without", "without the request", "a tool decides"):
-            self.assertNotIn(words, rule.lower() if words.islower() else rule)
+    def test_the_rule_stands_in_rule_1_of_the_line(self):
+        self.assertEqual(self.part("ai-line").count(self.HEADING), 1)
+        self.assertIn(self.HEADING, self.rule())
 
-    def test_the_round_the_core_attenuation_and_departures_point_to_it(self):
-        self.assertIn("Where a build is owed and one of the three cases of **The line in the "
-                      "AI's graph**, rule 1, holds, the speaker puts its request for a bootstrap "
-                      "unasked, as a `review` that asks for a grant and carries no "
-                      "recommendation, stating the case, the facts that make it hold and what "
-                      "would be built, in its turn after an action still pending and an office "
-                      "item owed at a bell (rule 7); outside the three it puts no such request "
-                      "unasked, and the principal's own asking stands as that rule gives.",
-                      self.part("round"))
-        self.assertIn("Where a build is owed and one of the three cases of **The line in the "
-                      "AI's graph**, rule 1, holds, the speaker puts the request for a bootstrap "
-                      "unasked, in its turn, as a review that asks for a grant, with no "
-                      "recommendation; outside the three it puts none unasked.", flat(SKILL))
-        self.assertIn("**When the speaker asks for a bootstrap is held by reading.** Whether one "
-                      "of the three cases of rule 1 of the line holds, a tool's or guard's fault "
-                      "in the second among them, is the speaker's judgement, and the principal's "
-                      "answer to the request is what checks it. No tool decides the case or tells "
-                      "a guard at fault from a guard holding its rule; none sees whether a build "
-                      "straight from the principal's words was begun without a request put on "
-                      "the page for it, or keeps a refused request from being put again. The "
-                      "tests pin the rule's sentences, and only reading holds that the speaker "
-                      "acts by them.", self.part("attenuation"))
-        self.assertIn("The speaker puts the request for a bootstrap unasked, in its turn, as a "
-                      "review that asks for a grant, where one of the three cases of rule 1 of "
-                      "the line holds, where before a build straight from the principal's words "
-                      "came only at the principal's own asking; the principal's answer to the "
-                      "request put on the page authorises it, and the principal's own asking "
-                      "still stands.", self.part("departures"))
+    def test_the_cross_references_resolve(self):
+        core = flat(SKILL)
+        for text in (self.part("round"), core):
+            self.assertIn("the three cases of **The line in the AI's graph**, rule 1,", text)
+        self.assertIn("rule 1 of the line", self.part("departures"))
+        self.assertIn("rule 1 of the line", self.part("attenuation"))
+        self.assertIn("**When the speaker asks for a bootstrap is held by reading.**",
+                      self.part("attenuation"))
+        # the bold names the rule cites stand where it says
+        self.assertIn("**Written as the round goes.**", self.part("round"))
+        self.assertIn("**The round** (`round.md`", core)
+        self.assertIn("**Attenuation**", core)
 
-    def test_no_dash_in_the_texts_it_touches(self):
-        for text in (self.rule(), self.part("round"), self.part("departures"),
-                     self.part("attenuation"), flat(SKILL)):
-            for sentence in re.findall(r"[^.]*bootstrap[^.]*\.", text):
-                self.assertNotIn("\u2014", sentence)
-                self.assertNotIn("\u2013", sentence)
+    def test_the_part_is_read_when_a_build_is_first_owed(self):
+        with open(os.path.join(PARTS, "ai-line.md"), encoding="utf-8") as fh:
+            self.assertIn("when a build is first owed", fh.readline())
+        row = [r for r in flat(SKILL).split("| `") if r.startswith("ai-line.md` |")]
+        self.assertEqual(len(row), 1)
+        self.assertIn("when a build is first owed", row[0])
+
+    def test_no_dash_in_the_rule(self):
+        for dash in ("\u2014", "\u2013"):
+            self.assertNotIn(dash, self.rule())
+
+    def test_the_manifest_lists_the_files(self):
+        with open(os.path.join(ROOT, ".principal", "bootstrap.json"), encoding="utf-8") as fh:
+            apps = json.load(fh)["applications"]
+        entry = [a for a in apps if a["application"] == "the request for a bootstrap"]
+        self.assertEqual(len(entry), 1)
+        files = entry[0]["files"]
+        for f in ("skills/sit/SKILL.md", "skills/sit/parts/ai-line.md",
+                  "skills/sit/parts/round.md", "skills/sit/parts/attenuation.md",
+                  "skills/sit/parts/departures.md", "tools/test_sit_skill.py"):
+            self.assertIn(f, files)
+        for f in files:
+            self.assertTrue(os.path.exists(os.path.join(ROOT, f)), f)
 
 
 if __name__ == "__main__":

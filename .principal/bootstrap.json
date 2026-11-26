@@ -867,7 +867,7 @@
         ".principal/bootstrap.json"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3225",
-      "rounds": 1
+      "rounds": 3
     }
   ]
 }

@@ -130,7 +130,7 @@ bind every action, and so does rule 4's tradition on a new fact and its recordin
    unasked, as a `review` that asks for a grant and carries no recommendation, stating the case,
    the facts that make it hold and what would be built, in its turn after an action still
    pending and an office item owed at a bell (rule 7); outside the three it puts no such request
-   unasked, and the principal's own asking stands as that rule gives.
+   unasked under any name, and the principal's own asking stands as rule 1 of the line gives.
 7. **Bells.** An unresolved office of the principal's shows first unless the principal has set
    it aside or an action put before the bell rang is still pending; items run by the session
    never hold the card. The page shows a rung bell as a notice and makes that bell's office items

@@ -169,7 +169,7 @@ the plugin's kinds for work a kind carries.
    review by the speaker itself (**The record of predictions**). Where a build is owed and one of
    the three cases of **The line in the AI's graph**, rule 1, holds, the speaker puts the request
    for a bootstrap unasked, in its turn, as a review that asks for a grant, with no
-   recommendation; outside the three it puts none unasked.
+   recommendation; outside the three it asks for none under any name.
 7. An unresolved office of the principal's shows first unless the principal has set it aside or
    an action put before the bell rang is still pending; items run by the session never hold the
    card; `office_deferred` is written only at the principal's word.
