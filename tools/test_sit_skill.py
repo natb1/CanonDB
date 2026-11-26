@@ -1101,9 +1101,9 @@ class LineTest(unittest.TestCase):
                 "and the draw's index, and saying whether that draw is the answer of record",
                 "Where a context already stands for the round, the naming is a record in "
                 "`context.log`.",
-                "While a question or review of principle is put on the page, or is the next "
-                "action to be put and the idea bears on it, the naming is held and given after "
-                "its answer",
+                "While a question or review of principle is put on the page, or another action "
+                "is the next to be put and the idea bears on it, the naming is held and given "
+                "after its answer",
                 "A held naming, and an owed statement that no new idea was found, are kept in "
                 "the work in hand, `tools/inhand.py add $SCRATCH/speaker",
                 "For each question, drawer turn or back-brief read, the action context says "
@@ -1114,7 +1114,9 @@ class LineTest(unittest.TestCase):
                 "What `tools/packet.py` carries of the answer of record, and a question a "
                 "drawer turn raised, go on as rules 3 and 4 give.",
                 "An idea dropped, or closed without being taken up, stays out of the speaker's "
-                "drafting and briefs for good, unless the principal states it.",
+                "drafting of a question or a redraw signal, and, where it comes from a draw not "
+                "of record, out of a build's brief, for good, unless the principal states it; a "
+                "brief that cites an answer of record holding it cites it as rule 1 gives.",
                 "it goes on the tab the idea bears on, and where it bears on none, at the end of "
                 "the `dictate` tab's Hinge section, or of its last section where it has none",
                 "A line of origin `ai-draw` is never queued to a clean turn unasked.",
