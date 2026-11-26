@@ -411,7 +411,7 @@
         ".claude/agents/interviewer.md",
         "tools/test_agents.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/PENDING",
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3223",
       "rounds": 3
     },
     {
