@@ -2623,7 +2623,7 @@ class WhenToAskForABootstrapTest(unittest.TestCase):
                       "is still reviewed by an adversary before it is merged",
                       "recorded in `.principal/bootstrap.json` as any bootstrap is"):
             self.assertIn(words, rule)
-        self.assertNotIn("—", rule)
+        self.assertNotIn("\u2014", rule)
 
     def test_the_round_the_core_attenuation_and_departures_point_to_it(self):
         self.assertIn("the next action is the speaker's request for a bootstrap, put unasked "
