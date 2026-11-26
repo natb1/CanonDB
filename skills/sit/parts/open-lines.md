@@ -111,9 +111,13 @@ The order is the tool's, one weight over every open line, anchored or not: its s
 what it unblocks, divided by what it costs the principal. The share is the share of the root its
 anchored sentences carry, each anchor read by its tab and block where the shares give one, else
 by its tab, each once, summed, no tab for more than its own share. A line with no anchor the
-shares key takes half the share of its `project`'s root, or of the whole root where it names
-no project the shares know, and is marked provisional; where no shares are given, every line
-weighs a share of one and is provisional. What it unblocks is one and the number of open lines
+shares key takes half the least share held by any anchored open line of its `project` (a line
+naming no project being of those naming none), so that it sorts by share below every anchored
+line of its project, and is marked provisional. Where its project has no anchored open line,
+it takes half the share of its project's root instead, or of the whole root where it names no
+project the shares know. An anchored line whose share is zero counts as no anchored line: it
+takes the provisional share itself. Where no shares are given, every line weighs a share of one
+and is provisional. What it unblocks is one and the number of open lines
 that wait on it directly: its children, the lines its `blocks` names, and those whose
 `waits_on` names it. What it costs is its `cost` where set; else 1 for a question or a review,
 and 3 for the principal's work. The session's work, `owed_by: "session"`, is weighed by the same

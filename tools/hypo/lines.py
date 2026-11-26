@@ -31,9 +31,15 @@ weight is
 to: each anchor read as its ``tab/block`` where the shares give one, else as
 its ``tab``, each key counted once, the keys summed, and no tab counted for
 more than the tab's own share. A line with no anchor the shares key takes
-half the share of its ``project``'s root (the whole root's one where the
-line names no project the shares know), and is provisional; with no shares
-given at all, every line's share is one and every line is provisional.
+half the least share held by any anchored live line of its ``project`` (the
+lines whose ``project`` is the same, a line naming none being of the lines
+naming none), and is provisional; so its share is below that of every
+anchored line of its project. Where its project has no anchored live line,
+it takes half the share of its project's root instead (the whole root's one
+where the line names no project the shares know). An anchored line whose
+share is zero is no anchored line here: it takes the provisional share
+itself. With no shares given at all, every line's share is one and every
+line is provisional.
 ``unblocks`` is one and the number of live lines that wait on it directly:
 its children (by either side of ``parent``), those its ``blocks`` names, and
 those whose ``waits_on`` names it, each once. ``cost`` is what the line asks
@@ -98,7 +104,8 @@ USER, SESSION = OWNERS
 COSTS = (1, 3, 9)
 #: the cost of the user's work where none is stated
 WORK_COST = 3
-#: what an unanchored line takes of its project's root
+#: what an unanchored line takes of the least share an anchored line of its
+#: project holds, or of its project's root where none is anchored
 UNANCHORED = 0.5
 #: the most words an override's ground is restated in
 GROUND_WORDS = 25
@@ -818,16 +825,33 @@ def root_share(rec: dict, shares: Dict[str, float],
 
 def project_root(lines: Lines, rec: dict, shares: Dict[str, float],
                  roots: Optional[Dict[str, float]]) -> Tuple[float, Optional[str]]:
-    """The base of the provisional rule as adopted: the share of the line's
-    project's root, or the whole root's one where the shares know no
-    project of the line's, with that said."""
+    """The share of the line's project's root, or the whole root's one where
+    the shares know no project of the line's, with that said: the base of
+    the provisional rule where the project has no anchored line."""
     root, known = root_share(rec, shares, roots)
     return root, None if known else "no project the shares know, the whole root"
 
 
+def least_anchored(lines: Lines, rec: dict, shares: Dict[str, float],
+                   roots: Optional[Dict[str, float]]) -> Tuple[float, Optional[str]]:
+    """The base of the provisional rule as adopted: the least share held by
+    any other live line of the same ``project`` whose anchors the shares key
+    (a share above zero), a line naming no project being of the lines naming
+    none; where there is no such line, ``project_root``'s, with that said."""
+    name = rec.get("project")
+    held = [share_of(r, shares) for lid, r in lines.records.items()
+            if lid != rec.get("id") and live(r) and r.get("project") == name]
+    held = [s for s in held if s > 0]
+    if held:
+        return min(held), None
+    root, said = project_root(lines, rec, shares, roots)
+    none = "no anchored line in its project"
+    return root, "%s, its project's root" % none if said is None else "%s; %s" % (none, said)
+
+
 def provisional_share(lines: Lines, rec: dict, shares: Dict[str, float],
                       roots: Optional[Dict[str, float]] = None,
-                      fraction: float = UNANCHORED, base=project_root) -> Tuple[float, str]:
+                      fraction: float = UNANCHORED, base=least_anchored) -> Tuple[float, str]:
     """The provisional rule: the share a line takes where no anchor of it
     is keyed by the shares, ``fraction`` of what ``base`` gives (a function
     of the line, the shares and the roots returning a share and what to say

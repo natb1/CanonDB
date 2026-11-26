@@ -518,6 +518,9 @@ class OrderTest(Base):
         r = given.records["x"]
         roots = {"north": 0.8}
         self.assertEqual(lines.provisional_share(given, r, {"t": 1.0}, roots),
+                         (0.4, "no anchor; no anchored line in its project, its project's root"))
+        self.assertEqual(lines.provisional_share(given, r, {"t": 1.0}, roots,
+                                                 base=lines.project_root),
                          (0.4, "no anchor"))
         self.assertAlmostEqual(lines.provisional_share(given, r, {"t": 1.0}, roots,
                                                        fraction=0.25)[0], 0.2)
@@ -570,29 +573,81 @@ class OrderTest(Base):
                                                                            waits_on=["c"])}))
         self.assertIn("a cycle of blocks and waits_on: a -> b -> c -> d -> a", found)
 
-    def test_a_line_with_no_anchor_takes_half_its_project_s_root_provisionally(self):
+    def test_with_no_anchored_line_in_its_project_a_line_takes_half_its_root(self):
         given = self.given([rec("x", project="north"), rec("y", project="south"),
                             rec("z"), rec("v", project="nowhere")])
         r = given.records
         roots = {"north": 1.0}
         shares = {"south": 0.6, "evenings": 0.1}
         t = lines.terms(given, r["x"], shares, roots)
-        self.assertEqual((t.share, t.provisional), (0.5, "no anchor"))
+        self.assertEqual((t.share, t.provisional), (0.5, "no anchor; no anchored line in its project, its project's root"))
         # a project the shares key by its root's question id
         t = lines.terms(given, r["y"], shares, roots)
         self.assertAlmostEqual(t.share, 0.3)
-        self.assertEqual(t.provisional, "no anchor")
+        self.assertEqual(t.provisional, "no anchor; no anchored line in its project, its project's root")
         for lid in ("z", "v"):
             t = lines.terms(given, r[lid], shares, roots)
             self.assertEqual(t.share, 0.5)
-            self.assertEqual(t.provisional,
-                             "no anchor; no project the shares know, the whole root")
+            self.assertEqual(t.provisional, "no anchor; no anchored line in its project; "
+                                            "no project the shares know, the whole root")
+
+    def test_a_line_with_no_anchor_takes_half_the_least_anchored_share_of_its_project(self):
+        given = self.given([
+            rec("hi", anchors=[anchor("mornings")], project="north"),
+            rec("lo", anchors=[anchor("evenings")], project="north"),
+            rec("dear", anchors=[anchor("evenings")], project="north", kind="work", cost=9),
+            rec("x", project="north"),
+            rec("away", anchors=[anchor("dusk")], project="south"),
+            rec("gone", state="closed", anchors=[anchor("dusk")], project="north",
+                closed_by={"sentence": "Settled.", "answer": "answers/1.md"},
+                answered_by="answers/1.md", reopenable=True),
+            rec("free", anchors=[anchor("mornings")]), rec("loose")])
+        self.assertEqual(given.problems, [])
+        r = given.records
+        shares = {"mornings": 0.5, "evenings": 0.1, "dusk": 0.02}
+        roots = {"north": 1.0, "south": 0.4}
+        # the least of hi, lo and dear (0.5, 0.1, 0.1) is 0.1; south's line
+        # and north's closed line are not counted
+        t = lines.terms(given, r["x"], shares, roots)
+        self.assertAlmostEqual(t.share, 0.05)
+        self.assertEqual(t.provisional, "no anchor")
+        for lid in ("hi", "lo", "dear"):
+            self.assertLess(t.share, lines.terms(given, r[lid], shares, roots).share, lid)
+        # the share is below every anchored line's, the weight need not be:
+        # dear costs nine
+        self.assertGreater(t.weight, lines.terms(given, r["dear"], shares, roots).weight)
+        # a line naming no project is of the lines naming none
+        t = lines.terms(given, r["loose"], shares, roots)
+        self.assertAlmostEqual(t.share, 0.25)
+        self.assertEqual(t.provisional, "no anchor")
+        # an anchor the shares do not key is no anchor here either
+        given = self.given([rec("lo", anchors=[anchor("evenings")], project="north"),
+                            rec("x", anchors=[anchor("elsewhere")], project="north")])
+        t = lines.terms(given, given.records["x"], shares, roots)
+        self.assertAlmostEqual(t.share, 0.05)
+        self.assertEqual(t.provisional, "no anchor the shares key")
+
+    def test_an_anchored_line_of_share_zero_counts_as_no_anchored_line(self):
+        given = self.given([rec("nil", anchors=[anchor("void")], project="north"),
+                            rec("x", project="north")])
+        r = given.records
+        shares = {"void": 0.0, "evenings": 0.1}
+        roots = {"north": 0.8}
+        # nil's share is zero: it takes the provisional share itself, and x
+        # finds no anchored line in north
+        for lid in ("nil", "x"):
+            t = lines.terms(given, r[lid], shares, roots)
+            self.assertAlmostEqual(t.share, 0.4, lid)
+        self.assertEqual(lines.terms(given, r["nil"], shares, roots).provisional,
+                         "no anchor the shares key; no anchored line in its project, "
+                         "its project's root")
 
     def test_anchors_the_shares_do_not_key_count_as_none(self):
         given = self.given([rec("x", anchors=[anchor("elsewhere", "b1")], project="north")])
         t = lines.terms(given, given.records["x"], {"evenings": 0.1}, {"north": 0.8})
         self.assertAlmostEqual(t.share, 0.4)
-        self.assertEqual(t.provisional, "no anchor the shares key")
+        self.assertEqual(t.provisional, "no anchor the shares key; no anchored line in its "
+                                        "project, its project's root")
 
     def test_with_no_shares_every_line_is_provisional_and_weighs_a_share_of_one(self):
         given = self.given()
@@ -651,7 +706,7 @@ class OrderTest(Base):
         self.assertEqual(rows["g"], {
             "rank": 4, "id": "g", "kind": "work", "title": "Line g", "state": "open",
             "weight": round(0.5 / 3, 6), "share": 0.5, "unblocks": 1, "cost": 3,
-            "provisional": True, "provisional_why": "no anchor",
+            "provisional": True, "provisional_why": "no anchor; no anchored line in its project, its project's root",
             "opened_at": "2030-01-01T00:00:00Z"})
         self.assertFalse(rows["a"]["provisional"])
         self.assertIsNone(rows["a"]["provisional_why"])
@@ -724,8 +779,9 @@ class OrderTest(Base):
                    "--versions", self.d.versions)
         self.assertEqual(done.returncode, 0, done.stderr)
         rows = {r["id"]: r for r in json.loads(done.stdout)["order"]}
-        # n names the graph's one root by its question id: half of its one
-        self.assertEqual((rows["n"]["share"], rows["n"]["provisional_why"]), (0.5, "no anchor"))
+        # n names the graph's one root by its question id, and no anchored
+        # line of its project: half of the root's one
+        self.assertEqual((rows["n"]["share"], rows["n"]["provisional_why"]), (0.5, "no anchor; no anchored line in its project, its project's root"))
 
     def test_the_queue_as_the_ranks_stand(self):
         self.assertEqual([q["title"] for q in lines.queue(self.given())],
