@@ -1,4 +1,4 @@
-Read this part before a question for the AI's own record is drafted or put, before a clean turn or a `lead`, `turn`, `compare` or `place` job, before any build is briefed, and before a constraint is treated as binding.
+Read this part before a question for the AI's own record is drafted or put, before a clean turn or a `lead`, `turn`, `compare` or `place` job, when a build is first owed, before any build is briefed, and before a constraint is treated as binding.
 
 **5 — The AI's own turns.** A question for the AI's own record is a `turn` job, its `line` the
 question's directory (**The line in the AI's graph**). One drafted on the user's side is held at
@@ -81,23 +81,45 @@ or its question, and a question or an answer holding `<<<` or `>>>`, which no te
    AI's answers by their opening words and never the principal's requirement. Then the build is
    checked against the record, by a `compare` job over the line with what was built. Nothing is
    built straight from the principal's words unless the principal asks for that explicitly, once,
-   as an action on the page, for that one build. Such a build is a bootstrap: it is recorded as
-   a postulate, and it gives way when a line in the AI's graph reaches the same thing
-   (`/principal:bootstrap`). **When the speaker asks for a bootstrap.** The speaker itself puts
-   the request for a bootstrap as its next action, on the page, a review of mechanism with its
-   recommendation, without waiting to be told, whenever one of three cases holds: first, drawing
-   the thing in the AI's graph is blocked by the very thing to be built; second, a tool or guard
-   of the process refuses or spoils the work in hand, and would stay so while a line is drawn;
-   third, the principal's words leave no choice of design, so that the build only writes down
-   what was said, a rule of the process among them. Outside the three the order above holds:
-   the requirement recorded, the line drawn in the AI's graph blind, compared, reviewed, built.
-   The request is one action for one build. It names which case holds and why, stated so that
-   the principal can refuse it: the speaker's judgement that a case holds is exactly what the
-   principal's approval checks. The principal's approval of the request on the page is what
-   authorises the build; a word of approval given in the session, for a build that meets a case,
-   does not stand in for putting the request on the page. A bootstrap so approved is still
-   reviewed by an adversary before it is merged (**One action at a time: the round**, rule 9),
-   and recorded in `.principal/bootstrap.json` as any bootstrap is.
+   as an action on the page, for that one build, or approves the speaker's request for that one
+   build, put on the page as **When the speaker asks for a bootstrap** below gives. Such a build
+   is a bootstrap: a postulate, which gives way when a line in the AI's graph reaches the same
+   thing (`/principal:bootstrap`). The principal's own asking stands in any case or none, and so
+   does the stopgap among the choices of rule 5.
+
+   **When the speaker asks for a bootstrap.** The speaker asks for a bootstrap unasked only where
+   one of three cases holds. First, drawing the thing in the AI's graph is blocked by the very
+   thing to be built. Second, a tool or guard of the process is at fault, refusing what the rule
+   it guards allows or spoiling the work in hand, and would stay so while a line is drawn; a tool
+   or guard holding its rule is never the case, a bootstrap never builds around a refusal, and
+   the refusal goes on the page as rule 10 of the round gives. Third, the principal's words leave
+   no choice of design, so that the build only writes down what was said, a rule of the process
+   among them. Outside the three the speaker puts no such request unasked, and a build it owes
+   goes by the order above: the requirement recorded on the user's side, a line drawn in the
+   AI's graph, the comparing run, the build, and the build checked against the record.
+   The request is a `review` that asks for a grant, so it carries no recommendation (**One action
+   at a time: the round**, rule 6). It is one action for one build, and states which case holds,
+   the facts that make it hold, and what would be built, so that the principal can refuse it:
+   the speaker's judgement that a case holds is exactly what the principal's answer checks. It
+   takes its turn as any action does, after an action still pending and after an office item
+   owed at a bell (rule 7 of the round), never before them. The principal answers in the
+   session, as every action is answered. The build is authorised by the principal's approval in
+   answer to that request, put on the page for that build; a word of approval given for a build
+   whose request was not put on the page does not authorise it. A refusal stands: the speaker
+   does not ask again for that build unless the facts of its case change. Inside the cases the
+   requirement is still recorded on the user's side first: the recorder writes it on the tab it
+   bears on, as a *pending* note at the round (**Written as the round goes**). The build is a
+   round of `/principal:bootstrap` that the sitting carries, briefed by rule 9 of the round in the
+   open way and named to the principal as an open note of kind `change` in the confined way. Its
+   brief states the mechanism and never the occasion, as ground rule 9 gives; the facts the
+   request states stay on the page and go into no brief, commit or pull request. What it builds
+   is recorded as that skill's step 6 says: the application's line in the notebook, with the
+   standing `postulate`, from `tools/application.py`, sent by the recorder in a `record` job,
+   since the speaker never writes the notebook; and its entry in `.principal/bootstrap.json`, on
+   the build's branch. A bootstrap so approved is still reviewed by an adversary before it is
+   merged (rule 9 of the round). Putting the request is not starting the mechanism of rule 9 of
+   the round: until the build is approved, merged and loaded, the speaker says the process has
+   not changed.
 2. **Intention is carried by the line.** Every line opens at the purpose: what the thing is for,
    and what it must never do. A question of how stands only beneath an answer of why. Each answer
    names the answers it rests on, on its `Rests on:` line. Before any build a back-brief is

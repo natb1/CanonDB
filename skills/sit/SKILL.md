@@ -166,9 +166,10 @@ the plugin's kinds for work a kind carries.
 6. The next action is a `question`, an `office`, a `work` or a `review`. A review is put as a
    question is; one of mechanism carries the speaker's recommendation in `next.recommendation`,
    one that states or changes a principle carries none. A prediction is sealed before every
-   review by the speaker itself (**The record of predictions**). Where one of the three cases of
-   `ai-line.md` rule 1 holds, the speaker puts the request for a bootstrap unasked, as a review
-   of mechanism.
+   review by the speaker itself (**The record of predictions**). Where a build is owed and one of
+   the three cases of **The line in the AI's graph**, rule 1, holds, the speaker puts the request
+   for a bootstrap unasked, in its turn, as a review that asks for a grant, with no
+   recommendation; outside the three it puts none unasked.
 7. An unresolved office of the principal's shows first unless the principal has set it aside or
    an action put before the bell rang is still pending; items run by the session never hold the
    card; `office_deferred` is written only at the principal's word.
@@ -233,6 +234,6 @@ skill's text runs:
 | `opening.md` | Step 1's read of the notebook, and step 2, the brief | at the opening, after the board's export |
 | `round.md` | Step 3, the round's ten rules in full, and **Written as the round goes** | at the opening; before putting each next action; when an answer comes in; when the principal overrides or defers; when a bell rings; before writing a note at the round; before briefing a build or merging |
 | `batch-point.md` | Step 4, the batch point and its chain, and step 7, closing | at each batch point; before a note's rows file is made at the round; when a link of a chain fails; at the close |
-| `ai-line.md` | Step 5, the AI's own turns, and **The line in the AI's graph** | before a question for the AI's record is drafted or put; before a clean turn or a `lead`, `turn`, `compare` or `place` job; before briefing any build; before a constraint is treated as binding |
+| `ai-line.md` | Step 5, the AI's own turns, and **The line in the AI's graph** | before a question for the AI's record is drafted or put; before a clean turn or a `lead`, `turn`, `compare` or `place` job; when a build is first owed; before briefing any build; before a constraint is treated as binding |
 | `attenuation.md` | **Attenuation**: what no tool decides | at the opening; before relying on a tool, gate or helper's reply to hold a rule; when a gate gives no opinion, a permission check refuses a write or a fetch finds no transcript |
 | `departures.md` | **Where this entry point departs from the others**, and what it says now that reverses what it said before | when another entry point says otherwise than this one; when a rule here seems to reverse what it said before |

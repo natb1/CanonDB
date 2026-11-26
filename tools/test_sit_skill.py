@@ -2593,48 +2593,99 @@ class QuestionReadByMeaningTest(unittest.TestCase):
 
 class WhenToAskForABootstrapTest(unittest.TestCase):
     """Rule 1 of the line: the three cases in which the speaker itself puts
-    the request for a bootstrap on the page, and what still holds of it."""
+    the request for a bootstrap on the page, and what still holds of it.
+    The sentences are pinned; that the speaker acts by them is held by
+    reading (attenuation.md says so)."""
 
     @staticmethod
     def part(name):
         return flat(os.path.join(PARTS, name + ".md"))
 
-    def test_rule_1_gives_the_three_cases_and_the_approval_on_the_page(self):
+    def rule(self):
         text = self.part("ai-line")
-        rule = text[text.index("1. **The order.**"):text.index("2. **Intention is carried")]
-        for words in ("Nothing is built straight from the principal's words unless the "
-                      "principal asks for that explicitly, once",
-                      "Such a build is a bootstrap: it is recorded as a postulate, and it gives "
-                      "way when a line in the AI's graph reaches the same thing",
-                      "The speaker itself puts the request for a bootstrap as its next action, "
-                      "on the page, a review of mechanism with its recommendation, without "
-                      "waiting to be told, whenever one of three cases holds",
-                      "drawing the thing in the AI's graph is blocked by the very thing to be "
-                      "built",
-                      "a tool or guard of the process refuses or spoils the work in hand, and "
-                      "would stay so while a line is drawn",
-                      "the principal's words leave no choice of design, so that the build only "
-                      "writes down what was said",
-                      "Outside the three the order above holds",
-                      "The request is one action for one build. It names which case holds and "
-                      "why, stated so that the principal can refuse it",
-                      "a word of approval given in the session, for a build that meets a case, "
-                      "does not stand in for putting the request on the page",
-                      "is still reviewed by an adversary before it is merged",
-                      "recorded in `.principal/bootstrap.json` as any bootstrap is"):
+        return text[text.index("1. **The order.**"):text.index("2. **Intention is carried")]
+
+    def test_rule_1_gives_the_three_cases_and_what_authorises_the_build(self):
+        rule = self.rule()
+        for words in (
+                "Nothing is built straight from the principal's words unless the principal asks "
+                "for that explicitly, once, as an action on the page, for that one build, or "
+                "approves the speaker's request for that one build, put on the page as **When "
+                "the speaker asks for a bootstrap** below gives.",
+                "The principal's own asking stands in any case or none, and so does the stopgap "
+                "among the choices of rule 5.",
+                "The speaker asks for a bootstrap unasked only where one of three cases holds.",
+                "First, drawing the thing in the AI's graph is blocked by the very thing to be "
+                "built.",
+                "Second, a tool or guard of the process is at fault, refusing what the rule it "
+                "guards allows or spoiling the work in hand, and would stay so while a line is "
+                "drawn; a tool or guard holding its rule is never the case, a bootstrap never "
+                "builds around a refusal,",
+                "Third, the principal's words leave no choice of design, so that the build only "
+                "writes down what was said",
+                "Outside the three the speaker puts no such request unasked, and a build it owes "
+                "goes by the order above: the requirement recorded on the user's side, a line "
+                "drawn in the AI's graph, the comparing run, the build, and the build checked "
+                "against the record.",
+                "The request is a `review` that asks for a grant, so it carries no "
+                "recommendation",
+                "states which case holds, the facts that make it hold, and what would be built, "
+                "so that the principal can refuse it",
+                "after an action still pending and after an office item owed at a bell (rule 7 "
+                "of the round), never before them",
+                "The principal answers in the session, as every action is answered. The build is "
+                "authorised by the principal's approval in answer to that request, put on the "
+                "page for that build; a word of approval given for a build whose request was not "
+                "put on the page does not authorise it.",
+                "A refusal stands: the speaker does not ask again for that build unless the facts "
+                "of its case change.",
+                "Inside the cases the requirement is still recorded on the user's side first: "
+                "the recorder writes it",
+                "Its brief states the mechanism and never the occasion, as ground rule 9 gives",
+                "the standing `postulate`, from `tools/application.py`, sent by the recorder in a "
+                "`record` job",
+                "is still reviewed by an adversary before it is merged",
+                "Putting the request is not starting the mechanism of rule 9 of the round"):
             self.assertIn(words, rule)
-        self.assertNotIn("\u2014", rule)
+        for words in ("with its recommendation", "review of mechanism", "approval on the page",
+                      "builds without", "without the request", "a tool decides"):
+            self.assertNotIn(words, rule.lower() if words.islower() else rule)
 
     def test_the_round_the_core_attenuation_and_departures_point_to_it(self):
-        self.assertIn("the next action is the speaker's request for a bootstrap, put unasked "
-                      "as a review of mechanism with its recommendation, naming the case and why",
+        self.assertIn("Where a build is owed and one of the three cases of **The line in the "
+                      "AI's graph**, rule 1, holds, the speaker puts its request for a bootstrap "
+                      "unasked, as a `review` that asks for a grant and carries no "
+                      "recommendation, stating the case, the facts that make it hold and what "
+                      "would be built, in its turn after an action still pending and an office "
+                      "item owed at a bell (rule 7); outside the three it puts no such request "
+                      "unasked, and the principal's own asking stands as that rule gives.",
                       self.part("round"))
-        self.assertIn("the speaker puts the request for a bootstrap unasked, as a review of "
-                      "mechanism", flat(SKILL))
-        self.assertIn("**When the speaker asks for a bootstrap is held by reading.**",
-                      self.part("attenuation"))
-        self.assertIn("The speaker puts the request for a bootstrap as its next action, "
-                      "unasked", self.part("departures"))
+        self.assertIn("Where a build is owed and one of the three cases of **The line in the "
+                      "AI's graph**, rule 1, holds, the speaker puts the request for a bootstrap "
+                      "unasked, in its turn, as a review that asks for a grant, with no "
+                      "recommendation; outside the three it puts none unasked.", flat(SKILL))
+        self.assertIn("**When the speaker asks for a bootstrap is held by reading.** Whether one "
+                      "of the three cases of rule 1 of the line holds, a tool's or guard's fault "
+                      "in the second among them, is the speaker's judgement, and the principal's "
+                      "answer to the request is what checks it. No tool decides the case or tells "
+                      "a guard at fault from a guard holding its rule; none sees whether a build "
+                      "straight from the principal's words was begun without a request put on "
+                      "the page for it, or keeps a refused request from being put again. The "
+                      "tests pin the rule's sentences, and only reading holds that the speaker "
+                      "acts by them.", self.part("attenuation"))
+        self.assertIn("The speaker puts the request for a bootstrap unasked, in its turn, as a "
+                      "review that asks for a grant, where one of the three cases of rule 1 of "
+                      "the line holds, where before a build straight from the principal's words "
+                      "came only at the principal's own asking; the principal's answer to the "
+                      "request put on the page authorises it, and the principal's own asking "
+                      "still stands.", self.part("departures"))
+
+    def test_no_dash_in_the_texts_it_touches(self):
+        for text in (self.rule(), self.part("round"), self.part("departures"),
+                     self.part("attenuation"), flat(SKILL)):
+            for sentence in re.findall(r"[^.]*bootstrap[^.]*\.", text):
+                self.assertNotIn("\u2014", sentence)
+                self.assertNotIn("\u2013", sentence)
 
 
 if __name__ == "__main__":

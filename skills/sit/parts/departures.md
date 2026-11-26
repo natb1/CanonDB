@@ -134,7 +134,7 @@ What this entry point says now that reverses what it said before:
 - Every presupposition a question on a line carries in is recorded as a hinge of the AI's graph,
   unjustified until a later answer of the AI's is linked to it, where before it stood only in
   the speaker's notes and the answer's closing line.
-- The speaker puts the request for a bootstrap as its next action, unasked, as a review of
-  mechanism, where one of the three cases of rule 1 of the line holds, where before a build
-  straight from the principal's words came only at the principal's own asking; the principal's
-  approval on the page still authorises it.
+- The speaker puts the request for a bootstrap unasked, in its turn, as a review that asks for a
+  grant, where one of the three cases of rule 1 of the line holds, where before a build straight
+  from the principal's words came only at the principal's own asking; the principal's answer to
+  the request put on the page authorises it, and the principal's own asking still stands.
