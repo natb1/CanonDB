@@ -42,7 +42,9 @@ read, and each stamping `touched_at` from the clock. Its fields, an invented exa
   session's work ranked after them and never in it. A line no longer open or put carries none, and a reopened one none until the next order.
 - `opened_at` and `touched_at`: ISO times, read from the clock.
 - `review_count`: how many times the weekly chunk has shown it to the principal.
-- `origin`: who opened it: `principal`, `speaker`, `ai` for a drawer turn, or a helper's kind.
+- `origin`: who opened it: `principal`, `speaker`, `ai` for a drawer turn, `ai-draw` for an idea
+  new to the sitting in a kept draw (**The line in the AI's graph**, rule 11), which is never
+  queued to a clean turn unasked, or a helper's kind.
 - `blocks` and `waits_on`, where set: the ids of the lines it holds up, and of the lines it
   waits on.
 - `cost`, where set: what the line asks of the principal, on the scale 1, 3 or 9; never set on
