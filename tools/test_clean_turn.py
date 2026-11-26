@@ -107,6 +107,7 @@ class Base(unittest.TestCase):
         self.approval = self.path("approval.json")
         self.write_json(self.approval, {"sha256": self.sha(self.question),
                                         "approved": "2030-01-02T03:04:05Z"})
+        self.lead = self.path("lead.json")
         self.out = self.path("q1")
 
     def path(self, name):
@@ -129,10 +130,36 @@ class Base(unittest.TestCase):
             code = clean_turn.main(argv, runner=harness)
         return code, out.getvalue(), err.getvalue(), harness
 
-    def answer(self, *extra, harness=None, origin=None):
+    #: when the reading of a question is taken to have been made, before
+    #: the approval every test writes
+    READ = "2030-01-02T03:00:00Z"
+
+    def reading(self, **changes):
+        """The record lead.py record writes of a reading of the question as it
+        stands, with the verdict that it does not lead."""
+        record = {"tool": "lead.py record", "sha256": self.sha(self.question),
+                  "verdict": "does not lead", "read": self.READ, "job": "s1-b1-1-lead",
+                  "reply_sha256": "0" * 64,
+                  "helper": {"kind": "principal:question-reader", "agent_id": "a1",
+                             "launched": self.READ, "started": self.READ, "ended": self.READ}}
+        record.update(changes)
+        self.write_json(self.lead, record)
+
+    def answer(self, *extra, harness=None, origin=None, lead=None):
+        """A clean turn of the question. On the principal's approval the
+        reading is of the question as it stands unless ``lead`` gives the
+        arguments for it, an empty list for none."""
         argv = ["answer", "--packet", self.packet, "--question", self.question,
                 "--out", self.out, "--leak", self.leak]
-        argv += origin if origin is not None else ["--approval", self.approval]
+        if origin is not None:
+            argv += origin
+        else:
+            argv += ["--approval", self.approval]
+            if lead is None:
+                self.reading()
+                argv += ["--lead", self.lead]
+            else:
+                argv += lead
         return self.main(argv + list(extra), harness)
 
 
@@ -240,6 +267,52 @@ class AnswerTest(Base):
         os.unlink(self.leak)
         self.assertEqual(self.answer()[0], clean_turn.LEAK)
 
+    def test_a_question_put_on_an_approval_needs_a_reading_that_it_does_not_lead(self):
+        code, _, err, _ = self.answer(lead=[])
+        self.assertEqual(code, clean_turn.LEAD)
+        self.assertIn("--lead", err)
+        self.reading()
+        self.assertEqual(self.answer("--dry-run", lead=["--lead", self.lead])[0], 0)
+
+    def test_a_reading_of_another_text_is_refused(self):
+        self.reading(sha256="0" * 64)
+        code, _, err, _ = self.answer(lead=["--lead", self.lead])
+        self.assertEqual(code, clean_turn.LEAD)
+        self.assertIn("read it again", err)
+
+    def test_a_question_read_as_leading_is_never_put(self):
+        for verdict in ("leads", "Does not lead", "", None):
+            with self.subTest(verdict=verdict):
+                self.reading(verdict=verdict)
+                h = Harness()
+                code, _, _, _ = self.answer(lead=["--lead", self.lead], harness=h)
+                self.assertEqual(code, clean_turn.LEAD)
+                self.assertEqual(h.calls, [])
+                self.assertFalse(os.path.exists(os.path.join(self.out, "manifest.json")))
+
+    def test_a_reading_of_another_tool_or_with_no_time_is_refused(self):
+        for changes in ({"tool": "public.py question"}, {"tool": "lead.py led"},
+                        {"read": None}, {"read": "yesterday"}):
+            with self.subTest(changes=changes):
+                self.reading(**changes)
+                self.assertEqual(self.answer(lead=["--lead", self.lead])[0], clean_turn.LEAD)
+        os.unlink(self.lead)
+        self.assertEqual(self.answer(lead=["--lead", self.lead])[0], clean_turn.LEAD)
+
+    def test_an_approval_made_before_the_reading_is_put_once_the_reading_is_clear(self):
+        # the order of reading and showing is card.py's to hold, not the clean turn's
+        self.reading(read="2030-01-02T03:04:06Z")
+        self.assertEqual(self.answer("--dry-run", lead=["--lead", self.lead])[0], 0)
+
+    def test_the_manifest_names_the_reading(self):
+        code, _, err, _ = self.answer()
+        self.assertEqual(code, 0, err)
+        with open(os.path.join(self.out, "manifest.json"), encoding="utf-8") as fh:
+            whence = json.load(fh)["origin"]
+        self.assertEqual(whence["lead_sha256"], self.sha(self.lead))
+        self.assertEqual(whence["read"], self.READ)
+        self.assertIn("approval_sha256", whence)
+
     def test_an_approval_of_another_text_or_with_no_time_is_refused(self):
         self.write_json(self.approval, {"sha256": "0" * 64, "approved": "2030-01-02T03:04:05Z"})
         self.assertEqual(self.answer()[0], clean_turn.ORIGIN)
@@ -265,6 +338,13 @@ class AnswerTest(Base):
         self.assertEqual(code, 0, err)
         with open(os.path.join(self.out, "manifest.json"), encoding="utf-8") as fh:
             self.assertIn("drawn_from_sha256", json.load(fh)["origin"])
+
+    def test_a_drawn_question_given_a_reading_that_it_leads_is_refused(self):
+        line = "%s | from: An earlier answer | clause: earlier | direction: up" % QUESTION.strip()
+        drawn = self.drawer_record(line + "\n")
+        self.reading(verdict="leads")
+        code = self.answer(origin=["--drawn-from", drawn, "--lead", self.lead])[0]
+        self.assertEqual(code, clean_turn.LEAD)
 
     def test_a_question_not_drawn_is_refused_its_drawn_from(self):
         drawn = self.drawer_record("Another question? | from: A later | clause: later | "

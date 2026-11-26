@@ -10,7 +10,11 @@ the harness gives it (`hypo/inhand.py`):
 - SubagentStart: the oldest launch of that kind not yet started is given the
   helper's id; a start with no launch recorded is added;
 - SubagentStop: the helper's launch is marked ended, and is no longer in
-  hand.
+  hand;
+- PostToolUse on the Agent tool: the newest launch of that kind and
+  description not yet returned is marked returned, with the helper's id the
+  tool's result names, so that a launch is tied to the helper it ran by its
+  own call, whatever row the start was given.
 
 What is recorded is printed back, with its age, before a compaction
 (`inhand-precompact.py`) and after one (`brief-session.py inhand`), beside
@@ -56,6 +60,11 @@ def record(call, env=None, b=None) -> bool:
                                given.get("description"), at)
     if event == "SubagentStart" and call.get("agent_id"):
         return inhand.started(directory, session, call.get("agent_type"), call["agent_id"], at)
+    if event == "PostToolUse" and call.get("tool_name") in ("Agent", "Task"):
+        given = call.get("tool_input") if isinstance(call.get("tool_input"), dict) else {}
+        return inhand.returned(directory, session, given.get("subagent_type"),
+                               given.get("description"), inhand.agent_of(
+                                   call.get("tool_response")), at)
     if event == "SubagentStop" and call.get("agent_id"):
         return inhand.stopped(directory, session, call["agent_id"], at)
     return False

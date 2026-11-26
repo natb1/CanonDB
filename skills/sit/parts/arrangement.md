@@ -39,8 +39,8 @@ words is written with the Write tool, never through the shell; what a tool print
 sending its output to the file, never retyped. A file's fingerprint is its SHA-256 in
 hexadecimal (`sha256sum`). A sitting's id is
 `s` and the UTC time it opened in digits, `date -u +s%Y%m%d%H%M`. The kinds of helper are
-defined under the plugin's `agents/`: `clean-reader`, `fetcher`, `recorder`, `reviewer`,
-`grader`, `checker`, `comparer`, `ai-recorder` and `coordinator`, with `interviewer` the kind of
+defined under the plugin's `agents/`: `clean-reader`, `question-reader`, `fetcher`, `recorder`,
+`reviewer`, `grader`, `checker`, `comparer`, `ai-recorder` and `coordinator`, with `interviewer` the kind of
 the speaking session. A clean turn is no helper and no kind: it is a run of its own, under
 **The line in the AI's graph**. No
 helper is started that is not one of them for work a kind carries: the guard on the notebook

@@ -38,7 +38,9 @@ it is like, the marking being sound; where it is like a masked tab
 ``consider`` lists the run, since the mark may have taken in something
 sensitive by accident or the words may merely stand in two contexts, and
 the copy waits on the user's having considered it. ``question`` holds a
-question drafted for Claude to the same rule as ``leaks`` before it is put.
+text bound for a public place to the same rule as ``leaks``; a question
+drafted for Claude is held before it is put to ``addresses`` alone, and
+whether it hands the answerer the user's record is read by meaning.
 """
 
 from __future__ import annotations
@@ -52,7 +54,7 @@ from .model import SECTIONS, STATES, Graph, Question
 
 OPENING = "public"
 #: how many words in a row, shared by a shown text and a masked one, make a
-#: quotation; a drafted question is held to a shorter run, being new words
+#: quotation; ``question`` takes a shorter run by default, being new words
 RUN = 6
 QUESTION_RUN = 5
 _WORD = re.compile(r"[^\W_]+(?:['’][^\W_]+)?", re.UNICODE)
@@ -306,8 +308,10 @@ def links(graph: Graph, words: Iterable[str]) -> List[str]:
 
 
 def question(graph: Graph, drafted: str, run: int = QUESTION_RUN) -> List[Leak]:
-    """What a question drafted for Claude quotes of the masked part, or links
-    into."""
+    """What a text quotes of the masked part, a run of ``run`` words, or
+    links into. The check on a text bound for a public place calls it
+    (``outgoing``); a question drafted for Claude is no longer held to it,
+    but to ``addresses`` and to a reading by meaning."""
     hidden: Dict[Tuple[str, ...], str] = {}
     for q in graph.questions:
         for key in _runs(masked(q), run):
@@ -323,6 +327,15 @@ def question(graph: Graph, drafted: str, run: int = QUESTION_RUN) -> List[Leak]:
         if other not in seen:
             out.append(Leak("the question", other, "a link into its tab"))
     return out
+
+
+def addresses(graph: Graph, drafted: str) -> List[Leak]:
+    """The masked tabs a question drafted for Claude spells the address of:
+    the mechanical part of what ``public.py question`` holds it to. Whether
+    the question hands over what a masked tab says is read by meaning, and
+    no run of words is looked for here."""
+    return [Leak("the question", other, "a link into its tab")
+            for other in links(graph, [drafted])]
 
 
 def copy(graph: Graph, salt: str) -> Dict[str, object]:

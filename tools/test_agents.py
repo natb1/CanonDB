@@ -3,10 +3,12 @@ role needs and the rules every helper is told."""
 
 import os
 import re
+import sys
 import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
 ROOT = os.path.abspath(os.path.join(HERE, ".."))
 PLUGIN = os.path.join(ROOT, "agents")
 PROJECT = os.path.join(ROOT, ".claude", "agents")
@@ -29,7 +31,7 @@ READS = docs("read", "guide")
 WRITES = docs("update", "batch", "create", "delete")
 EVERY = docs("read", "update", "batch", "create", "delete", "export", "query", "guide")
 LEAVES = ("clean-reader", "grader", "recorder", "fetcher", "checker", "reviewer", "comparer",
-          "ai-recorder")
+          "ai-recorder", "question-reader")
 
 #: the frontmatter of each kind, field for field
 KINDS = {
@@ -58,6 +60,8 @@ KINDS = {
     "ai-recorder": {"tools": docs("read", "guide", "update", "batch") + ["Read"],
                     "disallowedTools": docs("create", "delete") + ["Agent"],
                     "model": "sonnet"},
+    "question-reader": {"tools": READS + ["Read"], "disallowedTools": WRITES + ["Agent"],
+                        "model": "fable"},
 }
 
 #: the writers the notebook's guard holds to one side of it (test_notebook_gate)
@@ -434,8 +438,18 @@ class BodyTest(unittest.TestCase):
                     "| `fetch` | fetcher | `small` | the address in `notebook`, and the tab names "
                     "the file in `tabs` lists, one name a line, which you read |",
                     "| `review` | reviewer | `full` | the address in `notebook`, and the paths "
-                    "in `rows` and `owed` |"):
+                    "in `rows` and `owed` |",
+                    "| `lead` | question-reader | `full` | the path in `question`, a question's "
+                    "`question.md` in a line's directory, and the address in `notebook` |"):
             self.assertIn(row, body)
+
+    def test_the_coordinator_describes_each_launch_by_the_job_s_id(self):
+        # the hooks record each launch by its description; lead.py checks a
+        # `lead` job's reading against that record
+        body = flat(self.bodies["coordinator"])
+        self.assertIn("Give the job's id, and nothing else, as the call's description", body)
+        self.assertIn("or a `lead` whose `question` is not `$SCRATCH/lines/<line>/<n>/question.md`",
+                      body)
 
     def test_the_recorder_sends_what_the_tools_printed(self):
         body = flat(self.bodies["recorder"])
@@ -472,7 +486,9 @@ class BodyTest(unittest.TestCase):
                             "refused, does not exist, or is `incomplete`",
                  "clean-reader": "you end with it once your reply is written",
                  "grader": "you end with it once the grade is written",
-                 "reviewer": "you end with it once your findings are written"}
+                 "reviewer": "you end with it once your findings are written",
+                 "question-reader": "you end with it once the verdict and the reason are "
+                                    "written, whatever the verdict"}
         for kind, rule in rules.items():
             self.assertIn(rule, flat(self.bodies[kind]), kind)
         self.assertIn("or where `check.py` printed a line holding `ERROR`",
@@ -533,6 +549,36 @@ class SidedTest(unittest.TestCase):
         self.assertIn("You never write a tab of the AI's own record", body)
         self.assertIn("which is that sentence's price", body)
         self.assertIn("A verdict is the principal's, and you write none.", body)
+
+    def test_the_question_reader_judges_by_meaning_and_is_no_channel(self):
+        raw = split(os.path.join(PLUGIN, "question-reader.md"))[1]
+        body = flat(raw)
+        for words in ("by the question's meaning and never by its words",
+                      "hands over an answer, a design or a position of the user's record, so "
+                      "that the reply would echo that record instead of being the AI's own",
+                      "A question does not lead where it states a problem, a situation or a "
+                      "case, and the ends to be served",
+                      "A question does not lead because it shares words with the record",
+                      "neither quotes nor paraphrases the notebook",
+                      "You propose no rewording",
+                      "a reader that holds it must not become a channel for it",
+                      "The verdict is exactly `leads` or `does not lead`.",
+                      "no longer than three hundred characters"):
+            self.assertIn(words, body)
+        # the reply is the three lines lead.py takes, in that order
+        self.assertIn("```\nverdict: leads\nreason: <one sentence>\nstatus: ok\n```", raw)
+
+    def test_the_question_reader_s_bound_on_a_reason_is_lead_py_s(self):
+        from hypo import lead
+        self.assertEqual(lead.REASON, 300)
+        self.assertEqual(lead.HELPER, "question-reader")
+
+    def test_the_question_reader_is_not_the_tier_of_the_answerer(self):
+        # the judge of whether a question leads the answerer is not the answerer
+        clean = os.path.join(ROOT, "clean", "answerer.md")
+        answerer = dict(split(clean)[0])["model"]
+        reader = dict(split(os.path.join(PLUGIN, "question-reader.md"))[0])["model"]
+        self.assertNotEqual(answerer, reader)
 
     def test_the_comparer_is_not_the_tier_of_the_answerer(self):
         clean = os.path.join(ROOT, "clean", "answerer.md")

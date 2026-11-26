@@ -25,8 +25,13 @@ list of strings; a `question` carrying a recommendation, and a `question` or
 `review` carrying a `how`; a `queue` that is not a list of objects each with
 a `title` or a `prompt`; a `next.deferred` that is not an object with a
 `prompt`; an `office_deferred` whose `since` is not an ISO time with its
-offset or whose `bell` is not HHMM; and a `background` that is not a list of
-strings. A
+offset or whose `bell` is not HHMM; a `background` that is not a list of
+strings; and a `next.reading`, the absolute path of the `lead.json` of a
+question for the AI's own record that a review shows, that is given on any
+kind but a review, cannot be read with the question's `question.md` beside
+it, was not written by `lead.py record`, is of another text than that file,
+does not say `does not lead`, or whose question is not the prompt word for
+word (white space aside). A
 `next` holding only `resolved_at`, `asks`, `deferred` or deletion markers
 needs no kind or prompt. The deletion marker `{"__delete__": true}` is taken
 wherever a field may be removed. Nothing here reaches the network or writes the page.

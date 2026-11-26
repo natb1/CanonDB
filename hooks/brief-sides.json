@@ -8,6 +8,7 @@
     "reviewer": "ai",
     "canon-answer": "ai",
     "clean-reader": null,
+    "question-reader": null,
     "fetcher": null,
     "checker": null,
     "coordinator": null,

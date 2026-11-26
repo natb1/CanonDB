@@ -60,7 +60,7 @@ that defaults to nobody, a kind matched by its name with case folded, with or wi
 plugin's name in front. The speaker and the comparer receive the user's, the AI's and the
 tradition parties' graphs; the grader, the reviewer and a canon answerer, which must stay blind
 to the user's graph, receive the AI's own answers alone; the clean reader receives nothing, as the
-principal settled; the kinds that carry no words, fetcher, checker, coordinator, recorder and
+principal settled; the question reader nothing, since it reads the notebook itself; the kinds that carry no words, fetcher, checker, coordinator, recorder and
 AI's recorder, nothing; and a helper of no kind, or of a kind the list does not name, nothing.
 What a helper of no kind should receive, and how a blind one is marked, is an open line for the
 principal. A clean turn is no helper and receives nothing (**The line in the AI's graph**). A

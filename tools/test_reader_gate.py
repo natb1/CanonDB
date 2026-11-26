@@ -175,5 +175,70 @@ class ReaderGateTest(unittest.TestCase):
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/reader-gate.py\""}]}, entries)
 
 
+class QuestionReaderGateTest(unittest.TestCase):
+    """The question reader: a question's `question.md` in a line's directory
+    of the sitting's scratch gets no opinion, never an allow; every other read
+    is refused."""
+
+    setUp = ReaderGateTest.setUp
+    run_hook = ReaderGateTest.run_hook
+    decision = ReaderGateTest.decision
+    AGENT = "principal:question-reader"
+
+    def test_the_line_s_question_gets_no_opinion_and_never_an_allow(self):
+        for path in (self.scratch + "/lines/l1/1/question.md",
+                     self.scratch + "/lines/rotation/12/question.md",
+                     self.home + "/.claude/jobs/0f82a3c4/tmp/sit/lines/l1/3/question.md"):
+            with self.subTest(path=path):
+                self.assertEqual(self.run_hook(self.AGENT, path), {})
+
+    def test_everything_else_is_refused(self):
+        s = self.scratch
+        for path in (s + "/lines/l1/1/packet.md", s + "/lines/l1/1/draws/draw-1.json",
+                     s + "/lines/l1/1/lead.json", s + "/lines/l1/1/leak.json",
+                     s + "/lines/l1/drawn-1/question.md", s + "/lines/l1/01/question.md",
+                     s + "/lines/l1/0/question.md", s + "/lines/l1/index",
+                     s + "/lines/question.md", s + "/questions/3.md", s + "/answers/3.md",
+                     s + "/replies/lines/l1/1/question.md",
+                     s + "/coordinator/lines/l1/1/question.md", s + "/graph.json",
+                     s + "/lines/l1/1/../2/packet.md",
+                     self.checkout + "/lines/l1/1/question.md",
+                     "/etc/lines/l1/1/question.md", self.home + "/.ssh/lines/l1/1/question.md",
+                     "lines/l1/1/question.md", ""):
+            with self.subTest(path=path):
+                self.assertEqual(self.decision(self.AGENT, path), "deny")
+
+    def test_another_tool_is_refused(self):
+        self.assertEqual(self.decision(self.AGENT, self.scratch + "/lines/l1/1/question.md",
+                                       tool="Grep"), "deny")
+
+    def test_a_link_out_of_a_line_is_refused(self):
+        os.makedirs(os.path.join(self.scratch, "lines", "l1", "1"))
+        os.symlink(os.path.join(self.scratch, "answers", "3.md"),
+                   os.path.join(self.scratch, "lines", "l1", "1", "question.md"))
+        self.assertEqual(self.decision(self.AGENT, self.scratch + "/lines/l1/1/question.md"),
+                         "deny")
+
+    def test_the_clean_reader_is_not_given_a_line_s_question(self):
+        self.assertEqual(self.decision("principal:clean-reader",
+                                       self.scratch + "/lines/l1/1/question.md"), "deny")
+
+    def test_input_that_does_not_parse_is_refused_to_it(self):
+        got = self.run_hook(None, "", raw=b'{"agent_type": "principal:question-reader", oops')
+        self.assertEqual(got["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertIn("a question reader reads", got["hookSpecificOutput"]
+                      ["permissionDecisionReason"])
+        got = self.run_hook(self.AGENT, self.scratch + "/answers/3.md")
+        self.assertIn("a question reader reads", got["hookSpecificOutput"]
+                      ["permissionDecisionReason"])
+
+    def test_no_decision_of_the_gate_is_an_allow_for_it(self):
+        with open(GATE, encoding="utf-8") as fh:
+            text = fh.read()
+        body = text[text.index("    if question_reader(call, env, plugin, own):"):
+                    text.index("    if not guarded(call, env, plugin, own):")]
+        self.assertNotIn('"allow"', body)
+
+
 if __name__ == "__main__":
     unittest.main()

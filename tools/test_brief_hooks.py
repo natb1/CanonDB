@@ -493,6 +493,8 @@ class WiringTest(unittest.TestCase):
         for blind in ("grader", "reviewer", "canon-answer"):
             self.assertEqual(self.sides["kinds"][blind], "ai")
         self.assertIsNone(self.sides["kinds"]["clean-reader"])
+        # the question reader holds the notebook already, and needs no brief of it
+        self.assertIsNone(self.sides["kinds"]["question-reader"])
         self.assertIsNone(self.sides["no_kind"])
         briefing = load_hook("briefing.py")
         table = briefing.sides()

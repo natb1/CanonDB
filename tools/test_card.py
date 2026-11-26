@@ -250,5 +250,59 @@ class CliTest(unittest.TestCase):
         self.assertIn("REFUSED: ", done.stderr)
 
 
+class ReadingTest(unittest.TestCase):
+    """A review that shows a question for the AI's own record names its
+    reading, and is refused unless the reading is of that question and says
+    it does not lead: the order, reading before showing, held by a tool."""
+
+    QUESTION = "What is a kept record for, and what must it never do?\n"
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.n = os.path.join(tmp.name, "lines", "l1", "1")
+        os.makedirs(self.n)
+        with open(os.path.join(self.n, "question.md"), "w", encoding="utf-8") as fh:
+            fh.write(self.QUESTION)
+        self.path = os.path.join(self.n, "lead.json")
+        self.read()
+
+    def read(self, **changes):
+        import hashlib
+        record = {"tool": "lead.py record", "verdict": "does not lead",
+                  "sha256": hashlib.sha256(self.QUESTION.encode()).hexdigest()}
+        record.update(changes)
+        with open(self.path, "w") as fh:
+            json.dump(record, fh)
+
+    def card(self, **changes):
+        nxt = {"kind": "review", "prompt": self.QUESTION.strip(), "reading": self.path}
+        nxt.update(changes)
+        return {"next": nxt, "updated": T}
+
+    def test_a_review_of_a_question_read_as_not_leading_passes(self):
+        self.assertEqual(card.check(self.card()), [])
+
+    def test_a_reading_that_leads_of_another_text_or_tool_is_refused(self):
+        for changes, words in (({"verdict": "leads"}, "never shown"),
+                               ({"sha256": "0" * 64}, "another text"),
+                               ({"tool": "lead.py led"}, "not a record")):
+            with self.subTest(changes=changes):
+                self.read(**changes)
+                self.assertTrue(any(words in f for f in card.check(self.card())))
+
+    def test_a_prompt_that_is_not_the_question_read_is_refused(self):
+        found = card.check(self.card(prompt="What is a kept record for?"))
+        self.assertTrue(any("word for word" in f for f in found), found)
+
+    def test_a_missing_record_or_a_reading_on_another_kind_is_refused(self):
+        os.unlink(self.path)
+        self.assertTrue(any("cannot be read" in f for f in card.check(self.card())))
+        self.read()
+        self.assertTrue(card.check(self.card(kind="question")))
+        found = card.check(self.card(reading="lines/l1/1/lead.json"))
+        self.assertTrue(any("absolute path" in f for f in found), found)
+
+
 if __name__ == "__main__":
     unittest.main()

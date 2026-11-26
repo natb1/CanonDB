@@ -40,7 +40,7 @@ PREFIXES = ("mcp__claude_ai_Claude_Docs__", "mcp__Claude_Docs__")
 WRITES = [p + v for p in PREFIXES for v in ("update", "batch", "create", "delete")]
 UPDATE, BATCH, CREATE = (PREFIXES[0] + v for v in ("update", "batch", "create"))
 #: the plugin's kinds that hold no writing tool
-SILENT = ("checker", "clean-reader", "coordinator", "fetcher", "grader", "reviewer")
+SILENT = ("checker", "clean-reader", "question-reader", "coordinator", "fetcher", "grader", "reviewer")
 #: helpers this plugin does not define, or does not define under that name
 FOREIGN = ("fork", "general-purpose", "Explore", "other:recorder", "x:y:recorder",
            ":recorder", "my-recorder", "recorder ", "Recorder", "other:interviewer", 7,

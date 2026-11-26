@@ -19,23 +19,29 @@ words, and `tools/board.py` refuses a value with a space.
 | `turn` | `full` | none: the speaker, by `tools/clean_turn.py` | `line`: the question's directory, `$SCRATCH/lines/<line>/<n>` | `reply`: its `manifest.json`, `fingerprint` |
 | `compare` | `full` | `comparer` | `notebook`, `index`: the line's index, `$SCRATCH/lines/<line>/index` | `reply`: the redraw signals and counts, `fingerprint` |
 | `place` | `mid` | `ai-recorder` | `notebook`, `rows`: the rows file, `index`: the line's index, `$SCRATCH/lines/<line>/index` | `reply`: the recorder's report, `fingerprint` |
+| `lead` | `full` | `question-reader` | `notebook`, `question`: the question's file, `$SCRATCH/lines/<line>/<n>/question.md`, `question_fingerprint`: its SHA-256 | `reply`: the verdict and the reason, `fingerprint` |
 
 The coordinator runs every kind the table gives a helper, every `review` among them and every
 `compare`, and passes over the rest; `probe`, `observe` and `turn` the speaker claims and marks done
 itself.
 Two words of the table name other things too. The `probe` job puts the line doc's address on the
 board; it is not `tools/clean_turn.py probe`, the check of the harness run before a sitting's
-first clean turn. A `turn` job's input `line` is a question's directory on a line, not the line.
+first clean turn. A `turn` job's input `line` is a question's directory on a line, not the line. A
+`lead` job that failed, or whose reading the hooks do not attest, is never retried under its
+id: a new `lead` job is added for the question (**The line in the AI's graph**, rule 3).
 The coordinator is handed the board's address, the path of `$SCRATCH` and the path of the
 plugin's `tools/`, and nothing else; every address it puts on the board is under `$SCRATCH`. It
 hands a clean reader the path of the question's file, which that reader may read, and the
-notebook's address; a fetcher the notebook's address and the names in the `tabs` file; a checker
+notebook's address; a question reader the same, its file a question's `question.md` on a
+line; a fetcher the notebook's address and the names in the `tabs` file; a checker
 the tools directory, the `views` directory, the `list` file and `$SCRATCH/check/<job id>` to
 work in. What a helper hands back in words the coordinator writes to
 `$SCRATCH/coordinator/replies/<job id>`, and only that file's address and fingerprint go on the board, as `reply` and
 `fingerprint`. After sending a claim, the coordinator exports the board again and starts the
 helper only where the job stands `claimed` by `coordinator`; where it does not, it starts
-nothing for that job and moves on. Every helper ends its reply with one last line, `status: ok` or `status: failed`,
+nothing for that job and moves on. It starts each helper with the job's id as the call's description, by which the
+hooks record the launch; `tools/lead.py record` reads a `lead` job's reading against that
+record (**The line in the AI's graph**, rule 3). Every helper ends its reply with one last line, `status: ok` or `status: failed`,
 by a rule its definition gives, and the coordinator reads that line and nothing else of the
 reply: `done` on `status: ok`, `fail` with the reason `helper` on `status: failed` or where the
 line is missing. The fetcher reads the document's tab list before the tabs; for a `fetch` the

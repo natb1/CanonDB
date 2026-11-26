@@ -212,7 +212,7 @@ SIDED = (AI_WRITER, COMPARER)
 
 #: every kind this plugin defines
 KINDS = ("ai-recorder", "checker", "clean-reader", "comparer", "coordinator", "fetcher",
-         "grader", "interviewer", "recorder", "reviewer")
+         "grader", "interviewer", "question-reader", "recorder", "reviewer")
 
 #: the connector's writing tools, under both spellings
 VERBS = ("update", "batch", "create", "delete")

@@ -646,11 +646,13 @@ a procedure rather than a script.
   `tools/packet.py` writes them, and the question.
   The tool reads the run's own report of what it held and refuses a run that held more than the
   stated residue, and refuses a packet with no matching fingerprint file, a question with no
-  matching leak record, and one whose origin, the principal's approval or a drawer turn, is not
-  shown; those records bind each check to an exact text and catch drift, and one written by
+  matching leak record, one put on the principal's approval with no matching record of a
+  reader's reading that it does not lead, and one whose origin, the principal's approval or a
+  drawer turn, is not shown; those records bind each check to an exact text and catch drift, and one written by
   hand with the right hash passes, so what holds them is that only the tools write them. What is left to hold
   by reading is what no configuration decides: what a question presupposes, held on the user's
-  side, and what an answer collides with outside its packet, which is the comparing run's to
+  side, whether it leads the answerer, which a reader of the `question-reader` kind judges by
+  meaning, and what an answer collides with outside its packet, which is the comparing run's to
   find. And the guard holds only where the clean turn is used: a question answered in any other
   way — in this run, in a session that has read the notebook, by a helper of a session — is
   answered in a context nobody vouched for, whatever it was given.

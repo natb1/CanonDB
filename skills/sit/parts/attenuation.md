@@ -104,7 +104,9 @@ What no tool decides. Hold these by reading.
 
 - **What holds a clean turn, and what only reading holds.** `tools/clean_turn.py` refuses a
   packet with no matching fingerprint file, a question whose leak record or origin is of
-  another text, a leak record made over another graph than the packet's, a question, packet or
+  another text, a leak record made over another graph than the packet's, a question put on an
+  approval with no record of a reading of exactly its text that it does not lead, or with an
+  approval earlier than that reading, a question, packet or
   redraw signal holding a token that opens with `@`, a question opening with `/` or `!` or
   holding a packet's mark, a run whose `init` shows more than the stated residue, a run that
   made other than one model turn, an answer holding the account's email address, its local part
@@ -112,16 +114,59 @@ What no tool decides. Hold these by reading.
   directory that already holds draws or is claimed; `tools/packet.py` refuses a question of the
   graph the AI does not answer or that holds no answer past held, a graph on which the checks of
   whose an answer is fail, a gap in the line and a draw that does not match its record. The
-  records these checks read, the packet's fingerprint, the leak record, the approval and a
-  drawer's record, are plain files: each binds a check to an exact text and catches drift, and
+  records these checks read, the packet's fingerprint, the leak record, the record of the
+  reading, the approval and a drawer's record, are plain files: each binds a check to an exact text and catches drift, and
   none is a signature, so one written by hand with the right hash passes; what holds them is
   that only the tools write them, and the speaker writes an approval only at the principal's
-  word. What no tool holds: what a question presupposes, and a fact of the user's life said in
-  new words, are read; and the stated residue, the lines the harness adds to every run's system
+  word. What no tool holds: what a question presupposes, whether it leads the answerer, and a
+  fact of the user's life said in new words, are read; and the stated residue, the lines the harness adds to every run's system
   prompt and first message (a billing and an identity line, the account's email address, the
   run's directory and whether it is a repository, the platform, the shell, the OS version, the
   model's name and id, the knowledge cutoff and the date), is in every turn, since no documented
   way drops them without an API key.
+- **Whether a question leads is a reading.** No tool decides it, and no search for the user's
+  words stands in for it. The `question-reader` judges it by meaning, and its verdict is its
+  reading and no more: a question it reads as not leading may lead all the same, and one it
+  reads as leading may not. What the tools hold is only that a reading was made, once for one
+  text as the board and the records hold the readings, and that the review showing it names a
+  reading that says it does not lead. `tools/lead.py record` writes the record the clean turn
+  demands only for a `lead` job done by the coordinator over the question's exact bytes, a reply
+  of three lines whose verdict it takes, and a launch of the reader's kind that the hooks
+  recorded described by the job's id inside the job's time on the board, with the start and end
+  of the helper it ran before the job was marked done. The helper is the one the Agent call's
+  own return names, which the hooks record with the launch, so that a launch that never started,
+  or two made together, cannot hand one job's run to another; where the return names none, the
+  start the launch's row was given, or one a launch that never started took in its place, is
+  taken only where it is the one that fits and no other launch of the kind stood open beside it;
+  a launch that never started is closed once its job is marked failed through the board's gate.
+  That the hooks' `tool_response` is the Agent result that names the helper's id is untested in
+  a live sitting; where it is not, and a launch stands open beside the reader's, no record is
+  written, the question is not put, and a new `lead` job is added under a new id once the open
+  launch's job is failed. One text is read once only as far as the board holds its jobs: a
+  reading made by any other road leaves nothing to count. A reading is of the notebook as it
+  stood when it was made, and one carried over keeps its time and its job: nothing limits how
+  old a reading may be against a notebook that has grown since. A refused
+  record leaves the record that stood; a record that says the question leads is final for its
+  number. `tools/card.py check` refuses a review that shows a question for the AI's record
+  unless the record named on it is of that very question and says it does not lead; what holds
+  the speaker to naming it on such a card is this text, and so is the order: a card that names
+  no reading passes, and a question approved before it was read is put once a reading says it
+  does not lead. The records are plain files, and one
+  written by hand with the right hashes passes. The hooks' record says that a helper of that
+  kind ran for that job, and not what it read or handed back; nothing checks the coordinator's
+  copy of the reply against what the reader handed back. The reader holds the record, so its
+  reason could carry some of it to the speaker: the tool bounds the reason to one line of three
+  hundred characters, and that it neither quotes nor paraphrases the notebook, and proposes no
+  rewording, is held by its definition alone. Its read gate holds its `Read` to a question's
+  `question.md` in a line's directory, with no opinion there and never an allow, so it could open
+  another question of a line, which holds no answer. Whether a redraft made from the reason
+  carries the record in by another road is read by the next reading, and by nothing else; after
+  three drafts read as leading the question goes to the principal. A drawer's question is not
+  read, being the AI's own words. A question found to have led after it was answered cuts the
+  line there: `lead.py aside` sets it aside with every later question, whose packets carried its
+  answer, and the drawer turns that carried them; which later questions it influenced is not
+  read, all are set aside. An answer of them already placed stays on its tab until it is taken
+  off by hand.
 - **"None chosen" is per directory.** The tool keeps every draw it writes into one out directory
   and chooses none; a second `answer` of the same question into another directory, or a
   directory removed, is seen by no tool, and the answer of record is the first kept draw of the
