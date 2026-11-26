@@ -215,6 +215,21 @@ class CheckTest(Base):
         self.assertEqual(done.stdout.splitlines()[0], "ok: 6 line(s), 5 open or put")
         self.assertIn("WARN 2 anchor(s) on 2 open line(s)", done.stdout)
 
+    def test_the_cli_warns_of_live_anchored_lines_of_no_project(self):
+        self.given([rec("a", anchors=[anchor("canon", "b1", "h1")]),
+                    rec("b", anchors=[anchor("mornings", "b1", "h1")]),
+                    rec("c", anchors=[anchor("mornings", "b2", "h2")], project="north"),
+                    rec("x", project="north")])
+        done = run("lines.py", "check", self.d.root)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("WARN 2 live anchored line(s) are of no project: a, b; give each its "
+                      "project, or check with --graph", done.stdout)
+        done = run("lines.py", "check", self.d.root, "--graph", fixture("valid"))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        # canon is a tab of the graph: a is placed; mornings is not
+        self.assertIn("WARN 1 live anchored line(s) are of no project: b; no anchor's tab",
+                      done.stdout)
+
     def test_every_writing_mode_refuses_over_records_that_do_not_check(self):
         self.given([rec("a", parent="b")])
         done = run("lines.py", "close", self.d.root, "a", "--sentence", "Settled.",
@@ -642,6 +657,84 @@ class OrderTest(Base):
                          "no anchor the shares key; no anchored line in its project, "
                          "its project's root")
 
+    def test_an_anchored_line_shaped_as_the_skill_s_example_is_placed_by_its_tabs(self):
+        # anchored lines as the skill's example record has them: a tab, a
+        # block, its h and words, and no project
+        records = [rec("a", anchors=[anchor("evenings", "b12", "h12")]),
+                   rec("b", anchors=[anchor("mornings", "b3", "h3")]),
+                   rec("x", project="north")]
+        given = self.given(records)
+        r = given.records
+        shares = {"mornings": 0.5, "evenings": 0.1}
+        placed = lines.Roots({"north": 0.8}, of={"mornings": "north", "evenings": "north",
+                                                  "q-north": "north"})
+        t = lines.terms(given, r["x"], shares, placed)
+        self.assertAlmostEqual(t.share, 0.05)
+        self.assertEqual(t.provisional, "no anchor")
+        for lid in ("a", "b"):
+            self.assertLess(t.share, lines.terms(given, r[lid], shares, placed).share, lid)
+        self.assertEqual(lines.unplaced(given, placed), [])
+        # with no tab placed, as under shares alone, a and b are of no
+        # project: x takes its root's half, and the two are what check warns of
+        t = lines.terms(given, r["x"], shares, {"north": 0.8})
+        self.assertAlmostEqual(t.share, 0.4)
+        self.assertEqual(t.provisional, "no anchor; no anchored line in its project, "
+                                        "its project's root")
+        self.assertEqual(lines.unplaced(given, {"north": 0.8}), ["a", "b"])
+        self.assertEqual(lines.unplaced(given), ["a", "b"])
+
+    def test_a_project_named_by_its_root_s_id_is_the_project_its_name_names(self):
+        given = self.given([rec("a", anchors=[anchor("evenings", "b1", "h1")], project="q-north"),
+                            rec("x", project="north"), rec("y", project="q-north")])
+        r = given.records
+        shares = {"evenings": 0.1, "q-north": 0.8}
+        placed = lines.Roots({"north": 0.8}, of={"q-north": "north"})
+        self.assertEqual(lines.project_keys(r["a"], placed), {"north"})
+        for lid in ("x", "y"):
+            t = lines.terms(given, r[lid], shares, placed)
+            self.assertAlmostEqual(t.share, 0.05, lid)
+            self.assertEqual(t.provisional, "no anchor")
+        # with no root's id placed, the two spellings are two projects
+        t = lines.terms(given, r["x"], shares, {"north": 0.8})
+        self.assertAlmostEqual(t.share, 0.4)
+        self.assertAlmostEqual(lines.terms(given, r["y"], shares, {"north": 0.8}).share, 0.05)
+
+    def test_a_line_is_of_every_project_its_field_and_its_anchors_place_it_in(self):
+        placed = lines.Roots({"north": 1.0, "south": 0.5},
+                             of={"mornings": "north", "dusk": "south", "q-south": "south"})
+        r = rec("x", project="q-south", anchors=[anchor("mornings"), anchor("dusk"),
+                                                 anchor("elsewhere")])
+        self.assertEqual(lines.project_keys(r, placed), {"north", "south"})
+        self.assertEqual(lines.project_keys(rec("y", project="west"), placed), {"west"})
+        self.assertEqual(lines.project_keys(rec("z"), placed), {None})
+        # a notebook of one project places its tabs in none: one group
+        one = lines.Roots({}, of={"ti-esti": None, "mornings": None})
+        self.assertEqual(lines.project_keys(rec("n", project="ti-esti"), one), {None})
+        self.assertEqual(lines.project_keys(rec("m", anchors=[anchor("mornings")]), one),
+                         {None})
+        given = self.given([rec("n", project="ti-esti"),
+                            rec("m", anchors=[anchor("mornings", "b1", "h1")])])
+        t = lines.terms(given, given.records["n"], {"mornings": 0.3, "ti-esti": 1.0}, one)
+        self.assertAlmostEqual(t.share, 0.15)
+        self.assertEqual(lines.unplaced(given, one), [])
+
+    def test_a_put_line_and_the_session_s_work_count_as_anchored_lines(self):
+        shares = {"mornings": 0.5, "evenings": 0.1}
+        roots = {"north": 1.0}
+        given = self.given([rec("big", anchors=[anchor("mornings")], project="north"),
+                            rec("put", state="put", anchors=[anchor("evenings")],
+                                project="north"),
+                            rec("x", project="north")])
+        self.assertAlmostEqual(lines.terms(given, given.records["x"], shares, roots).share,
+                               0.05)
+        given = self.given([rec("big", anchors=[anchor("mornings")], project="north"),
+                            rec("s", kind="work", owed_by="session",
+                                anchors=[anchor("evenings")], project="north"),
+                            rec("x", project="north")])
+        self.assertEqual(given.problems, [])
+        self.assertAlmostEqual(lines.terms(given, given.records["x"], shares, roots).share,
+                               0.05)
+
     def test_anchors_the_shares_do_not_key_count_as_none(self):
         given = self.given([rec("x", anchors=[anchor("elsewhere", "b1")], project="north")])
         t = lines.terms(given, given.records["x"], {"evenings": 0.1}, {"north": 0.8})
@@ -1061,6 +1154,15 @@ class ChunkTest(Base):
         self.assertNotIn("proposed", writes[0]["data"])
 
     def test_a_baseline_taken_by_the_earlier_weight_is_begun_again(self):
+        # a baseline stored under the earlier provisional rule is stale too
+        self.assertNotEqual(lines.METHOD, "share*unblocks/cost")
+        old = standard()
+        old[5].update(review_count=2, review_weight=0.15, review_since=0,
+                      review_method="share*unblocks/cost")
+        shown, writes = lines.chunk(self.given(old), self.SHARES, 1, T, drop_after=1)
+        self.assertNotIn("proposed", writes[0]["data"])
+        self.assertTrue(shown[0]["rebased"])
+        self.assertEqual(writes[0]["data"]["review_method"], lines.METHOD)
         records = standard()
         # a baseline stored under the earlier formula, heavier than f weighs now
         records[5].update(review_count=2, review_weight=0.15, review_since=0, pressure=2)

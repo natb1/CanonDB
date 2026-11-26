@@ -49,8 +49,9 @@ read, and each stamping `touched_at` from the clock. Its fields, an invented exa
   the session's work.
 - `owed_by`, on a line of work: `user`, the principal's to do, as where unset, or `session`,
   owed by the sitting and not by the principal.
-- `project`, where set: the project the line belongs to, by its name or its root's id, read
-  where no anchor gives the line a share.
+- `project`, where set: the project the line belongs to, by its name or its root's id. It is
+  read on every line, anchored or not, to place the line in its project, and gives the line
+  its root's share where no anchor gives it one.
 - `pressure`, where set: a number kept from an earlier order, which weighs nothing now.
 - What the tool writes: `flags`, by kind, each `{at, …}`, the kinds `ground-moved`,
   `parent-withdrawn` and `touched`, each cleared alone; `gone` on an anchor read as withdrawn;
@@ -87,13 +88,16 @@ nothing else decides how a line closes (**Attenuation**).
 **The tool.** The speaker exports the collection with `ArtifactData`, a `list` of `lines` paged
 with `query.cursor` until it ends, `out_dir` set to `$SCRATCH/speaker/lines` itself, and writes
 the versions the reads returned to `$SCRATCH/speaker/lines-versions.json` as
-`{"lines/<id>": <version>}`; then `tools/lines.py check $SCRATCH/speaker/lines`, which holds
+`{"lines/<id>": <version>}`; then `tools/lines.py check $SCRATCH/speaker/lines --graph
+$SCRATCH/graph.json`, which holds
 every document to the fields above and the documents to each other: each parent, child,
 blocked line and line waited on (`waits_on`) exists, no chain of `blocks` and `waits_on` returns
 to where it began, a parent and its child agree on both sides, no line is its own ancestor,
 one line at most is put. It does not fail on what a mode mends: a rank two lines hold, which
 `order` mends, and a parent that is no line, which `orphans` flags; and it warns, refusing
-nothing, of anchors that name no block, which no move of the notebook can be judged against.
+nothing, of anchors that name no block, which no move of the notebook can be judged against,
+and of live anchored lines of no project: no `project`, and no anchor whose tab the graph
+places in a project (with no `--graph`, every live anchored line with no `project`).
 The lines opened before this tool carry such anchors, `{tab, words}`, the tab named in words:
 until each is given its tab's id, block and `h`, `moved` judges none of them, and says how many
 it could not judge. Whether the `list` with `out_dir` returns each document's version is to be
@@ -111,13 +115,22 @@ The order is the tool's, one weight over every open line, anchored or not: its s
 what it unblocks, divided by what it costs the principal. The share is the share of the root its
 anchored sentences carry, each anchor read by its tab and block where the shares give one, else
 by its tab, each once, summed, no tab for more than its own share. A line with no anchor the
-shares key takes half the least share held by any anchored open line of its `project` (a line
-naming no project being of those naming none), so that it sorts by share below every anchored
-line of its project, and is marked provisional. Where its project has no anchored open line,
-it takes half the share of its project's root instead, or of the whole root where it names no
-project the shares know. An anchored line whose share is zero counts as no anchored line: it
-takes the provisional share itself. Where no shares are given, every line weighs a share of one
-and is provisional. What it unblocks is one and the number of open lines
+shares key takes half the least share held by any anchored live line, open or put, the
+session's work among them, of its project, so that it sorts by share below every anchored line
+of its project, and is marked provisional. A line's project is one key: its `project` by name,
+or by its root's id where the graph places that id; and, on any line, the project the graph
+places each of its anchors' tabs in. A line of none of these is of the lines naming no project,
+which are one group. Under `--shares` alone no tab and no root's id is placed: a project is then
+its `project` as written, a project named by its name on one line and by its root's id on
+another is two projects, and an anchored line with no `project` is of the lines naming none,
+setting no share for an unanchored line of a named project; `check` warns of each such line.
+Where its project has no anchored live line, it takes half the share of its project's root
+instead, or of the whole root where it names no project the shares know. That fallback is a
+step: an unanchored line's share rises to half its root's when the last anchored line of its
+project leaves the live states, and the unanchored lines of a project with no anchored line can
+weigh above those of a project with one. An anchored line whose share is zero counts as no
+anchored line: it takes the provisional share itself. Where no shares are given, every line
+weighs a share of one and is provisional. What it unblocks is one and the number of open lines
 that wait on it directly: its children, the lines its `blocks` names, and those whose
 `waits_on` names it. What it costs is its `cost` where set; else 1 for a question or a review,
 and 3 for the principal's work. The session's work, `owed_by: "session"`, is weighed by the same

@@ -6,7 +6,8 @@ file per document (at ``<dir>/lines/<id>.json``, or ``<dir>/<id>.json``),
 with a versions file of ``{"lines/<id>": <version>}``, and runs a mode over
 the two:
 
-    check <dir>                                 every record against the schema and each other
+    check <dir> [--shares FILE | --graph FILE]  every record against the schema and each other,
+                                                and the anchored lines of no project
     queue <dir>                                 the queue as the stored ranks give it
     moved <dir> (--blocks FILE | --outlines DIR) [--whole] --at T
                                                 flag each line whose anchored block moved, and
@@ -101,7 +102,8 @@ def _parser() -> argparse.ArgumentParser:
                        help="shares.py's listing, or {tab or tab/block: share}")
         g.add_argument("--graph", metavar="FILE", help="a graph of every tab")
 
-    mode("check")
+    p = mode("check")
+    weighed(p)
     mode("queue")
     p = mode("override")
     weighed(p)
@@ -179,8 +181,10 @@ def _shares(args):
         if graph is None:
             raise lines.Refused(["the graph cannot be read"])
         carried = share.shares(graph)
-        roots = {name: carried.get(found[0], 0.0)
-                 for name, found in project.candidates(graph).items() if name and found}
+        roots = lines.Roots({name: carried.get(found[0], 0.0)
+                             for name, found in project.candidates(graph).items()
+                             if name and found},
+                            of={q.id: q.project or None for q in graph.questions})
         return carried, roots
     try:
         with open(args.shares, encoding="utf-8") as fh:
@@ -262,6 +266,14 @@ def main(argv=None) -> int:
                 print("ok: %d line(s), %d open or put" % (len(found.records), n))
             for warning in found.found.warnings:
                 print("WARN %s" % warning)
+            stray = lines.unplaced(found, _shares(args)[1])
+            if stray:
+                print("WARN %d live anchored line(s) are of no project: %s; give each its "
+                      "project, or check with --graph to take it from its anchors' tabs"
+                      % (len(stray), ", ".join(stray)) if not args.graph else
+                      "WARN %d live anchored line(s) are of no project: %s; no anchor's tab "
+                      "is in a project of the graph, give each its project"
+                      % (len(stray), ", ".join(stray)))
             return 1 if found.problems else 0
         out = _run(found, args)
     except lines.Refused as exc:
