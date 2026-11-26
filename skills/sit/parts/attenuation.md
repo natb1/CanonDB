@@ -185,8 +185,9 @@ What no tool decides. Hold these by reading.
 - **The line's rules are held by reading.** The order of requirement, line, comparison, build
   and check; the opening at the purpose; the back-brief; the cases held back; the budget; the
   build's brief citing the AI's answers and never the principal's requirement; the four signals
-  before a constraint binds; and the action context's being appended to and not changed within
-  a round: no tool checks any of them.
+  before a constraint binds; the reading of every kept draw for ideas new to the sitting, and
+  their return to the principal through the session and the page alone; and the action
+  context's being appended to and not changed within a round: no tool checks any of them.
 - **The brief is loaded by the harness and kept fresh by reading.** The hooks print what the last
   `install` wrote; that the speaker installs again when the line in hand changes or the notebook
   moves is read, and a move another session made is seen at the next fetch and not before, since

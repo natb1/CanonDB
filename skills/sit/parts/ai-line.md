@@ -201,3 +201,14 @@ or its question, and a question or an answer holding `<<<` or `>>>`, which no te
    unjustified hinge of the AI's graph with the builds that cite an answer resting on it: read
    for the fourth signal (rule 8), it is where a record that constrains a build unawares is
    looked for first.
+11. **New ideas in the draws come back to the principal.** Once a question's draws are kept,
+   the speaker, which ran the clean turns and holds the draws, reads every kept draw for ideas
+   new to the sitting: an idea that neither the user's record, the page, nor an open line
+   already holds. Each such idea is brought back into the speaking session in the same round:
+   named in the action context on the page as an idea from the AI's record, citing the draw's
+   answer by its opening words, and, where it is worth following, opened as an open line of
+   origin `ai` (**The open lines**), so that it is not lost. This return goes to the principal
+   through the session and the page alone; it goes to no later clean turn, drawer or packet,
+   so the line stays drawn from the AI's answers alone, and nothing of it changes which draw is
+   the answer of record, the first kept (rule 4). A round whose draws yielded no new idea says
+   so in the action context.

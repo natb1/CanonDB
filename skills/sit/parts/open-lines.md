@@ -40,7 +40,8 @@ read, and each stamping `touched_at` from the clock. Its fields, an invented exa
   line no longer open or put carries none, and a reopened one none until the next order.
 - `opened_at` and `touched_at`: ISO times, read from the clock.
 - `review_count`: how many times the weekly chunk has shown it to the principal.
-- `origin`: who opened it: `principal`, `speaker`, `ai` for a drawer turn, or a helper's kind.
+- `origin`: who opened it: `principal`, `speaker`, `ai` for a drawer turn or for an idea new to
+  the sitting in a kept draw (**The line in the AI's graph**, rule 11), or a helper's kind.
 - `pressure` and `blocks`, where set: a number weighing the line in the order, as pressure
   weighs a share, and the ids of the lines it holds up.
 - What the tool writes: `flags`, by kind, each `{at, …}`, the kinds `ground-moved`,

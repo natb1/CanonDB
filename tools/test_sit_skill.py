@@ -1079,7 +1079,15 @@ class LineTest(unittest.TestCase):
                 "says which apply: marked stale by a later note; a mechanism standing as a "
                 "principle",
                 "its price, the divergences recorded on it, beside the share it carries; and "
-                "unjustified, no edge to a principle nearer the root"):
+                "unjustified, no edge to a principle nearer the root",
+                # 11, new ideas in the draws
+                "reads every kept draw for ideas new to the sitting: an idea that neither the "
+                "user's record, the page, nor an open line already holds",
+                "named in the action context on the page as an idea from the AI's record, "
+                "citing the draw's answer by its opening words",
+                "it goes to no later clean turn, drawer or packet, so the line stays drawn from "
+                "the AI's answers alone",
+                "A round whose draws yielded no new idea says so in the action context."):
             self.assertIn(words, self.line)
 
     def test_the_action_context_is_appended_to_within_a_round(self):
