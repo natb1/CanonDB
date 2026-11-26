@@ -49,7 +49,13 @@ no manifest is a question not yet answered: allowed at the end of the line
 manifest that kept no draw or one a run claimed and never finished, since
 each would leave a gap. The numbers are ASCII digits from 1 with no leading
 zero and no hole, no question's directory a link; any other name of digits
-is refused. A drawer turn's directory, `drawn-<n>`, holds no answer and is
+is refused. A question whose directory holds `lead.json`, the record of the
+reading of whether it leads the answerer (`lead.py`), with any verdict but
+`does not lead`, is refused by number, as one that kept no draw is: a
+question found to have led is not carried, and is put again under a new
+number or dropped before the line goes on. A question with no such record,
+one a drawer turn raised or one put before the reading was recorded, is read
+as before. A drawer turn's directory, `drawn-<n>`, holds no answer and is
 not read.
 
 A packet written into a question's directory of the line, `DIR/<n>/`, or
@@ -93,6 +99,11 @@ TOOL = "packet.py"
 TRUSTED = ("only-ai-put", "state-order")
 #: a question's directory: a number in ASCII digits, from 1, no leading zero
 NUMBER = re.compile(r"[1-9][0-9]*")
+#: the record, in a question's directory, of the reading of whether the
+#: question leads the answerer (`lead.py`), and the one verdict that lets
+#: its draws be carried
+LEAD = "lead.json"
+CLEAR = "does not lead"
 
 
 class Refused(ValueError):
@@ -254,6 +265,13 @@ def line(directory: str, upto=None):
             qtext = raw_q.decode("utf-8")
         except UnicodeDecodeError as exc:
             raise Refused("the question of %s is not UTF-8" % where) from exc
+        if os.path.lexists(os.path.join(directory, n, LEAD)):
+            reading = _json(os.path.join(directory, n, LEAD), "the record of the reading of "
+                            + where)
+            if reading.get("verdict") != CLEAR:
+                raise Refused("%s was found to lead the answerer: its draws are not carried; "
+                              "put it again under a new number, or drop it, before the line "
+                              "goes on" % where)
         manifest = _json(manifest_path, "the manifest of " + where)
         if manifest.get("state") == "running":
             raise Refused("%s was claimed by a run that did not finish: put it again under a "

@@ -7,15 +7,18 @@ exits 2 where there is one; a likeness between an answer of Claude's and a
 masked node is listed and fails nothing, since it is agreement; a likeness
 between a section the user marked and a masked tab is listed for the user to
 consider, and ``copy`` waits for ``--considered``. ``question`` holds a
-question drafted for Claude to the same rule before it is put: it is public
-with everything in it; and to the notebook's rule for naming the user
-(``user-named``, the one ``check.py`` holds the notebook's own words to),
-saying what it found. With ``--record FILE`` a question that passes leaves
-the record ``clean_turn.py answer --leak`` takes, the SHA-256 of exactly the
-bytes checked and of the graph, and one that fails leaves none: a record
-already at FILE is removed before the check. The record binds the check to
-an exact text and graph and catches drift; it is a plain file, and one
-written by hand with the right hashes passes. ``copy`` writes the copy, ``graph.json`` and one page
+question drafted for Claude, before it is put, to what a script can decide
+of it: it spells no masked tab's address, and it keeps the notebook's rule
+for naming the user (``user-named``, the one ``check.py`` holds the
+notebook's own words to), saying what it found. It looks for no run of
+masked words: whether a question hands the answerer the user's record is a
+reading of its meaning, which the ``question-reader`` kind makes and
+``lead.py record`` records. With ``--record FILE`` a question that passes
+leaves the record ``clean_turn.py answer --leak`` takes, the SHA-256 of
+exactly the bytes checked and of the graph, and one that fails leaves none:
+a record already at FILE is removed before the check. The record binds the
+check to an exact text and graph and catches drift; it is a plain file, and
+one written by hand with the right hashes passes. ``copy`` writes the copy, ``graph.json`` and one page
 a node, and writes nothing where ``check`` would fail. Claude's graph is
 shown whole; of the user's, a node is shown only where its tab carries a
 note opening with the word public. ``mark`` prints the words of a mark over the sections named, as they read
@@ -59,7 +62,8 @@ def main(argv=None) -> int:
     p.add_argument("file", help="the drafted question, or - for stdin")
     p.add_argument("--record", metavar="FILE",
                    help="where the question passes, write here the record clean_turn.py "
-                        "takes as --leak: the SHA-256 of exactly the text checked")
+                        "takes as --leak: the SHA-256 of exactly the text checked and "
+                        "of the graph")
     p = sub.add_parser("mark")
     p.add_argument("graph")
     p.add_argument("question")
@@ -101,14 +105,16 @@ def main(argv=None) -> int:
         raw = (sys.stdin.buffer.read() if args.file == "-"
                else open(args.file, "rb").read())
         drafted = raw.decode("utf-8")
-        found = public.question(graph, drafted)
+        found = public.addresses(graph, drafted)
         _report(found, "")
         named = spec.not_the_user(drafted)
         if named:
             print("the question says %r where it means the user: the notebook's rule "
                   "(user-named) names the one it is kept for the user" % named)
         if not found and not named:
-            print("the question quotes nothing masked; what it presupposes is still to be read")
+            print("the question spells no masked tab's address and names the user as the "
+                  "notebook does; whether it leads the answerer, and what it presupposes, are "
+                  "still to be read")
             if args.record:
                 with open(args.graph, "rb") as fh:
                     graph_sha = hashlib.sha256(fh.read()).hexdigest()

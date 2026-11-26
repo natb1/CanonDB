@@ -56,20 +56,28 @@ whose run made other than one model turn is refused and not kept.
         JSON. Exit 0 only where nothing but the stated residue was there.
 
     clean_turn.py answer --packet FILE --question FILE --out DIR [--draws N]
-                         (--approval FILE | --drawn-from FILE) --leak FILE [--dry-run]
+                         (--approval FILE --lead FILE | --drawn-from FILE)
+                         --leak FILE [--dry-run]
         N independent draws (3 by default) of the answerer spec, each its own
         process in its own empty directory, over the packet and the question.
         Refuses a packet whose fingerprint file (FILE.fingerprint.json) does
-        not name `packet.py` or does not match it; a leak record not naming
-        `public.py question` with exit 0, or made over other bytes than the
-        question's, or over another graph than the packet's; and a question
-        whose origin is not shown: `--approval`, a JSON object holding
-        `sha256`, the SHA-256 of exactly this question, and `approved`, the
-        ISO time the principal approved it (other keys are let be), or
-        `--drawn-from`, a drawer
-        run's record in which this exact question stands as a line. These
-        records bind each check to an exact text and catch drift; they are
-        plain files, and one written by hand with the right hash passes.
+        not name `packet.py` or does not match it; a leak record, the record
+        of `public.py question`'s mechanical checks, not naming that tool
+        with exit 0, or made over other bytes than the question's, or over
+        another graph than the packet's; and a question whose origin is not
+        shown: `--approval`, a JSON object holding `sha256`, the SHA-256 of
+        exactly this question, and `approved`, the ISO time the principal
+        approved it (other keys are let be), or `--drawn-from`, a drawer
+        run's record in which this exact question stands as a line. A
+        question put on an approval is put only with `--lead`, the record
+        `lead.py record` writes of a reader's reading of it: one naming that
+        tool, made over exactly this question's bytes, with the verdict
+        `does not lead` and a `read` time no later than the approval's; a
+        record of another text, of the verdict `leads`, or read after the
+        approval is refused. These records bind each check to an exact text
+        and catch drift; they are plain files, and one written by hand with
+        the right hash passes. Whether the question leads is the reader's
+        reading, which no record holds.
         Writes `draw-<i>.json` for each draw (the answer verbatim, the tier,
         the harness's version, the run's session id and cost, the flags, the
         residue seen, and the SHA-256 of spec, packet and question) and
@@ -111,7 +119,8 @@ address could not be read; 10 a spec; 11 the out directory already holds
 draws, is claimed, or is a file; 12 a redraw signal that opens no one answer
 of the packet; 13 text the harness would read itself (an `@` token, a
 question opening with `/` or `!`; an answer holding an `@` token); 14 a
-question or an answer holding a packet's mark.
+question or an answer holding a packet's mark; 15 the record of the reading of
+whether the question leads.
 Where several draws are refused, the first refusal's code is the exit.
 
 Python's standard library only, and `packet.py` beside it for the marks.
@@ -161,12 +170,16 @@ RUNS = "/tmp"
 TIMEOUT = 900
 
 (DONE, USAGE, PACKET, LEAK, ORIGIN, UNCLEAN, EXPOSED, RUN, ACCOUNT, SPEC, OUT, SIGNAL,
- HARNESS, MARK) = (0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14)
+ HARNESS, MARK, LEAD) = (0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)
 
 #: what packet.py writes beside a packet, and the name it gives itself
 SIDECAR = packets.SIDECAR
 PACKET_TOOL = packets.TOOL
 LEAK_TOOL = "public.py question"
+#: the tool whose record says a reader read the question and found it does
+#: not lead, and the one verdict that lets it be put
+LEAD_TOOL = "lead.py record"
+CLEAR = "does not lead"
 #: the fixed first line of every prompt, so that no prompt opens with text
 #: of a question's or a packet's
 OPENING = ("This is one clean turn. Below are your own earlier answers, each under the "
@@ -331,6 +344,29 @@ def leak(path: str, qsha: str, graph_sha) -> str:
                             "check the question again over the packet's graph")
     with open(path, "rb") as fh:
         return sha256(fh.read())
+
+
+def lead(path: str, qsha: str) -> tuple:
+    """The record of a reader's reading of exactly this question, with the
+    verdict that it does not lead: its SHA-256 and the time it was read."""
+    got = _json(path, LEAD, "the record of the reading")
+    if got.get("tool") != LEAD_TOOL:
+        raise Refusal(LEAD, "the record of the reading is not one %s wrote" % LEAD_TOOL)
+    if got.get("sha256") != qsha:
+        raise Refusal(LEAD, "the question was read in another text: read it again before it "
+                            "is put")
+    if got.get("verdict") != CLEAR:
+        raise Refusal(LEAD, "the question was read as leading the answerer: it is drafted "
+                            "again and read again, and never put as it stands")
+    if not _time(got.get("read")):
+        raise Refusal(LEAD, "the record of the reading says not when it was read")
+    with open(path, "rb") as fh:
+        return sha256(fh.read()), got["read"]
+
+
+def _at(value: str) -> datetime.datetime:
+    when = datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return when if when.tzinfo else when.replace(tzinfo=datetime.timezone.utc)
 
 
 def _time(value) -> bool:
@@ -747,7 +783,18 @@ def answer(args, runner) -> int:
     qtext, qsha = question(args.question)
     placed(side, args.packet, args.question, args.out)
     leak_sha = leak(args.leak, qsha, side.get("graph_sha256"))
+    read = None
+    if args.approval and not args.lead:
+        raise Refusal(LEAD, "a question put on the principal's approval is put only with "
+                            "--lead, the record of a reader's reading that it does not lead")
+    if args.lead:
+        read = lead(args.lead, qsha)
     whence = origin(args.approval, args.drawn_from, qtext, qsha)
+    if read is not None:
+        whence["lead_sha256"], whence["read"] = read
+        if "approved" in whence and _at(whence["approved"]) < _at(whence["read"]):
+            raise Refusal(LEAD, "the approval is earlier than the reading: a question is "
+                                "read before it is shown, and shown again once read again")
     fresh(args.out)
     prompt = answer_prompt(ptext, qtext)
     if args.dry_run:
@@ -831,6 +878,8 @@ def main(argv=None, runner=subprocess.run) -> int:
     whence = p.add_mutually_exclusive_group(required=True)
     whence.add_argument("--approval")
     whence.add_argument("--drawn-from")
+    p.add_argument("--lead", help="the record lead.py record wrote of the reading of the "
+                                  "question; required with --approval")
     p.add_argument("--leak", required=True)
     p.add_argument("--dry-run", action="store_true")
     p = sub.add_parser("draw")

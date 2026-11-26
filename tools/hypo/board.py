@@ -64,7 +64,7 @@ BATCH_LIMIT = 50
 ID_LIMIT = 200
 
 KINDS = ("seal", "state", "grade", "remedy", "record", "check", "review", "fetch",
-         "turn", "compare", "line", "observe", "place", "probe")
+         "turn", "compare", "line", "observe", "place", "probe", "lead")
 TIERS = ("full", "mid", "small")
 FULL = "full"
 STATES = ("queued", "claimed", "done", "failed", "waiting")

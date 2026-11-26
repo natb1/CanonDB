@@ -52,7 +52,9 @@ the notebook to a job on the board. It runs confined, in a session started as th
 kind, or open, in an ordinary session that may also brief helpers for building.
 
 The sitting's work is done by helpers of fixed kinds, defined under `agents/`: `clean-reader`
-(seals the notebook's answer to a question before it is put), `grader`, `fetcher`, `recorder`
+(seals the notebook's answer to a question before it is put), `question-reader` (reads a
+question drafted for the AI's own record, by meaning, for whether it leads the answerer, before
+it is shown; `tools/lead.py` records the reading the clean turn demands), `grader`, `fetcher`, `recorder`
 (writes the notebook from rows files), `reviewer`, `checker`, `comparer` (holds both records and
 writes the user's side only), `ai-recorder` (writes the AI's own record only) and `coordinator`
 (runs the board), with `interviewer` the kind of the speaking session. The clean turns' system
@@ -60,7 +62,8 @@ prompts are under `clean/`, outside `agents/`, so that no session starts one as 
 `hooks/kinds.py`, hold each kind to its work and decide nothing for any other turn:
 `notebook-gate.py` refuses every helper but the recorder a write to the notebook, the comparer
 and the AI's recorder aside, each held to inserts on its own side of it,
-`reader-gate.py` confines the clean reader's reads to the sitting's questions, `kind-bash-gate.py`
+`reader-gate.py` confines the clean reader's reads to the sitting's questions and the question
+reader's to a line's question, `kind-bash-gate.py`
 confines each kind's shell to the tools its work needs, and `kind-write-gate.py` confines each
 kind's file writes to its own scratch. `tools/board.py` is the gate on the board of jobs, a
 writing mode printing a batch for the session to send, and `tools/views.py` lifts the whole-tab

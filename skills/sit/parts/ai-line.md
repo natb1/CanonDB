@@ -1,4 +1,4 @@
-Read this part before a question for the AI's own record is drafted or put, before a clean turn or a `turn`, `compare` or `place` job, before any build is briefed, and before a constraint is treated as binding.
+Read this part before a question for the AI's own record is drafted or put, before a clean turn or a `lead`, `turn`, `compare` or `place` job, before any build is briefed, and before a constraint is treated as binding.
 
 **5 — The AI's own turns.** A question for the AI's own record is a `turn` job, its `line` the
 question's directory (**The line in the AI's graph**). One drafted on the user's side is held at
@@ -56,8 +56,8 @@ path, one a line, which the speaker writes again, with `find $SCRATCH/lines/<lin
 since the helpers of those kinds cannot list a directory. A question's directory holds its
 packet, `tools/packet.py $SCRATCH/graph.json --under <id> --line $SCRATCH/lines/<line> -o
 $SCRATCH/lines/<line>/<n>/packet.md`, with the fingerprint the tool writes beside it; its words,
-`question.md`, written with the Write tool; its leak record and its origin; and its draws, in
-`draws/`. The packet holds the AI's answers of the tab `<id>` it stands under and above it, then
+`question.md`, written with the Write tool; its leak record, the record of its reading
+(rule 3) and its origin; and its draws, in `draws/`. The packet holds the AI's answers of the tab `<id>` it stands under and above it, then
 the line's own earlier questions and answers, in the order they were put, each answer under the
 question it was given to, marked `<<< question >>>` and `<<< answer >>>`: a question of how
 reaches the answer of why above it on the line, however many questions deep. Several draws are
@@ -93,31 +93,57 @@ or its question, and a question or an answer holding `<<<` or `>>>`, which no te
 3. **Two kinds of question.** A question drafted on the user's side, the opening question, a
    case's situation or a statement of the principal's position, is checked first, with
    `tools/public.py question $SCRATCH/graph.json $SCRATCH/lines/<line>/<n>/question.md --record
-   $SCRATCH/lines/<line>/<n>/leak.json`, which refuses a question that repeats masked words or
-   breaks the notebook's rule for naming the user, saying what it found; its presuppositions
-   are listed on the user's side, in the line doc and at the batch point on the tab it bears on.
-   Each such question is then its own action on the page, a `review` whose prompt is the
-   question word for word, for the principal to approve or revise; it is put to the AI only on
-   that approval. A revision is written over `question.md` and checked again before it is shown
-   again, and only the text the principal approved is put. On that approval the speaker writes
+   $SCRATCH/lines/<line>/<n>/leak.json`, which refuses a question that spells a masked tab's
+   address or breaks the notebook's rule for naming the user, saying what it found, and looks
+   for no run of the user's words; its presuppositions are listed on the user's side, in the
+   line doc and at the batch point on the tab it bears on. Then, before it is shown to the
+   principal, it is read for whether it leads the answerer, in a `lead` job (**Which kind runs
+   which job**) whose inputs are `notebook`, `question`, the path of `question.md`, and
+   `question_fingerprint`, its SHA-256 as it stands. The coordinator hands the path and the
+   notebook's address to a `question-reader`, which holds that file and the notebook and
+   nothing else and judges by meaning whether the question hands over an answer, a design or a
+   position of the user's record, so that the reply would echo that record instead of being the
+   AI's own. Stating a problem and the ends to be served is not leading; sharing words with the
+   record is not leading. It hands back a verdict, `leads` or `does not lead`, and one reason
+   that neither quotes nor paraphrases the notebook, and proposes no rewording. Once the job is
+   done and the board exported again, `tools/lead.py record --question
+   $SCRATCH/lines/<line>/<n>/question.md --board $SCRATCH/speaker/board --versions
+   $SCRATCH/speaker/versions.json --job <job id> -o $SCRATCH/lines/<line>/<n>/lead.json` writes
+   the record of the reading, which the clean turn demands. A question read as `leads` is never
+   shown: the speaker reads the reason, drafts the question again itself, and checks it and
+   reads it again in a new `lead` job. Only a question read as `does not lead` becomes its own
+   action on the page, a `review` whose prompt is the question word for word, for the principal
+   to approve or revise; it is put to the AI only on that approval. A revision is written over
+   `question.md`, checked and read again before it is shown again, and only the text the
+   principal approved is put. On that approval the speaker writes
    `$SCRATCH/lines/<line>/<n>/approval.json` with the Write tool, `{"sha256": <the fingerprint
    of the question file as approved>, "approved": <the time, from the clock>}`, and the clean
-   turn refuses any other text. A question the AI's own record raises comes verbatim from a
-   drawer turn, `tools/clean_turn.py draw --packet $SCRATCH/lines/<line>/drawn-<n>/packet.md
-   --out $SCRATCH/lines/<line>/drawn-<n>`, and needs no approval; it is still checked by
-   `public.py question`, and the clean turn refuses it unless it stands as a line of that
-   drawer's run. Case situations go to the AI's record as questions; verdicts and reasons stay
+   turn refuses any other text, a reading of any other text, a reading that it leads, and an
+   approval earlier than the reading. A question the AI's own record raises comes verbatim from
+   a drawer turn, `tools/clean_turn.py draw --packet $SCRATCH/lines/<line>/drawn-<n>/packet.md
+   --out $SCRATCH/lines/<line>/drawn-<n>`, and needs no approval and no reading, being the AI's
+   own words over a packet that held nothing of the user's; it is still checked by `public.py
+   question`, and the clean turn refuses it unless it stands as a line of that drawer's run. Case situations go to the AI's record as questions; verdicts and reasons stay
    on the user's side, with the comparing run. The clean turn refuses a question in which a
    token opens with `@`, which the harness would expand into a file of the machine, and one
    that opens with `/` or `!`; every prompt it sends opens with a line of its own.
 4. **Draws.** Each question is drawn several times, `tools/clean_turn.py answer --packet
    $SCRATCH/lines/<line>/<n>/packet.md --question $SCRATCH/lines/<line>/<n>/question.md --out
-   $SCRATCH/lines/<line>/<n>/draws --approval $SCRATCH/lines/<line>/<n>/approval.json --leak
-   $SCRATCH/lines/<line>/<n>/leak.json`, three by default, or with `--drawn-from` the drawer's
-   `draw-1.json` in place of `--approval`. All are kept, none is chosen by what it says, and
+   $SCRATCH/lines/<line>/<n>/draws --approval $SCRATCH/lines/<line>/<n>/approval.json --lead
+   $SCRATCH/lines/<line>/<n>/lead.json --leak $SCRATCH/lines/<line>/<n>/leak.json`, three by
+   default, or with `--drawn-from` the drawer's `draw-1.json` in place of `--approval` and
+   `--lead`. All are kept, none is chosen by what it says, and
    the first kept is the answer of record (above). Where they part in what they would do, that
    is the finding, and the question is drawn higher. A question whose draws were all refused is
    put again under a new number, or dropped, before the line goes on: the packet refuses a gap.
+   So is a question found later to have led all the same, on a later reading or at the
+   principal's word: the speaker records it with `tools/lead.py led --question
+   $SCRATCH/lines/<line>/<n>/question.md -o $SCRATCH/lines/<line>/<n>/lead.json`, its draws are
+   not carried, since the packet refuses a question whose record of its reading says anything
+   but `does not lead`, and it is put again under a new number or dropped. An answer of it
+   already placed in the AI's record stays on its tab, carried by the graph's part of every
+   packet, until it is taken off, which no tool here does: that is carried as an open note of
+   kind `change`.
    A draw whose answer holds a packet's mark or a token opening with `@` is refused and not
    kept, like one that gives the account away, since no later packet or turn could carry it; the
    next kept draw is then of record by the same rule. A packet cut into

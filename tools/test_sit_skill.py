@@ -1094,11 +1094,11 @@ class LineTest(unittest.TestCase):
                 "correcting the mechanism.",
                 "one of them is a case where the letter of the mechanism and its purpose part",
                 # 3, questions
-                "Each such question is then its own action on the page, a `review` whose "
-                "prompt is the question word for word, for the principal to approve or "
-                "revise; it is put to the AI only on that approval.",
-                "A revision is written over `question.md` and checked again before it is "
-                "shown again, and only the text the principal approved is put.",
+                "Only a question read as `does not lead` becomes its own action on the page, "
+                "a `review` whose prompt is the question word for word, for the principal to "
+                "approve or revise; it is put to the AI only on that approval.",
+                "A revision is written over `question.md`, checked and read again before it "
+                "is shown again, and only the text the principal approved is put.",
                 "`{\"sha256\": <the fingerprint of the question file as approved>, "
                 "\"approved\": <the time, from the clock>}`, and the clean turn refuses any "
                 "other text",
@@ -1296,7 +1296,99 @@ class LineTest(unittest.TestCase):
 
 class LineWalk(Walk):
     """The line's commands as the skill writes them: the packet, the leak
-    check and a clean turn, the turn dry-run."""
+    check, the reading of whether the question leads and a clean turn, the
+    turn dry-run."""
+
+    def read_as_clear(self, n_dir, approved=T):
+        """The record lead.py record writes of a reading that the question does
+        not lead, written as a plain file, as an approval is; the reading
+        made before the approval."""
+        with open(os.path.join(n_dir, "question.md"), "rb") as fh:
+            digest = hashlib.sha256(fh.read()).hexdigest()
+        with open(os.path.join(n_dir, "lead.json"), "w") as fh:
+            json.dump({"tool": "lead.py record", "sha256": digest, "verdict": "does not lead",
+                       "read": "2030-01-02T03:00:00Z"}, fh)
+
+    def test_a_question_is_read_before_it_is_shown_and_put_only_so(self):
+        """Rule 3 walked: the question checked, a `lead` job done by the
+        coordinator with the reader's reply, the hooks' record of its launch,
+        the skill's `lead.py record` line, the approval after it, the turn."""
+        from hypo import board as gate, brief, inhand
+        shutil.copy(os.path.join(TOOLS, "fixtures", "valid.json"),
+                    os.path.join(self.scratch, "graph.json"))
+        n = os.path.join(self.scratch, "lines", "l1", "1")
+        os.makedirs(n)
+        values = {"<line>": "l1", "<n>": "1", "<id>": "ti-esti"}
+        self.sh(line(SKILL, "packet.py"), values)
+        with open(os.path.join(n, "question.md"), "w", encoding="utf-8") as fh:
+            fh.write("What is the thing for, and what must it never do?\n")
+        self.sh(line(SKILL, "public.py", "question"), values)
+        with open(os.path.join(n, "question.md"), "rb") as fh:
+            digest = hashlib.sha256(fh.read()).hexdigest()
+        # the `lead` job as board.md's table gives its inputs, done by the coordinator
+        jid = "s2-b1-1-lead"
+        reply = os.path.join(self.scratch, "coordinator", "replies", jid)
+        os.makedirs(os.path.dirname(reply))
+        with open(reply, "w", encoding="utf-8") as fh:
+            fh.write("verdict: does not lead\nreason: It states the case and its ends.\n"
+                     "status: ok\n")
+        with open(reply, "rb") as fh:
+            fingerprint = hashlib.sha256(fh.read()).hexdigest()
+        here = gate.Board(None, {}, {}, [])
+        writes = gate.init(here, "doc:abc")
+        self.store.docs, self.store.versions = {}, {}
+
+        def apply(ws):
+            for w in ws:
+                key = "%s/%s" % (w["collection"], w["doc_id"])
+                self.store.docs[key] = w["data"]
+                self.store.versions[key] = self.store.versions.get(key, 0) + 1
+
+        def loaded():
+            self.export("speaker")
+            return gate.load(os.path.join(self.scratch, "speaker", "board"),
+                             os.path.join(self.scratch, "speaker", "versions.json"))
+        apply(writes)
+        apply(gate.add(loaded(), [{"id": jid, "sitting": "s2", "batch": "b1", "row": "1",
+                                   "kind": "lead", "tier": "full",
+                                   "inputs": {"notebook": "doc:abc",
+                                              "question": os.path.join(n, "question.md"),
+                                              "question_fingerprint": digest}}],
+                       "2020-01-02T03:00:00Z"))
+        apply(gate.claim(loaded(), jid, "coordinator", "2020-01-02T03:00:30Z"))
+        apply(gate.done(loaded(), jid, "coordinator",
+                        {"reply": reply, "fingerprint": fingerprint}, "2020-01-02T03:10:00Z"))
+        self.export("speaker")
+        # the hooks' record of the launch, under the session's id
+        os.makedirs(os.path.join(self.project, ".principal"))
+        with open(os.path.join(self.project, ".principal", "notebook.json"), "w") as fh:
+            json.dump({"notebook": "doc:abc"}, fh)
+        self.env["CLAUDE_CODE_SESSION_ID"] = "sess-1"
+        where = inhand.session_dir(brief.brief_dir(os.path.realpath(self.project), self.env),
+                                   "sess-1")
+        os.makedirs(where)
+        with open(os.path.join(where, "launches.json"), "w") as fh:
+            json.dump([{"id": "h1", "kind": "principal:question-reader", "description": jid,
+                        "at": "2020-01-02T03:01:00Z", "agent_id": "a1",
+                        "started": "2020-01-02T03:01:01Z", "ended": "2020-01-02T03:09:00Z"}],
+                      fh)
+        written = [w for w in lines(SKILL, "lead.py") if "--question" in w]
+        self.assertEqual([w.split()[1] for w in written], ["record", "led"])
+        self.sh(written[0], dict(values, **{"<job id>": jid}))
+        with open(os.path.join(n, "lead.json"), encoding="utf-8") as fh:
+            reading = json.load(fh)
+        self.assertEqual((reading["verdict"], reading["sha256"]), ("does not lead", digest))
+        # the approval comes after the reading; one before it is refused
+        with open(os.path.join(n, "approval.json"), "w") as fh:
+            json.dump({"sha256": digest, "approved": "2020-01-02T03:00:00Z"}, fh)
+        self.sh(line(SKILL, "clean_turn.py", "answer") + " --dry-run", values, code=15)
+        with open(os.path.join(n, "approval.json"), "w") as fh:
+            json.dump({"sha256": digest, "approved": reading["read"]}, fh)
+        done = self.sh(line(SKILL, "clean_turn.py", "answer") + " --dry-run", values)
+        self.assertIn("What is the thing for", done.stdout)
+        # found later to have led: the skill's `lead.py led` line, and the turn refuses it
+        self.sh(written[1], values)
+        self.sh(line(SKILL, "clean_turn.py", "answer") + " --dry-run", values, code=15)
 
     def test_a_question_from_packet_to_dry_run(self):
         shutil.copy(os.path.join(TOOLS, "fixtures", "valid.json"),
@@ -1313,6 +1405,7 @@ class LineWalk(Walk):
             digest = hashlib.sha256(fh.read()).hexdigest()
         with open(os.path.join(n, "approval.json"), "w") as fh:
             json.dump({"sha256": digest, "approved": T}, fh)
+        self.read_as_clear(n)
         done = self.sh(line(SKILL, "clean_turn.py", "answer") + " --dry-run", values)
         self.assertIn("--system-prompt-file", done.stdout)
         self.assertIn("What is the thing for", done.stdout)
@@ -1346,6 +1439,7 @@ class LineWalk(Walk):
                 digest = hashlib.sha256(fh.read()).hexdigest()
             with open(os.path.join(base, str(n), "approval.json"), "w") as fh:
                 json.dump({"sha256": digest, "approved": T}, fh)
+            self.read_as_clear(os.path.join(base, str(n)))
             return values
 
         values = put(1, "What is the morning for, and what must it never do?\n")
@@ -2394,6 +2488,67 @@ class SensitiveRuleTest(unittest.TestCase):
         self.has(self.skill("bootstrap"), "Before a merge, its own or the author's",
                  "the full tier's adversarial reviewer is briefed with this rule, never the "
                  "occasion, and reads for it too")
+
+
+class QuestionReadByMeaningTest(unittest.TestCase):
+    """Rule 3 of the line: a question drafted on the user's side is read by
+    meaning for whether it leads, before it is shown, and the word search is
+    gone from its path."""
+
+    @staticmethod
+    def part(name):
+        return flat(os.path.join(PARTS, name + ".md"))
+
+    def test_rule_3_orders_the_reading_before_the_showing(self):
+        text = self.part("ai-line")
+        rule = text[text.index("3. **Two kinds of question.**"):text.index("4. **Draws.**")]
+        for words in ("Then, before it is shown to the principal, it is read for whether it "
+                      "leads the answerer, in a `lead` job",
+                      "judges by meaning whether the question hands over an answer, a design or "
+                      "a position of the user's record, so that the reply would echo that "
+                      "record instead of being the AI's own",
+                      "Stating a problem and the ends to be served is not leading; sharing "
+                      "words with the record is not leading.",
+                      "neither quotes nor paraphrases the notebook, and proposes no rewording",
+                      "A question read as `leads` is never shown",
+                      "Only a question read as `does not lead` becomes its own action on the "
+                      "page",
+                      "A revision is written over `question.md`, checked and read again before "
+                      "it is shown again",
+                      "an approval earlier than the reading",
+                      "looks for no run of the user's words"):
+            self.assertIn(words, rule)
+        self.assertNotIn("repeats masked words", rule)
+        self.assertLess(rule.index("before it is shown to the principal"),
+                        rule.index("becomes its own action on the page"))
+
+    def test_rule_4_backs_a_question_out_that_led_all_the_same(self):
+        text = self.part("ai-line")
+        rule = text[text.index("4. **Draws.**"):text.index("5. **On a divergence.**")]
+        self.assertIn("--lead $SCRATCH/lines/<line>/<n>/lead.json", rule)
+        self.assertIn("So is a question found later to have led all the same", rule)
+        self.assertIn("its draws are not carried", rule)
+        self.assertIn("it is put again under a new number or dropped", rule)
+        self.assertIn("carried as an open note of kind `change`", rule)
+
+    def test_the_board_s_table_and_the_coordinator_s_mapping_name_the_lead_job(self):
+        self.assertIn("| `lead` | `full` | `question-reader` | `notebook`, `question`: the "
+                      "question's file, `$SCRATCH/lines/<line>/<n>/question.md`, "
+                      "`question_fingerprint`: its SHA-256 | `reply`: the verdict and the "
+                      "reason, `fingerprint` |", self.part("board"))
+        self.assertIn("| `lead` | question-reader | `full` |", flat(COORDINATOR))
+        from hypo import board
+        self.assertIn("lead", board.KINDS)
+
+    def test_attenuation_says_the_verdict_is_a_reading(self):
+        text = self.part("attenuation")
+        for words in ("**Whether a question leads is a reading.** No tool decides it",
+                      "its verdict is its reading and no more",
+                      "What the tools hold is only that a reading was made.",
+                      "is held by its definition alone",
+                      "is untested in a live sitting",
+                      "whether it leads the answerer"):
+            self.assertIn(words, text)
 
 
 if __name__ == "__main__":

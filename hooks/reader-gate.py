@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The clean reader's read gate: the question it was handed, and nothing else.
+"""The readers' read gate: the question each was handed, and nothing else.
 
 A PreToolUse hook on Read, installed by the plugin and so fired on every
 Read of every turn in a project that has the plugin. It decides nothing for
@@ -29,11 +29,23 @@ question of the same sitting; a question holds no answer, and that is the
 residue. A sitting's scratch therefore has no directory of those five names
 on its own path, as the sitting's entry point says.
 
-Which turn is the clean reader: `kinds.py`, which every gate of this plugin
-shares. By this plugin's name in front of it always; by its bare name in a
+The question reader, which reads a question drafted for the AI's own record
+for whether it leads the answerer, is held the same way to one shape of
+file: a question's `question.md` in a line's directory of the sitting's
+scratch, `<scratch root>/…/lines/<line>/<n>/question.md`, `<n>` a number in
+ASCII digits from 1, below a scratch root the gates recognise, with no
+directory of the sitting's names (`kinds.py`) between the root and it, held
+as `kinds.py` holds a path. Such a file gets no opinion, never an allow, so
+that the harness's own permissions still decide it; every other read of the
+question reader is refused, the line's packet, draws and records among them.
+It could open another question of a line, which holds no answer.
+
+Which turn is the clean reader or the question reader: `kinds.py`, which
+every gate of this plugin shares. By this plugin's name in front of it always; by its bare name in a
 project whose own definition is byte for byte the plugin's, or that names a
 notebook (a differing copy there is confined all the same); and where
-the plugin's manifest cannot be read, by any name ending `:clean-reader`.
+the plugin's manifest cannot be read, by any name ending `:clean-reader` (or
+`:question-reader`).
 
 A guarded turn fails closed: a call the gate cannot make sense of is
 refused, input that does not parse among them where it names the clean
@@ -73,8 +85,14 @@ except BaseException:  # no rule is no decision: the call is blocked
                      "call until the plugin is whole again.\n")
     sys.exit(2)
 
-#: the agent this gate guards
+#: the agents this gate guards
 AGENT = "clean-reader"
+QUESTION_READER = "question-reader"
+GUARDED = (AGENT, QUESTION_READER)
+#: a question's directory of a line: a number in ASCII digits, from 1
+NUMBER = re.compile(r"[1-9][0-9]*")
+LINES = "lines"
+QUESTION_FILE = "question.md"
 
 #: the directory a question stands in, and those no path may pass through
 QUESTIONS = "questions"
@@ -82,12 +100,39 @@ FORBIDDEN = ("answers", "replies", "results", "sealed", "rows", "check", "coordi
 
 REFUSED = ("a clean reader reads the question file it was handed, in the "
            "sitting's questions directory, and the notebook, and nothing else")
+REFUSED_QUESTION = ("a question reader reads the question file it was handed, a question's "
+                    "question.md in a line's directory of the sitting's scratch, and the "
+                    "notebook, and nothing else")
 
 
 def guarded(call: dict, env, plugin: str, own: str = AGENTS) -> bool:
     """Whether the turn making the call is the clean reader's."""
     return KINDS.kind_of(call.get("agent_type"), (AGENT,), plugin, call.get("cwd"),
                          env, own) == AGENT
+
+
+def question_reader(call: dict, env, plugin: str, own: str = AGENTS) -> bool:
+    """Whether the turn making the call is the question reader's."""
+    return KINDS.kind_of(call.get("agent_type"), (QUESTION_READER,), plugin, call.get("cwd"),
+                         env, own) == QUESTION_READER
+
+
+def is_line_question(path: str, cwd, env) -> bool:
+    """Whether a path is a question's file of a line, `…/lines/<line>/<n>/question.md`
+    below a recognised scratch root, through no directory of the sitting's
+    names, held outside the project, the plugin's root and `~/.claude`."""
+    if isinstance(cwd, str) and cwd and not os.path.isabs(path):
+        path = os.path.join(cwd, path)
+    where = KINDS.held(path, cwd, env)
+    if not where:
+        return False
+    parts = KINDS.below_scratch(where, env)
+    if not parts or len(parts) < 4:
+        return False
+    lines, line, number, name = parts[-4:]
+    if lines != LINES or not line or not NUMBER.fullmatch(number) or name != QUESTION_FILE:
+        return False
+    return not any(p in KINDS.SITTING or p in FORBIDDEN for p in parts[:-4])
 
 
 def is_question(path: str, cwd, env) -> str:
@@ -122,11 +167,19 @@ def decide(call, env=None, plugin=None, own: str = AGENTS) -> dict:
         return {}
     env = os.environ if env is None else env
     plugin = KINDS.plugin_name() if plugin is None else plugin
-    if not guarded(call, env, plugin, own):
-        return {}
     tool = call.get("tool_name", "")
     tool_input = call.get("tool_input")
     path = tool_input.get("file_path", "") if isinstance(tool_input, dict) else ""
+    if question_reader(call, env, plugin, own):
+        try:
+            admitted = tool == "Read" and isinstance(path, str) and bool(path) \
+                and is_line_question(path, call.get("cwd"), env)
+        except (TypeError, ValueError, OSError):
+            admitted = False
+        # admitted is no opinion, never an allow: the harness's permissions decide it
+        return {} if admitted else _answer("deny", REFUSED_QUESTION)
+    if not guarded(call, env, plugin, own):
+        return {}
     try:
         admitted = tool == "Read" and isinstance(path, str) and bool(path) \
             and is_question(path, call.get("cwd"), env)
@@ -144,13 +197,13 @@ NAMED = re.compile(rb'"agent_type"\s*:\s*"((?:[^"\\]|\\.)*)"')
 
 
 def unparsed(raw: bytes) -> dict:
-    """Input that does not parse: refused where it names the clean reader by
+    """Input that does not parse: refused where it names either reader by
     any name, no opinion otherwise."""
     found = NAMED.search(raw)
     if not found:
         return {}
     agent = KINDS.spelled(found.group(1))
-    return _answer("deny", REFUSED) if KINDS.named_any(agent, (AGENT,)) else {}
+    return _answer("deny", REFUSED) if KINDS.named_any(agent, GUARDED) else {}
 
 
 def main() -> int:
@@ -169,7 +222,7 @@ def main() -> int:
     except Exception:  # pragma: no cover - a guarded turn fails closed
         agent = call.get("agent_type") if isinstance(call, dict) else None
         decision = _answer("deny", REFUSED) \
-            if isinstance(agent, str) and KINDS.named_any(agent, (AGENT,)) else {}
+            if isinstance(agent, str) and KINDS.named_any(agent, GUARDED) else {}
     print(json.dumps(decision))
     return 0
 

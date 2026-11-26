@@ -266,8 +266,8 @@ class CommandTest(unittest.TestCase):
 
 
 class QuestionCommandTest(unittest.TestCase):
-    """`public.py question`: the leak check and the notebook's rule for
-    naming the user, and the record a pass leaves."""
+    """`public.py question`: a masked tab's address and the notebook's rule
+    for naming the user, and the record a pass leaves."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -302,6 +302,28 @@ class QuestionCommandTest(unittest.TestCase):
         done = self.check("See https://example.invalid/doc#%s.block for what is meant.\n" % tab)
         self.assertEqual(done.returncode, 2)
         self.assertFalse(os.path.exists(self.record))
+
+    def test_a_run_of_masked_words_is_no_longer_what_refuses_a_question(self):
+        # whether a question hands over the user's record is read by meaning
+        # (the question-reader, lead.py); the mechanical check looks for no run
+        graph = load("valid")
+        words = None
+        for q in graph.questions:
+            for part in public.masked(q):
+                run = public._words(part)
+                if len(run) >= 8 and not q.claude:
+                    words = " ".join(run[:8])
+                    break
+            if words:
+                break
+        self.assertIsNotNone(words)
+        drafted = "Is it so that %s?\n" % words
+        self.assertTrue(public.question(graph, drafted), "a run the outgoing check still sees")
+        self.assertEqual(public.addresses(graph, drafted), [])
+        done = self.check(drafted)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertTrue(os.path.exists(self.record))
+        self.assertIn("whether it leads the answerer", done.stdout)
 
     def test_a_question_that_names_the_user_otherwise_is_refused(self):
         # the rule check.py holds the notebook's own words to, `user-named`

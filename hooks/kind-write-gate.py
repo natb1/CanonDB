@@ -77,7 +77,7 @@ COORDINATOR = "coordinator"
 SPEAKER = "interviewer"
 #: every kind this plugin defines
 GUARDED_KINDS = ("ai-recorder", "checker", "clean-reader", "comparer", "coordinator",
-                 "fetcher", "grader", "interviewer", "recorder", "reviewer")
+                 "fetcher", "grader", "interviewer", "question-reader", "recorder", "reviewer")
 #: the tools that write a file
 WRITERS = ("Write", "Edit", "MultiEdit", "NotebookEdit")
 
