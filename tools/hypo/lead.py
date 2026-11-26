@@ -35,8 +35,9 @@ demands only where:
 - the clock reads no earlier than the job's mark of done;
 - and the text may be read (``may_read``): it was not read already, by a
   record beside it, by a record set aside on the line, or by another
-  ``lead`` job the board holds of it (one failed, or done and clear, does
-  not bar); its number holds no record that says it leads; and fewer than
+  ``lead`` job the board holds of it (one done and clear does not bar, nor
+  one that failed with no reply written; one that failed after its reply
+  was written bars by that reply); its number holds no record that says it leads; and fewer than
   ``DRAFTS`` other texts of its number were read as leading or are not known
   clear, counted from the records set aside and from the board.
 
@@ -52,7 +53,8 @@ every drawer turn whose packet carried any of them under the line's
 ``held/<k>/``, nothing renumbered and nothing removed. ``carry`` copies to a
 text put again on the line the record, set aside, of a reading of exactly
 that text that said it does not lead, so that a question set aside only for
-standing after a led one is not read twice. ``packet.py`` refuses to carry a
+standing after a led one is not read twice; it refuses a text any record of
+which set aside on the line says it leads. ``packet.py`` refuses to carry a
 question whose record says anything but ``does not lead``, or whose manifest
 says it was put on a reading whose record is gone.
 
@@ -321,6 +323,29 @@ def _verdict_of(j: dict) -> Optional[str]:
         return None
 
 
+def _failed_verdict(jid: str, question) -> Optional[str]:
+    """The verdict of a reply the coordinator wrote for a job that then
+    failed, at ``$SCRATCH/coordinator/replies/<job id>``, ``$SCRATCH`` the
+    directory the question's ``lines/`` stands in; None where there is none,
+    and a reply that is not the three lines counts as leading."""
+    if not isinstance(question, str):
+        return None
+    parts = os.path.normpath(os.path.abspath(question)).split(os.sep)
+    if "lines" not in parts:
+        return None
+    scratch = os.sep.join(parts[:len(parts) - 1 - parts[::-1].index("lines")])
+    path = os.path.join(scratch or os.sep, "coordinator", "replies", jid)
+    try:
+        with open(path, "rb") as fh:
+            body = fh.read()
+    except OSError:
+        return None
+    try:
+        return reply(body.decode("utf-8"))[0]
+    except (UnicodeDecodeError, Refused):
+        return LEADS
+
+
 def _same(a, b) -> bool:
     return isinstance(a, str) and isinstance(b, str) and \
         os.path.normpath(os.path.abspath(a)) == os.path.normpath(os.path.abspath(b))
@@ -330,8 +355,9 @@ def board_readings(export: Optional[board.Board], question: str, qsha: str,
                    but: Optional[str] = None) -> Tuple[List[str], set]:
     """The readings the board holds of this text and of this question: the
     ids of the ``lead`` jobs of this very text that bar another (one queued,
-    claimed, waiting, or done with any verdict but ``does not lead``; a
-    failed job read nothing, and a clear one that was not recorded gains a
+    claimed, waiting, or done with any verdict but ``does not lead``, or failed
+    after the coordinator wrote a reply that says anything else; a failed job
+    with no reply read nothing, and a clear one that was not recorded gains a
     speaker nothing by being read again), and the fingerprints of the other
     texts of this question's number not known to be clear, each a draft that
     counts toward the bound. ``but`` is the job being recorded."""
@@ -344,9 +370,14 @@ def board_readings(export: Optional[board.Board], question: str, qsha: str,
         inputs = j.get("inputs") or {}
         state = j.get("state")
         if state == board.FAILED:
-            continue
-        verdict = _verdict_of(j) if state == board.DONE else None
-        known_clear = state == board.DONE and verdict == CLEAR
+            # a job that failed after its reply was written read the text all the same
+            verdict = _failed_verdict(jid, inputs.get("question"))
+            if verdict is None:
+                continue
+            known_clear = verdict == CLEAR
+        else:
+            verdict = _verdict_of(j) if state == board.DONE else None
+            known_clear = state == board.DONE and verdict == CLEAR
         if inputs.get("question_fingerprint") == qsha:
             if not known_clear:
                 barring.append(jid)
@@ -360,14 +391,20 @@ def carried(question: str, qsha: str) -> Optional[str]:
     that said it does not lead, which is carried over to the text put again;
     None where there is none."""
     line_dir, _n = place(question)
+    found = None
     for where in held_sets(line_dir):
         for name in sorted(os.listdir(where)):
             path = os.path.join(where, name, LEAD)
             got = _load(path)
-            if got and got.get("tool") == RECORD_TOOL and got.get("sha256") == qsha \
-                    and got.get("verdict") == CLEAR:
-                return path
-    return None
+            if not got or got.get("sha256") != qsha:
+                continue
+            if got.get("verdict") != CLEAR:
+                # a record of this text that says it leads, by a reading or at the
+                # principal's word, bars every carrying of it
+                return None
+            if got.get("tool") == RECORD_TOOL and found is None:
+                found = path
+    return found
 
 
 def may_read(question: str, qsha: str, export: Optional[board.Board] = None,

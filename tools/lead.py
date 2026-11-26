@@ -6,8 +6,10 @@
         tier full, its inputs the notebook's address, the question's path
         and the SHA-256 of the question as it stands. Refused for a text
         already read: by a record beside it, by a record set aside that says
-        it leads, or by a `lead` job of it on the board (one failed, or done
-        with a reply that says `does not lead`, does not bar); for a text
+        it leads, or by a `lead` job of it on the board (one done with a
+        reply that says `does not lead` does not bar, nor one that failed
+        before the coordinator wrote its reply; one that failed after bars
+        by what `coordinator/replies/<job id>` says); for a text
         set aside as not leading, whose reading is carried over by `carry`;
         for a question whose record says it leads (final for that number:
         set it aside first); and once three other texts of the question's
@@ -49,7 +51,8 @@
         Copy to FILE the record, set aside on the line, of a reading of
         exactly this text that said it does not lead, with `carried_from`
         naming it: a question set aside only because it stood after a led
-        one is put again in its own words without a second reading.
+        one is put again in its own words without a second reading. Refused
+        where any record of the text set aside on the line says it leads.
 
     aside --line DIR --from N
         Set aside question N, recorded as leading, with every later question

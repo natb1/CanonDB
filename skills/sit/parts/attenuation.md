@@ -143,7 +143,9 @@ What no tool decides. Hold these by reading.
   a live sitting; where it is not, and a launch stands open beside the reader's, no record is
   written, the question is not put, and a new `lead` job is added under a new id once the open
   launch's job is failed. One text is read once only as far as the board holds its jobs: a
-  reading made by any other road leaves nothing to count. A refused
+  reading made by any other road leaves nothing to count. A reading is of the notebook as it
+  stood when it was made, and one carried over keeps its time and its job: nothing limits how
+  old a reading may be against a notebook that has grown since. A refused
   record leaves the record that stood; a record that says the question leads is final for its
   number. `tools/card.py check` refuses a review that shows a question for the AI's record
   unless the record named on it is of that very question and says it does not lead; what holds

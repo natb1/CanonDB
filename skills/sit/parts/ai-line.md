@@ -106,8 +106,9 @@ or its question, and a question or an answer holding `<<<` or `>>>`, which no te
    $SCRATCH/speaker/jobs.json`, over a fresh export, prints the jobs file the board's `add`
    takes (**How jobs reach the board**), and refuses a text already read, since one text is read
    once: by its record, by a record set aside that says it leads, or by a `lead` job of it the
-   board holds, whatever was recorded of it (one failed, or done with a reply that says `does
-   not lead`, does not bar). The coordinator hands the path and the
+   board holds, whatever was recorded of it (one done with a reply that says `does not lead`
+   does not bar, nor one that failed before the coordinator wrote its reply; one that failed
+   after does, by what the reply says). The coordinator hands the path and the
    notebook's address to a `question-reader`, which holds that file and the notebook and
    nothing else and judges by meaning whether the question hands over an answer, a design or a
    position of the user's record, so that the reply would echo that record instead of being the
@@ -170,7 +171,7 @@ or its question, and a question or an answer holding `<<<` or `>>>`, which no te
    the led one, whose own reading said `does not lead`, may be put again in its own words under
    its new number: `tools/lead.py carry --question $SCRATCH/lines/<line>/<n>/question.md -o
    $SCRATCH/lines/<line>/<n>/lead.json` carries its earlier reading over, the same text being
-   read once; the packet, `hinges.py` and the index read the
+   read once, and refuses a text that any record set aside on the line says leads; the packet, `hinges.py` and the index read the
    line without what was set aside, and without a gap. A question read as `leads` before it was
    shown is set aside the same way, alone. An answer already placed in the AI's record from a
    question set aside stays on its tab, carried by the graph's part of every packet, until it is
