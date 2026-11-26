@@ -1103,7 +1103,52 @@ class LineTest(unittest.TestCase):
                 "says which apply: marked stale by a later note; a mechanism standing as a "
                 "principle",
                 "its price, the divergences recorded on it, beside the share it carries; and "
-                "unjustified, no edge to a principle nearer the root"):
+                "unjustified, no edge to a principle nearer the root",
+                # 11, new ideas in the draws
+                "reads every kept draw for ideas new to the sitting: every kept draw of a "
+                "question, a drawer turn's draw and the back-brief",
+                "An idea is new where neither the user's record, the page, a document of "
+                "`lines` whatever its state, nor the AI's own record as the packet carried it "
+                "already holds it, and it was not already returned in this sitting",
+                "what counts as one idea, and whether it is new, is the speaker's reading",
+                "a `review`, put with no recommendation, since it states no position of the "
+                "notebook's",
+                "In a drawer turn's draw, the questions it raises go on by rule 3 and are not "
+                "`ai-draw` lines; anything else it says is read as any draw is.",
+                "an `ai-draw` line is not put as the next action while its naming is held",
+                "A build's brief cites the answers of record as rule 1 gives.",
+                "Each such idea opens an open line of origin `ai-draw` (**The open lines**) in "
+                "the same round",
+                "The speaker makes no judgment of which are worth following, and the principal "
+                "drops what is not wanted",
+                "citing the line, the question's number, or the drawer turn or the back-brief, "
+                "and the draw's index, and saying whether that draw is the answer of record",
+                "Where a context already stands for the round, the naming is a record in "
+                "`context.log`.",
+                "While a question or review of principle is put on the page, or another action "
+                "is the next to be put and the idea bears on it, the naming is held and given "
+                "after its answer",
+                "A held naming, and an owed statement that no new idea was found, are kept in "
+                "the work in hand, `tools/inhand.py add $SCRATCH/speaker",
+                "For each question, drawer turn or back-brief read, the action context says "
+                "that its draws yielded no new idea where they yielded none.",
+                "Until the principal has answered the idea's line, the speaker carries no idea "
+                "of a draw not of record anywhere, a build's brief among them, and no idea of "
+                "any draw in its own drafting of a question or a redraw signal",
+                "What `tools/packet.py` carries of the answer of record, and a question a "
+                "drawer turn raised, go on as rules 3 and 4 give.",
+                "An idea dropped, or closed without being taken up, stays out of the speaker's "
+                "drafting of a question or a redraw signal, and, where it comes from a draw not "
+                "of record, out of a build's brief, for good, unless the principal states it; a "
+                "brief that cites an answer of record holding it cites it as rule 1 gives.",
+                "it goes on the tab the idea bears on, and where it bears on none, at the end of "
+                "the `dictate` tab's Hinge section, or of its last section where it has none",
+                "A line of origin `ai-draw` is never queued to a clean turn unasked.",
+                "it enters the AI's record only by rules 1, 3 and 5, in an approved question",
+                "the note says it is an idea from the AI's draws and not a position of the "
+                "user's",
+                "Nothing of this changes which draw is the answer of record, the first kept "
+                "(rule 4)."):
             self.assertIn(words, self.line)
 
     def test_the_action_context_is_appended_to_within_a_round(self):
@@ -1160,6 +1205,9 @@ class LineTest(unittest.TestCase):
                       "doc, not only as a note in the notebook.",
                       "An item of the line doc's *Opened* section and an open note on a tab each "
                       "name the line's id and point to it",
+                      "`ai` for a drawer turn, `ai-draw` for an idea new to the sitting in a kept "
+                      "draw (**The line in the AI's graph**, rule 11), which is never queued to a "
+                      "clean turn unasked",
                       "`ordo/current.queue` is a projection of the open documents of `lines`, in "
                       "the order of their `rank`, for the page to draw",
                       "the page reads `ordo` alone, and never `lines`",
@@ -1206,7 +1254,15 @@ class LineTest(unittest.TestCase):
                       "its definition alone keeps it off a tab that holds an answer of the AI's.",
                       "**The open lines are held by reading.**",
                       "**The sides of the notebook are held by node, not by block.**",
-                      "**The line's rules are held by reading.**"):
+                      "**The line's rules are held by reading.**",
+                      "the reading of every kept draw for ideas new to the sitting, and their "
+                      "return to the principal through the session and the page alone",
+                      "**An idea from a draw is kept out of the line by reading.**",
+                      "nor for good once it is dropped unless the principal states it, or that "
+                      "a line of origin `ai-draw` is never queued to a clean turn unasked. What "
+                      "counts as one idea, and whether it is new, is the speaker's reading.",
+                      "The principal's approval of a question does not show where a phrase of it "
+                      "came from"):
             self.assertIn(words, self.skill)
 
 

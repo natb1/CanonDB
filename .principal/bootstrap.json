@@ -526,8 +526,8 @@
         "skills/sit/parts/departures.md",
         "tools/test_sit_skill.py"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3209",
-      "rounds": 1
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3222",
+      "rounds": 2
     },
     {
       "question": "hypomnemata",
@@ -785,6 +785,20 @@
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3220",
       "rounds": 3
+    },
+    {
+      "question": "hypomnemata",
+      "application": "the weight of the open lines",
+      "files": [
+        "tools/lines.py",
+        "tools/hypo/lines.py",
+        "tools/test_lines.py",
+        "skills/sit/parts/open-lines.md",
+        "README.md",
+        ".principal/bootstrap.json"
+      ],
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3219",
+      "rounds": 1
     }
   ]
 }

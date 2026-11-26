@@ -7,7 +7,9 @@ collection `lines`, beside `ordo`, and nothing waits anywhere else: not in the s
 not only in the line doc, not only as a note in the notebook. An item of the line doc's *Opened*
 section and an open note on a tab each name the line's id and point to it; neither is where the
 line waits. `ordo/current.queue` is a projection of the open documents of `lines`, in the order of
-their `rank`, for the page to draw, and `ordo/current.next` is the one now put; the page reads
+their `rank`, for the page to draw: the queue the tool's `order` writes, the open asks and never
+the session's own work, which is ranked after them and never put; and `ordo/current.next` is
+the one now put; the page reads
 `ordo` alone, and never `lines`. The speaker starts every sitting, and resumes after its context
 is compacted, by reading `ordo/current` and the open documents of `lines` with `ArtifactData`,
 and trusts them over anything it remembers: where they differ, the store stands, and the
@@ -36,19 +38,31 @@ read, and each stamping `touched_at` from the clock. Its fields, an invented exa
 - `parent` and `children`: line ids.
 - `answered_by`: what closed it: the answer's file and round, or the line a merged one is
   carried on by; a close by the principal's later sentence keeps the sentence in `closed_by`.
-- `rank`: its place in the order; the queue is the open documents by `rank`, lowest first. A
-  line no longer open or put carries none, and a reopened one none until the next order.
+- `rank`: its place in the order; the queue is the open asks by `rank`, lowest first, the
+  session's work ranked after them and never in it. A line no longer open or put carries none, and a reopened one none until the next order.
 - `opened_at` and `touched_at`: ISO times, read from the clock.
 - `review_count`: how many times the weekly chunk has shown it to the principal.
-- `origin`: who opened it: `principal`, `speaker`, `ai` for a drawer turn, or a helper's kind.
-- `pressure` and `blocks`, where set: a number weighing the line in the order, as pressure
-  weighs a share, and the ids of the lines it holds up.
+- `origin`: who opened it: `principal`, `speaker`, `ai` for a drawer turn, `ai-draw` for an idea
+  new to the sitting in a kept draw (**The line in the AI's graph**, rule 11), which is never
+  queued to a clean turn unasked, or a helper's kind.
+- `blocks` and `waits_on`, where set: the ids of the lines it holds up, and of the lines it
+  waits on.
+- `cost`, where set: what the line asks of the principal, on the scale 1, 3 or 9; never set on
+  the session's work.
+- `owed_by`, on a line of work: `user`, the principal's to do, as where unset, or `session`,
+  owed by the sitting and not by the principal.
+- `project`, where set: the project the line belongs to, by its name or its root's id (no
+  other question's id spells a project). It is
+  read on every line, anchored or not, to place the line in its project, and gives the line
+  its root's share where no anchor gives it one.
+- `pressure`, where set: a number kept from an earlier order, which weighs nothing now.
 - What the tool writes: `flags`, by kind, each `{at, …}`, the kinds `ground-moved`,
   `parent-withdrawn` and `touched`, each cleared alone; `gone` on an anchor read as withdrawn;
   `closed_by`, `{sentence, answer}`, and `reopenable`; `proposed`, `"drop"` where the weekly
-  chunk proposes it; `reviewed_at`, `review_weight` and `review_since`, when it was last shown
-  and where its count began; and `decision`, `{choice, word, at}`, the user's keep, merge or
-  drop. No mode writes `put` or `answered`: those two states are written by hand, as an
+  chunk proposes it; `reviewed_at`, `review_weight`, `review_since` and `review_method`, when
+  it was last shown, where its count began and by which weight, a count begun by an earlier
+  weight begun again at the next showing, never proposed for a drop by that change alone;
+  and `decision`, `{choice, word, at}`, the user's keep, merge or drop. No mode writes `put` or `answered`: those two states are written by hand, as an
   `update` like the others.
 
 ```json
@@ -77,12 +91,18 @@ nothing else decides how a line closes (**Attenuation**).
 **The tool.** The speaker exports the collection with `ArtifactData`, a `list` of `lines` paged
 with `query.cursor` until it ends, `out_dir` set to `$SCRATCH/speaker/lines` itself, and writes
 the versions the reads returned to `$SCRATCH/speaker/lines-versions.json` as
-`{"lines/<id>": <version>}`; then `tools/lines.py check $SCRATCH/speaker/lines`, which holds
-every document to the fields above and the documents to each other: each parent, child and
-blocked line exists, a parent and its child agree on both sides, no line is its own ancestor,
+`{"lines/<id>": <version>}`; then `tools/lines.py check $SCRATCH/speaker/lines --graph
+$SCRATCH/graph.json`, which holds
+every document to the fields above and the documents to each other: each parent, child,
+blocked line and line waited on (`waits_on`) exists, no chain of `blocks` and `waits_on` returns
+to where it began, a parent and its child agree on both sides, no line is its own ancestor,
 one line at most is put. It does not fail on what a mode mends: a rank two lines hold, which
 `order` mends, and a parent that is no line, which `orphans` flags; and it warns, refusing
-nothing, of anchors that name no block, which no move of the notebook can be judged against.
+nothing, of anchors that name no block, which no move of the notebook can be judged against,
+of live anchored lines of no project: no `project`, and no anchor whose tab the graph places in
+a project (with no `--graph`, every live anchored line with no `project`); and, with `--graph`,
+of a `project` that is neither a project's name the graph knows nor a root's id of it, and,
+where the graph's projects are named, of a live line with no anchor and no `project`.
 The lines opened before this tool carry such anchors, `{tab, words}`, the tab named in words:
 until each is given its tab's id, block and `h`, `moved` judges none of them, and says how many
 it could not judge. Whether the `list` with `out_dir` returns each document's version is to be
@@ -96,15 +116,52 @@ exports again and runs the mode again, which writes what is still owed: `order` 
 a store that took only some of its batches mends what they left. A refusal is a `REFUSED:` line
 and no write.
 
-The order is the tool's: a line's weight is the share of the root its anchored sentences carry
-(each anchor read by its tab and block where the shares give one, else by its tab, each once,
-no tab for more than its own share), times one and its `pressure`, times one and the number of
-open lines it holds up (its `blocks` and its children); a line whose anchors no share keys
-takes the least share a live line carries, or one where none does, so that its pressure and
-what it holds up still tell. The line put comes first, then the heaviest; ties by the stored
-`rank`, then `opened_at`, oldest first, then id; so an order with no shares keeps the order
-the store holds. `rank` is the place in that order. It is a proposal like the brief's
-acts (rule 5 of the round): the user may always override it.
+The order is the tool's, one weight over every open line, anchored or not: its share, times
+what it unblocks, divided by what it costs the principal. The share is the share of the root its
+anchored sentences carry, each anchor read by its tab and block where the shares give one, else
+by its tab, each once, summed, no tab for more than its own share. A line with no anchor the
+shares key takes half the least share held by any anchored live line, open or put, the
+session's work among them, of its project, so that it sorts by share below every anchored line
+of its project, and is marked provisional. A line may stand in several projects: the one its
+`project` names, by the project's name, read first, or by its root's id where the graph names
+that root; and, on any line, each project the graph places one of its anchors' tabs in. A line
+in several projects counts as an anchored line of each, so one anchored in two projects sets
+the least of both; an unanchored line in several takes the least over all of them. A line in
+none is of no project: where the graph's projects are named, it is of the whole root and takes
+half the least share of every anchored live line; in a notebook of one project the lines of no
+project are one group. Under `--shares` alone no tab and no root's id is placed: a project is
+then its `project` as written, a project named by its name on one line and by its root's id on
+another is two projects, and an anchored line with no `project` is of no project, setting no
+share for an unanchored line of a named project; `check` warns of each such line.
+Where its project has no anchored live line, it takes half the share of its project's root
+instead, or of the whole root where it names no project the shares know. That fallback is a
+step: an unanchored line's share rises to half its root's when the last anchored line of its
+project leaves the live states, and the unanchored lines of a project with no anchored line can
+weigh above those of a project with one. An anchored line whose share is zero counts as no
+anchored line: it takes the provisional share itself. Where no shares are given, every line
+weighs a share of one and is provisional. What it unblocks is one and the number of open lines
+that wait on it directly: its children, the lines its `blocks` names, and those whose
+`waits_on` names it. What it costs is its `cost` where set; else 1 for a question or a review,
+and 3 for the principal's work. The session's work, `owed_by: "session"`, is weighed by the same
+measure at a cost of one and ordered apart, after every ask: it is never in
+`ordo/current.queue` and never holds the principal's card. The line put comes first, then the
+heaviest; ties by `opened_at`, oldest first, then id. `rank` is the place in that order, the
+asks first. `order` prints every line with its weight, its three terms and the provisional
+mark, the asks under `order` and the session's work under `session_work`, and writes the queue
+to the file `--queue-out` names, which the speaker sends as `ordo/current.queue`. It is a
+proposal like the brief's acts (rule 5 of the round), and the principal's override always
+stands. Where the principal takes another line ahead of the order, `tools/lines.py override
+$SCRATCH/speaker/lines --taken <taken line> --ground "<the ground, in a few words>" --graph
+$SCRATCH/graph.json --at <time>` appends to `$SCRATCH/speaker/lines-overrides.jsonl`, beside the
+export, the line taken and the line the order put first, each with its terms, the time, and the
+principal's ground restated in a few words; `--over <line>` names another line passed over. The
+same override run again is not appended twice, and the tool says so. It writes nothing to the
+store and changes no weight. `tools/lines.py report
+$SCRATCH/speaker/lines` reads that log against the order as it was computed: how many
+overrides, which lines, and which term of the weight each most contradicts, none where the
+line taken already weighed no less, as where the line passed over stood first by being put, and
+the provisional rule counted apart from the share term. A change to the
+method is proposed from the report, as a review of mechanism; the log never makes one.
 
 - **When the notebook's revision moves**, at the opening's fetch and after every batch point's
   check: `tools/lines.py moved $SCRATCH/speaker/lines --outlines $SCRATCH/outlines --versions
@@ -131,9 +188,9 @@ acts (rule 5 of the round): the user may always override it.
   line the answer opens under another is linked on both sides, `tools/lines.py link
   $SCRATCH/speaker/lines --parent <parent> --child <child> --versions
   $SCRATCH/speaker/lines-versions.json --at <time>`. Then the order, `tools/lines.py order
-  $SCRATCH/speaker/lines --graph $SCRATCH/graph.json --versions
-  $SCRATCH/speaker/lines-versions.json --at <time>`, over the opening's whole-notebook graph;
-  and the queue redrawn: `ordo/current.queue` set to the `queue` it printed. A line closed by a
+  $SCRATCH/speaker/lines --graph $SCRATCH/graph.json --queue-out $SCRATCH/speaker/queue.json
+  --versions $SCRATCH/speaker/lines-versions.json --at <time>`, over the opening's
+  whole-notebook graph; and the queue redrawn: `ordo/current.queue` set to the queue it wrote. A line closed by a
   sentence is reopened at the user's word, `tools/lines.py reopen $SCRATCH/speaker/lines
   <closed line> --versions $SCRATCH/speaker/lines-versions.json --at <time>`.
 - **Once a week**, at the first sitting of the Rule's week: `tools/lines.py chunk
