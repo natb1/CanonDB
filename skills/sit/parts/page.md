@@ -61,7 +61,11 @@ without `updated`; a `next` that writes a field the card draws without its `kind
 a string or a list of strings; a `next.deferred` without its `prompt`; an `office_deferred`
 whose `since` is not a time or whose `bell` is not `HHMM`; and a `question` carrying a
 recommendation, or a `question` or
-`review` carrying a `how`. An `update` of `next.resolved_at`, `asks` or `deferred` alone
+`review` carrying a `how`. It refuses one thing more, which is not a shape: a `review` that
+shows a question for the AI's own record names the question's `lead.json` as `next.reading`,
+and is refused unless that record was written by `lead.py record`, is of the `question.md`
+beside it, says `does not lead`, and that question is the prompt word for word (**The line in
+the AI's graph**, rule 3). An `update` of `next.resolved_at`, `asks` or `deferred` alone
 needs no `kind` or `prompt`. A refusal of the store is read and the document read again, never forced; where the write
 still cannot be made, the session says so and says the thing itself, since the page cannot
 carry it (rule 10). The bells and their office

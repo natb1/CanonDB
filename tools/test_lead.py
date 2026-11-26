@@ -190,14 +190,103 @@ class RecordTest(Base):
                             ([dict(self.launches[0], description="s1-b1-2-lead")],
                              "recorded no launch"),
                             ([{k: v for k, v in self.launches[0].items() if k != "ended"}],
-                             "started and ended"),
+                             "beyond doubt"),
                             ([dict(self.launches[0], at="2030-01-02T02:59:00Z")],
-                             "after the job was added"),
+                             "while it stood on the board"),
                             ([dict(self.launches[0], ended="2030-01-02T03:10:01Z")],
-                             "before it was marked done")):
+                             "beyond doubt")):
             with self.subTest(rows=rows):
                 with self.assertRaisesRegex(lead.Refused, words):
                     self.record(launches=rows)
+
+    def test_a_job_done_by_another_claimant_is_refused(self):
+        self.finish()
+        path = os.path.join(self.store.export, "jobs", JOB + ".json")
+        with open(path) as fh:
+            doc = json.load(fh)
+        doc["claimed_by"] = "s2"
+        with open(path, "w") as fh:
+            json.dump(doc, fh)
+        with self.assertRaisesRegex(lead.Refused, "not done by the coordinator"):
+            self.record()
+
+    # -- B2: a launch tied to its helper by its own call, not by the order of starts
+
+    def test_a_launch_that_never_started_lends_no_row_to_a_later_job(self):
+        # h0 was launched for an earlier job and never started; the reader of
+        # this job's start was given to h0, the oldest unstarted row of the
+        # kind, and its own row h1 stayed bare; the call's return names it
+        self.finish()
+        stale = {"id": "h0", "kind": "principal:question-reader",
+                 "description": "s1-b0-1-lead", "at": "2030-01-02T02:00:00Z",
+                 "agent_id": "a1", "started": "2030-01-02T03:01:01Z",
+                 "ended": "2030-01-02T03:09:00Z"}
+        bare = {"id": "h1", "kind": "principal:question-reader", "description": JOB,
+                "at": "2030-01-02T03:01:00Z", "returned": "2030-01-02T03:09:01Z",
+                "returned_agent": "a1"}
+        got = self.record(launches=[stale, bare])
+        self.assertEqual((got["helper"]["agent_id"], got["helper"]["started"]),
+                         ("a1", "2030-01-02T03:01:01Z"))
+        # with no return to name the helper, the bare row attests nothing
+        with self.assertRaisesRegex(lead.Refused, "a new lead job is added"):
+            self.record(launches=[stale, {k: v for k, v in bare.items()
+                                          if not k.startswith("returned")}])
+
+    def test_two_launches_at_once_whose_starts_crossed(self):
+        # B's reader b started first and was given A's row; A's reader a then
+        # B's row; each call's return names its own helper
+        self.finish()
+        a_row = {"id": "h1", "kind": "principal:question-reader", "description": "s1-b1-2-lead",
+                 "at": "2030-01-02T03:01:00Z", "agent_id": "b", "started": "2030-01-02T03:01:05Z",
+                 "ended": "2030-01-02T03:05:00Z", "returned_agent": "a"}
+        b_row = {"id": "h2", "kind": "principal:question-reader", "description": JOB,
+                 "at": "2030-01-02T03:01:02Z", "agent_id": "a", "started": "2030-01-02T03:01:06Z",
+                 "ended": "2030-01-02T03:06:00Z", "returned_agent": "b"}
+        got = self.record(launches=[a_row, b_row])
+        self.assertEqual((got["helper"]["agent_id"], got["helper"]["ended"]),
+                         ("b", "2030-01-02T03:05:00Z"))
+        # without the returns the crossing cannot be read, and nothing is attested
+        plain = [{k: v for k, v in r.items() if k != "returned_agent"} for r in (a_row, b_row)]
+        with self.assertRaisesRegex(lead.Refused, "beyond doubt"):
+            self.record(launches=plain)
+
+    def test_a_returned_helper_that_ended_after_the_mark_of_done_is_refused(self):
+        self.finish()
+        rows = [dict(self.launches[0], returned_agent="a2"),
+                {"id": "h2", "kind": "principal:question-reader", "description": "",
+                 "at": "2030-01-02T03:01:00Z", "agent_id": "a2",
+                 "started": "2030-01-02T03:01:01Z", "ended": "2030-01-02T03:11:00Z"}]
+        with self.assertRaises(lead.Refused):
+            self.record(launches=rows)
+
+    # -- B1 and the bound on readings
+
+    def test_a_led_record_is_final_and_one_text_is_read_once(self):
+        self.finish()
+        out = os.path.join(self.n, "lead.json")
+        lead.write(out, lead.led(self.question, CLOCK))
+        with self.assertRaisesRegex(lead.Refused, "final for that number"):
+            self.record()
+        lead.write(out, {"tool": "lead.py record", "sha256": self.qsha(),
+                         "verdict": "does not lead"})
+        with self.assertRaisesRegex(lead.Refused, "read already"):
+            self.record()
+        with self.assertRaisesRegex(lead.Refused, "read already"):
+            lead.job(self.question, "s1-b1-3-lead", "doc1")
+
+    def test_a_job_prints_the_jobs_file_of_one_reading(self):
+        got = lead.job(self.question, "s1-b2-4-lead", "doc1")
+        self.assertEqual(got, [{"id": "s1-b2-4-lead", "sitting": "s1", "batch": "b2",
+                                "row": "4", "kind": "lead", "tier": "full", "waits_on": [],
+                                "inputs": {"notebook": "doc1",
+                                           "question": os.path.abspath(self.question),
+                                           "question_fingerprint": self.qsha()}}])
+        self.assertEqual(board.given_problems(got[0], "job"), [])
+        for jid in ("s1-b2-4-seal", "nope"):
+            with self.assertRaises(lead.Refused):
+                lead.job(self.question, jid, "doc1")
+        with self.assertRaisesRegex(lead.Refused, "question.md on a line"):
+            lead.job(self.reply, "s1-b2-4-lead", "doc1")
 
     def test_a_clock_earlier_than_the_mark_of_done_is_refused(self):
         self.finish()
@@ -270,13 +359,27 @@ class CommandTest(Base):
         with open(self.out, encoding="utf-8") as fh:
             self.assertEqual(json.load(fh)["verdict"], "leads")
 
-    def test_a_refusal_leaves_no_record_an_earlier_one_included(self):
-        with open(self.out, "w") as fh:
-            fh.write("{}")
+    def test_a_refusal_leaves_the_record_that_stood(self):
+        # B1: a withholding is never removed by a refused record
+        done = self.run_tool("led", "--question", self.question, "-o", self.out)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        with open(self.out, "rb") as fh:
+            before = fh.read()
+        for job in ("nope", JOB):
+            done = self.run_tool("record", "--question", self.question, "--board",
+                                 self.store.export, "--versions", self.store.versions_path,
+                                 "--job", job, "-o", self.out)
+            self.assertEqual(done.returncode, 1)
+            self.assertIn("REFUSED:", done.stderr)
+            with open(self.out, "rb") as fh:
+                self.assertEqual(fh.read(), before)
+        self.finish()
         done = self.recorded()
         self.assertEqual(done.returncode, 1)
-        self.assertIn("REFUSED:", done.stderr)
-        self.assertFalse(os.path.exists(self.out))
+        self.assertIn("final for that number", done.stderr)
+        with open(self.out, "rb") as fh:
+            self.assertEqual(fh.read(), before)
+        self.assertEqual([n for n in os.listdir(self.n) if n.endswith(".tmp")], [])
 
     def test_no_session_s_id_is_refused(self):
         self.finish()
@@ -341,6 +444,145 @@ class PacketTest(unittest.TestCase):
             fh.write("not json")
         with self.assertRaises(self.packet.Refused):
             self.packet.line(self.line)
+
+    def test_a_question_put_on_a_reading_whose_record_is_gone_is_not_carried(self):
+        manifest = os.path.join(self.line, "1", "draws", "manifest.json")
+        with open(manifest) as fh:
+            doc = json.load(fh)
+        doc["origin"] = {"approval_sha256": "0" * 64, "lead_sha256": "1" * 64,
+                         "read": "2030-01-02T03:00:00Z"}
+        with open(manifest, "w") as fh:
+            json.dump(doc, fh)
+        with self.assertRaisesRegex(self.packet.Refused, "whose record is gone"):
+            self.packet.line(self.line)
+        self.reading(1, "does not lead")
+        self.assertEqual(len(self.packet.line(self.line)[0]), 2)
+
+
+class AsideTest(PacketTest):
+    """B3: a question led mid-line cuts the line there; it and every later
+    question, and the drawer turns that carried them, are set aside together."""
+
+    def setUp(self):
+        super().setUp()
+        where = os.path.join(self.line, "3")
+        os.makedirs(where)
+        with open(os.path.join(where, "question.md"), "w") as fh:
+            fh.write("Not yet answered?\n")
+        for name, carried in (("drawn-1", [{"n": 1}]), ("drawn-2", [{"n": 1}, {"n": 2}])):
+            os.makedirs(os.path.join(self.line, name))
+            with open(os.path.join(self.line, name, "packet.md"), "w") as fh:
+                fh.write("x")
+            with open(os.path.join(self.line, name, "packet.md.fingerprint.json"), "w") as fh:
+                json.dump({"tool": "packet.py", "line": carried}, fh)
+        with open(os.path.join(self.line, "2", "place.json"), "w") as fh:
+            fh.write("{}")
+
+    def test_the_led_question_and_all_after_it_are_set_aside_and_the_line_reads_on(self):
+        with self.assertRaisesRegex(lead.Refused, "not recorded as leading"):
+            lead.aside(self.line, "2")
+        self.reading(2, "leads")
+        got = lead.aside(self.line, "2")
+        self.assertEqual(got["held"], os.path.join(self.line, "held", "1"))
+        self.assertEqual((got["questions"], got["drawn"], got["placed"], got["led_drafts"]),
+                         ([2, 3], ["drawn-2"], [2], 1))
+        self.assertEqual(sorted(os.listdir(os.path.join(self.line, "held", "1"))),
+                         ["2", "3", "drawn-2"])
+        self.assertTrue(os.path.isdir(os.path.join(self.line, "drawn-1")))
+        pairs, _ = self.packet.line(self.line)
+        self.assertEqual(len(pairs), 1)
+        # a new draft at 2: the bound counts the drafts set aside as leading
+        os.makedirs(os.path.join(self.line, "2"))
+        for k in (2, 3):
+            with open(os.path.join(self.line, "2", "question.md"), "w") as fh:
+                fh.write("Draft %d?\n" % k)
+            self.assertEqual(lead.job(os.path.join(self.line, "2", "question.md"),
+                                      "s1-b1-%d-lead" % k, "doc1")[0]["kind"], "lead")
+            self.reading(2, "leads")
+            self.assertEqual(lead.aside(self.line, "2")["led_drafts"], k)
+            os.makedirs(os.path.join(self.line, "2"))
+        with open(os.path.join(self.line, "2", "question.md"), "w") as fh:
+            fh.write("Draft 4?\n")
+        with self.assertRaisesRegex(lead.Refused, "could not be drafted without leading"):
+            lead.job(os.path.join(self.line, "2", "question.md"), "s1-b1-4-lead", "doc1")
+
+    def test_a_text_set_aside_is_not_read_again(self):
+        self.reading(2, "leads")
+        with open(os.path.join(self.line, "2", "lead.json"), "w") as fh:
+            json.dump({"tool": "lead.py led", "verdict": "leads",
+                       "sha256": sha(b"How is it kept?\n")}, fh)
+        lead.aside(self.line, "2")
+        os.makedirs(os.path.join(self.line, "2"))
+        with open(os.path.join(self.line, "2", "question.md"), "w") as fh:
+            fh.write("How is it kept?\n")
+        with self.assertRaisesRegex(lead.Refused, "set aside"):
+            lead.job(os.path.join(self.line, "2", "question.md"), "s1-b1-5-lead", "doc1")
+
+    def test_the_command_prints_what_it_set_aside(self):
+        self.reading(2, "leads")
+        done = subprocess.run([sys.executable, os.path.join(HERE, "lead.py"), "aside",
+                               "--line", self.line, "--from", "2"],
+                              capture_output=True, text=True)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertIn("question(s) 2, 3; drawer turn(s) drawn-2", done.stdout)
+        self.assertIn("open note of kind change: question(s) 2", done.stdout)
+        self.assertIn("1 of 3 drafts of question 2", done.stdout)
+
+
+class ReturnTest(unittest.TestCase):
+    """The hooks tie a launch to the helper it ran by the Agent call's own return."""
+
+    def test_the_helper_s_id_is_read_from_the_result(self):
+        for response, want in (({"agentId": "ab12cd"}, "ab12cd"),
+                               ({"agent_id": "ab12cd"}, "ab12cd"),
+                               ({"content": [{"type": "text", "text": "done\nagentId: ab12cd "
+                                              "(for resuming)"}]}, "ab12cd"),
+                               ("agentId: ab12cd", "ab12cd"),
+                               ({"content": "nothing"}, None), (None, None)):
+            with self.subTest(response=response):
+                self.assertEqual(inhand.agent_of(response), want)
+
+    def test_the_newest_launch_of_its_kind_and_description_is_marked_returned(self):
+        with tempfile.TemporaryDirectory() as where:
+            for at in ("2030-01-02T03:00:00Z", "2030-01-02T03:01:00Z"):
+                inhand.launched(where, SESSION, "principal:question-reader", JOB, at)
+            inhand.launched(where, SESSION, "principal:question-reader", "s1-b1-2-lead",
+                            "2030-01-02T03:02:00Z")
+            inhand.returned(where, SESSION, "principal:question-reader", JOB, "x1",
+                            "2030-01-02T03:05:00Z")
+            rows = inhand.launches(where, SESSION)
+            self.assertEqual([r.get("returned_agent") for r in rows], [None, "x1", None])
+            inhand.returned(where, SESSION, "principal:question-reader", JOB, None,
+                            "2030-01-02T03:06:00Z")
+            rows = inhand.launches(where, SESSION)
+            self.assertEqual([bool(r.get("returned")) for r in rows], [True, True, False])
+
+    def test_the_hook_records_the_return(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "inhand_log", os.path.join(os.path.dirname(HERE), "hooks", "inhand-log.py"))
+        hook = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(hook)
+        with tempfile.TemporaryDirectory() as tmp:
+            project = os.path.join(tmp, "p")
+            os.makedirs(os.path.join(project, ".principal"))
+            with open(os.path.join(project, ".principal", "notebook.json"), "w") as fh:
+                json.dump({}, fh)
+            env = {"CLAUDE_CONFIG_DIR": os.path.join(tmp, "c"), "HOME": tmp}
+            base = {"session_id": SESSION, "cwd": project, "tool_name": "Agent",
+                    "tool_input": {"subagent_type": "principal:question-reader",
+                                   "description": JOB}}
+            self.assertTrue(hook.record(dict(base, hook_event_name="PreToolUse"), env))
+            self.assertTrue(hook.record(dict(base, hook_event_name="PostToolUse",
+                                             tool_response={"agentId": "q9q9"}), env))
+            where = brief.brief_dir(os.path.realpath(project), env)
+            rows = inhand.launches(where, SESSION)
+            self.assertEqual(rows[0]["returned_agent"], "q9q9")
+        with open(os.path.join(os.path.dirname(HERE), "hooks", "hooks.json")) as fh:
+            post = json.load(fh)["hooks"]["PostToolUse"]
+        self.assertIn({"matcher": "Agent|Task", "hooks": [{
+            "type": "command", "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/inhand-log.py\"",
+            "timeout": 30}]}, post)
 
 
 if __name__ == "__main__":

@@ -51,11 +51,13 @@ each would leave a gap. The numbers are ASCII digits from 1 with no leading
 zero and no hole, no question's directory a link; any other name of digits
 is refused. A question whose directory holds `lead.json`, the record of the
 reading of whether it leads the answerer (`lead.py`), with any verdict but
-`does not lead`, is refused by number, as one that kept no draw is: a
-question found to have led is not carried, and is put again under a new
-number or dropped before the line goes on. A question with no such record,
-one a drawer turn raised or one put before the reading was recorded, is read
-as before. A drawer turn's directory, `drawn-<n>`, holds no answer and is
+`does not lead`, is refused by number: a question found to have led is not
+carried, and is set aside with every later question of the line by
+`lead.py aside` before the line goes on. So is a question whose manifest
+says it was put on a reading (`origin.lead_sha256`) and whose `lead.json` is
+gone. A question with neither, one a drawer turn raised or one put before
+readings were recorded, is read as before. What a line set aside, under its
+`held/`, is not read. A drawer turn's directory, `drawn-<n>`, holds no answer and is
 not read.
 
 A packet written into a question's directory of the line, `DIR/<n>/`, or
@@ -265,14 +267,18 @@ def line(directory: str, upto=None):
             qtext = raw_q.decode("utf-8")
         except UnicodeDecodeError as exc:
             raise Refused("the question of %s is not UTF-8" % where) from exc
-        if os.path.lexists(os.path.join(directory, n, LEAD)):
+        manifest = _json(manifest_path, "the manifest of " + where)
+        whence = manifest.get("origin") if isinstance(manifest.get("origin"), dict) else {}
+        if os.path.lexists(os.path.join(directory, n, LEAD)) or "lead_sha256" in whence:
+            if not os.path.lexists(os.path.join(directory, n, LEAD)):
+                raise Refused("%s was put on a reading whose record is gone: it is not "
+                              "carried" % where)
             reading = _json(os.path.join(directory, n, LEAD), "the record of the reading of "
                             + where)
             if reading.get("verdict") != CLEAR:
                 raise Refused("%s was found to lead the answerer: its draws are not carried; "
-                              "put it again under a new number, or drop it, before the line "
-                              "goes on" % where)
-        manifest = _json(manifest_path, "the manifest of " + where)
+                              "set it aside, with every later question of the line, by "
+                              "lead.py aside, before the line goes on" % where)
         if manifest.get("state") == "running":
             raise Refused("%s was claimed by a run that did not finish: put it again under a "
                           "new number, or drop it, before the line goes on" % where)

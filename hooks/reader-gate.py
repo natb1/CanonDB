@@ -192,6 +192,11 @@ def decide(call, env=None, plugin=None, own: str = AGENTS) -> dict:
     return _answer("deny", REFUSED)
 
 
+def _refusal(agent: str) -> str:
+    """The refusal's sentence for the reader a name names."""
+    return REFUSED_QUESTION if KINDS.named_any(agent, (QUESTION_READER,)) else REFUSED
+
+
 #: an agent type in input that does not parse
 NAMED = re.compile(rb'"agent_type"\s*:\s*"((?:[^"\\]|\\.)*)"')
 
@@ -203,7 +208,7 @@ def unparsed(raw: bytes) -> dict:
     if not found:
         return {}
     agent = KINDS.spelled(found.group(1))
-    return _answer("deny", REFUSED) if KINDS.named_any(agent, GUARDED) else {}
+    return _answer("deny", _refusal(agent)) if KINDS.named_any(agent, GUARDED) else {}
 
 
 def main() -> int:
@@ -221,7 +226,7 @@ def main() -> int:
         decision = decide(call, plugin=plugin)
     except Exception:  # pragma: no cover - a guarded turn fails closed
         agent = call.get("agent_type") if isinstance(call, dict) else None
-        decision = _answer("deny", REFUSED) \
+        decision = _answer("deny", _refusal(agent)) \
             if isinstance(agent, str) and KINDS.named_any(agent, GUARDED) else {}
     print(json.dumps(decision))
     return 0

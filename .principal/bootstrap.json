@@ -843,10 +843,16 @@
         "tools/test_reader_gate.py",
         "tools/test_sit_skill.py",
         "web/board.html",
+        "hooks/inhand-log.py",
+        "tools/hypo/inhand.py",
+        "tools/card.py",
+        "tools/hypo/card.py",
+        "tools/test_card.py",
+        "skills/sit/parts/page.md",
         ".principal/bootstrap.json"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3224",
-      "rounds": 1
+      "rounds": 2
     }
   ]
 }

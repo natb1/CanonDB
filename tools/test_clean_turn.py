@@ -299,13 +299,9 @@ class AnswerTest(Base):
         os.unlink(self.lead)
         self.assertEqual(self.answer(lead=["--lead", self.lead])[0], clean_turn.LEAD)
 
-    def test_an_approval_earlier_than_the_reading_is_refused(self):
-        # the reader runs before the question is shown; a revision is read again
+    def test_an_approval_made_before_the_reading_is_put_once_the_reading_is_clear(self):
+        # the order of reading and showing is card.py's to hold, not the clean turn's
         self.reading(read="2030-01-02T03:04:06Z")
-        code, _, err, _ = self.answer(lead=["--lead", self.lead])
-        self.assertEqual(code, clean_turn.LEAD)
-        self.assertIn("earlier than the reading", err)
-        self.reading(read="2030-01-02T03:04:05Z")
         self.assertEqual(self.answer("--dry-run", lead=["--lead", self.lead])[0], 0)
 
     def test_the_manifest_names_the_reading(self):

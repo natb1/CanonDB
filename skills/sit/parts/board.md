@@ -26,7 +26,9 @@ The coordinator runs every kind the table gives a helper, every `review` among t
 itself.
 Two words of the table name other things too. The `probe` job puts the line doc's address on the
 board; it is not `tools/clean_turn.py probe`, the check of the harness run before a sitting's
-first clean turn. A `turn` job's input `line` is a question's directory on a line, not the line.
+first clean turn. A `turn` job's input `line` is a question's directory on a line, not the line. A
+`lead` job that failed, or whose reading the hooks do not attest, is never retried under its
+id: a new `lead` job is added for the question (**The line in the AI's graph**, rule 3).
 The coordinator is handed the board's address, the path of `$SCRATCH` and the path of the
 plugin's `tools/`, and nothing else; every address it puts on the board is under `$SCRATCH`. It
 hands a clean reader the path of the question's file, which that reader may read, and the

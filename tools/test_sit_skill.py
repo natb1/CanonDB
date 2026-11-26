@@ -1095,8 +1095,9 @@ class LineTest(unittest.TestCase):
                 "one of them is a case where the letter of the mechanism and its purpose part",
                 # 3, questions
                 "Only a question read as `does not lead` becomes its own action on the page, "
-                "a `review` whose prompt is the question word for word, for the principal to "
-                "approve or revise; it is put to the AI only on that approval.",
+                "a `review` whose prompt is the question word for word, its `next.reading` the "
+                "path of its `lead.json`, for the principal to approve or revise;",
+                "and the question is put to the AI only on that approval.",
                 "A revision is written over `question.md`, checked and read again before it "
                 "is shown again, and only the text the principal approved is put.",
                 "`{\"sha256\": <the fingerprint of the question file as approved>, "
@@ -1349,12 +1350,15 @@ class LineWalk(Walk):
             return gate.load(os.path.join(self.scratch, "speaker", "board"),
                              os.path.join(self.scratch, "speaker", "versions.json"))
         apply(writes)
-        apply(gate.add(loaded(), [{"id": jid, "sitting": "s2", "batch": "b1", "row": "1",
-                                   "kind": "lead", "tier": "full",
-                                   "inputs": {"notebook": "doc:abc",
-                                              "question": os.path.join(n, "question.md"),
-                                              "question_fingerprint": digest}}],
-                       "2020-01-02T03:00:00Z"))
+        os.makedirs(os.path.join(self.scratch, "speaker"), exist_ok=True)
+        written = [w for w in lines(SKILL, "lead.py") if "--question" in w or "--line" in w]
+        self.assertEqual([w.split()[1] for w in written], ["job", "record", "led", "aside"])
+        self.sh(written[0], dict(values, **{"<job id>": jid,
+                                            "<the notebook's address>": "doc:abc"}))
+        with open(os.path.join(self.scratch, "speaker", "jobs.json")) as fh:
+            given = json.load(fh)
+        self.assertEqual(given[0]["inputs"]["question_fingerprint"], digest)
+        apply(gate.add(loaded(), given, "2020-01-02T03:00:00Z"))
         apply(gate.claim(loaded(), jid, "coordinator", "2020-01-02T03:00:30Z"))
         apply(gate.done(loaded(), jid, "coordinator",
                         {"reply": reply, "fingerprint": fingerprint}, "2020-01-02T03:10:00Z"))
@@ -1372,23 +1376,31 @@ class LineWalk(Walk):
                         "at": "2020-01-02T03:01:00Z", "agent_id": "a1",
                         "started": "2020-01-02T03:01:01Z", "ended": "2020-01-02T03:09:00Z"}],
                       fh)
-        written = [w for w in lines(SKILL, "lead.py") if "--question" in w]
-        self.assertEqual([w.split()[1] for w in written], ["record", "led"])
-        self.sh(written[0], dict(values, **{"<job id>": jid}))
+        self.sh(written[1], dict(values, **{"<job id>": jid}))
         with open(os.path.join(n, "lead.json"), encoding="utf-8") as fh:
             reading = json.load(fh)
         self.assertEqual((reading["verdict"], reading["sha256"]), ("does not lead", digest))
-        # the approval comes after the reading; one before it is refused
+        # the card that shows it names its reading, and card.py holds the order
+        from hypo import card
+        shown = {"next": {"kind": "review", "prompt": "What is the thing for, and what must it "
+                          "never do?", "reading": os.path.join(n, "lead.json")}, "updated": T}
+        self.assertEqual(card.check(shown), [])
+        # a second reading of the same text is refused
+        self.sh(written[0], dict(values, **{"<job id>": "s2-b1-2-lead",
+                                            "<the notebook's address>": "doc:abc"}), code=1)
+        # an approval made before the reading is taken once the reading is clear
         with open(os.path.join(n, "approval.json"), "w") as fh:
             json.dump({"sha256": digest, "approved": "2020-01-02T03:00:00Z"}, fh)
-        self.sh(line(SKILL, "clean_turn.py", "answer") + " --dry-run", values, code=15)
-        with open(os.path.join(n, "approval.json"), "w") as fh:
-            json.dump({"sha256": digest, "approved": reading["read"]}, fh)
         done = self.sh(line(SKILL, "clean_turn.py", "answer") + " --dry-run", values)
         self.assertIn("What is the thing for", done.stdout)
-        # found later to have led: the skill's `lead.py led` line, and the turn refuses it
-        self.sh(written[1], values)
+        # found later to have led: the skill's `lead.py led` line, the turn and the card
+        # refuse it, and `aside` cuts the line there
+        self.sh(written[2], values)
         self.sh(line(SKILL, "clean_turn.py", "answer") + " --dry-run", values, code=15)
+        self.assertTrue(card.check(shown))
+        done = self.sh(written[3], values)
+        self.assertIn("question(s) 1", done.stdout)
+        self.assertEqual(os.listdir(os.path.join(self.scratch, "lines", "l1")), ["held"])
 
     def test_a_question_from_packet_to_dry_run(self):
         shutil.copy(os.path.join(TOOLS, "fixtures", "valid.json"),
@@ -2515,7 +2527,14 @@ class QuestionReadByMeaningTest(unittest.TestCase):
                       "page",
                       "A revision is written over `question.md`, checked and read again before "
                       "it is shown again",
-                      "an approval earlier than the reading",
+                      "It does not compare the approval's time with the reading's",
+                      "one text is read once",
+                      "the job is never retried under its id: a new `lead` job, under a new id",
+                      "Once three drafts of one question have been read as leading, no draft is "
+                      "read again",
+                      "saying that the question could not be drafted without leading",
+                      "`tools/card.py check` refuses such a card unless that record is of "
+                      "exactly the question the prompt shows and says `does not lead`",
                       "looks for no run of the user's words"):
             self.assertIn(words, rule)
         self.assertNotIn("repeats masked words", rule)
@@ -2526,10 +2545,15 @@ class QuestionReadByMeaningTest(unittest.TestCase):
         text = self.part("ai-line")
         rule = text[text.index("4. **Draws.**"):text.index("5. **On a divergence.**")]
         self.assertIn("--lead $SCRATCH/lines/<line>/<n>/lead.json", rule)
-        self.assertIn("So is a question found later to have led all the same", rule)
-        self.assertIn("its draws are not carried", rule)
-        self.assertIn("it is put again under a new number or dropped", rule)
-        self.assertIn("carried as an open note of kind `change`", rule)
+        for words in ("A question found later to have led all the same, on a later reading or "
+                      "at the principal's word, cuts the line there.",
+                      "sets aside together the led question and every later question of the "
+                      "line, whose packets carried its answer",
+                      "moved under the line's `held/`, nothing renumbered by hand and nothing "
+                      "deleted",
+                      "The line goes on from that number with a newly drafted question",
+                      "each is carried as an open note of kind `change`"):
+            self.assertIn(words, rule)
 
     def test_the_board_s_table_and_the_coordinator_s_mapping_name_the_lead_job(self):
         self.assertIn("| `lead` | `full` | `question-reader` | `notebook`, `question`: the "
@@ -2544,7 +2568,10 @@ class QuestionReadByMeaningTest(unittest.TestCase):
         text = self.part("attenuation")
         for words in ("**Whether a question leads is a reading.** No tool decides it",
                       "its verdict is its reading and no more",
-                      "What the tools hold is only that a reading was made.",
+                      "What the tools hold is only that a reading was made, once for one text, "
+                      "and that its order holds.",
+                      "cannot hand one job's run to another",
+                      "A refused record leaves the record that stood",
                       "is held by its definition alone",
                       "is untested in a live sitting",
                       "whether it leads the answerer"):

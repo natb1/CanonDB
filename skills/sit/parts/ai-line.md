@@ -52,7 +52,8 @@ of the user's record the line is drawn for, one name a line; one directory for e
 the order they are put, `$SCRATCH/lines/<line>/<n>`, `<n>` counted from 1; one for each drawer
 turn, `$SCRATCH/lines/<line>/drawn-<n>`; and `index`, every file of the line by its absolute
 path, one a line, which the speaker writes again, with `find $SCRATCH/lines/<line> -type f !
--name index | sort > $SCRATCH/lines/<line>/index`, before it adds a `compare` or a `place` job,
+-name index ! -path '*/held/*' | sort > $SCRATCH/lines/<line>/index`, which leaves out what the
+line set aside (rule 4), before it adds a `compare` or a `place` job,
 since the helpers of those kinds cannot list a directory. A question's directory holds its
 packet, `tools/packet.py $SCRATCH/graph.json --under <id> --line $SCRATCH/lines/<line> -o
 $SCRATCH/lines/<line>/<n>/packet.md`, with the fingerprint the tool writes beside it; its words,
@@ -99,7 +100,10 @@ or its question, and a question or an answer holding `<<<` or `>>>`, which no te
    line doc and at the batch point on the tab it bears on. Then, before it is shown to the
    principal, it is read for whether it leads the answerer, in a `lead` job (**Which kind runs
    which job**) whose inputs are `notebook`, `question`, the path of `question.md`, and
-   `question_fingerprint`, its SHA-256 as it stands. The coordinator hands the path and the
+   `question_fingerprint`, its SHA-256 as it stands: `tools/lead.py job --question
+   $SCRATCH/lines/<line>/<n>/question.md --id <job id> --notebook <the notebook's address> >
+   $SCRATCH/speaker/jobs.json` prints the jobs file the board's `add` takes (**How jobs reach the board**), and refuses a text
+   already read, since one text is read once. The coordinator hands the path and the
    notebook's address to a `question-reader`, which holds that file and the notebook and
    nothing else and judges by meaning whether the question hands over an answer, a design or a
    position of the user's record, so that the reply would echo that record instead of being the
@@ -109,17 +113,28 @@ or its question, and a question or an answer holding `<<<` or `>>>`, which no te
    done and the board exported again, `tools/lead.py record --question
    $SCRATCH/lines/<line>/<n>/question.md --board $SCRATCH/speaker/board --versions
    $SCRATCH/speaker/versions.json --job <job id> -o $SCRATCH/lines/<line>/<n>/lead.json` writes
-   the record of the reading, which the clean turn demands. A question read as `leads` is never
-   shown: the speaker reads the reason, drafts the question again itself, and checks it and
-   reads it again in a new `lead` job. Only a question read as `does not lead` becomes its own
-   action on the page, a `review` whose prompt is the question word for word, for the principal
-   to approve or revise; it is put to the AI only on that approval. A revision is written over
+   the record of the reading, which the clean turn demands; a refusal leaves whatever record
+   stood there as it stood. Where the hooks attest no run of the reader for the job, or the job
+   failed, the job is never retried under its id: a new `lead` job, under a new id, is added for
+   the question, and a launch left from the old one cannot answer for the new. A question read as
+   `leads` is never shown, and its record is final for its number: the speaker sets it aside
+   with `tools/lead.py aside` (rule 4), reads the reason, drafts the question again itself at the
+   same number, and checks it and reads it again in a new `lead` job. Once three drafts of one
+   question have been read as leading, no draft is read again (`lead.py` refuses it): the speaker
+   puts it to the principal as one action, saying that the question could not be drafted without
+   leading. Only a question read as `does not lead` becomes its own action on the page, a
+   `review` whose prompt is the question word for word, its `next.reading` the path of its
+   `lead.json`, for the principal to approve or revise; `tools/card.py check` refuses such a
+   card unless that record is of exactly the question the prompt shows and says `does not lead`,
+   and the question is put to the AI only on that approval. A revision is written over
    `question.md`, checked and read again before it is shown again, and only the text the
    principal approved is put. On that approval the speaker writes
    `$SCRATCH/lines/<line>/<n>/approval.json` with the Write tool, `{"sha256": <the fingerprint
    of the question file as approved>, "approved": <the time, from the clock>}`, and the clean
-   turn refuses any other text, a reading of any other text, a reading that it leads, and an
-   approval earlier than the reading. A question the AI's own record raises comes verbatim from
+   turn refuses any other text, a reading of any other text and a reading that it leads. It does
+   not compare the approval's time with the reading's: a question approved before a reading
+   existed, as on a line drawn before readings were recorded, is put once a reading of exactly its
+   text says it does not lead. A question the AI's own record raises comes verbatim from
    a drawer turn, `tools/clean_turn.py draw --packet $SCRATCH/lines/<line>/drawn-<n>/packet.md
    --out $SCRATCH/lines/<line>/drawn-<n>`, and needs no approval and no reading, being the AI's
    own words over a packet that held nothing of the user's; it is still checked by `public.py
@@ -136,14 +151,20 @@ or its question, and a question or an answer holding `<<<` or `>>>`, which no te
    the first kept is the answer of record (above). Where they part in what they would do, that
    is the finding, and the question is drawn higher. A question whose draws were all refused is
    put again under a new number, or dropped, before the line goes on: the packet refuses a gap.
-   So is a question found later to have led all the same, on a later reading or at the
-   principal's word: the speaker records it with `tools/lead.py led --question
-   $SCRATCH/lines/<line>/<n>/question.md -o $SCRATCH/lines/<line>/<n>/lead.json`, its draws are
-   not carried, since the packet refuses a question whose record of its reading says anything
-   but `does not lead`, and it is put again under a new number or dropped. An answer of it
-   already placed in the AI's record stays on its tab, carried by the graph's part of every
-   packet, until it is taken off, which no tool here does: that is carried as an open note of
-   kind `change`.
+   A question found later to have led all the same, on a later reading or at the principal's
+   word, cuts the line there. The speaker records it with `tools/lead.py led --question
+   $SCRATCH/lines/<line>/<n>/question.md -o $SCRATCH/lines/<line>/<n>/lead.json`; the packet
+   then refuses the line at that question, and refuses too a question put on a reading whose
+   record is gone. Then `tools/lead.py aside --line $SCRATCH/lines/<line> --from <n>` sets
+   aside together the led question and every later question of the line, whose packets carried
+   its answer, and every drawer turn whose packet carried any of them: their directories are
+   moved under the line's `held/`, nothing renumbered by hand and nothing deleted, and the tool
+   prints what it set aside and which of it was placed. The line goes on from that number with a
+   newly drafted question, read like any other; the packet, `hinges.py` and the index read the
+   line without what was set aside, and without a gap. A question read as `leads` before it was
+   shown is set aside the same way, alone. An answer already placed in the AI's record from a
+   question set aside stays on its tab, carried by the graph's part of every packet, until it is
+   taken off, which no tool here does: each is carried as an open note of kind `change`.
    A draw whose answer holds a packet's mark or a token opening with `@` is refused and not
    kept, like one that gives the account away, since no later packet or turn could carry it; the
    next kept draw is then of record by the same rule. A packet cut into

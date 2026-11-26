@@ -226,6 +226,11 @@ class QuestionReaderGateTest(unittest.TestCase):
     def test_input_that_does_not_parse_is_refused_to_it(self):
         got = self.run_hook(None, "", raw=b'{"agent_type": "principal:question-reader", oops')
         self.assertEqual(got["hookSpecificOutput"]["permissionDecision"], "deny")
+        self.assertIn("a question reader reads", got["hookSpecificOutput"]
+                      ["permissionDecisionReason"])
+        got = self.run_hook(self.AGENT, self.scratch + "/answers/3.md")
+        self.assertIn("a question reader reads", got["hookSpecificOutput"]
+                      ["permissionDecisionReason"])
 
     def test_no_decision_of_the_gate_is_an_allow_for_it(self):
         with open(GATE, encoding="utf-8") as fh:

@@ -17,7 +17,8 @@ compaction and after one, and never another's.
 Beside it the hooks keep, with no act of the session, the helpers started:
 `sessions/<session id>/launches.json`, one entry a launch of the Agent tool
 (its kind, its description and the time), marked started when the helper
-starts and ended when it stops. The print shows every entry's age against
+starts, returned when the Agent call comes back (with the helper's id its
+result names), and ended when it stops. The print shows every entry's age against
 the clock.
 `export` prints the write that keeps the list in the page's store as the
 document `ordo/session`, `{at, in_hand, schedule}`, where a new session reads
@@ -269,6 +270,52 @@ def started(brief_dir: str, session, kind, agent_id, at: str) -> bool:
                      if isinstance(r.get("id"), str) and r["id"][1:].isdigit()), default=0)
         rows.append({"id": "h%d" % n, "kind": _kind(kind), "description": "", "at": at,
                      "agent_id": agent_id, "started": at})
+    return _edit(brief_dir, session, change)
+
+
+#: the helper's id as the Agent tool's result gives it, where it is text
+_AGENT_ID = re.compile(r"\bagent_?[Ii]d\b\W{0,3}\s*([A-Za-z0-9_-]{4,128})")
+
+
+def agent_of(response) -> Optional[str]:
+    """The helper's id the Agent tool's result names: a field ``agentId``
+    (or ``agent_id``) of the result, or a line of its text giving it; None
+    where it names none."""
+    if isinstance(response, dict):
+        for key in ("agentId", "agent_id"):
+            if isinstance(response.get(key), str) and response[key].strip():
+                return response[key].strip()
+        texts = [response.get(k) for k in ("content", "result", "text")]
+    elif isinstance(response, list):
+        texts = response
+    else:
+        texts = [response]
+    flat = []
+    for t in texts:
+        if isinstance(t, str):
+            flat.append(t)
+        elif isinstance(t, list):
+            flat.extend(x.get("text", "") if isinstance(x, dict) else str(x) for x in t)
+        elif isinstance(t, dict) and isinstance(t.get("text"), str):
+            flat.append(t["text"])
+    found = _AGENT_ID.search("\n".join(flat))
+    return found.group(1) if found else None
+
+
+def returned(brief_dir: str, session, kind, description, agent_id, at: str) -> bool:
+    """The Agent tool's call came back: the newest launch of its kind and
+    description not yet returned is marked so, with the helper's id the
+    result names, which ties the launch to the helper it ran by the call
+    itself and not by the order of starts."""
+    def change(rows):
+        words = " ".join(str(description or "").split())[:200]
+        for r in reversed(rows):
+            if r.get("kind") == _kind(kind) and r.get("description") == words \
+                    and not r.get("returned"):
+                r["returned"] = at
+                if agent_id:
+                    r["returned_agent"] = agent_id
+                return
     return _edit(brief_dir, session, change)
 
 

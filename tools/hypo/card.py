@@ -20,6 +20,9 @@ Nothing here reaches the network or writes the page.
 from __future__ import annotations
 
 import datetime
+import hashlib
+import json
+import os
 import re
 from typing import List
 
@@ -203,6 +206,48 @@ def _next(value) -> List[str]:
             out.append("next.%s is not an ISO time with its offset" % key)
     if _present(value, "deferred"):
         out.extend(_deferred(value["deferred"]))
+    if _present(value, "reading"):
+        out.extend(_reading(value))
+    return out
+
+
+#: what a reading's record must say for its question to be shown
+READ_TOOL, CLEAR = "lead.py record", "does not lead"
+
+
+def _reading(value: dict) -> List[str]:
+    """``next.reading``, the path of the record of the reading of a question
+    for the AI's own record (``lead.py record``), which a review that shows
+    such a question names: the record must be of exactly the question the
+    prompt shows, beside it as ``question.md``, and say it does not lead."""
+    path = value["reading"]
+    if not isinstance(path, str) or not os.path.isabs(path):
+        return ["next.reading is not the absolute path of a question's lead.json"]
+    if value.get("kind") != "review":
+        return ["next.reading is given on a %r; a question for the AI's record is shown "
+                "as a review" % value.get("kind")]
+    try:
+        with open(path, encoding="utf-8") as fh:
+            got = json.load(fh)
+        with open(os.path.join(os.path.dirname(path), "question.md"), "rb") as fh:
+            raw = fh.read()
+    except (OSError, ValueError) as exc:
+        return ["next.reading cannot be read with its question beside it: %s" % exc]
+    out = []
+    if not isinstance(got, dict) or got.get("tool") != READ_TOOL:
+        return ["next.reading is not a record %s wrote" % READ_TOOL]
+    if got.get("sha256") != hashlib.sha256(raw).hexdigest():
+        out.append("next.reading is of another text than the question beside it: read it "
+                   "again before it is shown")
+    if got.get("verdict") != CLEAR:
+        out.append("next.reading says the question leads the answerer: it is never shown")
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        text = None
+    if not isinstance(value.get("prompt"), str) or text is None \
+            or " ".join(text.split()) != " ".join(value["prompt"].split()):
+        out.append("next.prompt is not the question its reading was of, word for word")
     return out
 
 

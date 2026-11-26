@@ -72,9 +72,11 @@ whose run made other than one model turn is refused and not kept.
         question put on an approval is put only with `--lead`, the record
         `lead.py record` writes of a reader's reading of it: one naming that
         tool, made over exactly this question's bytes, with the verdict
-        `does not lead` and a `read` time no later than the approval's; a
-        record of another text, of the verdict `leads`, or read after the
-        approval is refused. These records bind each check to an exact text
+        `does not lead`; a record of another text or of the verdict `leads`
+        is refused. The order of the reading and the showing is held by
+        `card.py check`, not here: a question approved before its reading
+        was recorded is put once a reading of exactly its text says it does
+        not lead. These records bind each check to an exact text
         and catch drift; they are plain files, and one written by hand with
         the right hash passes. Whether the question leads is the reader's
         reading, which no record holds.
@@ -362,11 +364,6 @@ def lead(path: str, qsha: str) -> tuple:
         raise Refusal(LEAD, "the record of the reading says not when it was read")
     with open(path, "rb") as fh:
         return sha256(fh.read()), got["read"]
-
-
-def _at(value: str) -> datetime.datetime:
-    when = datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
-    return when if when.tzinfo else when.replace(tzinfo=datetime.timezone.utc)
 
 
 def _time(value) -> bool:
@@ -792,9 +789,6 @@ def answer(args, runner) -> int:
     whence = origin(args.approval, args.drawn_from, qtext, qsha)
     if read is not None:
         whence["lead_sha256"], whence["read"] = read
-        if "approved" in whence and _at(whence["approved"]) < _at(whence["read"]):
-            raise Refusal(LEAD, "the approval is earlier than the reading: a question is "
-                                "read before it is shown, and shown again once read again")
     fresh(args.out)
     prompt = answer_prompt(ptext, qtext)
     if args.dry_run:

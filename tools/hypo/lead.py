@@ -53,6 +53,7 @@ import datetime
 import hashlib
 import json
 import os
+import re
 from typing import Dict, List, Optional, Tuple
 
 from . import board
@@ -70,6 +71,8 @@ VERDICTS = (LEADS, CLEAR)
 REASON = 300
 #: the claimant every helper's job is done by
 COORDINATOR = "coordinator"
+#: the record's name in a question's directory
+LEAD = "lead.json"
 
 
 class Refused(ValueError):
@@ -119,35 +122,217 @@ def reply(text: str) -> Tuple[str, str]:
     return verdict[len("verdict: "):], reason[len("reason: "):].strip()
 
 
+def _agent_rows(rows: List[dict], agent: str) -> List[dict]:
+    return [r for r in rows if isinstance(r, dict) and r.get("agent_id") == agent]
+
+
 def launch(rows: List[dict], kind: str, job: dict) -> dict:
-    """The one launch the hooks recorded of ``kind`` for ``job``: described
-    by its id, started and ended, within the job's time on the board."""
+    """The launch the hooks recorded of ``kind`` for ``job``, matched by the
+    job's id in its description, and the start and end of the helper that
+    launch ran, all within the job's time on the board.
+
+    The helper is the one the launch's own return named (``returned_agent``,
+    which the hooks take from the Agent tool's result by the same call), and
+    its start and end are read wherever the hooks recorded them, since a
+    start is given to a launch by kind and order and may land on another
+    row. Where the return named none, the start the launch row was given is
+    taken only where no other launch of the kind stood open beside it (made
+    before that helper's end and not ended before this launch was made), so
+    that two launches made together cannot cross; a launch that never
+    started stands open, and so refuses only this road, never the first."""
     created = _when(job.get("created"), "the job's creation")
     done = _when(job.get("updated"), "the job's mark of done")
-    found = [r for r in rows if isinstance(r, dict) and r.get("kind") == kind
-             and r.get("description") == job["id"]]
-    if not found:
-        raise Refused("the hooks recorded no launch of %s for the job %s: the coordinator "
-                      "starts the reader with the job's id as its description" % (kind, job["id"]))
-    whole = [r for r in found if r.get("agent_id") and r.get("started") and r.get("ended")]
-    if not whole:
-        raise Refused("the hooks recorded the launch of %s for the job %s and not that it "
-                      "started and ended" % (kind, job["id"]))
-    inside = []
-    for r in whole:
+    mine = []
+    for r in rows:
+        if not (isinstance(r, dict) and r.get("kind") == kind
+                and r.get("description") == job["id"]):
+            continue
         try:
             at = _when(r.get("at"), "the launch")
-            ended = _when(r.get("ended"), "the end of the launch")
         except Refused:
             continue
-        if at >= created and ended <= done:
-            inside.append(r)
-    if not inside:
-        raise Refused("no launch of %s for the job %s was started after the job was added "
-                      "and ended before it was marked done" % (kind, job["id"]))
-    r = inside[-1]
-    return {"kind": r["kind"], "agent_id": r["agent_id"], "launched": r["at"],
-            "started": r["started"], "ended": r["ended"]}
+        if created <= at <= done:
+            mine.append((at, r))
+    if not mine:
+        raise Refused("the hooks recorded no launch of %s described by the job %s while it "
+                      "stood on the board: the coordinator starts the reader with the job's "
+                      "id as its description" % (kind, job["id"]))
+    for at, r in reversed(mine):
+        agent = r.get("returned_agent")
+        if isinstance(agent, str) and agent:
+            ran = _agent_rows(rows, agent)
+            alone = True
+        else:
+            agent = r.get("agent_id")
+            ran = [r] if agent else []
+            alone = False
+        for x in ran:
+            try:
+                started = _when(x.get("started"), "the start")
+                ended = _when(x.get("ended"), "the end")
+            except Refused:
+                continue
+            if not (at <= started <= ended <= done):
+                continue
+            if not alone:
+                others = []
+                for o in rows:
+                    if o is r or not isinstance(o, dict) or o.get("kind") != kind:
+                        continue
+                    try:
+                        when = _when(o.get("at"), "a launch")
+                    except Refused:
+                        others.append(o)
+                        continue
+                    try:
+                        over = _when(o.get("ended"), "an end") if o.get("ended") else None
+                    except Refused:
+                        over = None
+                    if when <= ended and (over is None or over >= at):
+                        others.append(o)
+                if others:
+                    continue
+            return {"kind": kind, "agent_id": agent, "launched": r["at"],
+                    "started": x["started"], "ended": x["ended"]}
+    raise Refused("the hooks recorded the launch of %s for the job %s and not, beyond doubt, "
+                  "a helper it ran that started and ended before the job was marked done: "
+                  "a new lead job is added for the question" % (kind, job["id"]))
+
+
+# --- a question's place on its line, and the readings already made --------
+
+#: where a line keeps the questions set aside, each set under a number of its own
+HELD = "held"
+#: how many drafts of one question may be read as leading before it is put
+#: to the principal
+DRAFTS = 3
+NUMBER = re.compile(r"[1-9][0-9]*")
+
+
+def place(question: str) -> Tuple[str, str]:
+    """The line's directory and the question's number, for a question's file
+    ``<line>/<n>/question.md``."""
+    where = os.path.dirname(os.path.abspath(question))
+    if os.path.basename(question) != "question.md" or not NUMBER.fullmatch(
+            os.path.basename(where)):
+        raise Refused("%s is not a question's question.md on a line, <line>/<n>/question.md"
+                      % question)
+    return os.path.dirname(where), os.path.basename(where)
+
+
+def _load(path: str) -> Optional[dict]:
+    try:
+        with open(path, encoding="utf-8") as fh:
+            got = json.load(fh)
+    except FileNotFoundError:
+        return None
+    except (OSError, ValueError):
+        return {"verdict": None}
+    return got if isinstance(got, dict) else {"verdict": None}
+
+
+def held_sets(line_dir: str) -> List[str]:
+    """The sets of questions the line holds aside, in the order set aside."""
+    root = os.path.join(line_dir, HELD)
+    try:
+        names = [n for n in os.listdir(root) if NUMBER.fullmatch(n)]
+    except FileNotFoundError:
+        return []
+    return [os.path.join(root, n) for n in sorted(names, key=int)]
+
+
+def held_readings(line_dir: str, n: str) -> List[dict]:
+    """The records of the readings of question ``n`` set aside on the line."""
+    out = []
+    for where in held_sets(line_dir):
+        got = _load(os.path.join(where, n, LEAD))
+        if got is not None:
+            out.append(got)
+    return out
+
+
+def led_drafts(line_dir: str, n: str) -> int:
+    """How many drafts at question ``n`` were set aside as leading."""
+    return sum(1 for r in held_readings(line_dir, n) if r.get("verdict") != CLEAR)
+
+
+def may_read(question: str, qsha: str) -> None:
+    """Refuse a reading of a text already read, of a question whose record
+    says it leads, and of a question drafted the most times allowed."""
+    line_dir, n = place(question)
+    here = _load(os.path.join(os.path.dirname(os.path.abspath(question)), LEAD))
+    if here is not None and here.get("verdict") != CLEAR:
+        raise Refused("question %s of the line is recorded as leading, which is final for "
+                      "that number: set it aside with lead.py aside, and draft it again" % n)
+    if here is not None and here.get("sha256") == qsha:
+        raise Refused("this text of question %s was read already: one reading for one text" % n)
+    if any(r.get("sha256") == qsha for r in held_readings(line_dir, n)):
+        raise Refused("this text of question %s was read already and set aside: one reading "
+                      "for one text" % n)
+    if led_drafts(line_dir, n) >= DRAFTS:
+        raise Refused("%d drafts of question %s were read as leading: no draft is read again; "
+                      "it is put to the principal that the question could not be drafted "
+                      "without leading" % (DRAFTS, n))
+
+
+def job(question: str, jid: str, notebook: str) -> List[dict]:
+    """The jobs file of one ``lead`` job reading ``question`` as it stands."""
+    found = board.JOB_ID.fullmatch(jid or "")
+    if not found or found.group(4) != KIND:
+        raise Refused("%r is not a job id <sitting>-<batch>-<row>-lead" % jid)
+    if not board.is_address(notebook):
+        raise Refused("the notebook's address is not an address")
+    qsha = sha256(_read(question, "the question"))
+    may_read(question, qsha)
+    sitting, batch, row, kind = found.groups()
+    return [{"id": jid, "sitting": sitting, "batch": batch, "row": row, "kind": kind,
+             "tier": "full", "waits_on": [],
+             "inputs": {"notebook": notebook, "question": os.path.abspath(question),
+                        "question_fingerprint": qsha}}]
+
+
+def aside(line_dir: str, n: str) -> Dict[str, object]:
+    """Set aside question ``n``, recorded as leading, with every later
+    question of the line, whose packets carried its answer, and every drawer
+    turn whose packet carried any of them: moved together under
+    ``held/<k>/``, nothing renumbered and nothing removed, so that the line
+    reads on without a gap from ``n``. Returns what was moved and which of
+    the moved questions had an answer placed."""
+    if not NUMBER.fullmatch(n or ""):
+        raise Refused("%r is no question's number" % n)
+    import packet  # the line's own reading of its numbers
+    try:
+        numbers = packet.numbered(line_dir)
+    except packet.Refused as exc:
+        raise Refused(str(exc))
+    if n not in numbers:
+        raise Refused("the line holds no question %s" % n)
+    got = _load(os.path.join(line_dir, n, LEAD))
+    if got is None or got.get("verdict") == CLEAR:
+        raise Refused("question %s is not recorded as leading: lead.py record or led first"
+                      % n)
+    moved = [m for m in numbers if int(m) >= int(n)]
+    drawn = []
+    for name in sorted(os.listdir(line_dir)):
+        if not name.startswith("drawn-"):
+            continue
+        side = _load(os.path.join(line_dir, name, "packet.md" + packet.SIDECAR))
+        carried = (side or {}).get("line")
+        if side is None and not os.path.exists(os.path.join(line_dir, name, "packet.md")):
+            continue
+        if not isinstance(carried, list) or any(
+                not isinstance(c, dict) or not isinstance(c.get("n"), int)
+                or c["n"] >= int(n) for c in carried):
+            drawn.append(name)
+    sets = held_sets(line_dir)
+    k = str(1 + max([int(os.path.basename(w)) for w in sets], default=0))
+    target = os.path.join(line_dir, HELD, k)
+    os.makedirs(target)
+    placed = [m for m in moved if os.path.exists(os.path.join(line_dir, m, "place.json"))]
+    for name in moved + drawn:
+        os.rename(os.path.join(line_dir, name), os.path.join(target, name))
+    return {"held": target, "questions": [int(m) for m in moved], "drawn": drawn,
+            "placed": [int(m) for m in placed], "led_drafts": led_drafts(line_dir, n)}
 
 
 def record(question: str, export: Optional[board.Board], job_id: str, launches: List[dict],
@@ -187,6 +372,7 @@ def record(question: str, export: Optional[board.Board], job_id: str, launches: 
         raise Refused("the reply is not UTF-8")
     verdict, _reason = reply(text)
     helper = launch(launches, "%s:%s" % (plugin, HELPER), job)
+    may_read(question, qsha)
     if _when(clock, "the clock") < _when(job.get("updated"), "the job's mark of done"):
         raise Refused("the clock reads earlier than the job's mark of done")
     return {"tool": RECORD_TOOL, "sha256": qsha, "verdict": verdict, "read": clock,
@@ -201,6 +387,10 @@ def led(question: str, clock: str) -> Dict[str, object]:
 
 
 def write(path: str, record_: Dict[str, object]) -> None:
-    with open(path, "w", encoding="utf-8") as fh:
+    """Write the record whole beside its place and put it there in one
+    rename, so that a record is never removed or half written."""
+    temporary = "%s.%d.tmp" % (path, os.getpid())
+    with open(temporary, "w", encoding="utf-8") as fh:
         json.dump(record_, fh, indent=2)
         fh.write("\n")
+    os.replace(temporary, path)
