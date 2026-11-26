@@ -662,15 +662,24 @@ class SentenceTest(unittest.TestCase):
                 # the session's printed text is a log of operations
                 "Anything that needs the principal's attention is on the page: an action, a "
                 "result the principal should know, an error, a helper's finding, a thing owed by "
-                "the principal; what is only in the session's text has not been presented.",
+                "the principal; where the page is in use, what is only in the session's text has "
+                "not been presented.",
                 "What the speaker prints in the session never repeats what the page presents: "
-                "the session's printed text is a log of operations, what was written, launched, "
-                "returned or refused, each in the fewest words that identify it, such as a "
-                "version written, a helper's verdict in a word, or a pull request's number and "
-                "state, with no explanation, no summary of the page and no restating of a "
+                "the session's printed text is a log of operations, each in the fewest words "
+                "that identify it, for example a version written, a job launched, a helper's "
+                "verdict in a word, a refusal, a pull request's number and state, a wait or a "
+                "stop, with no explanation, no summary of the page and no restating of a "
                 "question or a recommendation.",
-                "Where the page could not be written, or the sitting runs without one, the "
-                "session says so and says the thing itself, since the page cannot then carry it.",
+                "Every write of the page is logged, by the version written; where the write puts "
+                "on the page something that needs the principal's attention other than the "
+                "action itself, an error, a refusal, a helper's finding or a thing owed, the log "
+                "line says in a word that the page holds one, a pointer and not a summary.",
+                "Where the page is not in use or cannot be relied on, the session says so and "
+                "says the thing itself: where the page could not be written, where the sitting "
+                "runs without one, and at every stop before the page's store is read at the "
+                "opening, the stops of **Before anything** among them.",
+                "Once the page is written again, what was said only in the session is written "
+                "to the page as well, since the page is its record.",
                 "Context above a question of principle still carries no recommendation (rule 1).",
                 # round three, B1, S5, S6
                 "The page counts it only where `since` is at or after the moment the named bell "
@@ -714,9 +723,28 @@ class SentenceTest(unittest.TestCase):
                       "thing itself, since the page cannot carry it (rule 10)"):
             self.assertIn(words, flat(os.path.join(PARTS, "page.md")))
         self.assertIn("The session's printed text is a log of operations in the fewest words "
-                      "that identify each, never repeating what the page presents; where the "
-                      "page could not be written, the session says so and says the thing itself.",
-                      core)
+                      "that identify each, never repeating what the page presents; every write "
+                      "of the page is logged by its version, and says in a word where it holds "
+                      "an error, a refusal, a helper's finding or a thing owed. Where the page "
+                      "could not be written, where the sitting runs without one, and at every "
+                      "stop before the page's store is read at the opening, the session says so "
+                      "and says the thing itself.", core)
+        self.assertIn("where the page is in use, what is only in the session's text has not "
+                      "been presented", core)
+        self.assertNotIn("one or two lines saying the page changed",
+                         flat(os.path.join(PARTS, "page.md")))
+        departures = flat(os.path.join(PARTS, "departures.md"))
+        self.assertIn("The session's printed text is a log of operations in the fewest words "
+                      "that identify each, every write of the page logged by its version, where "
+                      "before it was one or two lines saying the page changed.", departures)
+        attenuation = flat(os.path.join(PARTS, "attenuation.md"))
+        for words in ("**The session's printed text is held by reading.** Nothing checks what "
+                      "the speaker prints in the session",
+                      "a second voice, said as such on the page, in the action context.",
+                      "the speaker says so to the principal on the page, in the action context",
+                      "a kind that keeps failing is said to the principal on the page, in the "
+                      "action context."):
+            self.assertIn(words, attenuation)
 
     def test_round_two_the_count_the_brief_s_ask_and_no_speaker_write(self):
         """Round two: S2, S4, S12."""

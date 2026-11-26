@@ -177,10 +177,13 @@ the plugin's kinds for work a kind carries.
    to the skill's text or tools through a pull request, and it says the process has not
    changed until that is merged and loaded; a note in its own memory is not the mechanism.
 10. Every ask of the principal is an action on the page, in order, and anything that needs the
-    principal's attention, every explanation and report among it, is on the page; what is only
-    in the session's text has not been presented. The session's printed text is a log of
-    operations in the fewest words that identify each, never repeating what the page presents;
-    where the page could not be written, the session says so and says the thing itself. The
+    principal's attention, every explanation and report among it, is on the page; where the page
+    is in use, what is only in the session's text has not been presented. The session's printed
+    text is a log of operations in the fewest words that identify each, never repeating what the
+    page presents; every write of the page is logged by its version, and says in a word where it
+    holds an error, a refusal, a helper's finding or a thing owed. Where the page could not be
+    written, where the sitting runs without one, and at every stop before the page's store is
+    read at the opening, the session says so and says the thing itself. The
     action context is append-only within a round.
 
 **Written as the round goes** (`round.md`). Three notes go to the notebook at the round, through

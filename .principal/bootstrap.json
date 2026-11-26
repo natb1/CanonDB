@@ -409,7 +409,8 @@
         "tools/test_cli.py",
         "agents/interviewer.md",
         ".claude/agents/interviewer.md",
-        "tools/test_agents.py"
+        "tools/test_agents.py",
+        ".principal/bootstrap.json"
       ],
       "pull_request": "https://github.com/natb1/CanonDB/pull/3223",
       "rounds": 3
