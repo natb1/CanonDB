@@ -332,8 +332,15 @@ class BodyTest(unittest.TestCase):
         self.assertNotIn("all three documents", body)
         self.assertIn("every explanation, every answer to the principal's question and every "
                       "report of what was done in the page's action context; in the session's "
-                      "text, one or two lines saying the page changed, never repeating what the "
-                      "page says, and nothing the principal must decide only there", body)
+                      "text, a log of operations only, each in the fewest words that identify it, "
+                      "every write of the page logged by its version and saying in a word where "
+                      "it holds an error, a refusal, a helper's finding or a thing owed, never "
+                      "repeating what the page presents, and nothing that needs the principal's "
+                      "attention only there, save where the page could not be written, where the "
+                      "sitting runs without one, and at every stop before the page's store is "
+                      "read at the opening, when the session says so and says the thing itself",
+                      body)
+        self.assertNotIn("one or two lines saying the page changed", body)
 
     def test_the_grader_carries_the_five_grades_of_the_principal_s_answer(self):
         body = flat(self.bodies["grader"])

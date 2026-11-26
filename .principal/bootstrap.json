@@ -406,10 +406,14 @@
         "tools/tradition.py",
         "tools/hypo/tradition.py",
         "tools/test_tradition.py",
-        "tools/test_cli.py"
+        "tools/test_cli.py",
+        "agents/interviewer.md",
+        ".claude/agents/interviewer.md",
+        "tools/test_agents.py",
+        ".principal/bootstrap.json"
       ],
-      "pull_request": "https://github.com/natb1/CanonDB/pull/3221",
-      "rounds": 2
+      "pull_request": "https://github.com/natb1/CanonDB/pull/3223",
+      "rounds": 3
     },
     {
       "question": "dictate",

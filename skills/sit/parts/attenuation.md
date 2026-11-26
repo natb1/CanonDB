@@ -51,7 +51,8 @@ What no tool decides. Hold these by reading.
   the fetcher's transcript at the path the harness reports with the fetcher's result. Nothing
   guarantees the harness reports one, and no live sitting has yet shown it does: this is
   untested. Where no path is reported the `fetch` fails with the reason `helper`, and every
-  later link waits on it; the speaker says so to the principal, and nothing of the notebook is
+  later link waits on it; the speaker says so to the principal on the page, in the action
+  context, and nothing of the notebook is
   read by another road. The shell gate admits as a transcript only a `.jsonl` under
   `~/.claude/projects/<the session's project>/`, that directory named from `CLAUDE_PROJECT_DIR`
   with every character but a letter or a digit read as `-`; where the variable is not set, a
@@ -64,10 +65,15 @@ What no tool decides. Hold these by reading.
   board would.
 - **Nothing reaches the principal but through the speaker.** A helper that seems to need the
   principal is a job held with `wait`, never a helper that asks; and a permission the harness
-  asks of the principal on a helper's behalf is a second voice, said as such.
+  asks of the principal on a helper's behalf is a second voice, said as such on the page, in
+  the action context.
+- **The session's printed text is held by reading.** Nothing checks what the speaker prints in
+  the session: that it is a log of operations, never repeats what the page presents, and points
+  to the page where a write holds something for the principal (rule 10) is held by the
+  speaker's reading of its own text alone.
 - **Whether a job's kind fits its helper is read.** `status` counts failures and retries by kind;
   what the count means, a helper too small for its work or a job badly drawn, is read, and a
-  kind that keeps failing is said to the principal.
+  kind that keeps failing is said to the principal on the page, in the action context.
 - **A sealed text lives for the sitting.** It is in `$SCRATCH` and goes with the session. A
   sitting that ends with one unstated carries its question to the notebook as an open note of
   kind `case`, with the case and without the prediction, so that the next sitting draws it again.

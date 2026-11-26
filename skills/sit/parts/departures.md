@@ -89,6 +89,9 @@ What this entry point says now that reverses what it said before:
   action; it is run by the speaker and by no helper.
 - Every explanation and report, the brief and the close among them, is written in the page's
   action context, where before the brief and the close were said in the session's text.
+- The session's printed text is a log of operations in the fewest words that identify each,
+  every write of the page logged by its version, where before it was one or two lines saying
+  the page changed.
 - The AI's own turns are put by this session, in clean turns run by `tools/clean_turn.py`, where
   before the principal ran `/principal:ask` in a second session that prompted, the one exception
   to ground rule 1; that entry point is removed and there is no exception.

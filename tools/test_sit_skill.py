@@ -658,9 +658,28 @@ class SentenceTest(unittest.TestCase):
                 # round three, S7
                 "Every explanation, every answer to a question of the principal's, and every "
                 "report of what was done goes in the page's action context, `context`, as its "
-                "`heading` and `paragraphs`; the session's own text is one or two lines saying "
-                "the page changed, and never repeats what the page says; nothing the principal "
-                "must decide appears only in the session's text.",
+                "`heading` and `paragraphs`, or in `context.log`.",
+                # the session's printed text is a log of operations
+                "Anything that needs the principal's attention is on the page: an action, a "
+                "result the principal should know, an error, a helper's finding, a thing owed by "
+                "the principal; where the page is in use, what is only in the session's text has "
+                "not been presented.",
+                "What the speaker prints in the session never repeats what the page presents: "
+                "the session's printed text is a log of operations, each in the fewest words "
+                "that identify it, for example a version written, a job launched, a helper's "
+                "verdict in a word, a refusal, a pull request's number and state, a wait or a "
+                "stop, with no explanation, no summary of the page and no restating of a "
+                "question or a recommendation.",
+                "Every write of the page is logged, by the version written; where the write puts "
+                "on the page something that needs the principal's attention other than the "
+                "action itself, an error, a refusal, a helper's finding or a thing owed, the log "
+                "line says in a word that the page holds one, a pointer and not a summary.",
+                "Where the page is not in use or cannot be relied on, the session says so and "
+                "says the thing itself: where the page could not be written, where the sitting "
+                "runs without one, and at every stop before the page's store is read at the "
+                "opening, the stops of **Before anything** among them.",
+                "Once the page is written again, what was said only in the session is written "
+                "to the page as well, since the page is its record.",
                 "Context above a question of principle still carries no recommendation (rule 1).",
                 # round three, B1, S5, S6
                 "The page counts it only where `since` is at or after the moment the named bell "
@@ -693,6 +712,39 @@ class SentenceTest(unittest.TestCase):
         self.assertNotIn("collection `predictions`", self.skill)
         self.assertNotIn("reports what they hand back in the action context", self.skill)
         self.assertNotIn("marks it as given", self.skill)
+        with open(SKILL, encoding="utf-8") as fh:
+            core = " ".join(fh.read().split())
+        self.assertNotIn("one or two lines saying the page changed", round_)
+        self.assertNotIn("one or two lines saying the page changed", core)
+        for words in ("Anything that needs the principal's attention is presented here, in the "
+                      "next action, the action context or its log, and the session's printed "
+                      "text, a log of operations only, never repeats it (rule 10).",
+                      "where the write still cannot be made, the session says so and says the "
+                      "thing itself, since the page cannot carry it (rule 10)"):
+            self.assertIn(words, flat(os.path.join(PARTS, "page.md")))
+        self.assertIn("The session's printed text is a log of operations in the fewest words "
+                      "that identify each, never repeating what the page presents; every write "
+                      "of the page is logged by its version, and says in a word where it holds "
+                      "an error, a refusal, a helper's finding or a thing owed. Where the page "
+                      "could not be written, where the sitting runs without one, and at every "
+                      "stop before the page's store is read at the opening, the session says so "
+                      "and says the thing itself.", core)
+        self.assertIn("where the page is in use, what is only in the session's text has not "
+                      "been presented", core)
+        self.assertNotIn("one or two lines saying the page changed",
+                         flat(os.path.join(PARTS, "page.md")))
+        departures = flat(os.path.join(PARTS, "departures.md"))
+        self.assertIn("The session's printed text is a log of operations in the fewest words "
+                      "that identify each, every write of the page logged by its version, where "
+                      "before it was one or two lines saying the page changed.", departures)
+        attenuation = flat(os.path.join(PARTS, "attenuation.md"))
+        for words in ("**The session's printed text is held by reading.** Nothing checks what "
+                      "the speaker prints in the session",
+                      "a second voice, said as such on the page, in the action context.",
+                      "the speaker says so to the principal on the page, in the action context",
+                      "a kind that keeps failing is said to the principal on the page, in the "
+                      "action context."):
+            self.assertIn(words, attenuation)
 
     def test_round_two_the_count_the_brief_s_ask_and_no_speaker_write(self):
         """Round two: S2, S4, S12."""
@@ -1594,7 +1646,9 @@ class PageTest(unittest.TestCase):
                       "writes no agenda and says so in the action context, and the panel then says "
                       "\"No calendar has been read.\"",
                       "the speaker's explanation, its answer to a question of the principal's, or "
-                      "its report of what was done, the brief and the close among them (rule 10)",
+                      "its report of what was done, the brief and the close among them, a result "
+                      "the principal should know, an error, a helper's finding and a thing owed by "
+                      "the principal included (rule 10)",
                       "`prediction` never holds the prediction of the action now put",
                       "the question put on the page as an action (rule 10)",
                       "`recommendation`, a string or a list of strings, the speaker's "

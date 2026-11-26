@@ -216,12 +216,24 @@ bind every action, and so does rule 4's tradition on a new fact and its recordin
    confined way, where it can brief no build, the change is named to the principal as an open
    note of kind `change`, and the process is said not to have changed until that lands.
 10. **Every ask of the principal is an action on the page, in order.** The speaker never leaves
-    an ask only in the session's text: what it writes in the session is short and points to the
-    page. Every explanation, every answer to a question of the principal's, and every report of
-    what was done goes in the page's action context, `context`, as its `heading` and
-    `paragraphs`; the session's own text is one or two lines saying the page changed, and never
-    repeats what the page says; nothing the principal must decide appears only in the session's
-    text. Context above a question of principle still carries no recommendation (rule 1). The
+    an ask only in the session's text. Anything that needs the principal's attention is on the
+    page: an action, a result the principal should know, an error, a helper's finding, a thing
+    owed by the principal; where the page is in use, what is only in the session's text has not
+    been presented. Every explanation, every answer to a question of the principal's, and every
+    report of what was done goes in the page's action context, `context`, as its `heading` and
+    `paragraphs`, or in `context.log`. What the speaker prints in the session never repeats what
+    the page presents: the session's printed text is a log of operations, each in the fewest
+    words that identify it, for example a version written, a job launched, a helper's verdict in
+    a word, a refusal, a pull request's number and state, a wait or a stop, with no explanation,
+    no summary of the page and no restating of a question or a recommendation. Every write of the
+    page is logged, by the version written; where the write puts on the page something that
+    needs the principal's attention other than the action itself, an error, a refusal, a
+    helper's finding or a thing owed, the log line says in a word that the page holds one, a
+    pointer and not a summary. Where the page is not in use or cannot be relied on, the session
+    says so and says the thing itself: where the page could not be written, where the sitting
+    runs without one, and at every stop before the page's store is read at the opening, the
+    stops of **Before anything** among them. Once the page is written again, what was said only
+    in the session is written to the page as well, since the page is its record. Context above a question of principle still carries no recommendation (rule 1). The
     action context is append-only within a round: once it is written for a round, nothing in it
     is changed until the principal answers; an addition before then is appended to the same
     context as a record carrying its time, in `context.log`, each record `{at, paragraphs}`, the
