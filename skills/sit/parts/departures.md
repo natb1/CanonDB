@@ -38,6 +38,9 @@ Read this part when `/principal:dictate`, `/principal:bootstrap` or another entr
 - A board claim is released by `release --older-than`, for every claim quiet that long, where
   `/principal:dictate` **A lease and a claim are released by reading** says nothing expires; here
   it is run only once every claimant it would catch is read as gone.
+- The speaker may put the request for a round of `/principal:bootstrap` in three cases (rule 1
+  of the line), the principal's approval being what makes the round explicit, where
+  `/principal:bootstrap` has the user initiate it.
 - The board's store is exported, where `/principal:dictate` **The document is read in place,
   and nothing is exported** speaks of the notebook, which is still read in place.
 - The line is run by a fifth entry point, which `/principal:dictate` **Where the line is shared**
@@ -134,3 +137,8 @@ What this entry point says now that reverses what it said before:
 - Every presupposition a question on a line carries in is recorded as a hinge of the AI's graph,
   unjustified until a later answer of the AI's is linked to it, where before it stood only in
   the speaker's notes and the answer's closing line.
+- The speaker puts the request for a bootstrap unasked, in its turn, as a review that asks for a
+  grant, where one of the three cases of rule 1 of the line holds, where before a build straight
+  from the principal's words came only at the principal's own asking; the principal's approval,
+  in answer to the request put on the page, authorises that build to be begun, and the
+  principal's own asking still stands.

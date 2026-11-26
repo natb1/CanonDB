@@ -2591,5 +2591,66 @@ class QuestionReadByMeaningTest(unittest.TestCase):
             self.assertIn(words, text)
 
 
+class WhenToAskForABootstrapTest(unittest.TestCase):
+    """Rule 1 of the line: where the speaker itself asks for a bootstrap.
+    A rule about meaning is not guarded by matching its words, so this holds
+    only what a test can: the rule stands where the parts table and the
+    cross-references say, the references resolve, its text has no dash, and
+    the manifest lists its files. Its meaning is held by the adversarial
+    reader before the merge and by the speaker's reading (attenuation.md)."""
+
+    HEADING = "**When the speaker asks for a bootstrap.**"
+
+    @staticmethod
+    def part(name):
+        return flat(os.path.join(PARTS, name + ".md"))
+
+    def rule(self):
+        text = self.part("ai-line")
+        line = text[text.index("## The line in the AI's graph"):]
+        return line[line.index("1. **The order.**"):line.index("2. **Intention is carried")]
+
+    def test_the_rule_stands_in_rule_1_of_the_line(self):
+        self.assertEqual(self.part("ai-line").count(self.HEADING), 1)
+        self.assertIn(self.HEADING, self.rule())
+
+    def test_the_cross_references_resolve(self):
+        core = flat(SKILL)
+        for text in (self.part("round"), core):
+            self.assertIn("the three cases of **The line in the AI's graph**, rule 1,", text)
+        self.assertIn("rule 1 of the line", self.part("departures"))
+        self.assertIn("rule 1 of the line", self.part("attenuation"))
+        self.assertIn("**When the speaker asks for a bootstrap is held by reading.**",
+                      self.part("attenuation"))
+        # the bold names the rule cites stand where it says
+        self.assertIn("**Written as the round goes.**", self.part("round"))
+        self.assertIn("**The round** (`round.md`", core)
+        self.assertIn("**Attenuation**", core)
+
+    def test_the_part_is_read_when_a_build_is_first_owed(self):
+        with open(os.path.join(PARTS, "ai-line.md"), encoding="utf-8") as fh:
+            self.assertIn("when a build is first owed", fh.readline())
+        row = [r for r in flat(SKILL).split("| `") if r.startswith("ai-line.md` |")]
+        self.assertEqual(len(row), 1)
+        self.assertIn("when a build is first owed", row[0])
+
+    def test_no_dash_in_the_rule(self):
+        for dash in ("\u2014", "\u2013"):
+            self.assertNotIn(dash, self.rule())
+
+    def test_the_manifest_lists_the_files(self):
+        with open(os.path.join(ROOT, ".principal", "bootstrap.json"), encoding="utf-8") as fh:
+            apps = json.load(fh)["applications"]
+        entry = [a for a in apps if a["application"] == "the request for a bootstrap"]
+        self.assertEqual(len(entry), 1)
+        files = entry[0]["files"]
+        for f in ("skills/sit/SKILL.md", "skills/sit/parts/ai-line.md",
+                  "skills/sit/parts/round.md", "skills/sit/parts/attenuation.md",
+                  "skills/sit/parts/departures.md", "tools/test_sit_skill.py"):
+            self.assertIn(f, files)
+        for f in files:
+            self.assertTrue(os.path.exists(os.path.join(ROOT, f)), f)
+
+
 if __name__ == "__main__":
     unittest.main()
